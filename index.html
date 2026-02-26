@@ -136,16 +136,16 @@ const LEAGUES=[
   {id:3,  name:"Europa League",    country:"Europe",    flag:"🟠",region:"Coupes EU",   isCup:true,hasGroups:true, hasKnockout:true},
   {id:848,name:"Conference Lge",   country:"Europe",    flag:"🔵",region:"Coupes EU",   isCup:true,hasGroups:true, hasKnockout:true},
   //
-  {id:16, name:"FA Cup",           country:"Angleterre",flag:"🏴",region:"Coupes Nat.", isCup:true,hasKnockout:true},
+  {id:16, name:"FA Cup",           country:"Angleterre",flag:"🏴󠁧󠁢󠁥󠁮󠁧󠁿",region:"Coupes Nat.", isCup:true,hasKnockout:true},
   {id:137,name:"Coppa Italia",     country:"Italie",    flag:"🇮🇹",region:"Coupes Nat.", isCup:true,hasKnockout:true},
   {id:143,name:"Copa del Rey",     country:"Espagne",   flag:"🇪🇸",region:"Coupes Nat.", isCup:true,hasKnockout:true},
   {id:81, name:"DFB Pokal",        country:"Allemagne", flag:"🇩🇪",region:"Coupes Nat.", isCup:true,hasKnockout:true},
   {id:66, name:"Coupe de France",  country:"France",    flag:"🇫🇷",region:"Coupes Nat.", isCup:true,hasKnockout:true},
   {id:65, name:"Coupe de la Ligue",country:"France",    flag:"🇫🇷",region:"Coupes Nat.", isCup:true,hasKnockout:true},
-  {id:48, name:"League Cup",       country:"Angleterre",flag:"🏴",region:"Coupes Nat.", isCup:true,hasKnockout:true},
+  {id:48, name:"League Cup",       country:"Angleterre",flag:"🏴󠁧󠁢󠁥󠁮󠁧󠁿",region:"Coupes Nat.", isCup:true,hasKnockout:true},
   {id:556,name:"Super Cup UEFA",   country:"Europe",    flag:"🏆",region:"Coupes Nat.", isCup:true},
   //
-  {id:39, name:"Premier League",   country:"Angleterre",flag:"🏴",region:"Top 5"},
+  {id:39, name:"Premier League",   country:"Angleterre",flag:"🏴󠁧󠁢󠁥󠁮󠁧󠁿",region:"Top 5"},
   {id:140,name:"La Liga",          country:"Espagne",   flag:"🇪🇸",region:"Top 5"},
   {id:135,name:"Serie A",          country:"Italie",    flag:"🇮🇹",region:"Top 5"},
   {id:78, name:"Bundesliga",       country:"Allemagne", flag:"🇩🇪",region:"Top 5"},
@@ -155,8 +155,8 @@ const LEAGUES=[
   {id:94, name:"Primeira Liga",    country:"Portugal",  flag:"🇵🇹",region:"Europe"},
   {id:203,name:"Super Lig",        country:"Turquie",   flag:"🇹🇷",region:"Europe"},
   {id:144,name:"Pro League",       country:"Belgique",  flag:"🇧🇪",region:"Europe"},
-  {id:40, name:"Championship",     country:"Angleterre",flag:"🏴",region:"Europe"},
-  {id:179,name:"Premiership",      country:"Ecosse",    flag:"🏴",region:"Europe"},
+  {id:40, name:"Championship",     country:"Angleterre",flag:"🏴󠁧󠁢󠁥󠁮󠁧󠁿",region:"Europe"},
+  {id:179,name:"Premiership",      country:"Ecosse",    flag:"🏴‍",region:"Europe"},
   {id:119,name:"Superliga",        country:"Danemark",  flag:"🇩🇰",region:"Europe"},
   {id:113,name:"Allsvenskan",      country:"Suède",     flag:"🇸🇪",region:"Europe"},
   {id:103,name:"Eliteserien",      country:"Norvège",   flag:"🇳🇴",region:"Europe"},
@@ -414,7 +414,7 @@ function Row({match:m,onOpen,isFav,onFav}){
   const barColor=live?T.red:sh==="HT"||sh==="BT"?T.gold:susp?T.orange:canc?T.red:"transparent";
   const stLabel=sh==="HT"?"MT":sh==="BT"?"Pause":sh==="P"?"Tab":sh==="SUSP"?"Susp.":sh==="INT"?"Inter.":sh==="ABD"?"Arrêté":sh==="CANC"?"Annulé":sh==="PST"?"Reporté":sh==="TBD"?"TBD":sh==="AWD"?"T.vert":sh==="WO"?"Forfait":sh==="AET"?"Ap.Pr.":sh==="PEN"?"Tab":"FT";
   const stColor=sh==="HT"||sh==="BT"?T.gold:susp?T.orange:canc?T.red:sh==="PST"?T.yellow:T.t3;
-  return<div onClick={onOpen} class="row-anim" style={{
+  return<div onClick={onOpen} className="row-anim" style={{
     display:"flex",alignItems:"center",minHeight:52,cursor:"pointer",
     borderBottom:`1px solid ${T.line}`,
     background:flash?"rgba(229,53,53,.08)":canc||susp?"rgba(0,0,0,.2)":"transparent",
@@ -1588,12 +1588,12 @@ function CalendarTab({favs,onFav}){
       :Object.entries(byD).sort(([a],[b])=>a.localeCompare(b)).map(([d,matches])=><div key={d}>
         <div style={{padding:"10px 14px 5px",fontSize:11,fontWeight:700,color:T.t3,letterSpacing:1,textTransform:"uppercase",background:T.bg1,borderBottom:`1px solid ${T.line}`,borderTop:`1px solid ${T.line}`}}>{DL(d)}</div>
         {matches.map(m=>{const isFav=favs.has(m.fixture.id);return<div key={m.fixture.id} onClick={()=>openMatch(m.fixture.id)} style={{display:"flex",alignItems:"center",padding:"11px 14px",borderBottom:`1px solid ${T.line}`,cursor:"pointer",transition:"background .12s"}} onMouseEnter={e=>e.currentTarget.style.background=T.bg2} onMouseLeave={e=>e.currentTarget.style.background="transparent"}>
-          <span style={{fontSize:13,fontWeight:700,color:T.blueB,width:46,flexShrink:0}}>{hhmm(m.fixture.date)}</span>
+          <span className="bc" style={{fontSize:13,fontWeight:700,color:T.blueB,width:46,flexShrink:0}}>{hhmm(m.fixture.date)}</span>
           <div style={{flex:1,minWidth:0}}>
             <div style={{display:"flex",alignItems:"center",gap:7,marginBottom:5}}><Logo src={m.teams.home.logo} size={16}/><span className="bc" style={{fontSize:14,fontWeight:700,overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap",letterSpacing:.2}}>{m.teams.home.name}</span></div>
             <div style={{display:"flex",alignItems:"center",gap:7}}><Logo src={m.teams.away.logo} size={16}/><span className="bc" style={{fontSize:14,fontWeight:500,color:T.t2,overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap",letterSpacing:.2}}>{m.teams.away.name}</span></div>
           </div>
-          {m.fixture.venue?.city&&<span style={{fontSize:10,color:T.t3,maxWidth:72,textAlign:"right",lineHeight:1.4,flexShrink:0,marginRight:5}}>{m.fixture.venue.city}</span>}
+          {m.fixture.venue?.city&&<span className="bc" style={{fontSize:10,color:T.t3,maxWidth:72,textAlign:"right",lineHeight:1.4,flexShrink:0,marginRight:5}}>{m.fixture.venue.city}</span>}
           <button onClick={e=>{e.stopPropagation();onFav(m.fixture.id);}} style={{background:"none",border:"none",color:isFav?T.gold:T.t4,fontSize:15,padding:"0 5px",flexShrink:0,cursor:"pointer"}}>{isFav?"★":"☆"}</button>
         </div>;})}
       </div>)}
@@ -1653,7 +1653,7 @@ function App(){
         <div style={{display:"flex",alignItems:"center",gap:8}}>
           {installEvt&&<button onClick={()=>{installEvt.prompt();installEvt.userChoice.then(()=>setIE(null));}} style={{background:"rgba(229,53,53,.15)",border:"1px solid rgba(229,53,53,.3)",color:"#ff8a80",borderRadius:8,padding:"5px 11px",fontSize:11,fontWeight:700,cursor:"pointer"}}>📲 Installer</button>}
           <div style={{display:"flex",alignItems:"center",gap:6,background:"rgba(229,53,53,.12)",border:"1px solid rgba(229,53,53,.25)",borderRadius:20,padding:"5px 11px"}}>
-            <div class="live-dot"/>
+            <div className="live-dot"/>
             <span className="bc" style={{fontSize:11,fontWeight:800,color:"#ff5252",letterSpacing:1.2}}>LIVE</span>
           </div>
         </div>
