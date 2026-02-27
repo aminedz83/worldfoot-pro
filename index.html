@@ -65,6 +65,7 @@ body{
 ::-webkit-scrollbar{display:none}*{scrollbar-width:none}
 input,select,button{font-family:"Barlow",-apple-system,sans-serif}
 select option{background:#eef0f4;color:#1a1d23}
+div::-webkit-scrollbar{display:none}
 
 @keyframes spin    {to{transform:rotate(360deg)}}
 @keyframes pulse   {0%,100%{opacity:1}50%{opacity:.12}}
@@ -469,9 +470,39 @@ function Sheet({open,onClose,children}){
   if(!open)return null;
   return<div onClick={onClose} style={{position:"fixed",inset:0,zIndex:950,display:"flex",flexDirection:"column",justifyContent:"flex-end"}}>
     <div style={{position:"absolute",inset:0,background:"rgba(0,0,0,.8)",backdropFilter:"blur(4px)"}}/>
-    <div onClick={e=>e.stopPropagation()} style={{position:"relative",background:T.bg1,borderRadius:"20px 20px 0 0",maxHeight:"94vh",overflowY:"auto",animation:"up .28s cubic-bezier(.32,1,.23,1)",paddingBottom:"env(safe-area-inset-bottom)"}}>
-      <div style={{display:"flex",justifyContent:"center",padding:"12px 0 0"}}><div style={{width:40,height:4,borderRadius:2,background:T.bg4}}/></div>
-      {children}
+    <div onClick={e=>e.stopPropagation()} style={{
+      position:"relative",
+      background:T.bg1,
+      borderRadius:"20px 20px 0 0",
+      maxHeight:"85vh",
+      display:"flex",
+      flexDirection:"column",
+      animation:"up .28s cubic-bezier(.32,1,.23,1)",
+    }}>
+      {/* Handle + bouton fermer sticky en haut */}
+      <div style={{
+        display:"flex",alignItems:"center",justifyContent:"center",
+        padding:"12px 16px 8px",
+        flexShrink:0,
+        position:"sticky",top:0,
+        background:T.bg1,
+        borderRadius:"20px 20px 0 0",
+        zIndex:2,
+      }}>
+        <div style={{width:40,height:4,borderRadius:2,background:T.bg4}}/>
+        <button onClick={onClose} style={{
+          position:"absolute",right:16,
+          width:32,height:32,borderRadius:"50%",
+          background:T.bg3,border:`1px solid ${T.line}`,
+          color:T.t2,fontSize:16,cursor:"pointer",
+          display:"flex",alignItems:"center",justifyContent:"center",
+          fontWeight:700,
+        }}>✕</button>
+      </div>
+      {/* Contenu scrollable */}
+      <div style={{overflowY:"auto",flex:1,paddingBottom:"env(safe-area-inset-bottom)"}}>
+        {children}
+      </div>
     </div>
   </div>;
 }
@@ -1213,7 +1244,7 @@ const gv=(arr,k)=>arr.find(x=>x.type===k)?.value??0;
         <span style={{fontSize:12,color:T.t3}}>{fix.league.name} · {fix.league.country}</span>
         {fix.league.round&&<span style={{fontSize:11,color:T.t4}}>· {fix.league.round.replace("Regular Season - ","J")}</span>}
       </div>
-      <button onClick={onClose} style={{background:T.bg3,border:`1px solid ${T.line}`,color:T.t2,borderRadius:"50%",width:30,height:30,fontSize:14,cursor:"pointer",display:"flex",alignItems:"center",justifyContent:"center",display:"flex",alignItems:"center",justifyContent:"center"}}>✕</button>
+
     </div>
 
     {/* Hero score   PREMIUM */}
@@ -1546,9 +1577,8 @@ function ScoresTab({favs,onFav}){
     </div>
     {/* Picker ligues */}
     <Sheet open={picker} onClose={()=>setPicker(false)}>
-      <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",padding:"4px 16px 14px"}}>
+      <div style={{padding:"4px 16px 14px"}}>
         <span style={{fontSize:16,fontWeight:700}}>Compétitions</span>
-        <button onClick={()=>setPicker(false)} style={{background:T.bg3,border:`1px solid ${T.line}`,color:T.t2,borderRadius:"50%",width:30,height:30,fontSize:14,cursor:"pointer",display:"flex",alignItems:"center",justifyContent:"center",transition:"all .15s"}}>✕</button>
       </div>
       <div style={{paddingBottom:40}}>
         <div onClick={()=>{setLg(null);setPicker(false);}} style={{display:"flex",alignItems:"center",gap:11,padding:"13px 16px",borderBottom:`1px solid ${T.line}`,background:!lg?T.blueL:"none",cursor:"pointer"}}>
@@ -1585,46 +1615,57 @@ function StRow({r,zc,viewMode}){
   const isTop=r.rank<=3;
   const src=viewMode==="home"?r.home:viewMode==="away"?r.away:r.all;
   const qColor=zc(r.description);
-  const isQual=qColor!=="transparent";
+  const bp=src?.goals?.for??r.all?.goals?.for??0;
+  const bc=src?.goals?.against??r.all?.goals?.against??0;
+  const gd=r.goalsDiff;
   return<div style={{
-    display:"flex",alignItems:"center",padding:"10px 12px",
-    borderBottom:`1px solid ${T.line}`,
-    borderLeft:`3px solid ${qColor}`,
+    display:"flex",alignItems:"center",
+    padding:"9px 10px",
+    borderBottom:"1px solid rgba(0,0,0,.07)",
+    borderLeft:`4px solid ${qColor}`,
+    background:"#fff",
     width:"100%",
-    background:isTop?"rgba(0,184,107,.04)":"transparent",
   }}>
     {/* Rang */}
     <div className="bc" style={{
-      width:24,fontSize:12,fontWeight:900,textAlign:"center",flexShrink:0,
-      color:r.rank<=3?"#00b86b":r.rank<=6?"#42a5f5":T.t4,
+      width:22,fontSize:12,fontWeight:900,textAlign:"center",flexShrink:0,
+      color:r.rank===1?"#e65c00":r.rank<=3?"#555":"#999",
     }}>{r.rank}</div>
-    {/* Équipe */}
-    <div style={{flex:1,display:"flex",alignItems:"center",gap:7,minWidth:0,overflow:"hidden"}}>
-      <Logo src={r.team?.logo} size={22}/>
+
+    {/* Logo + Nom + Forme */}
+    <div style={{flex:1,display:"flex",alignItems:"center",gap:7,minWidth:0,overflow:"hidden",marginLeft:4}}>
+      <Logo src={r.team?.logo} size={24}/>
       <div style={{minWidth:0,flex:1}}>
         <div className="bc" style={{
-          fontSize:13,fontWeight:isTop?800:600,
+          fontSize:13,fontWeight:isTop?700:500,
+          color:"#1a1d23",
           overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap",
-          color:T.t1,
         }}>{r.team?.name}</div>
-        {/* Forme 5 derniers */}
         <div style={{display:"flex",gap:2,marginTop:3}}>
           {(r.form??"").split("").slice(-5).map((c,i)=><FormBadge key={i} c={c}/>)}
         </div>
       </div>
     </div>
-    {/* Stats selon viewMode */}
-    <div className="bc" style={{width:22,textAlign:"center",fontSize:11,color:T.t3,flexShrink:0}}>{src?.played??"-"}</div>
-    <div className="bc" style={{width:22,textAlign:"center",fontSize:11,color:"#00b86b",flexShrink:0,fontWeight:600}}>{src?.win??"-"}</div>
-    <div className="bc" style={{width:22,textAlign:"center",fontSize:11,color:T.t3,flexShrink:0}}>{src?.draw??"-"}</div>
-    <div className="bc" style={{width:22,textAlign:"center",fontSize:11,color:T.red,flexShrink:0}}>{src?.lose??"-"}</div>
-    <div className="bc" style={{width:26,textAlign:"center",fontSize:11,flexShrink:0,fontWeight:700,
-      color:r.goalsDiff>0?"#00b86b":r.goalsDiff<0?T.red:T.t3,
-    }}>{r.goalsDiff>0?"+":""}{r.goalsDiff??""}</div>
+
+    {/* M (matchs joués) */}
+    <div className="bc" style={{width:22,textAlign:"center",fontSize:12,color:"#555",flexShrink:0}}>{src?.played??"-"}</div>
+
+    {/* Score BP:BC style Besocer */}
+    <div className="bc" style={{
+      width:46,textAlign:"center",fontSize:12,flexShrink:0,
+      color:"#444",fontWeight:500,letterSpacing:.3,
+    }}>{bp}:{bc}</div>
+
+    {/* Diff */}
+    <div className="bc" style={{
+      width:28,textAlign:"center",fontSize:12,flexShrink:0,fontWeight:700,
+      color:gd>0?"#00b86b":gd<0?"#e53535":"#aaa",
+    }}>{gd>0?"+":""}{gd}</div>
+
     {/* Points */}
     <div className="bc" style={{
-      width:30,textAlign:"center",fontSize:15,fontWeight:900,flexShrink:0,
-      color:isTop?"#00b86b":T.t1,
+      width:32,textAlign:"center",fontSize:16,fontWeight:900,flexShrink:0,
+      color:isTop?"#e65c00":"#1a1d23",
     }}>{r.points}</div>
   </div>;
 }
@@ -1730,22 +1771,20 @@ function StandingsTab(){
     <div style={{padding:"9px 14px",borderBottom:`1px solid ${T.line}`,flexShrink:0,background:T.bg1,minHeight:74,width:"100%"}}>
       <div onClick={()=>setCfg(true)} style={{
         display:"flex",alignItems:"center",gap:12,
-        background:"linear-gradient(135deg,rgba(229,53,53,.08),rgba(229,53,53,.04))",
-        border:"1px solid rgba(229,53,53,.15)",
-        padding:"0 14px",borderRadius:12,cursor:"pointer",height:56,flexShrink:0,
-        transition:"all .15s",
+        background:"#fff",
+        padding:"0 14px",cursor:"pointer",height:56,flexShrink:0,
+        transition:"background .15s",
       }}
-      onMouseEnter={e=>e.currentTarget.style.background="linear-gradient(135deg,rgba(229,53,53,.14),rgba(229,53,53,.08))"}
-      onMouseLeave={e=>e.currentTarget.style.background="linear-gradient(135deg,rgba(229,53,53,.08),rgba(229,53,53,.04))"}
+      onMouseEnter={e=>e.currentTarget.style.background="#f5f5f5"}
+      onMouseLeave={e=>e.currentTarget.style.background="#fff"}
       >
-        <div style={{width:34,height:34,flexShrink:0,display:"flex",alignItems:"center",justifyContent:"center",fontSize:22,background:T.bg3,borderRadius:8}}>{l?.flag??"🏆"}</div>
+        <div style={{width:34,height:34,flexShrink:0,display:"flex",alignItems:"center",justifyContent:"center",fontSize:22,background:"rgba(0,0,0,.05)",borderRadius:8}}>{l?.flag??"🏆"}</div>
         <div style={{flex:1,minWidth:0}}>
-          <div className="bc" style={{fontSize:16,fontWeight:800,overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap",letterSpacing:.2}}>{l?.name??"—"}</div>
-          <div style={{fontSize:11,color:T.t3,marginTop:2}}>Saison {s}/{s+1}</div>
+          <div className="bc" style={{fontSize:15,fontWeight:800,overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap",color:"#1a1d23"}}>{l?.name??"—"}</div>
+          <div style={{fontSize:11,color:"#888",marginTop:2}}>Saison {s}/{s+1}</div>
         </div>
-        <div style={{display:"flex",flexDirection:"column",alignItems:"center",gap:1,color:T.t3}}>
-          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><circle cx="12" cy="12" r="3"/><path d="M19.07 4.93a10 10 0 0 1 1.46 13.43M3.47 18.46A10 10 0 0 1 4.93 4.93"/></svg>
-          <span style={{fontSize:8,fontWeight:700,letterSpacing:.5}}>CONFIG</span>
+        <div style={{background:"#e65c00",borderRadius:8,padding:"4px 10px"}}>
+          <span style={{fontSize:11,color:"#fff",fontWeight:700}}>⚙️</span>
         </div>
       </div>
     </div>
@@ -1756,21 +1795,22 @@ function StandingsTab(){
       {hasKnockout&&<button onClick={()=>setView("knockout")} className="bc" style={{flex:1,padding:"8px 4px",background:view==="knockout"?"linear-gradient(135deg,#e53535,#c62828)":T.bg3,color:"#fff",border:`1px solid ${view==="knockout"?"transparent":T.line}`,borderRadius:10,fontSize:12,fontWeight:800,cursor:"pointer",letterSpacing:.5,boxShadow:view==="knockout"?"0 3px 12px rgba(229,53,53,.3)":"none",transition:"all .2s"}}>🏆 ÉLIMIN.</button>}
     </div>}
 
-    {/* Filtres TOUS / DOMICILE / EXTÉRIEUR */}
+    {/* Filtres TOUS / DOMICILE / EXTÉRIEUR — style Besocer */}
     {view==="standings"&&!isCup&&<div style={{
-      display:"flex",background:T.bg1,
-      borderBottom:`1px solid ${T.line}`,
+      display:"flex",background:"#fff",
+      borderBottom:"1px solid rgba(0,0,0,.08)",
       flexShrink:0,width:"100%",
+      boxShadow:"0 1px 4px rgba(0,0,0,.04)",
     }}>
-      {[["all","TOUS/TOUTES"],["home","DOMICILE"],["away","EXTÉRIEUR"]].map(([v,lb])=>{
+      {[["all","Overall"],["home","Home"],["away","Away"]].map(([v,lb])=>{
         const a=viewMode===v;
         return<button key={v} onClick={()=>setViewMode(v)} className="bc" style={{
-          flex:1,padding:"11px 2px",border:"none",
-          background:"transparent",
-          color:a?"#00b86b":T.t3,
-          fontSize:10,fontWeight:a?900:600,
-          cursor:"pointer",letterSpacing:.5,
-          borderBottom:a?"2px solid #00b86b":"2px solid transparent",
+          flex:1,padding:"11px 4px",border:"none",
+          background:a?"#fff":"#f7f7f7",
+          color:a?"#e65c00":"#888",
+          fontSize:11,fontWeight:a?800:500,
+          cursor:"pointer",letterSpacing:.3,
+          borderBottom:a?"2px solid #e65c00":"2px solid transparent",
           transition:"all .2s",
         }}>{lb}</button>;
       })}
@@ -1786,55 +1826,58 @@ function StandingsTab(){
           const grpName=grp[0]?.group;
           return<div key={gi}>
             {grpName&&<div style={{
-              padding:"9px 14px",
-              background:"linear-gradient(90deg,rgba(0,184,107,.08),transparent)",
-              borderBottom:`1px solid ${T.line}`,
-              borderTop:gi>0?`1px solid ${T.line}`:"none",
-              borderLeft:"3px solid #00b86b",
+              padding:"8px 14px",
+              background:"rgba(230,92,0,.06)",
+              borderBottom:"1px solid rgba(230,92,0,.15)",
+              borderTop:gi>0?"1px solid rgba(0,0,0,.06)":"none",
+              borderLeft:"4px solid #e65c00",
               display:"flex",alignItems:"center",gap:8,
             }}>
-              <span className="bc" style={{fontSize:11,fontWeight:800,color:"#00b86b",letterSpacing:1.5,textTransform:"uppercase"}}>GROUPE {grpName.replace("Group ","")}</span>
+              <span className="bc" style={{fontSize:11,fontWeight:800,color:"#e65c00",letterSpacing:1.5,textTransform:"uppercase"}}>GROUPE {grpName.replace("Group ","")}</span>
             </div>}
-            {/* Header colonnes */}
+            {/* Header colonnes style Besocer */}
             <div style={{
-              display:"grid",
-              gridTemplateColumns:"24px 1fr 22px 22px 22px 22px 26px 30px",
-              padding:"6px 12px",
-              borderBottom:`1px solid ${T.line}`,
-              background:T.bg2,
+              display:"flex",alignItems:"center",
+              padding:"6px 10px",
+              borderBottom:"1px solid rgba(0,0,0,.08)",
+              background:"rgba(0,0,0,.03)",
               position:"sticky",top:0,zIndex:2,
             }}>
-              {[["#",T.t4],["Équipe",T.t4],["MJ",T.t3],["MG",T.green],["MN",T.t3],["MP",T.red],["DB",T.t3],["PTS",T.t2]].map(([h,c])=>
-                <div key={h} className="bc" style={{fontSize:9,fontWeight:800,color:c,textAlign:h==="Équipe"?"left":"center",letterSpacing:.8}}>{h}</div>
-              )}
+              <div className="bc" style={{width:22,fontSize:9,fontWeight:700,color:"#aaa",textAlign:"center",flexShrink:0}}>#</div>
+              <div className="bc" style={{flex:1,fontSize:9,fontWeight:700,color:"#aaa",marginLeft:4}}>Équipe</div>
+              <div className="bc" style={{width:22,fontSize:9,fontWeight:700,color:"#aaa",textAlign:"center",flexShrink:0}}>M</div>
+              <div className="bc" style={{width:46,fontSize:9,fontWeight:700,color:"#aaa",textAlign:"center",flexShrink:0}}>Score</div>
+              <div className="bc" style={{width:28,fontSize:9,fontWeight:700,color:"#aaa",textAlign:"center",flexShrink:0}}>Diff</div>
+              <div className="bc" style={{width:32,fontSize:9,fontWeight:800,color:"#1a1d23",textAlign:"center",flexShrink:0}}>Pts</div>
             </div>
             {grp.map(r=><StRow key={r.rank+"-"+gi} r={r} zc={zc} viewMode={viewMode}/>)}
           </div>;
         })}
-        {/* Légende premium */}
-        {(st==="ok"||st==="groups")&&<div style={{padding:"16px 14px 32px"}}>
-          <div className="bc" style={{fontSize:10,fontWeight:800,color:T.t3,letterSpacing:1.2,marginBottom:10}}>LÉGENDE</div>
-          <div style={{display:"flex",flexDirection:"column",gap:6}}>
+        {/* Légende style Besocer */}
+        {(st==="ok"||st==="groups")&&<div style={{padding:"16px 14px 32px",background:"#f7f8fa"}}>
+          <div className="bc" style={{fontSize:11,fontWeight:800,color:"#555",letterSpacing:.8,marginBottom:10,textAlign:"center"}}>LÉGENDE</div>
+          <div style={{display:"flex",flexDirection:"column",gap:4}}>
             {[
-              {c:"#00b86b",     icon:"🏆", lb:"Ligue des Champions / Qualification"},
-              {c:T.gold,        icon:"🟠", lb:"Europa League"},
-              {c:T.purpleB,     icon:"🔵", lb:"Conference League"},
-              {c:"rgba(100,100,100,.5)", icon:"↕️", lb:"Mi-tableau"},
-              {c:T.red,         icon:"⬇️", lb:"Relégation / Barrage"},
-            ].map(({c,icon,lb})=><div key={lb} style={{
+              {c:"#00b86b", lb:"Ligue des Champions CAF / Qualification"},
+              {c:"#42a5f5", lb:"CAF Confederation Cup"},
+              {c:"rgba(150,150,150,.5)", lb:"Mi-tableau"},
+              {c:"#e53535", lb:"Relégation / Barrage"},
+            ].map(({c,lb})=><div key={lb} style={{
               display:"flex",alignItems:"center",gap:10,
               padding:"10px 12px",
-              background:T.bg2,
-              borderRadius:10,
-              border:`1px solid ${T.line}`,
+              background:"#fff",
+              borderRadius:8,
+              border:"1px solid rgba(0,0,0,.07)",
               borderLeft:`4px solid ${c}`,
             }}>
-              <span style={{fontSize:16}}>{icon}</span>
-              <span className="bc" style={{fontSize:12,color:T.t2,fontWeight:600}}>{lb}</span>
+              <span className="bc" style={{fontSize:12,color:"#444",fontWeight:500}}>{lb}</span>
             </div>)}
           </div>
-          <div className="bc" style={{fontSize:10,color:T.t4,marginTop:14,textAlign:"center"}}>
-            Forme: <span style={{color:"#00b86b",fontWeight:700}}>V</span>=Victoire · <span style={{color:T.t3}}>N</span>=Nul · <span style={{color:T.red,fontWeight:700}}>D</span>=Défaite
+          <div className="bc" style={{fontSize:10,color:"#aaa",marginTop:12,textAlign:"center"}}>
+            Forme: <span style={{color:"#00b86b",fontWeight:700}}>V</span>=Victoire · <span style={{color:"#888"}}>N</span>=Nul · <span style={{color:"#e53535",fontWeight:700}}>D</span>=Défaite
+          </div>
+          <div className="bc" style={{fontSize:10,color:"#bbb",marginTop:6,textAlign:"center"}}>
+            Score = Buts Pour : Buts Contre
           </div>
         </div>}
       </>}
@@ -1865,7 +1908,9 @@ function StandingsTab(){
 
     {/* Sheet config */}
     <Sheet open={cfg} onClose={()=>setCfg(false)}>
-      <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",padding:"4px 16px 16px"}}><span style={{fontSize:16,fontWeight:700}}>Compétition</span><button onClick={()=>setCfg(false)} style={{background:T.bg3,border:`1px solid ${T.line}`,color:T.t2,borderRadius:"50%",width:30,height:30,fontSize:14,cursor:"pointer",display:"flex",alignItems:"center",justifyContent:"center",transition:"all .15s"}}>✕</button></div>
+      <div style={{padding:"4px 16px 16px"}}>
+        <span style={{fontSize:16,fontWeight:700}}>Compétition</span>
+      </div>
       <div style={{padding:"0 16px",display:"flex",flexDirection:"column",gap:18,paddingBottom:48}}>
         <div><div style={{fontSize:10,fontWeight:700,color:T.t3,letterSpacing:1.3,textTransform:"uppercase",marginBottom:9}}>COMPÉTITION</div>
           <select value={lid} onChange={e=>{setLid(+e.target.value);setView("standings");}} style={SEL}>
@@ -2210,7 +2255,7 @@ function TransfersTab(){
           {/* Header */}
           <div style={{display:"flex",alignItems:"center",justifyContent:"space-between",padding:"16px 20px 12px",borderBottom:"1px solid rgba(0,0,0,.08)"}}>
             <span className="bc" style={{fontSize:16,fontWeight:800,color:"#1a1d23",letterSpacing:.3}}>⚙️ Filtres</span>
-            <button onClick={()=>setShowFilters(false)} style={{background:"rgba(0,0,0,.07)",border:"none",borderRadius:"50%",width:30,height:30,cursor:"pointer",fontSize:16,display:"flex",alignItems:"center",justifyContent:"center"}}>✕</button>
+
           </div>
           {/* Liste */}
           <div style={{overflowY:"auto",flex:1}}>
@@ -2735,9 +2780,8 @@ function ResultsTab(){
 
     {/* Sheet config ligue/saison */}
     <Sheet open={cfg} onClose={()=>setCfg(false)}>
-      <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",padding:"4px 16px 16px"}}>
+      <div style={{padding:"4px 16px 16px"}}>
         <span style={{fontSize:16,fontWeight:800,color:"#1a1d23"}}>🔍 Configuration</span>
-        <button onClick={()=>setCfg(false)} style={{background:"rgba(0,0,0,.07)",border:"none",borderRadius:"50%",width:30,height:30,fontSize:16,cursor:"pointer",display:"flex",alignItems:"center",justifyContent:"center"}}>✕</button>
       </div>
       <div style={{padding:"0 16px",display:"flex",flexDirection:"column",gap:16,paddingBottom:48}}>
         <div>
@@ -2877,19 +2921,26 @@ function App(){
           </div>
         </div>
       </div>
-      {/* Navigation tabs */}
-      <div style={{display:"flex",marginTop:8,position:"relative"}}>
+      {/* Navigation tabs — scroll horizontal */}
+      <div style={{
+        display:"flex",marginTop:8,position:"relative",
+        overflowX:"auto",overflowY:"hidden",
+        scrollbarWidth:"none",msOverflowStyle:"none",
+        WebkitOverflowScrolling:"touch",
+      }}>
         {NAV.map(tab=>{
           const a=scr===tab.id;
           return<button key={tab.id} onClick={()=>setScr(tab.id)} style={{
-            flex:1,display:"flex",flexDirection:"column",alignItems:"center",gap:4,
-            padding:"8px 2px 10px",background:"none",border:"none",
-            color:a?"#fff":"rgba(255,255,255,.32)",
+            flexShrink:0,
+            display:"flex",flexDirection:"column",alignItems:"center",gap:4,
+            padding:"8px 14px 10px",background:"none",border:"none",
+            color:a?"#fff":"rgba(255,255,255,.4)",
             transition:"color .2s",cursor:"pointer",position:"relative",
+            minWidth:72,
           }}>
             {tab.icon(a)}
-            <span className="bc" style={{fontSize:10,fontWeight:a?800:600,letterSpacing:1,textTransform:"uppercase"}}>{tab.label}</span>
-            {a&&<div style={{position:"absolute",bottom:0,left:"20%",right:"20%",height:2,background:"linear-gradient(90deg,transparent,#fff,transparent)",borderRadius:2}}/>}
+            <span className="bc" style={{fontSize:9,fontWeight:a?800:600,letterSpacing:.8,textTransform:"uppercase",whiteSpace:"nowrap"}}>{tab.label}</span>
+            {a&&<div style={{position:"absolute",bottom:0,left:"15%",right:"15%",height:2,background:"linear-gradient(90deg,transparent,#fff,transparent)",borderRadius:2}}/>}
           </button>;
         })}
       </div>
