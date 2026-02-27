@@ -7,20 +7,42 @@
 <meta http-equiv="Pragma" content="no-cache"/>
 <meta http-equiv="Expires" content="0"/>
 <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover"/>
-<meta name="theme-color" content="#e53535"/>
+<meta name="theme-color" content="#00b86b"/>
 <meta name="mobile-web-app-capable" content="yes"/>
 <meta name="apple-mobile-web-app-capable" content="yes"/>
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent"/>
 <meta name="apple-mobile-web-app-title" content="WorldFoot Pro"/>
 <title>WorldFoot Pro</title>
 <script>
-const M={name:"WorldFoot Pro",short_name:"WorldFoot",start_url:"./",display:"standalone",background_color:"#07080e",theme_color:"#e53535",orientation:"portrait",icons:[{src:"data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 192 192'><rect width='192' height='192' rx='40' fill='%23dc2626'/><text y='140' x='96' text-anchor='middle' font-size='120'>⚡</text></svg>",sizes:"192x192",type:"image/svg+xml"},{src:"data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 512 512'><rect width='512' height='512' rx='100' fill='%23dc2626'/><text y='380' x='256' text-anchor='middle' font-size='320'>⚡</text></svg>",sizes:"512x512",type:"image/svg+xml"}]};
+const M={name:"WorldFoot Pro",short_name:"WorldFoot",start_url:"./",display:"standalone",background_color:"#f4f5f7",theme_color:"#e53535",orientation:"portrait",icons:[{src:"data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 192 192'><rect width='192' height='192' rx='40' fill='%2300b86b'/><text y='140' x='96' text-anchor='middle' font-size='120'>⚡</text></svg>",sizes:"192x192",type:"image/svg+xml"},{src:"data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 512 512'><rect width='512' height='512' rx='100' fill='%2300b86b'/><text y='380' x='256' text-anchor='middle' font-size='320'>⚡</text></svg>",sizes:"512x512",type:"image/svg+xml"}]};
 const b=new Blob([JSON.stringify(M)],{type:"application/json"});const lk=document.createElement("link");lk.rel="manifest";lk.href=URL.createObjectURL(b);document.head.appendChild(lk);
 </script>
-<link rel="apple-touch-icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 180 180'><rect width='180' height='180' rx='36' fill='%23dc2626'/><text y='130' x='90' text-anchor='middle' font-size='100'>⚡</text></svg>"/>
+<link rel="apple-touch-icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 180 180'><rect width='180' height='180' rx='36' fill='%2300b86b'/><text y='130' x='90' text-anchor='middle' font-size='100'>⚡</text></svg>"/>
 <script>
-if(false){// SW désactivé - problème cache
-  const sw=`const C='wf-pro-v4';self.addEventListener('install',e=>{e.waitUntil(caches.open(C).then(c=>c.addAll(['./'])).then(()=>self.skipWaiting()));});self.addEventListener('activate',e=>{e.waitUntil(caches.keys().then(ks=>Promise.all(ks.filter(k=>k!==C).map(k=>caches.delete(k)))).then(()=>self.clients.claim()));});self.addEventListener('fetch',e=>{const u=e.request.url;if(u.includes('api-sports.io')||u.includes('anthropic.com')){e.respondWith(fetch(e.request).catch(()=>new Response('{"errors":{"net":"offline"}}',{headers:{'Content-Type':'application/json'}})));return;}if(u.match(/\\.(png|svg|jpg|webp)$/)&&u.includes('media')){e.respondWith(caches.match(e.request).then(r=>r||fetch(e.request).then(res=>{const cl=res.clone();caches.open(C).then(c=>c.put(e.request,cl));return res;}).catch(()=>new Response('',{status:404}))));return;}e.respondWith(caches.match(e.request).then(r=>r||fetch(e.request).catch(()=>caches.match('./'))));});`;
+// Service Worker avec support notifications
+if('serviceWorker' in navigator){
+  const sw=`
+    const C='wf-pro-v5';
+    self.addEventListener('install',e=>{e.waitUntil(caches.open(C).then(c=>c.addAll(['./'])).then(()=>self.skipWaiting()));});
+    self.addEventListener('activate',e=>{e.waitUntil(caches.keys().then(ks=>Promise.all(ks.filter(k=>k!==C).map(k=>caches.delete(k)))).then(()=>self.clients.claim()));});
+    self.addEventListener('push',e=>{
+      const d=e.data?.json()||{};
+      e.waitUntil(self.registration.showNotification(d.title||'WorldFoot Pro',{
+        body:d.body||'',
+        icon:'data:image/svg+xml,<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 192 192"><rect width="192" height="192" rx="40" fill="%2300b86b"/><text y="140" x="96" text-anchor="middle" font-size="120">⚡</text></svg>',
+        badge:'data:image/svg+xml,<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 96 96"><rect width="96" height="96" rx="20" fill="%2300b86b"/><text y="70" x="48" text-anchor="middle" font-size="60">⚡</text></svg>',
+        tag:d.tag||'wf',
+        vibrate:[200,100,200],
+        data:d.data||{},
+      }));
+    });
+    self.addEventListener('notificationclick',e=>{e.notification.close();e.waitUntil(clients.openWindow('./'));});
+    self.addEventListener('fetch',e=>{
+      const u=e.request.url;
+      if(u.includes('api-sports.io')){e.respondWith(fetch(e.request).catch(()=>new Response('{"errors":{"net":"offline"}}',{headers:{'Content-Type':'application/json'}})));return;}
+      e.respondWith(caches.match(e.request).then(r=>r||fetch(e.request).catch(()=>caches.match('./'))));
+    });
+  `;
   navigator.serviceWorker.register(URL.createObjectURL(new Blob([sw],{type:'application/javascript'}))).catch(()=>{});
 }
 </script>
@@ -30,9 +52,9 @@ if(false){// SW désactivé - problème cache
 html{height:100%;-webkit-text-size-adjust:100%}
 body{
   height:100%;
-  background:#07080e;
+  background:#f4f5f7;
   font-family:"Barlow",-apple-system,BlinkMacSystemFont,sans-serif;
-  color:#eef0f7;
+  color:#1a1d23;
   -webkit-tap-highlight-color:transparent;
   -webkit-font-smoothing:antialiased;
   overscroll-behavior:none;
@@ -42,7 +64,7 @@ body{
 #root{height:100%;display:flex;flex-direction:column}
 ::-webkit-scrollbar{display:none}*{scrollbar-width:none}
 input,select,button{font-family:"Barlow",-apple-system,sans-serif}
-select option{background:#10111c;color:#eef0f7}
+select option{background:#eef0f4;color:#1a1d23}
 
 @keyframes spin    {to{transform:rotate(360deg)}}
 @keyframes pulse   {0%,100%{opacity:1}50%{opacity:.12}}
@@ -52,7 +74,7 @@ select option{background:#10111c;color:#eef0f7}
 @keyframes fadeIn  {from{opacity:0;transform:translateY(6px)}to{opacity:1;transform:translateY(0)}}
 @keyframes slideIn {from{opacity:0;transform:translateX(-8px)}to{opacity:1;transform:translateX(0)}}
 @keyframes gFlash  {0%{background:rgba(229,57,53,.15)}100%{background:transparent}}
-@keyframes sPop    {0%{color:#ff5252;transform:scale(1.5)}60%{transform:scale(.95)}100%{color:#eef0f7;transform:scale(1)}}
+@keyframes sPop    {0%{color:#ff5252;transform:scale(1.5)}60%{transform:scale(.95)}100%{color:#1a1d23;transform:scale(1)}}
 @keyframes lGlow   {0%,100%{text-shadow:0 0 6px rgba(255,82,82,.9)}50%{text-shadow:0 0 18px rgba(255,82,82,1),0 0 36px rgba(255,82,82,.4)}}
 @keyframes dotPulse{0%,100%{transform:scale(1);opacity:1}50%{transform:scale(1.6);opacity:.7}}
 @keyframes shimmer {0%{background-position:-200% 0}100%{background-position:200% 0}}
@@ -151,16 +173,81 @@ const LEAGUES=[
   {id:78, name:"Bundesliga",       country:"Allemagne", flag:"🇩🇪",region:"Top 5"},
   {id:61, name:"Ligue 1",          country:"France",    flag:"🇫🇷",region:"Top 5"},
   //
-  {id:88, name:"Eredivisie",       country:"Pays-Bas",  flag:"🇳🇱",region:"Europe"},
-  {id:94, name:"Primeira Liga",    country:"Portugal",  flag:"🇵🇹",region:"Europe"},
-  {id:203,name:"Super Lig",        country:"Turquie",   flag:"🇹🇷",region:"Europe"},
-  {id:144,name:"Pro League",       country:"Belgique",  flag:"🇧🇪",region:"Europe"},
+  // 🇬🇧 Îles Britanniques
   {id:40, name:"Championship",     country:"Angleterre",flag:"🏴󠁧󠁢󠁥󠁮󠁧󠁿",region:"Europe"},
-  {id:179,name:"Premiership",      country:"Ecosse",    flag:"🏴‍",region:"Europe"},
-  {id:119,name:"Superliga",        country:"Danemark",  flag:"🇩🇰",region:"Europe"},
-  {id:113,name:"Allsvenskan",      country:"Suède",     flag:"🇸🇪",region:"Europe"},
-  {id:103,name:"Eliteserien",      country:"Norvège",   flag:"🇳🇴",region:"Europe"},
+  {id:41, name:"League One",       country:"Angleterre",flag:"🏴󠁧󠁢󠁥󠁮󠁧󠁿",region:"Europe"},
+  {id:42, name:"League Two",       country:"Angleterre",flag:"🏴󠁧󠁢󠁥󠁮󠁧󠁿",region:"Europe"},
+  {id:179,name:"Premiership",      country:"Ecosse",    flag:"🏴󠁧󠁢󠁳󠁣󠁴󠁿",region:"Europe"},
+  {id:180,name:"Championship",     country:"Ecosse",    flag:"🏴󠁧󠁢󠁳󠁣󠁴󠁿",region:"Europe"},
+  {id:107,name:"Premier League",   country:"Irlande",   flag:"🇮🇪",region:"Europe"},
+  {id:130,name:"Premier League",   country:"Pays de Galles",flag:"🏴󠁧󠁢󠁷󠁬󠁳󠁿",region:"Europe"},
+  // 🇳🇱 Benelux
+  {id:88, name:"Eredivisie",       country:"Pays-Bas",  flag:"🇳🇱",region:"Europe"},
+  {id:89, name:"Eerste Divisie",   country:"Pays-Bas",  flag:"🇳🇱",region:"Europe"},
+  {id:144,name:"Pro League",       country:"Belgique",  flag:"🇧🇪",region:"Europe"},
+  {id:145,name:"Eerste Klasse A",  country:"Belgique",  flag:"🇧🇪",region:"Europe"},
+  {id:382,name:"BGL Ligue",        country:"Luxembourg",flag:"🇱🇺",region:"Europe"},
+  // 🇵🇹 Ibérique
+  {id:94, name:"Primeira Liga",    country:"Portugal",  flag:"🇵🇹",region:"Europe"},
+  {id:95, name:"Liga Portugal 2",  country:"Portugal",  flag:"🇵🇹",region:"Europe"},
+  // 🇩🇪 DACH
+  {id:79, name:"Bundesliga 2",     country:"Allemagne", flag:"🇩🇪",region:"Europe"},
+  {id:80, name:"3. Liga",          country:"Allemagne", flag:"🇩🇪",region:"Europe"},
   {id:169,name:"Super League",     country:"Suisse",    flag:"🇨🇭",region:"Europe"},
+  {id:170,name:"Challenge League", country:"Suisse",    flag:"🇨🇭",region:"Europe"},
+  {id:218,name:"Bundesliga Autr.", country:"Autriche",  flag:"🇦🇹",region:"Europe"},
+  // 🇫🇷 France
+  {id:62, name:"Ligue 2",          country:"France",    flag:"🇫🇷",region:"Europe"},
+  {id:63, name:"National",         country:"France",    flag:"🇫🇷",region:"Europe"},
+  // 🇮🇹 Italie
+  {id:136,name:"Serie B",          country:"Italie",    flag:"🇮🇹",region:"Europe"},
+  {id:137,name:"Serie C",          country:"Italie",    flag:"🇮🇹",region:"Europe"},
+  // 🇪🇸 Espagne
+  {id:141,name:"Segunda División", country:"Espagne",   flag:"🇪🇸",region:"Europe"},
+  {id:142,name:"Primera RFEF",     country:"Espagne",   flag:"🇪🇸",region:"Europe"},
+  // 🇸🇪🇳🇴🇩🇰 Scandinavie
+  {id:113,name:"Allsvenskan",      country:"Suède",     flag:"🇸🇪",region:"Europe"},
+  {id:114,name:"Superettan",       country:"Suède",     flag:"🇸🇪",region:"Europe"},
+  {id:103,name:"Eliteserien",      country:"Norvège",   flag:"🇳🇴",region:"Europe"},
+  {id:104,name:"1. divisjon",      country:"Norvège",   flag:"🇳🇴",region:"Europe"},
+  {id:119,name:"Superliga",        country:"Danemark",  flag:"🇩🇰",region:"Europe"},
+  {id:120,name:"1. Division",      country:"Danemark",  flag:"🇩🇰",region:"Europe"},
+  {id:322,name:"Veikkausliiga",    country:"Finlande",  flag:"🇫🇮",region:"Europe"},
+  {id:116,name:"Úrvalsdeild",      country:"Islande",   flag:"🇮🇸",region:"Europe"},
+  // 🇹🇷 Turquie & Balkans
+  {id:203,name:"Süper Lig",        country:"Turquie",   flag:"🇹🇷",region:"Europe"},
+  {id:204,name:"1. Lig",           country:"Turquie",   flag:"🇹🇷",region:"Europe"},
+  {id:270,name:"Super League",     country:"Grèce",     flag:"🇬🇷",region:"Europe"},
+  {id:271,name:"Super League 2",   country:"Grèce",     flag:"🇬🇷",region:"Europe"},
+  {id:286,name:"HNL",              country:"Croatie",   flag:"🇭🇷",region:"Europe"},
+  {id:290,name:"Prva Liga",        country:"Serbie",    flag:"🇷🇸",region:"Europe"},
+  {id:393,name:"A Pfokozat",       country:"Hongrie",   flag:"🇭🇺",region:"Europe"},
+  {id:271,name:"Fortuna Liga",     country:"Slovaquie", flag:"🇸🇰",region:"Europe"},
+  {id:332,name:"HNK",              country:"Bosnie",    flag:"🇧🇦",region:"Europe"},
+  {id:387,name:"1. SNL",           country:"Slovénie",  flag:"🇸🇮",region:"Europe"},
+  {id:389,name:"Superliga",        country:"Bulgarie",  flag:"🇧🇬",region:"Europe"},
+  {id:283,name:"Liga 1",           country:"Roumanie",  flag:"🇷🇴",region:"Europe"},
+  // 🇵🇱 Europe de l'Est
+  {id:106,name:"Ekstraklasa",      country:"Pologne",   flag:"🇵🇱",region:"Europe"},
+  {id:108,name:"I. liga",          country:"Tchéquie",  flag:"🇨🇿",region:"Europe"},
+  {id:235,name:"Premier Liga",     country:"Ukraine",   flag:"🇺🇦",region:"Europe"},
+  {id:329,name:"Vysshaya Liga",    country:"Biélorussie",flag:"🇧🇾",region:"Europe"},
+  {id:370,name:"A Lyga",           country:"Lituanie",  flag:"🇱🇹",region:"Europe"},
+  {id:371,name:"Virsliga",         country:"Lettonie",  flag:"🇱🇻",region:"Europe"},
+  {id:372,name:"Meistriliiga",     country:"Estonie",   flag:"🇪🇪",region:"Europe"},
+  {id:373,name:"Premier League",   country:"Arménie",   flag:"🇦🇲",region:"Europe"},
+  {id:374,name:"Premier League",   country:"Géorgie",   flag:"🇬🇪",region:"Europe"},
+  {id:375,name:"Premier League",   country:"Azerbaïdjan",flag:"🇦🇿",region:"Europe"},
+  {id:351,name:"Premier League",   country:"Kazakhstan",flag:"🇰🇿",region:"Europe"},
+  // 🇷🇺 Russie
+  {id:235,name:"Premier Liga",     country:"Russie",    flag:"🇷🇺",region:"Europe"},
+  // 🇮🇱🇨🇾 Méditerranée
+  {id:307,name:"Ligat ha'Al",      country:"Israël",    flag:"🇮🇱",region:"Europe"},
+  {id:262,name:"1. Division",      country:"Chypre",    flag:"🇨🇾",region:"Europe"},
+  {id:233,name:"1re Ligue",        country:"Albanie",   flag:"🇦🇱",region:"Europe"},
+  {id:385,name:"Prva CFL",         country:"Monténégro",flag:"🇲🇪",region:"Europe"},
+  {id:383,name:"1. HNL",           country:"Kosovo",    flag:"🇽🇰",region:"Europe"},
+  {id:386,name:"Premier League",   country:"Macédoine", flag:"🇲🇰",region:"Europe"},
   //
   {id:71, name:"Brasileirao",      country:"Bresil",    flag:"🇧🇷",region:"Ameriques"},
   {id:128,name:"Liga Profesional", country:"Argentine", flag:"🇦🇷",region:"Ameriques"},
@@ -169,14 +256,37 @@ const LEAGUES=[
   {id:13, name:"Copa Libertadores",country:"Amer. Sud", flag:"🌎",region:"Ameriques",  isCup:true,hasGroups:true,hasKnockout:true},
   {id:11, name:"Copa Sudamericana",country:"Amer. Sud", flag:"🌎",region:"Ameriques",  isCup:true,hasGroups:true,hasKnockout:true},
   //
+  // 🌍 Afrique du Nord
   {id:283,name:"Ligue Pro 1",      country:"Algérie",   flag:"🇩🇿",region:"Afrique"},
   {id:307,name:"Botola Pro",       country:"Maroc",     flag:"🇲🇦",region:"Afrique"},
   {id:384,name:"Premier League",   country:"Égypte",    flag:"🇪🇬",region:"Afrique"},
+  {id:388,name:"Ligue 1 Pro",      country:"Tunisie",   flag:"🇹🇳",region:"Afrique"},
+  {id:390,name:"Premier League",   country:"Libye",     flag:"🇱🇾",region:"Afrique"},
+  {id:391,name:"Division 1",       country:"Mauritanie",flag:"🇲🇷",region:"Afrique"},
+  // 🌍 Afrique de l'Ouest
   {id:233,name:"NPFL",             country:"Nigeria",   flag:"🇳🇬",region:"Afrique"},
+  {id:392,name:"Premier League",   country:"Ghana",     flag:"🇬🇭",region:"Afrique"},
+  {id:394,name:"Ligue 1",          country:"Sénégal",   flag:"🇸🇳",region:"Afrique"},
+  {id:395,name:"Ligue 1",          country:"Côte d'Ivoire",flag:"🇨🇮",region:"Afrique"},
+  {id:396,name:"MTN FA Cup",       country:"Cameroun",  flag:"🇨🇲",region:"Afrique"},
+  {id:397,name:"Ligue 1",          country:"Mali",      flag:"🇲🇱",region:"Afrique"},
+  {id:398,name:"Ligue 1",          country:"Guinée",    flag:"🇬🇳",region:"Afrique"},
+  {id:399,name:"Premier League",   country:"Sierra Leone",flag:"🇸🇱",region:"Afrique"},
+  {id:400,name:"Premier League",   country:"Burkina Faso",flag:"🇧🇫",region:"Afrique"},
+  // 🌍 Afrique de l'Est
   {id:363,name:"PSL",              country:"Afr. Sud",  flag:"🇿🇦",region:"Afrique"},
+  {id:401,name:"KPL",              country:"Kenya",     flag:"🇰🇪",region:"Afrique"},
+  {id:402,name:"NBC Premier Lge",  country:"Tanzanie",  flag:"🇹🇿",region:"Afrique"},
+  {id:403,name:"StarTimes Uganda", country:"Ouganda",   flag:"🇺🇬",region:"Afrique"},
+  {id:404,name:"Premier League",   country:"Éthiopie",  flag:"🇪🇹",region:"Afrique"},
+  {id:405,name:"Super League",     country:"Zambie",    flag:"🇿🇲",region:"Afrique"},
+  {id:406,name:"Castle Lager",     country:"Zimbabwe",  flag:"🇿🇼",region:"Afrique"},
+  {id:407,name:"Premier League",   country:"Mozambique",flag:"🇲🇿",region:"Afrique"},
+  {id:408,name:"MTN8",             country:"Botswana",  flag:"🇧🇼",region:"Afrique"},
+  {id:409,name:"Premier League",   country:"Rwanda",    flag:"🇷🇼",region:"Afrique"},
+  // 🌍 Coupes africaines
   {id:12, name:"CAF Champions",    country:"Afrique",   flag:"🌍",region:"Afrique",    isCup:true,hasGroups:true,hasKnockout:true},
   {id:20, name:"CAF Confédération",country:"Afrique",   flag:"🌍",region:"Afrique",    isCup:true,hasGroups:true,hasKnockout:true},
-  {id:6,  name:"CHAN",             country:"Afrique",   flag:"🌍",region:"Afrique",    isCup:true,hasGroups:true,hasKnockout:true},
   {id:29, name:"CAN",              country:"Afrique",   flag:"🌍",region:"Afrique",    isCup:true,hasGroups:true,hasKnockout:true},
   //
   {id:202,name:"Saudi Pro League", country:"Arabie S.", flag:"🇸🇦",region:"Asie"},
@@ -203,10 +313,10 @@ const CANCEL_ST= new Set(["CANC"]);
 // API   cache 15s
 //
 const _cache=new Map();
-async function api(path,ttl=15000){
+async function api(path,ttl=15000,signal=null){
   const now=Date.now();
   if(_cache.has(path)&&now-_cache.get(path).t<ttl) return _cache.get(path).d;
-  const r=await fetch(BASE+path,{headers:{"x-apisports-key":API_KEY}});
+  const r=await fetch(BASE+path,{headers:{"x-apisports-key":API_KEY},signal});
   if(!r.ok) throw new Error(`Erreur HTTP ${r.status}`);
   const j=await r.json();
   if(j.errors&&Object.keys(j.errors).length){
@@ -233,25 +343,25 @@ const fmt=v=>v!=null?v:"—";
 // DESIGN TOKENS
 //
 const T={
-  // Backgrounds   profondeur r elle
-  bg0:"#07080e",bg1:"#0c0d17",bg2:"#111221",bg3:"#171829",bg4:"#1e2033",bg5:"#252740",
+  // Backgrounds — Thème Besocer blanc/clair
+  bg0:"#f4f5f7",bg1:"#ffffff",bg2:"#f8f9fb",bg3:"#eef0f4",bg4:"#e2e5ea",bg5:"#d4d8df",
   // Borders
-  line:"rgba(255,255,255,.06)",lineH:"rgba(255,255,255,.12)",lineA:"rgba(255,255,255,.18)",
-  // Rouge   couleur principale
-  red:"#e53535",redD:"#c62828",redL:"rgba(229,53,53,.1)",redM:"rgba(229,53,53,.2)",
-  redG:"linear-gradient(135deg,#e53535 0%,#c62828 100%)",
+  line:"rgba(0,0,0,.08)",lineH:"rgba(0,0,0,.12)",lineA:"rgba(0,0,0,.18)",
+  // Vert principal Besocer
+  red:"#00b86b",redD:"#009657",redL:"rgba(0,184,107,.1)",redM:"rgba(0,184,107,.2)",
+  redG:"linear-gradient(135deg,#00b86b 0%,#009657 100%)",
   // Accents
   gold:"#f0a500",goldL:"rgba(240,165,0,.12)",goldG:"linear-gradient(135deg,#f0a500,#e08c00)",
-  green:"#00c853",greenB:"#69f0ae",greenL:"rgba(0,200,83,.1)",
-  blue:"#2979ff",blueB:"#82b1ff",blueL:"rgba(41,121,255,.12)",
+  green:"#00b86b",greenB:"#4cd68a",greenL:"rgba(0,184,107,.12)",
+  blue:"#1976d2",blueB:"#42a5f5",blueL:"rgba(25,118,210,.12)",
   purple:"#7c4dff",purpleB:"#b388ff",purpleL:"rgba(124,77,255,.12)",
   orange:"#ff6d00",orangeB:"#ff9e40",orangeL:"rgba(255,109,0,.1)",
-  yellow:"#ffd600",yellowB:"#ffff00",yellowL:"rgba(255,214,0,.1)",
-  // Texte
-  t1:"#eef0f7",t2:"rgba(238,240,247,.65)",t3:"rgba(238,240,247,.38)",t4:"rgba(238,240,247,.16)",t5:"rgba(238,240,247,.08)",
-  // Shadows
-  shadow:"0 4px 24px rgba(0,0,0,.6)",shadowSm:"0 2px 8px rgba(0,0,0,.4)",
-  shadowRed:"0 4px 20px rgba(229,53,53,.3)",
+  yellow:"#ffd600",yellowB:"#ffea00",yellowL:"rgba(255,214,0,.1)",
+  // Texte sombre sur fond clair
+  t1:"#1a1d23",t2:"rgba(26,29,35,.7)",t3:"rgba(26,29,35,.45)",t4:"rgba(26,29,35,.25)",t5:"rgba(26,29,35,.1)",
+  // Shadows légères
+  shadow:"0 2px 12px rgba(0,0,0,.1)",shadowSm:"0 1px 4px rgba(0,0,0,.08)",
+  shadowRed:"0 4px 20px rgba(0,184,107,.25)",
 };
 
 //
@@ -326,22 +436,26 @@ function FormDot({c}){
     color:c==="W"?T.greenB:c==="D"?T.t3:T.red}}>{c}</span>;
 }
 
-function StatBar({label,hv,av}){
+function StatBar({label,hv,av,homeColor,awayColor}){
   const h=num(hv),a=num(av),hp=pct(h,a),ap=100-hp;
-  return<div style={{marginBottom:11}}>
-    <div style={{display:"flex",justifyContent:"space-between",marginBottom:5,alignItems:"center"}}>
-      <span className="bc" style={{fontSize:13,fontWeight:700,color:T.t1,minWidth:28}}>{h}</span>
-      <span style={{fontSize:10,fontWeight:600,color:T.t3,letterSpacing:.5,textTransform:"uppercase",textAlign:"center",flex:1}}>{label}</span>
-      <span className="bc" style={{fontSize:13,fontWeight:700,color:T.t1,minWidth:28,textAlign:"right"}}>{a}</span>
+  const isXG=label&&label.includes("xG");
+  const isPct=typeof hv==="string"&&hv.includes("%");
+  const hc=homeColor||T.red;
+  const ac=awayColor||T.blueB;
+  return<div style={{marginBottom:14}}>
+    <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:6}}>
+      <span className="bc" style={{fontSize:15,fontWeight:800,color:isXG?"#82b1ff":T.t1,minWidth:36}}>{h}{isPct?"":" "}</span>
+      <span className="bc" style={{fontSize:10,fontWeight:700,color:T.t3,letterSpacing:.8,textTransform:"uppercase",textAlign:"center",flex:1,padding:"0 8px"}}>{label}</span>
+      <span className="bc" style={{fontSize:15,fontWeight:800,color:isXG?"#82b1ff":T.t1,minWidth:36,textAlign:"right"}}>{a}{isPct?"":" "}</span>
     </div>
-    <div style={{display:"flex",height:4,borderRadius:4,overflow:"hidden",gap:1}}>
-      <div style={{width:`${hp}%`,background:`linear-gradient(90deg,#82b1ff,#2979ff)`,borderRadius:4,transition:"width .6s ease"}}/>
-      <div style={{width:`${ap}%`,background:`linear-gradient(90deg,#e53535,#c62828)`,borderRadius:4,transition:"width .6s ease"}}/>
+    <div style={{position:"relative",height:6,background:T.bg3,borderRadius:3,overflow:"hidden"}}>
+      <div style={{position:"absolute",left:0,top:0,height:"100%",width:`${hp}%`,background:`linear-gradient(90deg,${hc},${hc}cc)`,borderRadius:3,transition:"width .6s cubic-bezier(.4,0,.2,1)"}}/>
+      <div style={{position:"absolute",right:0,top:0,height:"100%",width:`${ap}%`,background:`linear-gradient(270deg,${ac},${ac}cc)`,borderRadius:3,transition:"width .6s cubic-bezier(.4,0,.2,1)"}}/>
     </div>
   </div>;
 }
 
-//
+
 function MiniStat({label,val,color=T.t2,sub}){
   return<div style={{background:T.bg3,borderRadius:8,padding:"9px 14px",flex:1,minWidth:70}}>
     <div style={{fontSize:20,fontWeight:900,color,lineHeight:1}}>{fmt(val)}</div>
@@ -381,8 +495,8 @@ function Pitch({lineup,isHome}){
     <circle cx={W/2} cy={H/2} r={22} fill="none" stroke="rgba(255,255,255,.07)" strokeWidth={1}/>
     <circle cx={W/2} cy={H/2} r={2} fill="rgba(255,255,255,.14)"/>
     {isHome
-      ?<><rect x={7} y={H/2-27} width={38} height={54} fill="none" stroke="rgba(255,255,255,.09)" strokeWidth={1}/><rect x={7} y={H/2-13} width={16} height={26} fill="none" stroke="rgba(255,255,255,.07)" strokeWidth={1}/></>
-      :<><rect x={W-45} y={H/2-27} width={38} height={54} fill="none" stroke="rgba(255,255,255,.09)" strokeWidth={1}/><rect x={W-23} y={H/2-13} width={16} height={26} fill="none" stroke="rgba(255,255,255,.07)" strokeWidth={1}/></>}
+      ?<><rect x={7} y={H/2-27} width={38} height={54} fill="none" stroke="rgba(26,29,35,.08)" strokeWidth={1}/><rect x={7} y={H/2-13} width={16} height={26} fill="none" stroke="rgba(255,255,255,.07)" strokeWidth={1}/></>
+      :<><rect x={W-45} y={H/2-27} width={38} height={54} fill="none" stroke="rgba(26,29,35,.08)" strokeWidth={1}/><rect x={W-23} y={H/2-13} width={16} height={26} fill="none" stroke="rgba(255,255,255,.07)" strokeWidth={1}/></>}
     {grid.map((row,ri)=>{
       const x=isHome?16+(ri/(rc-1||1))*(W-32):W-16-(ri/(rc-1||1))*(W-32);
       return row.map((p,pi)=>{
@@ -391,7 +505,7 @@ function Pitch({lineup,isHome}){
           <circle cx={x} cy={y} r={9} fill={tc} opacity={.9}/>
           <circle cx={x} cy={y} r={9} fill="none" stroke="rgba(255,255,255,.28)" strokeWidth={.7}/>
           <text x={x} y={y+1} textAnchor="middle" dominantBaseline="middle" fill="#fff" fontSize={7} fontWeight="bold">{p.number}</text>
-          <text x={x} y={y+17} textAnchor="middle" fill="rgba(255,255,255,.7)" fontSize={6.5}>{nm}</text>
+          <text x={x} y={y+17} textAnchor="middle" fill="rgba(26,29,35,.6)" fontSize={6.5}>{nm}</text>
         </g>;
       });
     })}
@@ -477,7 +591,7 @@ function LeagueBlock({group,onOpen,favs,onFav}){
       <Logo src={group.lg.logo} size={16}/>
       <span className="bc" style={{fontSize:12,fontWeight:700,color:T.t3,flex:1,overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap",letterSpacing:.6,textTransform:"uppercase"}}>{group.lg.country} · {group.lg.name}</span>
       {lv>0&&<span className="bc" style={{
-        fontSize:10,fontWeight:800,color:"#ff5252",
+        fontSize:10,fontWeight:800,color:"#e53535",
         background:"rgba(229,53,53,.12)",
         border:"1px solid rgba(229,53,53,.2)",
         padding:"2px 8px",borderRadius:20,flexShrink:0,
@@ -495,7 +609,7 @@ function LeagueBlock({group,onOpen,favs,onFav}){
 //
 // COMPOSANT ANALYSE   Statistiques avanc es H2H
 //
-function AnalysePanel({h2h,homeTeam,awayTeam}){
+function AnalysePanel({h2h,homeTeam,awayTeam,hSt=[],aSt=[]}){
   if(!h2h||h2h.length===0)return<div style={{textAlign:"center",padding:"44px 20px",color:T.t3}}>Pas de données disponibles</div>;
 
   const hid=homeTeam.id;
@@ -573,7 +687,12 @@ function AnalysePanel({h2h,homeTeam,awayTeam}){
     {sub&&<div style={{fontSize:10,color:T.t4,marginTop:3}}>{sub}</div>}
   </div>;
 
-  return<div style={{paddingBottom:32,animation:"fadeIn .2s ease"}}>
+  
+  // Récupérer xG depuis les stats du match
+  const hXG=parseFloat(hSt.find(x=>x.type==="expected_goals")?.value)||null;
+  const aXG=parseFloat(aSt.find(x=>x.type==="expected_goals")?.value)||null;
+  const hasXG=hXG!==null&&aXG!==null;
+return<div style={{paddingBottom:32,animation:"fadeIn .2s ease"}}>
 
     {}
     <div style={{display:"flex",alignItems:"center",padding:"14px 16px",borderBottom:`1px solid ${T.line}`,gap:12}}>
@@ -590,11 +709,38 @@ function AnalysePanel({h2h,homeTeam,awayTeam}){
 
     {}
     <div style={{padding:"14px 16px 0"}}>
-      <div className="bc" style={{fontSize:11,fontWeight:800,color:T.t3,letterSpacing:1.2,textTransform:"uppercase",marginBottom:12}}>Bilan sur {total} matchs</div>
+      <div className="bc" style={{fontSize:11,fontWeight:800,color:T.t3,letterSpacing:1.2,textTransform:"uppercase",marginBottom:12}}>{hasXG&&<div style={{background:"linear-gradient(135deg,rgba(41,121,255,.1),rgba(41,121,255,.05))",border:"1px solid rgba(41,121,255,.2)",borderRadius:14,padding:"14px 16px",marginBottom:12}}>
+      <div className="bc" style={{fontSize:11,fontWeight:800,color:"#82b1ff",letterSpacing:1.2,textTransform:"uppercase",marginBottom:12,textAlign:"center"}}>⚡ xG — Buts Attendus</div>
+      <div style={{display:"flex",alignItems:"center",gap:12}}>
+        <div style={{flex:1,textAlign:"center"}}>
+          <img src={homeTeam.logo} style={{width:28,height:28,objectFit:"contain",marginBottom:6}}/>
+          <div className="bc" style={{fontSize:32,fontWeight:900,color:hXG>aXG?"#69f0ae":hXG<aXG?"#e53535":T.t2,lineHeight:1}}>{hXG?.toFixed(2)}</div>
+          <div className="bc" style={{fontSize:10,color:T.t3,marginTop:3}}>xG</div>
+        </div>
+        <div style={{display:"flex",flexDirection:"column",alignItems:"center",gap:4}}>
+          <div className="bc" style={{fontSize:11,fontWeight:700,color:T.t4,letterSpacing:1}}>VS</div>
+          <div style={{width:1,height:40,background:T.line}}/>
+        </div>
+        <div style={{flex:1,textAlign:"center"}}>
+          <img src={awayTeam.logo} style={{width:28,height:28,objectFit:"contain",marginBottom:6}}/>
+          <div className="bc" style={{fontSize:32,fontWeight:900,color:aXG>hXG?"#69f0ae":aXG<hXG?"#e53535":T.t2,lineHeight:1}}>{aXG?.toFixed(2)}</div>
+          <div className="bc" style={{fontSize:10,color:T.t3,marginTop:3}}>xG</div>
+        </div>
+      </div>
+      <div style={{marginTop:12,background:T.bg3,borderRadius:6,height:8,overflow:"hidden",display:"flex"}}>
+        <div style={{width:`${Math.round(hXG/(hXG+aXG)*100)}%`,background:"linear-gradient(90deg,#2979ff,#82b1ff)",transition:"width .5s"}}/>
+        <div style={{flex:1,background:"linear-gradient(90deg,#e53535,#ff5252)"}}/>
+      </div>
+      <div style={{display:"flex",justifyContent:"space-between",marginTop:4}}>
+        <span className="bc" style={{fontSize:9,color:T.t4}}>{Math.round(hXG/(hXG+aXG)*100)}%</span>
+        <span className="bc" style={{fontSize:9,color:T.t4}}>{Math.round(aXG/(hXG+aXG)*100)}%</span>
+      </div>
+    </div>}
+    Bilan sur {total} matchs</div>
       <div style={{display:"flex",gap:6,marginBottom:16}}>
         <div style={{flex:hWins,background:"linear-gradient(135deg,#2979ff,#1565c0)",borderRadius:8,padding:"10px 0",textAlign:"center",minWidth:40}}>
           <div className="bc" style={{fontSize:22,fontWeight:900,color:"#fff"}}>{hWins}</div>
-          <div style={{fontSize:9,color:"rgba(255,255,255,.7)",fontWeight:700,letterSpacing:.5}}>VICTOIRES</div>
+          <div style={{fontSize:9,color:"rgba(26,29,35,.6)",fontWeight:700,letterSpacing:.5}}>VICTOIRES</div>
         </div>
         <div style={{flex:draws,background:T.bg3,border:`1px solid ${T.line}`,borderRadius:8,padding:"10px 0",textAlign:"center",minWidth:32}}>
           <div className="bc" style={{fontSize:22,fontWeight:900,color:T.t2}}>{draws}</div>
@@ -602,7 +748,7 @@ function AnalysePanel({h2h,homeTeam,awayTeam}){
         </div>
         <div style={{flex:aWins,background:"linear-gradient(135deg,#e53535,#c62828)",borderRadius:8,padding:"10px 0",textAlign:"center",minWidth:40}}>
           <div className="bc" style={{fontSize:22,fontWeight:900,color:"#fff"}}>{aWins}</div>
-          <div style={{fontSize:9,color:"rgba(255,255,255,.7)",fontWeight:700,letterSpacing:.5}}>VICTOIRES</div>
+          <div style={{fontSize:9,color:"rgba(26,29,35,.6)",fontWeight:700,letterSpacing:.5}}>VICTOIRES</div>
         </div>
       </div>
 
@@ -945,7 +1091,10 @@ function MatchDetail({state,onClose}){
   // Donn es match
   const hSt=stats.find(t=>t.team?.id===fix.teams.home.id)?.statistics??[];
   const aSt=stats.find(t=>t.team?.id===fix.teams.away.id)?.statistics??[];
-  const gv=(arr,k)=>arr.find(x=>x.type===k)?.value??0;
+  const hPoss=hSt.find(x=>x.type==="Ball Possession")?.value||null;
+  const aPoss=aSt.find(x=>x.type==="Ball Possession")?.value||null;
+  const STAT_LABELS={"expected_goals":"xG","Ball Possession":"Possession","Total Shots":"Tirs totaux","Shots on Goal":"Tirs cadrés","Shots off Goal":"Tirs non cadrés","Blocked Shots":"Tirs bloqués","Corner Kicks":"Corners","Offsides":"Hors-jeux","Fouls":"Fautes","Yellow Cards":"Cartons jaunes","Red Cards":"Cartons rouges","Goalkeeper Saves":"Arrêts gardien","Total passes":"Passes totales","Passes accurate":"Passes réussies","Passes %":"Passes %","Ball Safe":"Ballons conservés","Tackles":"Tacles"};
+const gv=(arr,k)=>arr.find(x=>x.type===k)?.value??0;
   const mEvt=events.filter(e=>e.type!=="subst");
   const goals=mEvt.filter(e=>e.type==="Goal");
 
@@ -961,33 +1110,100 @@ function MatchDetail({state,onClose}){
     h2h.length               ?{id:"analyse",  label:"📊 Analyse"} :null,
   ].filter(Boolean);
 
-  const SK=[
-    "Ball Possession","Total Shots","Shots on Goal","Shots off Goal",
-    "Blocked Shots","Corner Kicks","Offsides","Fouls",
-    "Yellow Cards","Red Cards","Goalkeeper Saves",
-    "Total passes","Passes accurate","Passes %",
+  const SK_CATS=[
+    {cat:"⚡ xG",icon:"⚡",keys:["expected_goals"]},
+    {cat:"Général",icon:"📊",keys:["Ball Possession","Corner Kicks","Offsides","Fouls"]},
+    {cat:"Attaque",icon:"⚔️",keys:["Total Shots","Shots on Goal","Shots off Goal","Blocked Shots"]},
+    {cat:"Défense",icon:"🛡️",keys:["Goalkeeper Saves","Yellow Cards","Red Cards"]},
+    {cat:"Distribution",icon:"🎯",keys:["Total passes","Passes accurate","Passes %"]},
   ];
+  const SK=SK_CATS.flatMap(c=>c.keys);
 
-  const ico=e=>{
-    if(e.type==="Card")return e.detail?.includes("Yellow")?"🟨":"🟥";
-    if(e.type==="subst")return"🔄";
-    if(e.detail==="Penalty")return"⚽(P)";
-    if(e.detail==="Own Goal")return"⚽csc";
-    return"⚽";
+  // ── ÉVÉNEMENTS PREMIUM ──────────────────────────────
+  const getEvtStyle=e=>{
+    if(e.type==="Goal"){
+      if(e.detail==="Penalty")    return{bg:"rgba(0,184,107,.08)",border:"rgba(0,184,107,.25)",icon:"⚽",iconBg:"#00b86b",sub:"Penalty"};
+      if(e.detail==="Own Goal")   return{bg:"rgba(229,53,53,.08)",border:"rgba(229,53,53,.25)",icon:"⚽",iconBg:"#e53535",sub:"CSC"};
+      if(e.detail?.includes("Free Kick")) return{bg:"rgba(0,184,107,.08)",border:"rgba(0,184,107,.25)",icon:"⚽",iconBg:"#00b86b",sub:"Coup franc"};
+      return{bg:"rgba(0,184,107,.08)",border:"rgba(0,184,107,.25)",icon:"⚽",iconBg:"#00b86b",sub:e.detail||""};
+    }
+    if(e.type==="Card"){
+      const isY=e.detail?.includes("Yellow");
+      const isR=e.detail?.includes("Red")||e.detail?.includes("Second Yellow");
+      return{bg:isR?"rgba(229,53,53,.08)":"rgba(255,193,7,.08)",border:isR?"rgba(229,53,53,.3)":"rgba(255,193,7,.3)",icon:isR?"🟥":"🟨",iconBg:isR?"#e53535":"#ffc107",sub:e.detail?.replace(" Card","")||""};
+    }
+    if(e.type==="subst") return{bg:"rgba(41,121,255,.06)",border:"rgba(41,121,255,.2)",icon:"🔄",iconBg:"#1976d2",sub:"Changement"};
+    if(e.type==="Var")   return{bg:"rgba(124,77,255,.06)",border:"rgba(124,77,255,.2)",icon:"📺",iconBg:"#7c4dff",sub:"VAR"};
+    if(e.type==="injury"||e.type==="Injury") return{bg:"rgba(229,53,53,.06)",border:"rgba(229,53,53,.2)",icon:"🏥",iconBg:"#e53535",sub:"Blessure"};
+    return{bg:"rgba(26,29,35,.04)",border:"rgba(26,29,35,.1)",icon:"📋",iconBg:T.t3,sub:e.detail||""};
   };
 
-  const Evt=({e})=>{
+  const EvtCard=({e})=>{
     const home=e.team?.id===fix.teams.home.id;
-    return<div style={{display:"flex",alignItems:"center",padding:"9px 16px",borderBottom:`1px solid ${T.line}22`,flexDirection:home?"row":"row-reverse",gap:10}}>
-      <span className="bc" style={{fontSize:13,fontWeight:800,color:T.red,width:30,textAlign:home?"left":"right",flexShrink:0,letterSpacing:.3}}>{e.time?.elapsed}'</span>
-      <span style={{fontSize:16}}>{ico(e)}</span>
-      <div style={{flex:1,textAlign:home?"left":"right"}}>
-        <div className="bc" style={{fontSize:14,fontWeight:700,color:T.t1,letterSpacing:.2}}>{e.player?.name??""}</div>
-        {e.type==="subst"&&e.assist?.name&&<div style={{fontSize:11,color:T.greenB,marginTop:2}}>↑ {e.assist.name}</div>}
-        {e.type!=="subst"&&e.assist?.name&&<div style={{fontSize:11,color:T.t3,marginTop:2}}>{e.assist.name}</div>}
+    const s=getEvtStyle(e);
+    const isGoal=e.type==="Goal";
+    const isSubst=e.type==="subst";
+    const photo=e.player?.photo;
+    const assistPhoto=e.assist?.photo;
+    return<div style={{
+      display:"flex",alignItems:"center",
+      padding:"12px 14px",
+      margin:"0 10px 8px",
+      borderRadius:14,
+      background:s.bg,
+      border:`1px solid ${s.border}`,
+      flexDirection:home?"row":"row-reverse",
+      gap:10,
+      boxShadow:isGoal?"0 2px 8px rgba(0,184,107,.15)":"none",
+    }}>
+      {/* Photo joueur */}
+      <div style={{position:"relative",flexShrink:0}}>
+        <Avatar src={photo} size={isGoal?42:36} style={{border:`2px solid ${s.border}`}}/>
+        <div style={{
+          position:"absolute",bottom:-4,right:home?-4:undefined,left:home?undefined:-4,
+          width:20,height:20,borderRadius:"50%",
+          background:s.iconBg,
+          display:"flex",alignItems:"center",justifyContent:"center",
+          fontSize:10,border:"2px solid #fff",
+          boxShadow:"0 1px 4px rgba(0,0,0,.2)",
+        }}>{s.icon}</div>
+      </div>
+      {/* Infos */}
+      <div style={{flex:1,minWidth:0,textAlign:home?"left":"right"}}>
+        <div className="bc" style={{fontSize:isGoal?15:13,fontWeight:isGoal?800:700,color:T.t1,overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap",letterSpacing:.2}}>
+          {e.player?.name??""}
+        </div>
+        {isSubst&&e.assist?.name&&<div style={{display:"flex",alignItems:"center",gap:4,marginTop:3,justifyContent:home?"flex-start":"flex-end"}}>
+          <Avatar src={assistPhoto} size={16}/>
+          <span className="bc" style={{fontSize:10,color:T.green,fontWeight:700}}>↑ {e.assist.name}</span>
+        </div>}
+        {!isSubst&&e.assist?.name&&<div className="bc" style={{fontSize:11,color:T.t3,marginTop:2}}>{e.assist.name}</div>}
+        <div className="bc" style={{fontSize:10,color:T.t3,marginTop:2,letterSpacing:.3}}>{s.sub}</div>
+      </div>
+      {/* Minute */}
+      <div style={{
+        flexShrink:0,
+        background:isGoal?"linear-gradient(135deg,#00b86b,#009657)":"rgba(26,29,35,.08)",
+        borderRadius:8,padding:"4px 8px",
+        minWidth:36,textAlign:"center",
+      }}>
+        <span className="bc" style={{fontSize:13,fontWeight:900,color:isGoal?"#fff":T.t2,letterSpacing:.3}}>
+          {e.time?.elapsed}{e.time?.extra?`+${e.time.extra}`:""}'
+        </span>
       </div>
     </div>;
   };
+
+  // Grouper par catégorie
+  const evtGroups=[
+    {label:"⚽ Buts",    color:"#00b86b", types:["Goal"],  evs:events.filter(e=>e.type==="Goal")},
+    {label:"🟨 Cartons", color:"#ffc107", types:["Card"],  evs:events.filter(e=>e.type==="Card")},
+    {label:"🔄 Changements",color:"#1976d2",types:["subst"],evs:events.filter(e=>e.type==="subst")},
+    {label:"📺 VAR",     color:"#7c4dff", types:["Var"],   evs:events.filter(e=>e.type==="Var")},
+    {label:"🏥 Blessures",color:"#e53535", types:["injury","Injury"], evs:events.filter(e=>e.type==="injury"||e.type==="Injury")},
+    {label:"📋 Autres",   color:T.t3,      types:["other"], evs:events.filter(e=>!["Goal","Card","subst","Var","injury","Injury"].includes(e.type))},
+  ].filter(g=>g.evs.length>0);
+
 
   return<Sheet open onClose={onClose}>
     {/* Ligue + fermer */}
@@ -1016,16 +1232,17 @@ function MatchDetail({state,onClose}){
         <div style={{flex:1,display:"flex",flexDirection:"column",alignItems:"center",gap:8}}>
           <Logo src={fix.teams.home.logo} size={52}/>
           <span className="bc" style={{fontSize:13,fontWeight:hw?800:500,color:aw?T.t3:"#fff",textAlign:"center",lineHeight:1.2,maxWidth:95,letterSpacing:.2}}>{fix.teams.home.name}</span>
+          {hPoss&&<span className="bc" style={{fontSize:12,fontWeight:800,color:T.green,background:"rgba(0,184,107,.12)",padding:"2px 8px",borderRadius:20}}>{hPoss}</span>}
           {lineups.find(l=>l.team?.id===fix.teams.home.id)?.formation&&<span className="bc" style={{fontSize:11,color:T.t3,background:T.bg3,padding:"2px 9px",borderRadius:20,letterSpacing:.5}}>{lineups.find(l=>l.team?.id===fix.teams.home.id).formation}</span>}
         </div>
         {/* Score central */}
         <div style={{textAlign:"center",minWidth:110,padding:"0 6px"}}>
           {has
-            ?<div className="bc" style={{fontSize:54,fontWeight:900,letterSpacing:-2,lineHeight:1,color:LIVE_ST.has(s.short)?"#ff5252":"#fff",textShadow:LIVE_ST.has(s.short)?"0 0 24px rgba(255,82,82,.5)":"0 2px 12px rgba(0,0,0,.5)"}}>{hg}<span style={{color:T.t4,fontSize:28,margin:"0 5px",fontWeight:200}}>-</span>{ag}</div>
+            ?<div className="bc" style={{fontSize:54,fontWeight:900,letterSpacing:-2,lineHeight:1,color:LIVE_ST.has(s.short)?"#e53535":"#fff",textShadow:LIVE_ST.has(s.short)?"0 0 24px rgba(255,82,82,.5)":"0 2px 12px rgba(0,0,0,.5)"}}>{hg}<span style={{color:T.t4,fontSize:28,margin:"0 5px",fontWeight:200}}>-</span>{ag}</div>
             :<div className="bc" style={{fontSize:22,fontWeight:700,color:T.blueB}}>{hhmm(fix.fixture.date)}</div>}
           <div style={{marginTop:7}}>
             {LIVE_ST.has(s.short)
-              ?<span className="bc" style={{fontSize:14,fontWeight:900,color:"#ff5252",animation:"lGlow 2s infinite",letterSpacing:.5}}>{min}'</span>
+              ?<span className="bc" style={{fontSize:14,fontWeight:900,color:"#e53535",animation:"lGlow 2s infinite",letterSpacing:.5}}>{min}'</span>
               :<span className="bc" style={{fontSize:11,fontWeight:700,color:["SUSP","INT","ABD"].includes(s.short)?T.orange:["CANC"].includes(s.short)?T.red:["PST"].includes(s.short)?T.yellow:T.t3,letterSpacing:.4}}>{
   s.short==="HT"?"Mi-temps":s.short==="BT"?"Pause prol.":s.short==="ET"?"Prol.":
   s.short==="P"?"Tab":s.short==="SUSP"?"Suspendu":s.short==="INT"?"Interrompu":
@@ -1040,6 +1257,7 @@ function MatchDetail({state,onClose}){
         <div style={{flex:1,display:"flex",flexDirection:"column",alignItems:"center",gap:8}}>
           <Logo src={fix.teams.away.logo} size={52}/>
           <span className="bc" style={{fontSize:13,fontWeight:aw?800:500,color:hw?T.t3:"#fff",textAlign:"center",lineHeight:1.2,maxWidth:95,letterSpacing:.2}}>{fix.teams.away.name}</span>
+          {aPoss&&<span className="bc" style={{fontSize:12,fontWeight:800,color:T.blueB,background:"rgba(41,121,255,.12)",padding:"2px 8px",borderRadius:20}}>{aPoss}</span>}
           {lineups.find(l=>l.team?.id===fix.teams.away.id)?.formation&&<span className="bc" style={{fontSize:11,color:T.t3,background:T.bg3,padding:"2px 9px",borderRadius:20,letterSpacing:.5}}>{lineups.find(l=>l.team?.id===fix.teams.away.id).formation}</span>}
         </div>
       </div>
@@ -1068,12 +1286,84 @@ function MatchDetail({state,onClose}){
 
       {tab==="resume"&&(mEvt.length===0
         ?<div style={{textAlign:"center",padding:"32px 20px",color:T.t3,fontSize:14}}>Aucun événement</div>
-        :mEvt.map((e,i)=><Evt key={i} e={e}/>))}
+        :mEvt.map((e,i)=><EvtCard key={i} e={e}/>))}
 
-      {tab==="evts"&&events.map((e,i)=><Evt key={i} e={e}/>)}
+      {tab==="evts"&&<div style={{padding:"12px 0",animation:"fadeIn .2s ease"}}>
+        {evtGroups.length===0
+          ?<div style={{textAlign:"center",padding:"40px 20px",color:T.t3}}>Aucun événement</div>
+          :evtGroups.map(g=><div key={g.label} style={{marginBottom:20}}>
+            <div style={{display:"flex",alignItems:"center",gap:8,padding:"6px 14px 10px",borderBottom:`2px solid ${g.color}22`,marginBottom:4}}>
+              <div style={{width:3,height:18,background:g.color,borderRadius:2}}/>
+              <span className="bc" style={{fontSize:12,fontWeight:800,color:g.color,letterSpacing:1,textTransform:"uppercase"}}>{g.label}</span>
+              <span className="bc" style={{fontSize:11,color:T.t3,fontWeight:600}}>({g.evs.length})</span>
+            </div>
+            {g.evs.map((e,i)=><EvtCard key={i} e={e}/>)}
+          </div>)
+        }
+      </div>}
 
-      {tab==="stats"&&<div style={{padding:"16px 18px"}}>
-        {SK.map(k=>{const hv=gv(hSt,k),av=gv(aSt,k);if(!hv&&!av)return null;return<StatBar key={k} label={k} hv={hv} av={av}/>;  })}
+      {tab==="stats"&&<div style={{padding:"12px 14px",animation:"fadeIn .2s ease"}}>
+        {/* Graphique tirs premium */}
+        {(()=>{
+          const totalH=num(gv(hSt,"Total Shots")),totalA=num(gv(aSt,"Total Shots"));
+          const onH=num(gv(hSt,"Shots on Goal")),onA=num(gv(aSt,"Shots on Goal"));
+          const offH=num(gv(hSt,"Shots off Goal")),offA=num(gv(aSt,"Shots off Goal"));
+          if(!totalH&&!totalA)return null;
+          const maxT=Math.max(totalH,totalA,1);
+          return<div style={{background:"linear-gradient(135deg,rgba(229,53,53,.08),rgba(41,121,255,.08))",border:`1px solid ${T.line}`,borderRadius:14,padding:"14px 16px",marginBottom:16}}>
+            <div className="bc" style={{fontSize:11,fontWeight:800,color:T.t3,letterSpacing:1.2,textTransform:"uppercase",textAlign:"center",marginBottom:14}}>Vue Tirs</div>
+            <div style={{display:"flex",gap:10,alignItems:"flex-end",justifyContent:"center",height:80}}>
+              {/* Équipe domicile */}
+              <div style={{display:"flex",flexDirection:"column",alignItems:"center",gap:4,flex:1}}>
+                <div style={{width:"100%",display:"flex",flexDirection:"column",gap:2,justifyContent:"flex-end",height:70}}>
+                  <div style={{width:"100%",height:`${Math.round((offH/maxT)*70)}px`,background:"rgba(229,53,53,.3)",borderRadius:"4px 4px 0 0",minHeight:offH?4:0,display:"flex",alignItems:"center",justifyContent:"center"}}>
+                    {offH>0&&<span className="bc" style={{fontSize:10,fontWeight:700,color:T.red}}>{offH}</span>}
+                  </div>
+                  <div style={{width:"100%",height:`${Math.round((onH/maxT)*70)}px`,background:T.red,borderRadius:2,minHeight:onH?4:0,display:"flex",alignItems:"center",justifyContent:"center"}}>
+                    {onH>0&&<span className="bc" style={{fontSize:11,fontWeight:900,color:"#fff"}}>{onH}</span>}
+                  </div>
+                </div>
+                <span className="bc" style={{fontSize:10,color:T.t3,fontWeight:600}}>Tirs</span>
+                <span className="bc" style={{fontSize:18,fontWeight:900,color:T.red}}>{totalH}</span>
+              </div>
+              {/* Centre label */}
+              <div style={{display:"flex",flexDirection:"column",alignItems:"center",gap:8,paddingBottom:28}}>
+                <div style={{display:"flex",flexDirection:"column",alignItems:"center",gap:3}}>
+                  <div style={{width:8,height:8,borderRadius:"50%",background:T.red}}/>
+                  <span className="bc" style={{fontSize:8,color:T.t4,letterSpacing:.5}}>CADRÉS</span>
+                  <div style={{width:8,height:8,borderRadius:2,background:"rgba(229,53,53,.3)"}}/>
+                  <span className="bc" style={{fontSize:8,color:T.t4,letterSpacing:.5}}>NON CAD.</span>
+                </div>
+              </div>
+              {/* Équipe extérieur */}
+              <div style={{display:"flex",flexDirection:"column",alignItems:"center",gap:4,flex:1}}>
+                <div style={{width:"100%",display:"flex",flexDirection:"column",gap:2,justifyContent:"flex-end",height:70}}>
+                  <div style={{width:"100%",height:`${Math.round((offA/maxT)*70)}px`,background:"rgba(41,121,255,.3)",borderRadius:"4px 4px 0 0",minHeight:offA?4:0,display:"flex",alignItems:"center",justifyContent:"center"}}>
+                    {offA>0&&<span className="bc" style={{fontSize:10,fontWeight:700,color:T.blueB}}>{offA}</span>}
+                  </div>
+                  <div style={{width:"100%",height:`${Math.round((onA/maxT)*70)}px`,background:T.blueB,borderRadius:2,minHeight:onA?4:0,display:"flex",alignItems:"center",justifyContent:"center"}}>
+                    {onA>0&&<span className="bc" style={{fontSize:11,fontWeight:900,color:"#fff"}}>{onA}</span>}
+                  </div>
+                </div>
+                <span className="bc" style={{fontSize:10,color:T.t3,fontWeight:600}}>Tirs</span>
+                <span className="bc" style={{fontSize:18,fontWeight:900,color:T.blueB}}>{totalA}</span>
+              </div>
+            </div>
+          </div>;
+        })()}
+        {/* Stats par catégorie */}
+        {SK_CATS.map(({cat,icon,keys})=>{
+          const rows=keys.filter(k=>{const hv=gv(hSt,k),av=gv(aSt,k);return hv||av;});
+          if(!rows.length)return null;
+          const isXGCat=cat==="⚡ xG";
+          return<div key={cat} style={{marginBottom:18}}>
+            <div style={{display:"flex",alignItems:"center",gap:6,marginBottom:10,paddingBottom:6,borderBottom:`1px solid ${T.line}`}}>
+              <span style={{fontSize:14}}>{icon}</span>
+              <span className="bc" style={{fontSize:11,fontWeight:800,color:isXGCat?"#82b1ff":T.t2,letterSpacing:1,textTransform:"uppercase"}}>{isXGCat?"xG — Buts Attendus":cat}</span>
+            </div>
+            {rows.map(k=><StatBar key={k} label={STAT_LABELS[k]||k} hv={gv(hSt,k)} av={gv(aSt,k)}/>)}
+          </div>;
+        })}
       </div>}
 
       {}
@@ -1102,7 +1392,7 @@ function MatchDetail({state,onClose}){
         })}
       </div>}
 
-      {tab==="analyse"&&h2h.length>0&&<AnalysePanel h2h={h2h} homeTeam={fix.teams.home} awayTeam={fix.teams.away}/>}
+      {tab==="analyse"&&h2h.length>0&&<AnalysePanel h2h={h2h} homeTeam={fix.teams.home} awayTeam={fix.teams.away} hSt={hSt} aSt={aSt}/>}
     </div>
   </Sheet>;
 }
@@ -1133,7 +1423,12 @@ function ScoresTab({favs,onFav}){
   },[date]);
 
   useEffect(()=>{loadRef.current=load;},[load]);
-  useEffect(()=>{setData([]);load();},[load]);
+  useEffect(()=>{
+    const ctrl=new AbortController();
+    setData([]);
+    load(false,ctrl.signal);
+    return()=>ctrl.abort();
+  },[load]);
 
   // Timer adaptatif : se reconfigure quand hasLive change
   useEffect(()=>{
@@ -1147,20 +1442,23 @@ function ScoresTab({favs,onFav}){
   useEffect(()=>{const t=setTimeout(()=>stripRef.current?.querySelector("[data-td='1']")?.scrollIntoView({inline:"center",block:"nearest"}),80);return()=>clearTimeout(t);},[]);
 
   const openMatch=useCallback(async id=>{
+    if(openMatch._ctrl) openMatch._ctrl.abort();
+    openMatch._ctrl=new AbortController();
+    const sig=openMatch._ctrl.signal;
     setDet({loading:true});
     try{
-      const fx=await api(`/fixtures?id=${id}`);
+      const fx=await api(`/fixtures?id=${id}`,15000,sig);
       const fix=fx[0];if(!fix)throw new Error("Match introuvable");
       const started=!NS_ST.has(fix.fixture.status.short);
       const hid=fix.teams.home.id,aid=fix.teams.away.id,fid=fix.fixture.id,lid=fix.league.id,seas=fix.league.season;
       // Tous les endpoints Pro en parall le   erreurs silencieuses (Pro peut  tre limit  selon endpoint)
       const[stats,evts,lineups,plrs,h2h,injuries]=await Promise.all([
-        started?api(`/fixtures/statistics?fixture=${fid}`).catch(()=>[]):Promise.resolve([]),
-        started?api(`/fixtures/events?fixture=${fid}`).catch(()=>[]):Promise.resolve([]),
-        api(`/fixtures/lineups?fixture=${fid}`).catch(()=>[]),
-        started?api(`/fixtures/players?fixture=${fid}`).catch(()=>[]):Promise.resolve([]),
-        api(`/fixtures/headtohead?h2h=${hid}-${aid}&last=10`).catch(()=>[]),
-        api(`/injuries?fixture=${fid}`).catch(()=>[]),
+        started?api(`/fixtures/statistics?fixture=${fid}`,15000).catch(()=>[]):Promise.resolve([]),
+        started?api(`/fixtures/events?fixture=${fid}`,15000).catch(()=>[]):Promise.resolve([]),
+        api(`/fixtures/lineups?fixture=${fid}`,3600000).catch(()=>[]),
+        started?api(`/fixtures/players?fixture=${fid}`,15000).catch(()=>[]):Promise.resolve([]),
+        api(`/fixtures/headtohead?h2h=${hid}-${aid}&last=50`,86400000).catch(()=>[]),
+        api(`/injuries?fixture=${fid}`,3600000).catch(()=>[]),
       ]);
       setDet({data:{fixture:fix,stats,events:evts,lineups,players:plrs,h2h,injuries}});
     }catch(e){setDet({error:e.message});}
@@ -1274,34 +1572,60 @@ function ScoresTab({favs,onFav}){
 // ONGLET CLASSEMENT
 //
 //
-function StRow({r,zc}){
-  const isTop=r.rank<=4;
+function FormBadge({c}){
+  const bg=c==="W"?"#00b86b":c==="L"?"#e53535":"#888";
+  return<div className="bc" style={{
+    width:16,height:16,borderRadius:4,background:bg,
+    display:"flex",alignItems:"center",justifyContent:"center",
+    fontSize:8,fontWeight:900,color:"#fff",flexShrink:0,
+  }}>{c==="W"?"V":c==="L"?"D":"N"}</div>;
+}
+
+function StRow({r,zc,viewMode}){
+  const isTop=r.rank<=3;
+  const src=viewMode==="home"?r.home:viewMode==="away"?r.away:r.all;
+  const qColor=zc(r.description);
+  const isQual=qColor!=="transparent";
   return<div style={{
-    display:"flex",alignItems:"center",padding:"9px 14px",
+    display:"flex",alignItems:"center",padding:"10px 12px",
     borderBottom:`1px solid ${T.line}`,
-    borderLeft:`3px solid ${zc(r.description)}`,
-    transition:"background .15s",width:"100%",
-    background:isTop?"rgba(255,255,255,.012)":"transparent",
-  }} onMouseEnter={e=>e.currentTarget.style.background=T.bg3} onMouseLeave={e=>e.currentTarget.style.background="transparent"}>
+    borderLeft:`3px solid ${qColor}`,
+    width:"100%",
+    background:isTop?"rgba(0,184,107,.04)":"transparent",
+  }}>
     {/* Rang */}
-    <div className="bc" style={{width:26,fontSize:13,fontWeight:800,color:isTop?T.t2:T.t4,textAlign:"center",flexShrink:0}}>{r.rank}</div>
-    {/*  quipe */}
-    <div style={{flex:1,display:"flex",alignItems:"center",gap:8,minWidth:0}}>
-      <Logo src={r.team?.logo} size={20}/>
-      <div style={{minWidth:0}}>
-        <div className="bc" style={{fontSize:14,fontWeight:isTop?800:600,overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap",letterSpacing:.1,color:isTop?"#fff":T.t1}}>{r.team?.name}</div>
-        <div style={{display:"flex",gap:2,marginTop:3}}>{(r.form??"").split("").slice(-5).map((c,i)=><FormDot key={i} c={c}/>)}</div>
+    <div className="bc" style={{
+      width:24,fontSize:12,fontWeight:900,textAlign:"center",flexShrink:0,
+      color:r.rank<=3?"#00b86b":r.rank<=6?"#42a5f5":T.t4,
+    }}>{r.rank}</div>
+    {/* Équipe */}
+    <div style={{flex:1,display:"flex",alignItems:"center",gap:7,minWidth:0,overflow:"hidden"}}>
+      <Logo src={r.team?.logo} size={22}/>
+      <div style={{minWidth:0,flex:1}}>
+        <div className="bc" style={{
+          fontSize:13,fontWeight:isTop?800:600,
+          overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap",
+          color:T.t1,
+        }}>{r.team?.name}</div>
+        {/* Forme 5 derniers */}
+        <div style={{display:"flex",gap:2,marginTop:3}}>
+          {(r.form??"").split("").slice(-5).map((c,i)=><FormBadge key={i} c={c}/>)}
+        </div>
       </div>
     </div>
-    {/* J G N P GD   avec couleurs */}
-    <div className="bc" style={{width:24,textAlign:"center",fontSize:12,color:T.t3,flexShrink:0}}>{r.all?.played??"—"}</div>
-    <div className="bc" style={{width:24,textAlign:"center",fontSize:12,color:T.green,flexShrink:0,fontWeight:r.all?.win>0?700:400}}>{r.all?.win??"—"}</div>
-    <div className="bc" style={{width:24,textAlign:"center",fontSize:12,color:T.t3,flexShrink:0}}>{r.all?.draw??"—"}</div>
-    <div className="bc" style={{width:24,textAlign:"center",fontSize:12,color:r.all?.lose>0?T.red:T.t3,flexShrink:0,fontWeight:r.all?.lose>0?600:400}}>{r.all?.lose??"—"}</div>
-    {/* GD */}
-    <div className="bc" style={{width:28,textAlign:"center",fontSize:12,color:r.goalsDiff>0?T.green:r.goalsDiff<0?T.red:T.t3,flexShrink:0,fontWeight:r.goalsDiff!==0?700:400}}>{r.goalsDiff>0?"+":""}{r.goalsDiff??""}</div>
+    {/* Stats selon viewMode */}
+    <div className="bc" style={{width:22,textAlign:"center",fontSize:11,color:T.t3,flexShrink:0}}>{src?.played??"-"}</div>
+    <div className="bc" style={{width:22,textAlign:"center",fontSize:11,color:"#00b86b",flexShrink:0,fontWeight:600}}>{src?.win??"-"}</div>
+    <div className="bc" style={{width:22,textAlign:"center",fontSize:11,color:T.t3,flexShrink:0}}>{src?.draw??"-"}</div>
+    <div className="bc" style={{width:22,textAlign:"center",fontSize:11,color:T.red,flexShrink:0}}>{src?.lose??"-"}</div>
+    <div className="bc" style={{width:26,textAlign:"center",fontSize:11,flexShrink:0,fontWeight:700,
+      color:r.goalsDiff>0?"#00b86b":r.goalsDiff<0?T.red:T.t3,
+    }}>{r.goalsDiff>0?"+":""}{r.goalsDiff??""}</div>
     {/* Points */}
-    <div className="bc" style={{width:34,textAlign:"center",fontSize:16,fontWeight:900,flexShrink:0,color:isTop?"#fff":T.t2}}>{r.points}</div>
+    <div className="bc" style={{
+      width:30,textAlign:"center",fontSize:15,fontWeight:900,flexShrink:0,
+      color:isTop?"#00b86b":T.t1,
+    }}>{r.points}</div>
   </div>;
 }
 
@@ -1339,6 +1663,7 @@ function StandingsTab(){
   const[allGroups,setAllGroups]=useState([]),[rounds,setRounds]=useState([]),[selRound,setSelRound]=useState("");
   const[roundMatches,setRoundMatches]=useState([]),[view,setView]=useState("standings");
   const[st,setSt]=useState("load"),[err,setErr]=useState(""),[cfg,setCfg]=useState(false);
+  const[viewMode,setViewMode]=useState("all"); // all | home | away
   const l=byId(lid);
   const isCup=l?.isCup??false;
   const hasGroups=l?.hasGroups??false;
@@ -1349,7 +1674,7 @@ function StandingsTab(){
     let c=false;setSt("load");setErr("");setAllGroups([]);setRounds([]);setRoundMatches([]);setSelRound("");
     if(isCup&&hasGroups){
       // R cup rer tous les groupes A/B/C/D
-      api(`/standings?league=${lid}&season=${s}`)
+      api(`/standings?league=${lid}&season=${s}`,3600000)
         .then(d=>{
           if(c)return;
           const st2=d[0]?.league?.standings??[];
@@ -1364,7 +1689,7 @@ function StandingsTab(){
         })
         .catch(e=>{if(!c){setErr(e.message);setSt("err");}});
     } else {
-      api(`/standings?league=${lid}&season=${s}`)
+      api(`/standings?league=${lid}&season=${s}`,3600000)
         .then(d=>{
           if(c)return;
           const r=d[0]?.league?.standings?.[0]??[];
@@ -1375,7 +1700,7 @@ function StandingsTab(){
     }
     // Charger les tours  liminatoires si coupe
     if(isCup&&hasKnockout){
-      api(`/fixtures/rounds?league=${lid}&season=${s}&current=false`)
+      api(`/fixtures/rounds?league=${lid}&season=${s}&current=false`,21600000)
         .then(d=>{if(!c){setRounds(d??[]);}})
         .catch(()=>{});
     }
@@ -1386,7 +1711,7 @@ function StandingsTab(){
   useEffect(()=>{
     if(!selRound)return;
     let c=false;setRoundMatches([]);
-    api(`/fixtures?league=${lid}&season=${s}&round=${encodeURIComponent(selRound)}`)
+    api(`/fixtures?league=${lid}&season=${s}&round=${encodeURIComponent(selRound)}`,3600000)
       .then(d=>{if(!c)setRoundMatches(d??[]);})
       .catch(()=>{});
     return()=>{c=true;};
@@ -1431,6 +1756,26 @@ function StandingsTab(){
       {hasKnockout&&<button onClick={()=>setView("knockout")} className="bc" style={{flex:1,padding:"8px 4px",background:view==="knockout"?"linear-gradient(135deg,#e53535,#c62828)":T.bg3,color:"#fff",border:`1px solid ${view==="knockout"?"transparent":T.line}`,borderRadius:10,fontSize:12,fontWeight:800,cursor:"pointer",letterSpacing:.5,boxShadow:view==="knockout"?"0 3px 12px rgba(229,53,53,.3)":"none",transition:"all .2s"}}>🏆 ÉLIMIN.</button>}
     </div>}
 
+    {/* Filtres TOUS / DOMICILE / EXTÉRIEUR */}
+    {view==="standings"&&!isCup&&<div style={{
+      display:"flex",background:T.bg1,
+      borderBottom:`1px solid ${T.line}`,
+      flexShrink:0,width:"100%",
+    }}>
+      {[["all","TOUS/TOUTES"],["home","DOMICILE"],["away","EXTÉRIEUR"]].map(([v,lb])=>{
+        const a=viewMode===v;
+        return<button key={v} onClick={()=>setViewMode(v)} className="bc" style={{
+          flex:1,padding:"11px 2px",border:"none",
+          background:"transparent",
+          color:a?"#00b86b":T.t3,
+          fontSize:10,fontWeight:a?900:600,
+          cursor:"pointer",letterSpacing:.5,
+          borderBottom:a?"2px solid #00b86b":"2px solid transparent",
+          transition:"all .2s",
+        }}>{lb}</button>;
+      })}
+    </div>}
+
     <div style={{flex:1,overflowY:"auto",width:"100%"}}>
       {}
       {view==="standings"&&<>
@@ -1438,31 +1783,60 @@ function StandingsTab(){
         {st==="err"&&<div style={{textAlign:"center",padding:"44px 24px",color:T.t2}}><div style={{fontSize:44,marginBottom:14}}>⚠️</div>{err}</div>}
         {st==="empty"&&<div style={{textAlign:"center",padding:"52px 24px"}}><div style={{fontSize:44,marginBottom:14}}>📋</div><div style={{fontSize:14,color:T.t2}}>Classement non disponible</div></div>}
         {(st==="ok"||st==="groups")&&allGroups.map((grp,gi)=>{
-          // D tecter si c'est un groupe nomm  (ex: "Group A")
           const grpName=grp[0]?.group;
           return<div key={gi}>
             {grpName&&<div style={{
               padding:"9px 14px",
-              background:"linear-gradient(90deg,rgba(229,53,53,.08),transparent)",
+              background:"linear-gradient(90deg,rgba(0,184,107,.08),transparent)",
               borderBottom:`1px solid ${T.line}`,
               borderTop:gi>0?`1px solid ${T.line}`:"none",
-              borderLeft:"3px solid #e53535",
+              borderLeft:"3px solid #00b86b",
               display:"flex",alignItems:"center",gap:8,
             }}>
-              <span className="bc" style={{fontSize:11,fontWeight:800,color:T.red,letterSpacing:1.5,textTransform:"uppercase"}}>GROUPE {grpName.replace("Group ","")}</span>
+              <span className="bc" style={{fontSize:11,fontWeight:800,color:"#00b86b",letterSpacing:1.5,textTransform:"uppercase"}}>GROUPE {grpName.replace("Group ","")}</span>
             </div>}
-            <div style={{display:"grid",gridTemplateColumns:"26px 1fr 24px 24px 24px 24px 28px 34px",padding:"7px 14px",borderBottom:`1px solid ${T.line}`,background:T.bg2}}>
-              {[["#",T.t4],["Équipe",T.t4],["J",T.t3],["G",T.green],["N",T.t3],["P",T.red],["GD",T.t3],["Pts",T.t2]].map(([h,c])=><div key={h} className="bc" style={{fontSize:10,fontWeight:800,color:c,textAlign:h==="Équipe"?"left":"center",letterSpacing:.8,textTransform:"uppercase"}}>{h}</div>)}
+            {/* Header colonnes */}
+            <div style={{
+              display:"grid",
+              gridTemplateColumns:"24px 1fr 22px 22px 22px 22px 26px 30px",
+              padding:"6px 12px",
+              borderBottom:`1px solid ${T.line}`,
+              background:T.bg2,
+              position:"sticky",top:0,zIndex:2,
+            }}>
+              {[["#",T.t4],["Équipe",T.t4],["MJ",T.t3],["MG",T.green],["MN",T.t3],["MP",T.red],["DB",T.t3],["PTS",T.t2]].map(([h,c])=>
+                <div key={h} className="bc" style={{fontSize:9,fontWeight:800,color:c,textAlign:h==="Équipe"?"left":"center",letterSpacing:.8}}>{h}</div>
+              )}
             </div>
-            {grp.map(r=><StRow key={r.rank+"-"+gi} r={r} zc={zc}/>)}
+            {grp.map(r=><StRow key={r.rank+"-"+gi} r={r} zc={zc} viewMode={viewMode}/>)}
           </div>;
         })}
-        <div style={{padding:"12px 14px 32px",display:"flex",flexWrap:"wrap",gap:10}}>
-          {[[T.blueB,"Qualifié"],[T.gold,"Europa Lge"],[T.purpleB,"Conf. Lge"],[T.red,"Relégation"]].map(([c,lb])=><div key={lb} style={{display:"flex",alignItems:"center",gap:5,background:T.bg2,border:`1px solid ${T.line}`,borderRadius:20,padding:"3px 10px"}}>
-            <div style={{width:8,height:8,borderRadius:"50%",background:c,flexShrink:0}}/>
-            <span className="bc" style={{fontSize:10,fontWeight:700,color:T.t3,letterSpacing:.4}}>{lb}</span>
-          </div>)}
-        </div>
+        {/* Légende premium */}
+        {(st==="ok"||st==="groups")&&<div style={{padding:"16px 14px 32px"}}>
+          <div className="bc" style={{fontSize:10,fontWeight:800,color:T.t3,letterSpacing:1.2,marginBottom:10}}>LÉGENDE</div>
+          <div style={{display:"flex",flexDirection:"column",gap:6}}>
+            {[
+              {c:"#00b86b",     icon:"🏆", lb:"Ligue des Champions / Qualification"},
+              {c:T.gold,        icon:"🟠", lb:"Europa League"},
+              {c:T.purpleB,     icon:"🔵", lb:"Conference League"},
+              {c:"rgba(100,100,100,.5)", icon:"↕️", lb:"Mi-tableau"},
+              {c:T.red,         icon:"⬇️", lb:"Relégation / Barrage"},
+            ].map(({c,icon,lb})=><div key={lb} style={{
+              display:"flex",alignItems:"center",gap:10,
+              padding:"10px 12px",
+              background:T.bg2,
+              borderRadius:10,
+              border:`1px solid ${T.line}`,
+              borderLeft:`4px solid ${c}`,
+            }}>
+              <span style={{fontSize:16}}>{icon}</span>
+              <span className="bc" style={{fontSize:12,color:T.t2,fontWeight:600}}>{lb}</span>
+            </div>)}
+          </div>
+          <div className="bc" style={{fontSize:10,color:T.t4,marginTop:14,textAlign:"center"}}>
+            Forme: <span style={{color:"#00b86b",fontWeight:700}}>V</span>=Victoire · <span style={{color:T.t3}}>N</span>=Nul · <span style={{color:T.red,fontWeight:700}}>D</span>=Défaite
+          </div>
+        </div>}
       </>}
 
       {}
@@ -1510,7 +1884,7 @@ function StandingsTab(){
 //
 function ScorersTab(){
   const[lid,setLid]=useState(39),[s,setS]=useState(2024),[type,setTy]=useState("scorers"),[list,setList]=useState([]),[st,setSt]=useState("load");
-  useEffect(()=>{let c=false;setSt("load");setList([]);const path=type==="assists"?`/players/topassists?league=${lid}&season=${s}`:`/players/topscorers?league=${lid}&season=${s}`;api(path).then(d=>{if(!c){setList(d);setSt("ok");}}).catch(()=>{if(!c)setSt("err");});return()=>{c=true;};},[lid,s,type]);
+  useEffect(()=>{let c=false;setSt("load");setList([]);const path=type==="assists"?`/players/topassists?league=${lid}&season=${s}`:`/players/topscorers?league=${lid}&season=${s}`;api(path,3600000).then(d=>{if(!c){setList(d);setSt("ok");}}).catch(()=>{if(!c)setSt("err");});return()=>{c=true;};},[lid,s,type]);
   const SEL={width:"100%",background:T.bg2,border:`1px solid ${T.bg4}`,color:T.t1,borderRadius:8,padding:"8px 11px",fontSize:12,fontWeight:600,outline:"none",cursor:"pointer"};
   return<div style={{display:"flex",flexDirection:"column",height:"100%",width:"100%",overflow:"hidden"}}>
     <div style={{padding:"9px 14px",borderBottom:`1px solid ${T.line}`,display:"flex",gap:9,flexShrink:0,background:T.bg1,flexWrap:"wrap",minHeight:52,width:"100%"}}>
@@ -1557,23 +1931,31 @@ function CalendarTab({favs,onFav}){
   useEffect(()=>{
     let c=false;setSt("load");setByD({});
     const from=today(),to=new Date();to.setDate(to.getDate()+28);
-    api(`/fixtures?league=${lid}&season=${s}&from=${from}&to=${to.toISOString().slice(0,10)}&status=NS`)
+    api(`/fixtures?league=${lid}&season=${s}&from=${from}&to=${to.toISOString().slice(0,10)}&status=NS`,1800000)
       .then(data=>{if(c)return;const g={};data.forEach(f=>{const d=f.fixture.date.slice(0,10);if(!g[d])g[d]=[];g[d].push(f);});setByD(g);setSt("ok");})
       .catch(()=>{if(!c)setSt("err");});
     return()=>{c=true;};
   },[lid,s]);
   const openMatch=useCallback(async id=>{
+    if(openMatch._ctrl) openMatch._ctrl.abort();
+    openMatch._ctrl=new AbortController();
+    const sig=openMatch._ctrl.signal;
     setDt({loading:true});
     try{
-      const fx=await api(`/fixtures?id=${id}`);const fix=fx[0];
-      const hid=fix.teams.home.id,aid=fix.teams.away.id;
-      const[lu,h2h,inj]=await Promise.all([
-        api(`/fixtures/lineups?fixture=${id}`).catch(()=>[]),
-        api(`/fixtures/headtohead?h2h=${hid}-${aid}&last=10`).catch(()=>[]),
-        api(`/injuries?fixture=${id}`).catch(()=>[]),
+      const fx=await api(`/fixtures?id=${id}`,15000,sig);
+      const fix=fx[0];if(!fix)throw new Error("Match introuvable");
+      const started=!NS_ST.has(fix.fixture.status.short);
+      const hid=fix.teams.home.id,aid=fix.teams.away.id,fid=fix.fixture.id,lid=fix.league.id,seas=fix.league.season;
+      const[stats,evts,lineups,plrs,h2h,injuries]=await Promise.all([
+        started?api(`/fixtures/statistics?fixture=${fid}`,15000,sig).catch(()=>[]):Promise.resolve([]),
+        started?api(`/fixtures/events?fixture=${fid}`,15000,sig).catch(()=>[]):Promise.resolve([]),
+        api(`/fixtures/lineups?fixture=${fid}`,15000,sig).catch(()=>[]),
+        started?api(`/fixtures/players?fixture=${fid}`,15000,sig).catch(()=>[]):Promise.resolve([]),
+        api(`/fixtures/headtohead?h2h=${hid}-${aid}&last=50`,86400000,sig).catch(()=>[]),
+        api(`/injuries?fixture=${fid}`,15000,sig).catch(()=>[]),
       ]);
-      setDt({data:{fixture:fix,stats:[],events:[],lineups:lu,players:[],h2h,injuries:inj}});
-    }catch(e){setDt({error:e.message});}
+      setDt({data:{fixture:fix,stats,events:evts,lineups,players:plrs,h2h,injuries}});
+    }catch(e){if(e.name!=="AbortError")setDt({error:e.message});}
   },[]);
   const SEL={width:"100%",background:T.bg2,border:`1px solid ${T.bg4}`,color:T.t1,borderRadius:8,padding:"8px 11px",fontSize:12,fontWeight:600,outline:"none",cursor:"pointer"};
   return<div style={{display:"flex",flexDirection:"column",height:"100%",width:"100%",overflow:"hidden"}}>
@@ -1610,51 +1992,888 @@ const NAV=[
   {id:"standings",label:"Classement",icon:a=><svg width="23" height="23" viewBox="0 0 24 24" fill={a?"currentColor":"none"} stroke="currentColor" strokeWidth={a?0:1.7}>{a?<path d="M7.5 21H2V9h5.5v12zm7.25-18h-5.5v18h5.5V3zM22 11h-5.5v10H22V11z"/>:<><rect x="2" y="9" width="5.5" height="12" rx="1"/><rect x="9.25" y="3" width="5.5" height="18" rx="1"/><rect x="16.5" y="11" width="5.5" height="10" rx="1"/></>}</svg>},
   {id:"scorers",  label:"Buteurs",   icon:a=><svg width="23" height="23" viewBox="0 0 24 24" fill={a?"currentColor":"none"} stroke="currentColor" strokeWidth={a?0:1.7}>{a?<path d="M12 12c2.7 0 4.8-2.1 4.8-4.8S14.7 2.4 12 2.4 7.2 4.5 7.2 7.2 9.3 12 12 12zm0 2.4c-3.2 0-9.6 1.6-9.6 4.8v2.4h19.2v-2.4c0-3.2-6.4-4.8-9.6-4.8z"/>:<><circle cx="12" cy="7.2" r="4.8"/><path d="M2.4 21.6v-2.4c0-3.2 6.4-4.8 9.6-4.8s9.6 1.6 9.6 4.8v2.4"/></>}</svg>},
   {id:"calendar", label:"Calendrier",icon:a=><svg width="23" height="23" viewBox="0 0 24 24" fill={a?"currentColor":"none"} stroke="currentColor" strokeWidth={a?0:1.7}>{a?<path d="M17 12h-5v5h5v-5zM16 1v2H8V1H6v2H5c-1.1 0-2 .9-2 2v14c0 1.1.9 2 2 2h14c1.1 0 2-.9 2-2V5c0-1.1-.9-2-2-2h-1V1h-2zm3 18H5V8h14v11z"/>:<><rect x="3" y="4" width="18" height="18" rx="2"/><path d="M16 2v4M8 2v4M3 10h18"/></>}</svg>},
+  {id:"transfers",label:"Transferts",icon:a=><svg width="23" height="23" viewBox="0 0 24 24" fill={a?"currentColor":"none"} stroke="currentColor" strokeWidth={a?0:1.7}>{a?<path d="M8 5v14l11-7L8 5zM3 5h2v14H3V5z"/>:<><polygon points="8,5 19,12 8,19"/><line x1="3" y1="5" x2="3" y2="19"/><line x1="6" y1="5" x2="6" y2="19"/></>}</svg>},
+  {id:"results",  label:"Résultats", icon:a=><svg width="23" height="23" viewBox="0 0 24 24" fill={a?"currentColor":"none"} stroke="currentColor" strokeWidth={a?0:1.7}>{a?<path d="M19 3H5c-1.1 0-2 .9-2 2v14c0 1.1.9 2 2 2h14c1.1 0 2-.9 2-2V5c0-1.1-.9-2-2-2zm-7 3c1.93 0 3.5 1.57 3.5 3.5S13.93 13 12 13s-3.5-1.57-3.5-3.5S10.07 6 12 6zm7 13H5v-.23c0-.62.28-1.2.76-1.58C7.47 15.82 9.64 15 12 15s4.53.82 6.24 2.19c.48.38.76.97.76 1.58V19z"/>:<><rect x="3" y="3" width="18" height="18" rx="2"/><path d="M8 12h8M8 8h8M8 16h5"/></>}</svg>},
 ];
+
+//
+// ONGLET TRANSFERTS
+//
+const TOP_LEAGUES=[
+  // ── Top 5 ──
+  {id:39, name:"Premier League",  flag:"🏴󠁧󠁢󠁥󠁮󠁧󠁿"},
+  {id:140,name:"La Liga",         flag:"🇪🇸"},
+  {id:135,name:"Serie A",         flag:"🇮🇹"},
+  {id:78, name:"Bundesliga",      flag:"🇩🇪"},
+  {id:61, name:"Ligue 1",         flag:"🇫🇷"},
+  // ── Europe ──
+  {id:88, name:"Eredivisie",      flag:"🇳🇱"},
+  {id:94, name:"Liga Portugal",   flag:"🇵🇹"},
+  {id:203,name:"Süper Lig",       flag:"🇹🇷"},
+  {id:144,name:"Pro League",      flag:"🇧🇪"},
+  {id:40, name:"Championship",    flag:"🏴󠁧󠁢󠁥󠁮󠁧󠁿"},
+  {id:62, name:"Ligue 2",         flag:"🇫🇷"},
+  {id:79, name:"Bundesliga 2",    flag:"🇩🇪"},
+  {id:136,name:"Serie B",         flag:"🇮🇹"},
+  {id:141,name:"Segunda Div.",    flag:"🇪🇸"},
+  {id:179,name:"Premiership",     flag:"🏴󠁧󠁢󠁳󠁣󠁴󠁿"},
+  {id:106,name:"Ekstraklasa",     flag:"🇵🇱"},
+  {id:113,name:"Allsvenskan",     flag:"🇸🇪"},
+  {id:103,name:"Eliteserien",     flag:"🇳🇴"},
+  {id:119,name:"Superliga",       flag:"🇩🇰"},
+  {id:169,name:"Super League",    flag:"🇨🇭"},
+  {id:218,name:"Bundesliga",      flag:"🇦🇹"},
+  {id:270,name:"Super League",    flag:"🇬🇷"},
+  {id:286,name:"HNL",             flag:"🇭🇷"},
+  {id:290,name:"Prva Liga",       flag:"🇷🇸"},
+  {id:235,name:"Premier Liga",    flag:"🇺🇦"},
+  {id:108,name:"1. liga",         flag:"🇨🇿"},
+  {id:283,name:"Liga 1",          flag:"🇷🇴"},
+  {id:307,name:"Ligat ha'Al",     flag:"🇮🇱"},
+  {id:107,name:"Premier League",  flag:"🇮🇪"},
+  {id:322,name:"Veikkausliiga",   flag:"🇫🇮"},
+  // ── Afrique ──
+  {id:283,name:"Ligue Pro 1",     flag:"🇩🇿"},
+  {id:307,name:"Botola Pro",      flag:"🇲🇦"},
+  {id:384,name:"Premier League",  flag:"🇪🇬"},
+  {id:388,name:"Ligue 1 Pro",     flag:"🇹🇳"},
+  {id:233,name:"NPFL",            flag:"🇳🇬"},
+  {id:363,name:"PSL",             flag:"🇿🇦"},
+  {id:392,name:"Premier League",  flag:"🇬🇭"},
+  {id:394,name:"Ligue 1",         flag:"🇸🇳"},
+  {id:395,name:"Ligue 1",         flag:"🇨🇮"},
+  {id:401,name:"KPL",             flag:"🇰🇪"},
+  {id:409,name:"Premier League",  flag:"🇷🇼"},
+  // ── Amériques ──
+  {id:71, name:"Brasileirao",     flag:"🇧🇷"},
+  {id:128,name:"Liga Profesional",flag:"🇦🇷"},
+  {id:253,name:"MLS",             flag:"🇺🇸"},
+  {id:262,name:"Liga MX",         flag:"🇲🇽"},
+  // ── Asie/MO ──
+  {id:202,name:"Saudi Pro League",flag:"🇸🇦"},
+  {id:98, name:"J-League",        flag:"🇯🇵"},
+  {id:292,name:"K League 1",      flag:"🇰🇷"},
+  {id:301,name:"Chinese Super",   flag:"🇨🇳"},
+];
+
+const POS_COLORS={"ATT":"#e53535","MIL":"#00b86b","DEF":"#1976d2","GAR":"#7c4dff"};
+const POS_MAP={"Attacker":"ATT","Midfielder":"MIL","Defender":"DEF","Goalkeeper":"GAR"};
+
+function TransferCard({t}){
+  const player=t.player;
+  const transfer=t.transfers?.[0];
+  if(!transfer) return null;
+  const isLoan=transfer.type?.toLowerCase().includes("loan");
+  const isFree=transfer.type?.toLowerCase().includes("free");
+  const fee=transfer.fees;
+  const fromTeam=transfer.teams?.out;
+  const toTeam=transfer.teams?.in;
+  const pos=POS_MAP[player?.position]||"";
+  const posColor=POS_COLORS[pos]||"#888";
+  const dateStr=transfer.date?new Date(transfer.date).toLocaleDateString("fr-FR",{day:"2-digit",month:"short",year:"numeric"}).toUpperCase():"";
+
+  return<div style={{
+    background:"#fff",borderRadius:14,
+    margin:"0 10px 10px",padding:"14px",
+    boxShadow:"0 1px 6px rgba(0,0,0,.08)",
+    border:"1px solid rgba(0,0,0,.06)",
+    animation:"fadeIn .2s ease",
+  }}>
+    <div style={{display:"flex",alignItems:"center",gap:12}}>
+      <div style={{position:"relative",flexShrink:0}}>
+        <Avatar src={player?.photo} size={50} style={{border:"2px solid rgba(0,0,0,.08)"}}/>
+        {pos&&<div style={{position:"absolute",bottom:-4,left:"50%",transform:"translateX(-50%)",background:posColor,borderRadius:6,padding:"1px 5px",border:"1.5px solid #fff"}}>
+          <span className="bc" style={{fontSize:8,fontWeight:800,color:"#fff",letterSpacing:.3}}>{pos}</span>
+        </div>}
+      </div>
+      <div style={{flex:1,minWidth:0}}>
+        <span className="bc" style={{fontSize:15,fontWeight:800,color:"#1a1d23",display:"block",overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap"}}>{player?.name}</span>
+        <div className="bc" style={{fontSize:11,color:"#777",marginTop:2,lineHeight:1.4}}>{transfer.type||"Transfert"}</div>
+      </div>
+      <div style={{display:"flex",flexDirection:"column",alignItems:"center",gap:5,flexShrink:0}}>
+        <div style={{display:"flex",alignItems:"center",gap:6}}>
+          <Logo src={fromTeam?.logo} size={26}/>
+          <span style={{fontSize:14,color:"#bbb",fontWeight:700}}>→</span>
+          <Logo src={toTeam?.logo} size={26}/>
+        </div>
+        {fee&&fee!=="?"&&fee!=="0"&&!isFree&&<span className="bc" style={{fontSize:11,fontWeight:800,color:"#00b86b"}}>{fee}</span>}
+        {(isFree||fee==="Free")&&<span className="bc" style={{fontSize:10,color:"#00b86b",fontWeight:700}}>Agent libre</span>}
+        {isLoan&&!isFree&&<span className="bc" style={{fontSize:10,color:"#ff9800",fontWeight:700}}>Prêt</span>}
+      </div>
+    </div>
+  </div>;
+}
+
+function TransfersTab(){
+  const[filter,setFilter]=useState("official");
+  const[lid,setLid]=useState(39);
+  const[data,setData]=useState([]);
+  const[st,setSt]=useState("load");
+  const[showFilters,setShowFilters]=useState(false);
+  const[typeFilters,setTypeFilters]=useState([]);
+  const yr=new Date().getFullYear();
+  const season=new Date().getMonth()<6?yr-1:yr;
+
+  useEffect(()=>{
+    let cancelled=false;
+    setSt("load");setData([]);
+    api(`/transfers?league=${lid}&season=${season}`,3600000)
+      .then(d=>{
+        if(cancelled)return;
+        const filtered=d.filter(t=>{
+          const type=(t.transfers?.[0]?.type||"").toLowerCase();
+          const officialOk=filter==="rumour"?type.includes("rumour"):!type.includes("rumour");
+          if(!officialOk)return false;
+          if(typeFilters.length===0)return true;
+          return typeFilters.some(tf=>type.includes(tf.toLowerCase()));
+        }).sort((a,b)=>new Date(b.transfers?.[0]?.date||0)-new Date(a.transfers?.[0]?.date||0));
+        setData(filtered);
+        setSt(filtered.length?"ok":"empty");
+      })
+      .catch(()=>{if(!cancelled)setSt("err");});
+    return()=>{cancelled=true;};
+  },[lid,filter,season,typeFilters]);
+
+  const byDate=data.reduce((acc,t)=>{
+    const d=t.transfers?.[0]?.date||"";
+    const label=d?new Date(d).toLocaleDateString("fr-FR",{day:"2-digit",month:"short",year:"numeric"}).toUpperCase():"Inconnu";
+    if(!acc[label])acc[label]=[];
+    acc[label].push(t);
+    return acc;
+  },{});
+
+  const[view,setView]=useState("recent"); // recent | competition
+
+  return<div style={{display:"flex",flexDirection:"column",height:"100%",background:T.bg0,overflow:"hidden"}}>
+    {/* Toggle DERNIER / COMPÉTITIONS */}
+    <div style={{display:"flex",background:"#fff",borderBottom:"2px solid rgba(0,0,0,.08)",flexShrink:0}}>
+      {[["recent","DERNIER"],["competition","COMPÉTITIONS"]].map(([v,lb])=>{
+        const a=view===v;
+        return<button key={v} onClick={()=>setView(v)} className="bc" style={{
+          flex:1,padding:"13px 4px",border:"none",background:"transparent",
+          color:a?"#00b86b":"#999",fontSize:12,fontWeight:a?800:600,
+          cursor:"pointer",letterSpacing:.5,
+          borderBottom:a?"3px solid #00b86b":"3px solid transparent",
+          transition:"all .2s",marginBottom:-2,
+        }}>{lb}</button>;
+      })}
+    </div>
+    {view==="recent"&&<><div style={{background:"#fff",borderBottom:"1px solid rgba(0,0,0,.08)",padding:"10px 12px",flexShrink:0,boxShadow:"0 2px 8px rgba(0,0,0,.06)",position:"relative",zIndex:50}}>
+      <div style={{overflowX:"auto",display:"flex",gap:6,marginBottom:10,paddingBottom:2}}>
+        {TOP_LEAGUES.map(l=>{
+          const a=l.id===lid;
+          return<button key={l.id} onClick={()=>setLid(l.id)} className="bc" style={{
+            flexShrink:0,padding:"6px 12px",borderRadius:20,border:"none",
+            background:a?"linear-gradient(135deg,#00b86b,#009657)":"rgba(0,0,0,.07)",
+            color:a?"#fff":"#555",fontSize:11,fontWeight:a?800:600,cursor:"pointer",
+            transition:"all .2s",whiteSpace:"nowrap",
+          }}>{l.flag} {l.name}</button>;
+        })}
+      </div>
+      <div style={{display:"flex",gap:8,alignItems:"center"}}>
+        {/* Toggle Officiel/Rumeur */}
+        <div style={{display:"flex",flex:1,background:"rgba(0,0,0,.06)",borderRadius:10,padding:3,gap:3}}>
+          {[["official","✅ OFFICIEL"],["rumour","💬 RUMEUR"]].map(([v,lb])=>
+            <button key={v} onClick={()=>setFilter(v)} className="bc" style={{
+              flex:1,padding:"9px 4px",borderRadius:8,border:"none",
+              background:filter===v?"linear-gradient(135deg,#00b86b,#009657)":"transparent",
+              color:filter===v?"#fff":"#777",
+              fontSize:12,fontWeight:800,cursor:"pointer",
+              transition:"all .2s",letterSpacing:.5,
+            }}>{lb}</button>
+          )}
+        </div>
+        {/* Bouton Filtres */}
+        <button onClick={()=>setShowFilters(f=>!f)} className="bc" style={{
+          padding:"9px 14px",borderRadius:10,border:"1px solid rgba(0,0,0,.1)",
+          background:typeFilters.length?"linear-gradient(135deg,#00b86b,#009657)":"rgba(0,0,0,.06)",
+          color:typeFilters.length?"#fff":"#555",
+          fontSize:12,fontWeight:800,cursor:"pointer",flexShrink:0,
+          transition:"all .2s",
+        }}>⚙️ {typeFilters.length?`Filtres (${typeFilters.length})`:"Filtres"}</button>
+      </div>
+      {/* Panneau filtres — overlay plein écran */}
+      {showFilters&&<div onClick={()=>setShowFilters(false)} style={{
+        position:"fixed",inset:0,zIndex:999,
+        background:"rgba(0,0,0,.4)",
+        display:"flex",alignItems:"flex-end",
+        animation:"fadeIn .15s ease",
+      }}>
+        <div onClick={e=>e.stopPropagation()} style={{
+          width:"100%",maxWidth:430,margin:"0 auto",
+          background:"#fff",borderRadius:"20px 20px 0 0",
+          boxShadow:"0 -4px 32px rgba(0,0,0,.2)",
+          maxHeight:"80vh",overflow:"hidden",
+          display:"flex",flexDirection:"column",
+          animation:"up .2s ease",
+        }}>
+          {/* Header */}
+          <div style={{display:"flex",alignItems:"center",justifyContent:"space-between",padding:"16px 20px 12px",borderBottom:"1px solid rgba(0,0,0,.08)"}}>
+            <span className="bc" style={{fontSize:16,fontWeight:800,color:"#1a1d23",letterSpacing:.3}}>⚙️ Filtres</span>
+            <button onClick={()=>setShowFilters(false)} style={{background:"rgba(0,0,0,.07)",border:"none",borderRadius:"50%",width:30,height:30,cursor:"pointer",fontSize:16,display:"flex",alignItems:"center",justifyContent:"center"}}>✕</button>
+          </div>
+          {/* Liste */}
+          <div style={{overflowY:"auto",flex:1}}>
+            {["Transfert","Prêt","Transfert gratuit","Prêt W/B","Fin du prêt","Retraité","Libéré","Agent libre","Renouvellement"].map(type=>{
+              const active=typeFilters.includes(type);
+              return<div key={type} onClick={()=>setTypeFilters(f=>active?f.filter(x=>x!==type):[...f,type])} style={{
+                display:"flex",alignItems:"center",justifyContent:"space-between",
+                padding:"16px 20px",cursor:"pointer",
+                borderBottom:"1px solid rgba(0,0,0,.05)",
+                background:active?"rgba(0,184,107,.04)":"transparent",
+                transition:"background .15s",
+              }}>
+                <span className="bc" style={{fontSize:15,color:"#1a1d23",fontWeight:active?700:400}}>{type}</span>
+                <div style={{
+                  width:22,height:22,borderRadius:6,
+                  border:`2px solid ${active?"#00b86b":"#ccc"}`,
+                  background:active?"#00b86b":"transparent",
+                  display:"flex",alignItems:"center",justifyContent:"center",
+                  transition:"all .15s",flexShrink:0,
+                }}>{active&&<span style={{color:"#fff",fontSize:13,fontWeight:900,lineHeight:1}}>✓</span>}</div>
+              </div>;
+            })}
+          </div>
+          {/* Footer */}
+          <div style={{padding:"12px 20px 24px",borderTop:"1px solid rgba(0,0,0,.08)",display:"flex",gap:10}}>
+            <button onClick={()=>setTypeFilters([])} className="bc" style={{
+              flex:1,padding:"12px",borderRadius:12,border:"1px solid rgba(0,0,0,.1)",
+              background:"transparent",color:"#555",fontSize:13,fontWeight:700,cursor:"pointer",
+            }}>Effacer tout</button>
+            <button onClick={()=>setShowFilters(false)} className="bc" style={{
+              flex:2,padding:"12px",borderRadius:12,border:"none",
+              background:"linear-gradient(135deg,#00b86b,#009657)",
+              color:"#fff",fontSize:13,fontWeight:800,cursor:"pointer",
+            }}>Appliquer {typeFilters.length?`(${typeFilters.length})`:""}</button>
+          </div>
+        </div>
+      </div>}
+    </div>
+    <div style={{flex:1,overflowY:"auto"}}>
+      {st==="load"&&<div style={{padding:"60px 20px",textAlign:"center"}}><Spin/><div className="bc" style={{marginTop:12,color:T.t3,fontSize:13}}>Chargement des transferts...</div></div>}
+      {st==="err"&&<div style={{textAlign:"center",padding:"60px 20px"}}>
+        <div style={{fontSize:40,marginBottom:12}}>❌</div>
+        <div className="bc" style={{fontSize:14,color:T.t3}}>Erreur de chargement</div>
+      </div>}
+      {st==="empty"&&<div style={{textAlign:"center",padding:"60px 20px"}}>
+        <div style={{fontSize:40,marginBottom:12}}>🔄</div>
+        <div className="bc" style={{fontSize:15,fontWeight:700,color:T.t2,marginBottom:6}}>Aucun transfert</div>
+        <div className="bc" style={{fontSize:12,color:T.t3}}>Pas de données pour cette sélection</div>
+      </div>}
+      {st==="ok"&&<div style={{paddingTop:8,paddingBottom:20}}>
+        {Object.entries(byDate).map(([date,transfers])=><div key={date}>
+          <div style={{padding:"12px 14px 8px",background:T.bg0}}>
+            <div style={{display:"flex",alignItems:"center",gap:8}}>
+              <div style={{width:3,height:14,background:"#00b86b",borderRadius:2}}/>
+              <span className="bc" style={{fontSize:12,fontWeight:800,color:"#555",letterSpacing:.5}}>{date}</span>
+              <span className="bc" style={{fontSize:10,color:"#bbb"}}>({transfers.length})</span>
+            </div>
+          </div>
+          {transfers.map((t,i)=><TransferCard key={i} t={t}/>)}
+        </div>)}
+      </div>}
+    </div></>}
+    {view==="competition"&&<CompetitionTransfers/>}
+  </div>;
+}
+
+function CompetitionTransfers(){
+  const[lid,setLid]=useState(39);
+  const[data,setData]=useState([]);
+  const[st,setSt]=useState("idle");
+  const yr=new Date().getFullYear();
+  const season=new Date().getMonth()<6?yr-1:yr;
+  const eng=TOP_LEAGUES[3]; // Premier League
+
+  useEffect(()=>{
+    let cancelled=false;
+    setSt("load");setData([]);
+    api(`/transfers?league=${lid}&season=${season}`,3600000)
+      .then(d=>{
+        if(cancelled)return;
+        // Grouper par club d'arrivée
+        const byClub={};
+        d.forEach(t=>{
+          const club=t.transfers?.[0]?.teams?.in;
+          if(!club)return;
+          const key=`${club.id}`;
+          if(!byClub[key])byClub[key]={club,players:[]};
+          byClub[key].players.push(t);
+        });
+        const sorted=Object.values(byClub).sort((a,b)=>b.players.length-a.players.length);
+        setData(sorted);
+        setSt(sorted.length?"ok":"empty");
+      })
+      .catch(()=>{if(!cancelled)setSt("err");});
+    return()=>{cancelled=true;};
+  },[lid,season]);
+
+  return<div style={{display:"flex",flexDirection:"column",height:"100%",overflow:"hidden"}}>
+    {/* Sélecteur ligue */}
+    <div style={{background:"#fff",borderBottom:"1px solid rgba(0,0,0,.08)",padding:"10px 12px",flexShrink:0}}>
+      <div style={{overflowX:"auto",display:"flex",gap:6,paddingBottom:2}}>
+        {TOP_LEAGUES.map(l=>{
+          const a=l.id===lid;
+          return<button key={l.id} onClick={()=>setLid(l.id)} className="bc" style={{
+            flexShrink:0,padding:"6px 12px",borderRadius:20,border:"none",
+            background:a?"linear-gradient(135deg,#00b86b,#009657)":"rgba(0,0,0,.07)",
+            color:a?"#fff":"#555",fontSize:11,fontWeight:a?800:600,cursor:"pointer",
+            transition:"all .2s",whiteSpace:"nowrap",
+          }}>{l.flag} {l.name}</button>;
+        })}
+      </div>
+    </div>
+    {/* Liste par club */}
+    <div style={{flex:1,overflowY:"auto"}}>
+      {st==="load"&&<div style={{padding:"60px 20px",textAlign:"center"}}><Spin/><div className="bc" style={{marginTop:12,color:T.t3,fontSize:13}}>Chargement...</div></div>}
+      {st==="empty"&&<div style={{textAlign:"center",padding:"60px 20px"}}>
+        <div style={{fontSize:40,marginBottom:12}}>📋</div>
+        <div className="bc" style={{fontSize:14,color:T.t3}}>Aucun transfert pour cette compétition</div>
+      </div>}
+      {st==="err"&&<div style={{textAlign:"center",padding:"60px 20px",color:T.t3}}>Erreur de chargement</div>}
+      {st==="ok"&&<div style={{paddingBottom:20}}>
+        {data.map(({club,players})=><div key={club.id} style={{marginBottom:4}}>
+          {/* Header club */}
+          <div style={{display:"flex",alignItems:"center",gap:10,padding:"12px 14px 8px",background:"rgba(0,0,0,.02)",borderBottom:"1px solid rgba(0,0,0,.06)"}}>
+            <Logo src={club.logo} size={28}/>
+            <span className="bc" style={{fontSize:14,fontWeight:800,color:"#1a1d23"}}>{club.name}</span>
+            <span className="bc" style={{fontSize:11,color:"#00b86b",fontWeight:700,marginLeft:"auto"}}>{players.length} transfert{players.length>1?"s":""}</span>
+          </div>
+          {/* Joueurs */}
+          {players.map((t,i)=>{
+            const transfer=t.transfers?.[0];
+            const player=t.player;
+            const fromTeam=transfer?.teams?.out;
+            const isFree=(transfer?.fees||"").toLowerCase().includes("free")||(transfer?.type||"").toLowerCase().includes("free");
+            const isLoan=(transfer?.type||"").toLowerCase().includes("loan");
+            const pos=POS_MAP[player?.position]||"";
+            const posColor=POS_COLORS[pos]||"#888";
+            return<div key={i} style={{display:"flex",alignItems:"center",gap:10,padding:"10px 14px",borderBottom:"1px solid rgba(0,0,0,.04)"}}>
+              <div style={{position:"relative",flexShrink:0}}>
+                <Avatar src={player?.photo} size={38}/>
+                {pos&&<div style={{position:"absolute",bottom:-3,left:"50%",transform:"translateX(-50%)",background:posColor,borderRadius:4,padding:"1px 4px",border:"1px solid #fff"}}>
+                  <span className="bc" style={{fontSize:7,fontWeight:800,color:"#fff"}}>{pos}</span>
+                </div>}
+              </div>
+              <div style={{flex:1,minWidth:0}}>
+                <span className="bc" style={{fontSize:13,fontWeight:700,color:"#1a1d23",display:"block",overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap"}}>{player?.name}</span>
+                <div style={{display:"flex",alignItems:"center",gap:4,marginTop:2}}>
+                  {fromTeam&&<><Logo src={fromTeam.logo} size={14}/><span className="bc" style={{fontSize:10,color:"#888"}}>{fromTeam.name}</span></>}
+                </div>
+              </div>
+              <div style={{textAlign:"right",flexShrink:0}}>
+                {transfer?.fees&&!isFree&&<span className="bc" style={{fontSize:11,fontWeight:800,color:"#00b86b",display:"block"}}>{transfer.fees}</span>}
+                {isFree&&<span className="bc" style={{fontSize:10,color:"#00b86b",fontWeight:700}}>Agent libre</span>}
+                {isLoan&&!isFree&&<span className="bc" style={{fontSize:10,color:"#ff9800",fontWeight:700}}>Prêt</span>}
+                {transfer?.date&&<span className="bc" style={{fontSize:9,color:"#bbb",display:"block",marginTop:2}}>{new Date(transfer.date).toLocaleDateString("fr-FR",{day:"2-digit",month:"short"})}</span>}
+              </div>
+            </div>;
+          })}
+        </div>)}
+      </div>}
+    </div>
+  </div>;
+}
+
+//
+// ONGLET RÉSULTATS PAR JOURNÉE
+//
+// ── Calculer classement à partir des matchs joués ──────────────────
+function computeStandings(allMatches,upToRound,rounds){
+  const roundsBefore=new Set(rounds.slice(0,rounds.indexOf(upToRound)+1));
+  const played=allMatches.filter(m=>{
+    const done=["FT","AET","PEN","AWD","WO"].includes(m.fixture.status.short);
+    return done&&roundsBefore.has(m.league.round);
+  });
+  const teams={};
+  const ensure=t=>{
+    if(!teams[t.id])teams[t.id]={
+      team:t,mp:0,w:0,d:0,l:0,gf:0,ga:0,pts:0,form:[],
+    };
+    return teams[t.id];
+  };
+  played.forEach(m=>{
+    const h=m.teams.home,a=m.teams.away;
+    const hg=m.goals.home??0,ag=m.goals.away??0;
+    const hRow=ensure(h),aRow=ensure(a);
+    hRow.mp++;aRow.mp++;
+    hRow.gf+=hg;hRow.ga+=ag;
+    aRow.gf+=ag;aRow.ga+=hg;
+    if(hg>ag){hRow.w++;hRow.pts+=3;hRow.form.push("W");aRow.l++;aRow.form.push("L");}
+    else if(ag>hg){aRow.w++;aRow.pts+=3;aRow.form.push("W");hRow.l++;hRow.form.push("L");}
+    else{hRow.d++;hRow.pts++;hRow.form.push("D");aRow.d++;aRow.pts++;aRow.form.push("D");}
+  });
+  return Object.values(teams).sort((a,b)=>{
+    if(b.pts!==a.pts)return b.pts-a.pts;
+    const gdB=b.gf-b.ga,gdA=a.gf-a.ga;
+    if(gdB!==gdA)return gdB-gdA;
+    return b.gf-a.gf;
+  }).map((r,i)=>({...r,rank:i+1,gd:r.gf-r.ga}));
+}
+
+function ResultsTab(){
+  const yr=new Date().getFullYear();
+  const curSeason=new Date().getMonth()<6?yr-1:yr;
+
+  const[lid,setLid]=useState(39);
+  const[season,setSeason]=useState(curSeason);
+  const[rounds,setRounds]=useState([]);
+  const[selRound,setSelRound]=useState("");
+  const[roundIdx,setRoundIdx]=useState(0);
+  const[matches,setMatches]=useState([]);      // matchs de la journée
+  const[allMatches,setAllMatches]=useState([]); // TOUS les matchs saison
+  const[stRounds,setStRounds]=useState("load");
+  const[stMatches,setStMatches]=useState("idle");
+  const[stAll,setStAll]=useState("idle");
+  const[cfg,setCfg]=useState(false);
+  const[tabView,setTabView]=useState("results"); // results | standings
+
+  const league=LEAGUES.find(l=>l.id===lid)||LEAGUES[0];
+  const SEASONS_LIST=Array.from({length:30},(_,i)=>curSeason-i);
+
+  // Charger les journées de la saison
+  useEffect(()=>{
+    let c=false;
+    setStRounds("load");setRounds([]);setSelRound("");setMatches([]);setAllMatches([]);
+    api(`/fixtures/rounds?league=${lid}&season=${season}&current=false`,21600000)
+      .then(d=>{
+        if(c)return;
+        const all=d??[];
+        setRounds(all);
+        const midIdx=Math.max(0,Math.floor(all.length/2)-1);
+        setRoundIdx(midIdx);
+        setSelRound(all[midIdx]||"");
+        setStRounds(all.length?"ok":"empty");
+      })
+      .catch(()=>{if(!c)setStRounds("err");});
+    return()=>{c=true;};
+  },[lid,season]);
+
+  // Charger TOUS les matchs de la saison (pour calcul classement)
+  useEffect(()=>{
+    let c=false;
+    setStAll("load");setAllMatches([]);
+    api(`/fixtures?league=${lid}&season=${season}`,3600000)
+      .then(d=>{if(!c){setAllMatches(d??[]);setStAll("ok");} })
+      .catch(()=>{if(!c)setStAll("err");});
+    return()=>{c=true;};
+  },[lid,season]);
+
+  // Charger les matchs de la journée sélectionnée
+  useEffect(()=>{
+    if(!selRound)return;
+    let c=false;
+    setStMatches("load");setMatches([]);
+    api(`/fixtures?league=${lid}&season=${season}&round=${encodeURIComponent(selRound)}`,3600000)
+      .then(d=>{
+        if(c)return;
+        const sorted=(d??[]).sort((a,b)=>new Date(a.fixture.date)-new Date(b.fixture.date));
+        setMatches(sorted);
+        setStMatches(sorted.length?"ok":"empty");
+      })
+      .catch(()=>{if(!c)setStMatches("err");});
+    return()=>{c=true;};
+  },[selRound,lid,season]);
+
+  // Classement calculé jusqu'à la journée sélectionnée
+  const computedStandings=useMemo(()=>{
+    if(!selRound||!allMatches.length||!rounds.length)return[];
+    return computeStandings(allMatches,selRound,rounds);
+  },[allMatches,selRound,rounds]);
+
+  // Navigation journée précédente/suivante
+  const goRound=(dir)=>{
+    const newIdx=Math.max(0,Math.min(rounds.length-1,roundIdx+dir));
+    setRoundIdx(newIdx);
+    setSelRound(rounds[newIdx]);
+  };
+
+  // Label journée propre
+  const roundLabel=(r)=>{
+    if(!r)return"";
+    return r.replace("Regular Season - ","J").replace("Round ","Tour ").replace("Group Stage - ","Phase de groupes - ");
+  };
+
+  // Grouper matchs par heure/date
+  const byTime=matches.reduce((acc,m)=>{
+    const d=new Date(m.fixture.date);
+    const key=d.toLocaleDateString("fr-FR",{weekday:"long",day:"2-digit",month:"long",year:"numeric"})+" — "+d.toLocaleTimeString("fr-FR",{hour:"2-digit",minute:"2-digit"});
+    if(!acc[key])acc[key]=[];
+    acc[key].push(m);
+    return acc;
+  },{});
+
+  const SEL={width:"100%",background:T.bg2,border:`1px solid ${T.bg4}`,color:T.t1,borderRadius:8,padding:"10px 13px",fontSize:13,outline:"none",cursor:"pointer"};
+
+  return<div style={{display:"flex",flexDirection:"column",height:"100%",background:T.bg0,overflow:"hidden"}}>
+
+    {/* Header — Ligue + Saison + Journée */}
+    <div style={{background:"#fff",borderBottom:`1px solid rgba(0,0,0,.08)`,flexShrink:0,boxShadow:"0 2px 8px rgba(0,0,0,.06)"}}>
+
+      {/* Ligne 1: Ligue sélectionnée + config */}
+      <div onClick={()=>setCfg(true)} style={{
+        display:"flex",alignItems:"center",gap:10,
+        padding:"10px 14px",cursor:"pointer",
+        borderBottom:"1px solid rgba(0,0,0,.06)",
+      }}>
+        <div style={{fontSize:24}}>{league?.flag||"🏆"}</div>
+        <div style={{flex:1,minWidth:0}}>
+          <div className="bc" style={{fontSize:15,fontWeight:800,color:"#1a1d23",overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap"}}>{league?.name}</div>
+          <div className="bc" style={{fontSize:11,color:"#888"}}>Saison {season}/{season+1}</div>
+        </div>
+        <div style={{background:"rgba(0,0,0,.06)",borderRadius:8,padding:"6px 12px",display:"flex",alignItems:"center",gap:6}}>
+          <span style={{fontSize:11,color:"#555",fontWeight:700}}>⚙️ Config</span>
+        </div>
+      </div>
+
+      {/* Ligne 1b: Toggle Résultats / Classement */}
+      <div style={{display:"flex",borderBottom:"1px solid rgba(0,0,0,.06)"}}>
+        {[["results","📋 RÉSULTATS"],["standings","🏆 CLASSEMENT"]].map(([v,lb])=>{
+          const a=tabView===v;
+          return<button key={v} onClick={()=>setTabView(v)} className="bc" style={{
+            flex:1,padding:"10px 4px",border:"none",background:"transparent",
+            color:a?"#00b86b":"#999",fontSize:11,fontWeight:a?900:600,
+            cursor:"pointer",letterSpacing:.5,
+            borderBottom:a?"2px solid #00b86b":"2px solid transparent",
+            transition:"all .2s",marginBottom:-1,
+          }}>{lb}</button>;
+        })}
+      </div>
+
+      {/* Ligne 2: Navigation journée */}
+      <div style={{display:"flex",alignItems:"center",padding:"8px 12px",gap:6}}>
+        <button onClick={()=>goRound(-1)} disabled={roundIdx===0} style={{
+          width:36,height:36,borderRadius:10,border:"1px solid rgba(0,0,0,.1)",
+          background:roundIdx===0?"rgba(0,0,0,.03)":"#fff",
+          color:roundIdx===0?"#ccc":"#555",fontSize:18,cursor:roundIdx===0?"default":"pointer",
+          display:"flex",alignItems:"center",justifyContent:"center",flexShrink:0,
+        }}>‹</button>
+
+        <div style={{flex:1,textAlign:"center"}}>
+          {stRounds==="load"?<Spin/>:
+          stRounds==="ok"?<div>
+            <div className="bc" style={{fontSize:14,fontWeight:800,color:"#1a1d23"}}>{roundLabel(selRound)}</div>
+            <div className="bc" style={{fontSize:10,color:"#888"}}>{roundIdx+1} / {rounds.length}</div>
+          </div>:
+          <div className="bc" style={{fontSize:12,color:"#999"}}>Aucune journée</div>}
+        </div>
+
+        <button onClick={()=>goRound(+1)} disabled={roundIdx>=rounds.length-1} style={{
+          width:36,height:36,borderRadius:10,border:"1px solid rgba(0,0,0,.1)",
+          background:roundIdx>=rounds.length-1?"rgba(0,0,0,.03)":"#fff",
+          color:roundIdx>=rounds.length-1?"#ccc":"#555",fontSize:18,cursor:roundIdx>=rounds.length-1?"default":"pointer",
+          display:"flex",alignItems:"center",justifyContent:"center",flexShrink:0,
+        }}>›</button>
+      </div>
+    </div>
+
+    {/* Liste des matchs */}
+    <div style={{flex:1,overflowY:"auto"}}>
+      {stMatches==="load"&&<div style={{padding:"60px 20px",textAlign:"center"}}><Spin/><div className="bc" style={{marginTop:12,color:"#888",fontSize:13}}>Chargement des matchs...</div></div>}
+      {stMatches==="empty"&&<div style={{textAlign:"center",padding:"60px 20px"}}>
+        <div style={{fontSize:40,marginBottom:12}}>📋</div>
+        <div className="bc" style={{fontSize:14,color:"#888"}}>Aucun match pour cette journée</div>
+      </div>}
+      {stMatches==="err"&&<div style={{textAlign:"center",padding:"60px 20px"}}>
+        <div style={{fontSize:40,marginBottom:12}}>❌</div>
+        <div className="bc" style={{fontSize:13,color:"#999"}}>Erreur de chargement</div>
+      </div>}
+
+      {/* ── VUE CLASSEMENT CALCULÉ ─────────────────────── */}
+      {tabView==="standings"&&<div style={{paddingBottom:20}}>
+        {(!selRound||stAll==="load")&&<div style={{padding:"60px 20px",textAlign:"center"}}><Spin/><div className="bc" style={{marginTop:12,color:"#888",fontSize:13}}>Calcul du classement...</div></div>}
+        {selRound&&stAll==="ok"&&computedStandings.length===0&&<div style={{textAlign:"center",padding:"60px 20px"}}>
+          <div style={{fontSize:40,marginBottom:12}}>📋</div>
+          <div className="bc" style={{fontSize:14,color:"#888"}}>Aucun match joué jusqu'à cette journée</div>
+        </div>}
+        {selRound&&stAll==="ok"&&computedStandings.length>0&&<>
+          {/* Info */}
+          <div style={{padding:"10px 14px",background:"rgba(0,184,107,.06)",borderBottom:"1px solid rgba(0,184,107,.15)",display:"flex",alignItems:"center",gap:8}}>
+            <span style={{fontSize:16}}>📊</span>
+            <span className="bc" style={{fontSize:12,color:"#00b86b",fontWeight:700}}>Classement calculé après {roundLabel(selRound)}</span>
+          </div>
+          {/* Header colonnes */}
+          <div style={{display:"grid",gridTemplateColumns:"28px 1fr 28px 28px 28px 28px 32px 36px",padding:"7px 12px",background:"rgba(0,0,0,.04)",borderBottom:"1px solid rgba(0,0,0,.08)",position:"sticky",top:0,zIndex:2}}>
+            {[["#","#999"],["Équipe","#999"],["MJ","#888"],["V","#00b86b"],["N","#888"],["D","#e53535"],["DB","#888"],["PTS","#1a1d23"]].map(([h,c])=>
+              <div key={h} className="bc" style={{fontSize:9,fontWeight:800,color:c,textAlign:h==="Équipe"?"left":"center",letterSpacing:.8}}>{h}</div>
+            )}
+          </div>
+          {/* Lignes */}
+          {computedStandings.map((r,i)=>{
+            const isTop=i<3;
+            const gd=r.gd;
+            return<div key={r.team.id} style={{
+              display:"grid",gridTemplateColumns:"28px 1fr 28px 28px 28px 28px 32px 36px",
+              padding:"10px 12px",
+              borderBottom:"1px solid rgba(0,0,0,.05)",
+              background:isTop?"rgba(0,184,107,.03)":"#fff",
+              borderLeft:`3px solid ${i===0?"#00b86b":i===1?"#42a5f5":i===2?"#ff9800":"transparent"}`,
+              alignItems:"center",
+            }}>
+              <div className="bc" style={{fontSize:12,fontWeight:900,color:i<3?"#00b86b":"#aaa",textAlign:"center"}}>{r.rank}</div>
+              <div style={{display:"flex",alignItems:"center",gap:7,minWidth:0}}>
+                <Logo src={r.team.logo} size={22}/>
+                <div style={{minWidth:0}}>
+                  <div className="bc" style={{fontSize:13,fontWeight:isTop?800:500,color:"#1a1d23",overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap"}}>{r.team.name}</div>
+                  <div style={{display:"flex",gap:2,marginTop:2}}>
+                    {r.form.slice(-5).map((f,j)=>{
+                      const bg=f==="W"?"#00b86b":f==="L"?"#e53535":"#888";
+                      return<div key={j} className="bc" style={{width:13,height:13,borderRadius:3,background:bg,fontSize:7,fontWeight:900,color:"#fff",display:"flex",alignItems:"center",justifyContent:"center"}}>
+                        {f==="W"?"V":f==="L"?"D":"N"}
+                      </div>;
+                    })}
+                  </div>
+                </div>
+              </div>
+              <div className="bc" style={{fontSize:12,color:"#888",textAlign:"center"}}>{r.mp}</div>
+              <div className="bc" style={{fontSize:12,color:"#00b86b",textAlign:"center",fontWeight:600}}>{r.w}</div>
+              <div className="bc" style={{fontSize:12,color:"#888",textAlign:"center"}}>{r.d}</div>
+              <div className="bc" style={{fontSize:12,color:"#e53535",textAlign:"center"}}>{r.l}</div>
+              <div className="bc" style={{fontSize:12,fontWeight:700,textAlign:"center",color:gd>0?"#00b86b":gd<0?"#e53535":"#888"}}>{gd>0?"+":""}{gd}</div>
+              <div className="bc" style={{fontSize:16,fontWeight:900,textAlign:"center",color:isTop?"#00b86b":"#1a1d23"}}>{r.pts}</div>
+            </div>;
+          })}
+        </>}
+      </div>}
+
+      {/* ── VUE RÉSULTATS ─────────────────────────────── */}
+      {tabView==="results"&&stMatches==="load"&&<div style={{padding:"60px 20px",textAlign:"center"}}><Spin/><div className="bc" style={{marginTop:12,color:"#888",fontSize:13}}>Chargement des matchs...</div></div>}
+      {tabView==="results"&&stMatches==="empty"&&<div style={{textAlign:"center",padding:"60px 20px"}}>
+        <div style={{fontSize:40,marginBottom:12}}>📋</div>
+        <div className="bc" style={{fontSize:14,color:"#888"}}>Aucun match pour cette journée</div>
+      </div>}
+      {tabView==="results"&&stMatches==="err"&&<div style={{textAlign:"center",padding:"60px 20px"}}>
+        <div style={{fontSize:40,marginBottom:12}}>❌</div>
+        <div className="bc" style={{fontSize:13,color:"#999"}}>Erreur de chargement</div>
+      </div>}
+
+      {tabView==="results"&&stMatches==="ok"&&<div style={{paddingBottom:20}}>
+        {Object.entries(byTime).map(([timeLabel,ms])=><div key={timeLabel}>
+          {/* Header date/heure */}
+          <div style={{
+            padding:"10px 14px 8px",
+            background:"rgba(0,0,0,.03)",
+            borderBottom:"1px solid rgba(0,0,0,.06)",
+            borderTop:"1px solid rgba(0,0,0,.04)",
+          }}>
+            <span className="bc" style={{fontSize:11,fontWeight:700,color:"#666",letterSpacing:.3}}>{timeLabel}</span>
+          </div>
+
+          {/* Matchs */}
+          {ms.map(m=>{
+            const h=m.teams.home,a=m.teams.away;
+            const hg=m.goals.home,ag=m.goals.away;
+            const sh=m.fixture.status.short;
+            const done=["FT","AET","PEN","AWD","WO"].includes(sh);
+            const live=LIVE_ST.has(sh);
+            const ns=NS_ST.has(sh);
+            const hw=done&&hg!=null&&ag!=null&&hg>ag;
+            const aw=done&&hg!=null&&ag!=null&&ag>hg;
+            const draw=done&&hg!=null&&ag!=null&&hg===ag;
+
+            return<div key={m.fixture.id} style={{
+              display:"flex",alignItems:"center",
+              padding:"12px 14px",
+              borderBottom:"1px solid rgba(0,0,0,.05)",
+              background:"#fff",
+              cursor:"pointer",
+              transition:"background .12s",
+            }}
+            onMouseEnter={e=>e.currentTarget.style.background="rgba(0,0,0,.02)"}
+            onMouseLeave={e=>e.currentTarget.style.background="#fff"}
+            >
+              {/* Équipe domicile */}
+              <div style={{flex:1,display:"flex",alignItems:"center",gap:8,justifyContent:"flex-end",minWidth:0}}>
+                <span className="bc" style={{
+                  fontSize:13,fontWeight:hw?800:500,
+                  color:hw?"#1a1d23":aw?"#aaa":"#444",
+                  textAlign:"right",overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap",
+                }}>{h.name}</span>
+                <Logo src={h.logo} size={26}/>
+              </div>
+
+              {/* Score */}
+              <div style={{
+                minWidth:64,textAlign:"center",flexShrink:0,
+                padding:"0 8px",
+              }}>
+                {done||live?<div style={{
+                  display:"flex",alignItems:"center",justifyContent:"center",gap:4,
+                }}>
+                  <span className="bc" style={{fontSize:18,fontWeight:900,color:hw?"#1a1d23":draw?"#555":"#bbb"}}>{hg??"-"}</span>
+                  <span className="bc" style={{fontSize:12,color:"#ccc",fontWeight:700}}>:</span>
+                  <span className="bc" style={{fontSize:18,fontWeight:900,color:aw?"#1a1d23":draw?"#555":"#bbb"}}>{ag??"-"}</span>
+                </div>:<div>
+                  <div className="bc" style={{fontSize:11,fontWeight:800,color:"#00b86b"}}>
+                    {new Date(m.fixture.date).toLocaleTimeString("fr-FR",{hour:"2-digit",minute:"2-digit"})}
+                  </div>
+                  {sh==="PST"&&<div className="bc" style={{fontSize:9,color:"#ff9800",fontWeight:700}}>REPORTÉ</div>}
+                </div>}
+                {live&&<div className="bc" style={{
+                  fontSize:9,fontWeight:900,color:"#e53535",
+                  letterSpacing:.5,marginTop:2,
+                }}>● {m.fixture.status.elapsed}'</div>}
+                {done&&<div className="bc" style={{fontSize:9,color:"#aaa",marginTop:1}}>
+                  {sh==="AET"?"A.P.":sh==="PEN"?"Tab.":"FIN"}
+                </div>}
+              </div>
+
+              {/* Équipe extérieure */}
+              <div style={{flex:1,display:"flex",alignItems:"center",gap:8,minWidth:0}}>
+                <Logo src={a.logo} size={26}/>
+                <span className="bc" style={{
+                  fontSize:13,fontWeight:aw?800:500,
+                  color:aw?"#1a1d23":hw?"#aaa":"#444",
+                  overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap",
+                }}>{a.name}</span>
+              </div>
+            </div>;
+          })}
+        </div>)}
+      </div>}
+    </div>
+
+    {/* Sheet config ligue/saison */}
+    <Sheet open={cfg} onClose={()=>setCfg(false)}>
+      <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",padding:"4px 16px 16px"}}>
+        <span style={{fontSize:16,fontWeight:800,color:"#1a1d23"}}>🔍 Configuration</span>
+        <button onClick={()=>setCfg(false)} style={{background:"rgba(0,0,0,.07)",border:"none",borderRadius:"50%",width:30,height:30,fontSize:16,cursor:"pointer",display:"flex",alignItems:"center",justifyContent:"center"}}>✕</button>
+      </div>
+      <div style={{padding:"0 16px",display:"flex",flexDirection:"column",gap:16,paddingBottom:48}}>
+        <div>
+          <div className="bc" style={{fontSize:10,fontWeight:800,color:"#888",letterSpacing:1.2,marginBottom:8}}>COMPÉTITION</div>
+          <select value={lid} onChange={e=>setLid(+e.target.value)} style={SEL}>
+            {[...new Set(LEAGUES.map(l=>l.region))].map(r=>
+              <optgroup key={r} label={r}>
+                {LEAGUES.filter(l=>l.region===r).map(l=>
+                  <option key={l.id} value={l.id}>{l.flag} {l.name} ({l.country})</option>
+                )}
+              </optgroup>
+            )}
+          </select>
+        </div>
+        <div>
+          <div className="bc" style={{fontSize:10,fontWeight:800,color:"#888",letterSpacing:1.2,marginBottom:8}}>SAISON</div>
+          <select value={season} onChange={e=>setSeason(+e.target.value)} style={SEL}>
+            {SEASONS_LIST.map(y=><option key={y} value={y}>{y}/{y+1}</option>)}
+          </select>
+        </div>
+        <button onClick={()=>setCfg(false)} style={{
+          background:"linear-gradient(135deg,#00b86b,#009657)",
+          border:"none",color:"#fff",borderRadius:12,
+          padding:"15px",fontSize:14,fontWeight:800,
+          cursor:"pointer",letterSpacing:.3,
+        }}>✅ Appliquer</button>
+      </div>
+    </Sheet>
+  </div>;
+}
 
 function App(){
   const[scr,setScr]=useState("scores");
-  const[favs,setFavs]=useState(()=>new Set());
+  const[favs,setFavs]=useState(()=>{
+    try{const s=localStorage.getItem("wf_favs");return s?new Set(JSON.parse(s)):new Set();}
+    catch{return new Set();}
+  });
+  useEffect(()=>{try{localStorage.setItem("wf_favs",JSON.stringify([...favs]));}catch{};},[favs]);
   const[installEvt,setIE]=useState(null);
   const toggleFav=useCallback(id=>{setFavs(s=>{const n=new Set(s);n.has(id)?n.delete(id):n.add(id);return n;});},[]);
+
+  // ── NOTIFICATIONS ──────────────────────────────────────
+  const[notifPerm,setNotifPerm]=useState(typeof Notification!=="undefined"?Notification.permission:"denied");
+  const requestNotif=useCallback(async()=>{
+    if(typeof Notification==="undefined")return;
+    const p=await Notification.requestPermission();
+    setNotifPerm(p);
+    if(p==="granted"){
+      new Notification("WorldFoot Pro ⚽",{
+        body:"Notifications activées ! Vous recevrez les alertes des matchs favoris.",
+        icon:"data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 192 192'><rect width='192' height='192' rx='40' fill='%2300b86b'/><text y='140' x='96' text-anchor='middle' font-size='120'>⚡</text></svg>",
+      });
+    }
+  },[]);
+
+  // Surveiller les matchs favoris toutes les 30s pour envoyer notifs
+  const notifSentRef=useRef(new Set());
+  useEffect(()=>{
+    if(notifPerm!=="granted"||favs.size===0)return;
+    const check=async()=>{
+      try{
+        const favIds=[...favs];
+        for(const id of favIds){
+          const fx=await api(`/fixtures?id=${id}`,0);
+          const fix=fx[0];if(!fix)continue;
+          const s=fix.fixture.status.short;
+          const hg=fix.goals.home??0,ag=fix.goals.away??0;
+          const key=`${id}_${s}_${hg}_${ag}`;
+          if(notifSentRef.current.has(key))continue;
+          notifSentRef.current.add(key);
+          const hName=fix.teams.home.name,aName=fix.teams.away.name;
+          if(s==="HT") new Notification(`⏸ Mi-temps`,{body:`${hName} ${hg} - ${ag} ${aName}`});
+          else if(s==="FT") new Notification(`🏁 Fin du match`,{body:`${hName} ${hg} - ${ag} ${aName}`});
+          else if(LIVE_ST.has(s)){
+            const events=await api(`/fixtures/events?fixture=${id}`,0);
+            const lastGoal=events.filter(e=>e.type==="Goal").pop();
+            if(lastGoal){
+              const gKey=`${id}_goal_${lastGoal.time?.elapsed}`;
+              if(!notifSentRef.current.has(gKey)){
+                notifSentRef.current.add(gKey);
+                const scorer=lastGoal.player?.name?.split(" ").pop()||"";
+                const team=lastGoal.team?.name||"";
+                new Notification(`⚽ But ! ${team}`,{body:`${hName} ${hg} - ${ag} ${aName}\n${scorer} ${lastGoal.time?.elapsed}'`});
+              }
+            }
+          }
+        }
+      }catch{}
+    };
+    check();
+    const t=setInterval(check,30000);
+    return()=>clearInterval(t);
+  },[favs,notifPerm]);
   useEffect(()=>{const h=e=>{e.preventDefault();setIE(e);};window.addEventListener('beforeinstallprompt',h);return()=>window.removeEventListener('beforeinstallprompt',h);},[]);
 
   return<div style={{background:T.bg0,height:"100svh",width:"100%",maxWidth:430,margin:"0 auto",display:"flex",flexDirection:"column",overflow:"hidden"}}>
     {/* Header premium */}
     <div style={{
-      background:"linear-gradient(180deg,#1a0a0a 0%,#0f0a0a 100%)",
+      background:"linear-gradient(180deg,#00b86b 0%,#009657 100%)",
       flexShrink:0,
       paddingTop:"env(safe-area-inset-top)",
       width:"100%",
-      borderBottom:`1px solid rgba(229,53,53,.2)`,
-      boxShadow:"0 2px 32px rgba(229,53,53,.12)",
+      borderBottom:`1px solid rgba(0,150,87,.3)`,
+      boxShadow:"0 2px 32px rgba(0,184,107,.2)",
       position:"relative",
       overflow:"hidden",
     }}>
       {/* Fond d coratif */}
-      <div style={{position:"absolute",inset:0,background:"radial-gradient(ellipse 80% 100% at 50% -20%,rgba(229,53,53,.18) 0%,transparent 70%)",pointerEvents:"none"}}/>
+      <div style={{position:"absolute",inset:0,background:"radial-gradient(ellipse 80% 100% at 50% -20%,rgba(255,255,255,.1) 0%,transparent 70%)",pointerEvents:"none"}}/>
       <div style={{display:"flex",alignItems:"center",justifyContent:"space-between",padding:"13px 16px 0",position:"relative"}}>
         <div style={{display:"flex",alignItems:"center",gap:10}}>
           {/* Logo avec glow */}
           <div style={{
             width:34,height:34,
-            background:"linear-gradient(135deg,#e53535,#c62828)",
+            background:"rgba(255,255,255,.2)",
             borderRadius:10,
             display:"flex",alignItems:"center",justifyContent:"center",
             fontSize:18,
-            boxShadow:"0 3px 12px rgba(229,53,53,.5)",
+            boxShadow:"0 3px 12px rgba(0,0,0,.15)",
             flexShrink:0,
           }}>⚡</div>
           <div>
             <div className="bc" style={{fontSize:24,fontWeight:900,color:"#fff",letterSpacing:-.5,lineHeight:1,textTransform:"uppercase"}}>WorldFoot</div>
-            <div style={{fontSize:9,color:"rgba(229,53,53,.9)",fontWeight:700,letterSpacing:2.5,textTransform:"uppercase",marginTop:1}}>PRO · LIVE</div>
+            <div style={{fontSize:9,color:"rgba(255,255,255,.8)",fontWeight:700,letterSpacing:2.5,textTransform:"uppercase",marginTop:1}}>PRO · LIVE</div>
           </div>
         </div>
         <div style={{display:"flex",alignItems:"center",gap:8}}>
-          {installEvt&&<button onClick={()=>{installEvt.prompt();installEvt.userChoice.then(()=>setIE(null));}} style={{background:"rgba(229,53,53,.15)",border:"1px solid rgba(229,53,53,.3)",color:"#ff8a80",borderRadius:8,padding:"5px 11px",fontSize:11,fontWeight:700,cursor:"pointer"}}>📲 Installer</button>}
-          <div style={{display:"flex",alignItems:"center",gap:6,background:"rgba(229,53,53,.12)",border:"1px solid rgba(229,53,53,.25)",borderRadius:20,padding:"5px 11px"}}>
+          {installEvt&&<button onClick={()=>{installEvt.prompt();installEvt.userChoice.then(()=>setIE(null));}} style={{background:"rgba(255,255,255,.2)",border:"1px solid rgba(255,255,255,.3)",color:"#fff",borderRadius:8,padding:"5px 11px",fontSize:11,fontWeight:700,cursor:"pointer"}}>📲 Installer</button>}
+          {typeof Notification!=="undefined"&&notifPerm!=="granted"&&<button onClick={requestNotif} style={{background:"rgba(255,255,255,.2)",border:"1px solid rgba(255,255,255,.3)",color:"#fff",borderRadius:8,padding:"5px 11px",fontSize:11,fontWeight:700,cursor:"pointer"}}>🔔 Alertes</button>}
+          {notifPerm==="granted"&&favs.size>0&&<div style={{background:"rgba(255,255,255,.2)",border:"1px solid rgba(255,255,255,.3)",borderRadius:8,padding:"5px 11px",display:"flex",alignItems:"center",gap:4}}>
+            <span style={{fontSize:10}}>🔔</span>
+            <span className="bc" style={{fontSize:10,fontWeight:700,color:"#fff"}}>{favs.size} favori{favs.size!==1?"s":""}</span>
+          </div>}
+          <div style={{display:"flex",alignItems:"center",gap:6,background:"rgba(255,255,255,.2)",border:"1px solid rgba(255,255,255,.3)",borderRadius:20,padding:"5px 11px"}}>
             <div className="live-dot"/>
-            <span className="bc" style={{fontSize:11,fontWeight:800,color:"#ff5252",letterSpacing:1.2}}>LIVE</span>
+            <span className="bc" style={{fontSize:11,fontWeight:800,color:"#fff",letterSpacing:1.2}}>LIVE</span>
           </div>
         </div>
       </div>
@@ -1670,7 +2889,7 @@ function App(){
           }}>
             {tab.icon(a)}
             <span className="bc" style={{fontSize:10,fontWeight:a?800:600,letterSpacing:1,textTransform:"uppercase"}}>{tab.label}</span>
-            {a&&<div style={{position:"absolute",bottom:0,left:"20%",right:"20%",height:2,background:"linear-gradient(90deg,transparent,#e53535,transparent)",borderRadius:2}}/>}
+            {a&&<div style={{position:"absolute",bottom:0,left:"20%",right:"20%",height:2,background:"linear-gradient(90deg,transparent,#fff,transparent)",borderRadius:2}}/>}
           </button>;
         })}
       </div>
@@ -1681,6 +2900,8 @@ function App(){
       {scr==="standings" &&<StandingsTab/>}
       {scr==="scorers"   &&<ScorersTab/>}
       {scr==="calendar"  &&<CalendarTab  favs={favs} onFav={toggleFav}/>}
+      {scr==="transfers" &&<TransfersTab/>}
+      {scr==="results"   &&<ResultsTab/>}
     </div>
     <div style={{height:"env(safe-area-inset-bottom)",background:T.bg0,flexShrink:0}}/>
   </div>;
