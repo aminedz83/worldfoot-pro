@@ -2127,9 +2127,9 @@ function JSKCard({a,onOpen}){
   const SC={"DZFoot":"#00883a","Competition.dz":"#c8002d","Google News":"#1a73e8"};
   const c=SC[a.source]||JSK_GREEN;
   return<div onClick={()=>onOpen(a)} style={{display:"flex",margin:"0 12px 10px",background:"#fff",borderRadius:14,overflow:"hidden",boxShadow:"0 2px 8px rgba(0,0,0,.07)",cursor:"pointer"}}>
-    <div style={{width:88,height:88,flexShrink:0,background:"linear-gradient(135deg,"+JSK_GREEN+",#003d20)",display:"flex",alignItems:"center",justifyContent:"center",flexDirection:"column",gap:2}}>
-      <div style={{fontSize:20,fontWeight:900,color:JSK_YELLOW,letterSpacing:1}}>JSK</div>
-      <div style={{fontSize:8,color:"rgba(255,255,255,.7)",fontWeight:700,letterSpacing:1}}>KABYLIE</div>
+    <div style={{width:88,height:88,flexShrink:0,background:"linear-gradient(135deg,"+JSK_GREEN+",#003d20)",display:"flex",alignItems:"center",justifyContent:"center",overflow:"hidden"}}>
+      <img src={a.image||JSK_LOGO} alt="" style={{width:"100%",height:"100%",objectFit:"cover"}}
+        onError={e=>{e.target.src=JSK_LOGO;e.target.style.objectFit="contain";e.target.style.padding="8px";}}/>
     </div>
     <div style={{flex:1,padding:"10px 12px",display:"flex",flexDirection:"column",justifyContent:"space-between",minWidth:0}}>
       <div style={{fontSize:13,fontWeight:700,color:"#1a1d23",lineHeight:1.35,display:"-webkit-box",WebkitLineClamp:3,WebkitBoxOrient:"vertical",overflow:"hidden"}}>{a.title}</div>
@@ -2174,9 +2174,9 @@ function JSKTab(){
       <span style={{fontSize:13,fontWeight:800,color:"#fff",flex:1}}>JS Kabylie</span>
     </div>
     <div style={{flex:1,overflowY:"auto",padding:"20px 16px"}}>
-      <div style={{width:"100%",height:160,borderRadius:14,overflow:"hidden",marginBottom:16,background:"linear-gradient(135deg,"+JSK_GREEN+",#003d20)",display:"flex",alignItems:"center",justifyContent:"center",flexDirection:"column",gap:6}}>
-        <div style={{fontSize:48,fontWeight:900,color:JSK_YELLOW,fontFamily:"serif",letterSpacing:2}}>JSK</div>
-        <div style={{fontSize:12,color:"rgba(255,255,255,.7)",fontWeight:700,letterSpacing:3}}>JS KABYLIE</div>
+      <div style={{width:"100%",height:180,borderRadius:14,overflow:"hidden",marginBottom:16,background:"linear-gradient(135deg,"+JSK_GREEN+",#003d20)"}}>
+        <img src={selected.image||JSK_LOGO} alt="" style={{width:"100%",height:"100%",objectFit:"cover"}}
+          onError={e=>{e.target.src=JSK_LOGO;e.target.style.objectFit="contain";e.target.style.padding="20px";}}/>
       </div>
       <div style={{display:"flex",alignItems:"center",gap:8,marginBottom:12}}>
         <div style={{background:JSK_GREEN,borderRadius:6,padding:"3px 10px"}}><span style={{fontSize:10,fontWeight:900,color:"#fff"}}>{selected.source}</span></div>
