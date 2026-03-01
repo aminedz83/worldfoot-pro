@@ -2131,20 +2131,13 @@ const SB_URL = "https://iqeqlsxjiklygywjirqs.supabase.co";
 const SB_KEY = "sb_publishable_IS9q0rpm-NFpEm_jNoKTTA_q_xX4-0m";
 
 async function sbGet(table, params=""){
-  // Appel via Edge Function publique (contourne le problème de clé)
-  const url = `${SB_URL}/functions/v1/get-transfers?${params}`;
-  const r = await fetch(url, {
-    method: "GET",
-    headers: {
-      "Content-Type": "application/json",
-      "apikey": SB_KEY,
-      "Authorization": "Bearer " + SB_KEY,
-    }
-  });
+  // Appel direct Edge Function publique sans auth
+  const url = "https://iqeqlsxjiklygywjirqs.supabase.co/functions/v1/get-transfers";
+  const r = await fetch(url, { method: "GET" });
   const txt = await r.text();
-  if(!r.ok) throw new Error("HTTP " + r.status + ": " + txt);
+  if(!r.ok) throw new Error("HTTP " + r.status);
   try { return JSON.parse(txt); }
-  catch(e) { throw new Error("Parse: " + txt.slice(0,100)); }
+  catch(e) { throw new Error("Parse error"); }
 }
 
 const TOP_LEAGUES=[
