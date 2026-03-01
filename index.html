@@ -2126,6 +2126,7 @@ const JSK_YELLOW = "#FFD700";
 function JSKTab(){
   const[articles,setArticles]=useState([]);
   const[st,setSt]=useState("load");
+  const[openUrl,setOpenUrl]=useState(null);
   const[lastUpdate,setLastUpdate]=useState(null);
 
   const load=()=>{
@@ -2143,10 +2144,16 @@ function JSKTab(){
 
   useEffect(()=>{load();},[]);
 
-  // Ouvrir article dans nouvel onglet Safari (iframe bloque les sites)
-  const openArticle = (url) => {
-    if(url) window.open(url, '_blank', 'noopener');
-  };
+  const openArticle = (url) => { if(url) setOpenUrl(url); };
+
+  if(openUrl) return<div style={{display:"flex",flexDirection:"column",height:"100%",background:"#fff"}}>
+    <div style={{display:"flex",alignItems:"center",gap:10,padding:"12px 14px",background:JSK_GREEN,flexShrink:0,paddingTop:"calc(12px + env(safe-area-inset-top))"}}>
+      <button onClick={()=>setOpenUrl(null)} style={{background:"rgba(255,255,255,.2)",border:"none",borderRadius:10,padding:"7px 14px",color:"#fff",fontSize:13,fontWeight:800,cursor:"pointer"}}>← Retour</button>
+      <img src={JSK_LOGO} width={26} height={26} style={{borderRadius:"50%",objectFit:"cover",border:"2px solid "+JSK_YELLOW}}/>
+      <span style={{fontSize:13,fontWeight:800,color:"#fff",flex:1}}>JS Kabylie</span>
+    </div>
+    <iframe src={openUrl} style={{flex:1,border:"none",width:"100%"}} title="article" sandbox="allow-scripts allow-same-origin allow-popups allow-forms allow-top-navigation"/>
+  </div>;
 
   return<div style={{display:"flex",flexDirection:"column",height:"100%",background:"#f0f2f5",overflow:"hidden"}}>
 
