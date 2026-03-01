@@ -2173,19 +2173,23 @@ function JSKTab(){
   const[st,setSt]=useState("load");
   const[selected,setSelected]=useState(null);
   const[lastUpdate,setLastUpdate]=useState(null);
-  const load=()=>{
-    // Afficher le cache immédiatement
-    const stale = cacheGetStale("jsk_articles");
-    if(stale && stale.length) { setArticles(stale); setSt("ok"); }
-    else setSt("load");
-    // Mettre à jour en arrière-plan
+  const load=(force=false)=>{
+    if(!force){
+      // Afficher le cache immédiatement au démarrage
+      const stale = cacheGetStale("jsk_articles");
+      if(stale && stale.length) { setArticles(stale); setSt("ok"); }
+      else setSt("load");
+    } else {
+      // Forcer le rechargement
+      setSt("load");
+    }
     fetch(JSK_FEED_URL).then(r=>r.json()).then(d=>{
       if(!d||!d.items) throw new Error();
       cacheSet("jsk_articles", d.items);
       setArticles(d.items);setLastUpdate(new Date());setSt(d.items.length?"ok":"empty");
-    }).catch(()=>{ if(!stale) setSt("err"); });
+    }).catch(()=>{ if(force) setSt("err"); });
   };
-  useEffect(()=>{load();},[]);
+  useEffect(()=>{load(false);},[]);
 
   const openArt = (a) => {
     if(!a) return;
@@ -2237,7 +2241,7 @@ function JSKTab(){
           <div style={{fontSize:11,color:JSK_YELLOW,fontWeight:700,letterSpacing:1.5,marginTop:2}}>ACTUALITE · 48H</div>
           {lastUpdate&&<div style={{fontSize:10,color:"rgba(255,255,255,.5)",marginTop:2}}>Mis a jour {lastUpdate.toLocaleTimeString("fr-FR",{hour:"2-digit",minute:"2-digit"})}</div>}
         </div>
-        <button onClick={load} style={{background:"rgba(255,255,255,.15)",border:"1px solid rgba(255,255,255,.2)",borderRadius:10,padding:"8px 12px",color:"#fff",fontSize:14,fontWeight:700,cursor:"pointer"}}>&#8635;</button>
+        <button onClick={load} style={{background:"rgba(255,255,255,.15)",border:"1px solid rgba(255,255,255,.2)",borderRadius:10,padding:"8px 12px",color:"#fff",fontSize:14,fontWeight:700,cursor:"pointer"}} onClick2>&#8635;</button>
       </div>
     </div>
     <div style={{flex:1,overflowY:"auto",WebkitOverflowScrolling:"touch",paddingTop:10}}>
