@@ -61,12 +61,13 @@ body{
   overflow:hidden;
   letter-spacing:.01em;
 }
-#root{height:100%;display:flex;flex-direction:column}
+#root{height:100dvh;display:flex;flex-direction:column;overflow:hidden}
 ::-webkit-scrollbar{display:none}*{scrollbar-width:none}
 input,select,button{font-family:"Barlow",-apple-system,sans-serif}
 select option{background:#eef0f4;color:#1a1d23}
 div::-webkit-scrollbar{display:none}
 *{-webkit-tap-highlight-color:transparent;-webkit-touch-callout:none;}
+.scroll-safe{padding-bottom:max(80px, calc(70px + env(safe-area-inset-bottom))) !important;}
 button,a{-webkit-tap-highlight-color:transparent;}
 
 @keyframes spin    {to{transform:rotate(360deg)}}
@@ -305,7 +306,8 @@ const LEAGUES=[
   {id:34, name:"Coupe du Monde U20",country:"Monde",    flag:"🌍",region:"Mondial",    isCup:true,hasGroups:true,hasKnockout:true},
 ];
 const REGIONS = [...new Set(LEAGUES.map(l=>l.region))];
-const SEASONS = Array.from({length:26},(_,i)=>2024-i);
+const SEASONS = Array.from({length:26},(_,i)=>2030-i);
+const CUR_SEASON=(()=>{const y=new Date().getFullYear();return new Date().getMonth()>=6?y:y-1;})();
 const LIVE_ST  = new Set(["1H","HT","2H","ET","BT","P"]);
 const DONE_ST  = new Set(["FT","AET","PEN","AWD","WO"]);
 const NS_ST    = new Set(["NS","TBD","PST","CANC"]);
@@ -316,9 +318,19 @@ const CANCEL_ST= new Set(["CANC"]);
 // API   cache 15s
 //
 const _cache=new Map();
+let _apiCallsToday=parseInt(localStorage.getItem('wf_api_calls_'+new Date().toDateString())||'0');
+let _apiCallsDate=new Date().toDateString();
+function _trackApiCall(){
+  const today=new Date().toDateString();
+  if(today!==_apiCallsDate){_apiCallsToday=0;_apiCallsDate=today;}
+  _apiCallsToday++;
+  try{localStorage.setItem('wf_api_calls_'+today,_apiCallsToday);}catch(e){}
+}
+
 async function api(path,ttl=15000,signal=null){
   const now=Date.now();
   if(_cache.has(path)&&now-_cache.get(path).t<ttl) return _cache.get(path).d;
+  _trackApiCall();
   const r=await fetch(BASE+path,{headers:{"x-apisports-key":API_KEY},signal});
   if(!r.ok) throw new Error(`Erreur HTTP ${r.status}`);
   const j=await r.json();
@@ -1013,7 +1025,7 @@ function PlayersStatsPanel({players,homeTeam,awayTeam}){
 //
 // MODULE COMPOSITIONS + SCH MAS
 //
-function ComposPanel({lineups,players,homeTeam,awayTeam}){
+function ComposPanel({lineups,players,homeTeam,awayTeam,isPartial}){
   const[view,setView]=useState("pitch"); // pitch | list
   const hLu=lineups.find(l=>l.team?.id===homeTeam?.id);
   const aLu=lineups.find(l=>l.team?.id===awayTeam?.id);
@@ -1021,7 +1033,12 @@ function ComposPanel({lineups,players,homeTeam,awayTeam}){
   const aPh=players.find(t=>t.team?.id===awayTeam?.id)?.players??[];
   const ph=(tp,pid)=>tp.find(p=>p.player?.id===pid)?.player?.photo;
 
-  if(!hLu&&!aLu) return<div style={{textAlign:"center",padding:"28px 20px",color:T.t3,fontSize:13}}>Compositions non disponibles</div>;
+  if(!hLu&&!aLu) return<div style={{textAlign:"center",padding:"44px 20px",color:T.t3,display:"flex",flexDirection:"column",alignItems:"center",gap:12}}>
+    {isPartial
+      ?<><Spin s={24}/><span style={{fontSize:13}}>Chargement compositions...</span></>
+      :<><div style={{fontSize:36}}>📋</div><div style={{fontSize:13}}>Compositions non disponibles</div></>
+    }
+  </div>;
 
   const Plr=({p,tp,tc})=><div style={{display:"flex",alignItems:"center",padding:"9px 16px",borderBottom:`1px solid ${T.line}11`,gap:11}}>
     <span style={{fontSize:11,fontWeight:700,color:T.t4,width:22,textAlign:"center",flexShrink:0}}>{p.player?.number}</span>
@@ -1107,6 +1124,7 @@ function MatchDetail({state,onClose}){
 
   // Early returns apr s les hooks
   if(!state)return null;
+  const isPartial=state.partial===true;
   if(state.loading)return<Sheet open onClose={onClose}>
     <div style={{display:"flex",flexDirection:"column",alignItems:"center",gap:14,padding:"52px 20px"}}>
       <Spin s={30}/><span style={{fontSize:13,color:T.t3}}>Chargement du match...</span>
@@ -1131,16 +1149,16 @@ const gv=(arr,k)=>arr.find(x=>x.type===k)?.value??0;
   const mEvt=events.filter(e=>e.type!=="subst");
   const goals=mEvt.filter(e=>e.type==="Goal");
 
-  // Tabs disponibles selon donn es pr sentes
+  // Tabs disponibles — si partial on affiche tous les onglets possibles avec spinner
   const TABS=[
     {id:"resume",    label:"Résumé"},
-    events.length            ?{id:"evts",     label:"Événements"}:null,
-    hSt.length               ?{id:"stats",    label:"Stats"}     :null,
-    lineups.length           ?{id:"compos",   label:"⚽ Compos"} :null,
-    players.some(t=>t.players?.length)?{id:"joueurs",  label:"👤 Joueurs"}:null,
-    (injuries.length)        ?{id:"absents",  label:"🤕 Absents"} :null,
-    h2h.length               ?{id:"h2h",      label:"H2H"}       :null,
-    h2h.length               ?{id:"analyse",  label:"📊 Analyse"} :null,
+    (events.length||isPartial)            ?{id:"evts",     label:"Événements"}:null,
+    (hSt.length||isPartial)               ?{id:"stats",    label:"Stats"}     :null,
+    (lineups.length||isPartial)           ?{id:"compos",   label:"⚽ Compos"} :null,
+    (players.some(t=>t.players?.length)||isPartial)?{id:"joueurs",  label:"👤 Joueurs"}:null,
+    (injuries.length||isPartial)          ?{id:"absents",  label:"🤕 Absents"} :null,
+    (h2h.length||isPartial)               ?{id:"h2h",      label:"H2H"}       :null,
+    (h2h.length||isPartial)               ?{id:"analyse",  label:"📊 Analyse"} :null,
   ].filter(Boolean);
 
   const SK_CATS=[
@@ -1239,6 +1257,12 @@ const gv=(arr,k)=>arr.find(x=>x.type===k)?.value??0;
 
 
   return<Sheet open onClose={onClose}>
+    {/* Barre de chargement progressif */}
+    {isPartial&&<div style={{
+      height:2,background:"linear-gradient(90deg,#00b86b,#42e695,#00b86b)",
+      backgroundSize:"200% 100%",animation:"shimmer 1.2s linear infinite",
+      position:"absolute",top:0,left:0,right:0,zIndex:10,borderRadius:"20px 20px 0 0"
+    }}/>}
     {/* Ligue + fermer */}
     <div style={{display:"flex",alignItems:"center",justifyContent:"space-between",padding:"4px 16px 12px"}}>
       <div style={{display:"flex",alignItems:"center",gap:8}}>
@@ -1318,12 +1342,16 @@ const gv=(arr,k)=>arr.find(x=>x.type===k)?.value??0;
     <div style={{paddingBottom:32,animation:"fadeIn .2s ease"}}>
 
       {tab==="resume"&&(mEvt.length===0
-        ?<div style={{textAlign:"center",padding:"32px 20px",color:T.t3,fontSize:14}}>Aucun événement</div>
+        ?<div style={{textAlign:"center",padding:"32px 20px",color:T.t3,fontSize:14,display:"flex",flexDirection:"column",alignItems:"center",gap:10}}>
+           {isPartial?<><Spin s={20}/><span style={{fontSize:12}}>Chargement...</span></>:"Aucun événement"}
+         </div>
         :mEvt.map((e,i)=><EvtCard key={i} e={e}/>))}
 
       {tab==="evts"&&<div style={{padding:"12px 0",animation:"fadeIn .2s ease"}}>
         {evtGroups.length===0
-          ?<div style={{textAlign:"center",padding:"40px 20px",color:T.t3}}>Aucun événement</div>
+          ?<div style={{textAlign:"center",padding:"40px 20px",color:T.t3,display:"flex",flexDirection:"column",alignItems:"center",gap:10}}>
+            {isPartial?<><Spin s={20}/><span style={{fontSize:12}}>Chargement événements...</span></>:"Aucun événement"}
+          </div>
           :evtGroups.map(g=><div key={g.label} style={{marginBottom:20}}>
             <div style={{display:"flex",alignItems:"center",gap:8,padding:"6px 14px 10px",borderBottom:`2px solid ${g.color}22`,marginBottom:4}}>
               <div style={{width:3,height:18,background:g.color,borderRadius:2}}/>
@@ -1336,6 +1364,8 @@ const gv=(arr,k)=>arr.find(x=>x.type===k)?.value??0;
       </div>}
 
       {tab==="stats"&&<div style={{padding:"12px 14px",animation:"fadeIn .2s ease"}}>
+        {/* Spinner si stats en cours de chargement */}
+        {isPartial&&hSt.length===0&&<div style={{textAlign:"center",padding:"32px",display:"flex",flexDirection:"column",alignItems:"center",gap:10,color:T.t3}}><Spin s={22}/><span style={{fontSize:13}}>Chargement statistiques...</span></div>}
         {/* Graphique tirs premium */}
         {(()=>{
           const totalH=num(gv(hSt,"Total Shots")),totalA=num(gv(aSt,"Total Shots"));
@@ -1363,9 +1393,9 @@ const gv=(arr,k)=>arr.find(x=>x.type===k)?.value??0;
               <div style={{display:"flex",flexDirection:"column",alignItems:"center",gap:8,paddingBottom:28}}>
                 <div style={{display:"flex",flexDirection:"column",alignItems:"center",gap:3}}>
                   <div style={{width:8,height:8,borderRadius:"50%",background:T.red}}/>
-                  <span className="bc" style={{fontSize:8,color:T.t4,letterSpacing:.5}}>CADRÉS</span>
+                  <span className="bc" style={{fontSize:9,color:T.t4,letterSpacing:.5}}>CADRÉS</span>
                   <div style={{width:8,height:8,borderRadius:2,background:"rgba(229,53,53,.3)"}}/>
-                  <span className="bc" style={{fontSize:8,color:T.t4,letterSpacing:.5}}>NON CAD.</span>
+                  <span className="bc" style={{fontSize:9,color:T.t4,letterSpacing:.5}}>NON CAD.</span>
                 </div>
               </div>
               {/* Équipe extérieur */}
@@ -1400,7 +1430,7 @@ const gv=(arr,k)=>arr.find(x=>x.type===k)?.value??0;
       </div>}
 
       {}
-      {tab==="compos"&&<ComposPanel lineups={lineups} players={players} homeTeam={fix.teams.home} awayTeam={fix.teams.away}/>}
+      {tab==="compos"&&<ComposPanel lineups={lineups} players={players} homeTeam={fix.teams.home} awayTeam={fix.teams.away} isPartial={isPartial}/>}
 
       {}
       {tab==="joueurs"&&<PlayersStatsPanel players={players} homeTeam={fix.teams.home} awayTeam={fix.teams.away}/>}
@@ -1409,6 +1439,7 @@ const gv=(arr,k)=>arr.find(x=>x.type===k)?.value??0;
       {tab==="absents"&&<InjuriesPanel injuries={injuries} homeTeam={fix.teams.home} awayTeam={fix.teams.away}/>}
 
       {tab==="h2h"&&<div>
+        {h2h.length===0&&isPartial&&<div style={{textAlign:"center",padding:"32px",display:"flex",flexDirection:"column",alignItems:"center",gap:10,color:T.t3}}><Spin s={22}/><span style={{fontSize:13}}>Chargement historique...</span></div>}
         <div style={{padding:"11px 16px",fontSize:11,fontWeight:700,color:T.t3,letterSpacing:1,textTransform:"uppercase",borderBottom:`1px solid ${T.line}`}}>Confrontations directes</div>
         {h2h.slice(0,10).map((m,i)=>{
           const hid=fix.teams.home.id,hh=m.teams.home.id===hid,mh=m.goals.home??0,ma=m.goals.away??0;
@@ -1447,7 +1478,7 @@ function ScoresTab({favs,onFav}){
   const load=useCallback(async(silent=false)=>{
     if(!silent){setSt("load");setErr("");}else setSpin(true);
     try{
-      const d=await api(`/fixtures?date=${date}&timezone=Europe/Paris`,0);
+      const d=await api(`/fixtures?date=${date}&timezone=Europe/Paris`,15000);
       setData(d);
       if(!silent)setSt("ok");
     }
@@ -1463,38 +1494,64 @@ function ScoresTab({favs,onFav}){
     return()=>ctrl.abort();
   },[load]);
 
-  // Timer adaptatif : se reconfigure quand hasLive change
+  // Timer adaptatif selon nb matchs live — économie quota
+  const liveCount=useMemo(()=>data.filter(f=>LIVE_ST.has(f?.fixture?.status?.short)).length,[data]);
+  const adaptiveInterval=liveCount>=4?15:liveCount>=1?30:60; // 15s/30s/60s
+
   useEffect(()=>{
     clearInterval(timerRef.current);clearInterval(cdRef.current);
     if(!isToday){setCd(null);return;}
-    setCd(15);
-    timerRef.current=setInterval(()=>loadRef.current(true),15000);
-    cdRef.current=setInterval(()=>setCd(c=>c<=1?15:c-1),1000);
+    const iv=adaptiveInterval;
+    setCd(iv);
+    timerRef.current=setInterval(()=>loadRef.current(true),iv*1000);
+    cdRef.current=setInterval(()=>setCd(c=>c<=1?iv:c-1),1000);
     return()=>{clearInterval(timerRef.current);clearInterval(cdRef.current);};
-  },[date,isToday]);
+  },[date,isToday,adaptiveInterval]);
   useEffect(()=>{const t=setTimeout(()=>stripRef.current?.querySelector("[data-td='1']")?.scrollIntoView({inline:"center",block:"nearest"}),80);return()=>clearTimeout(t);},[]);
 
   const openMatch=useCallback(async id=>{
     if(openMatch._ctrl) openMatch._ctrl.abort();
     openMatch._ctrl=new AbortController();
     const sig=openMatch._ctrl.signal;
-    setDet({loading:true});
+
+    // Phase 1 — Affichage IMMÉDIAT depuis cache si dispo
+    const cached=_cache.get(`/fixtures?id=${id}`);
+    const cachedFix=cached?.d?.[0]??null;
+    if(cachedFix){
+      setDet({partial:true,data:{fixture:cachedFix,stats:[],events:[],lineups:[],players:[],h2h:[],injuries:[]}});
+    } else {
+      setDet({loading:true});
+    }
+
     try{
-      const fx=await api(`/fixtures?id=${id}`,15000,sig);
+      // Cache adaptatif selon statut match
+      const sh=cachedFix?.fixture?.status?.short??"NS";
+      const isLive=LIVE_ST.has(sh);
+      const isDone=DONE_ST.has(sh);
+      const matchTTL=isLive?15000:isDone?10800000:21600000;
+      const detailTTL=isLive?15000:isDone?10800000:3600000;
+
+      const fx=await api(`/fixtures?id=${id}`,matchTTL,sig);
       const fix=fx[0];if(!fix)throw new Error("Match introuvable");
       const started=!NS_ST.has(fix.fixture.status.short);
-      const hid=fix.teams.home.id,aid=fix.teams.away.id,fid=fix.fixture.id,lid=fix.league.id,seas=fix.league.season;
-      // Tous les endpoints Pro en parall le   erreurs silencieuses (Pro peut  tre limit  selon endpoint)
-      const[stats,evts,lineups,plrs,h2h,injuries]=await Promise.all([
-        started?api(`/fixtures/statistics?fixture=${fid}`,15000).catch(()=>[]):Promise.resolve([]),
-        started?api(`/fixtures/events?fixture=${fid}`,15000).catch(()=>[]):Promise.resolve([]),
-        api(`/fixtures/lineups?fixture=${fid}`,3600000).catch(()=>[]),
-        started?api(`/fixtures/players?fixture=${fid}`,15000).catch(()=>[]):Promise.resolve([]),
-        api(`/fixtures/headtohead?h2h=${hid}-${aid}&last=50`,86400000).catch(()=>[]),
-        api(`/injuries?fixture=${fid}`,3600000).catch(()=>[]),
+      const hid=fix.teams.home.id,aid=fix.teams.away.id,fid=fix.fixture.id;
+
+      // Phase 2 — Events + Stats en premier (plus utiles visuellement)
+      const[evts,stats]=await Promise.all([
+        started?api(`/fixtures/events?fixture=${fid}`,detailTTL,sig).catch(()=>[]):Promise.resolve([]),
+        started?api(`/fixtures/statistics?fixture=${fid}`,detailTTL,sig).catch(()=>[]):Promise.resolve([]),
+      ]);
+      setDet(prev=>({...prev,partial:true,data:{...prev?.data,fixture:fix,stats,events:evts}}));
+
+      // Phase 3 — Lineups + Players + H2H + Injuries (secondaire)
+      const[lineups,plrs,h2h,injuries]=await Promise.all([
+        api(`/fixtures/lineups?fixture=${fid}`,detailTTL,sig).catch(()=>[]),
+        started?api(`/fixtures/players?fixture=${fid}`,detailTTL,sig).catch(()=>[]):Promise.resolve([]),
+        api(`/fixtures/headtohead?h2h=${hid}-${aid}&last=50`,86400000,sig).catch(()=>[]),
+        api(`/injuries?fixture=${fid}`,isDone?10800000:3600000,sig).catch(()=>[]),
       ]);
       setDet({data:{fixture:fix,stats,events:evts,lineups,players:plrs,h2h,injuries}});
-    }catch(e){setDet({error:e.message});}
+    }catch(e){if(e.name!=="AbortError")setDet({error:e.message});}
   },[]);
 
   const groups=useMemo(()=>{
@@ -1571,7 +1628,7 @@ function ScoresTab({favs,onFav}){
       {lg&&<button onClick={()=>setLg(null)} style={{border:`1px solid ${T.line}`,color:T.t3,borderRadius:10,padding:"8px 10px",fontSize:12,cursor:"pointer",background:"none",flexShrink:0}}>✕</button>}
     </div>
     {/* Liste */}
-    <div style={{flex:1,overflowY:"auto"}}>
+    <div style={{flex:1,overflowY:"auto",paddingBottom:"env(safe-area-inset-bottom)"}}>
       {st==="load"?<SkRows/>
       :st==="err"?<div style={{textAlign:"center",padding:"52px 24px"}}><div style={{fontSize:44,marginBottom:16}}>⚠️</div><div style={{fontSize:14,color:T.t2,marginBottom:24,lineHeight:1.5}}>{err}</div><button onClick={()=>load()} style={{background:T.red,border:"none",color:"#fff",borderRadius:10,padding:"12px 28px",fontSize:14,fontWeight:700,cursor:"pointer"}}>Réessayer</button></div>
       :groups.length===0?<div style={{textAlign:"center",padding:"64px 24px",display:"flex",flexDirection:"column",alignItems:"center",gap:10}}><div style={{fontSize:44,marginBottom:4,opacity:.5}}>📭</div><div className="bc" style={{fontSize:17,fontWeight:800,color:T.t2,letterSpacing:.3}}>Aucun match</div><div style={{fontSize:13,color:T.t4}}>{favOnly?"Aucun favori ce jour":q?"Aucun résultat pour cette recherche":"Pas de matchs programmés ce jour-là"}</div></div>
@@ -1609,7 +1666,7 @@ function FormBadge({c}){
   return<div className="bc" style={{
     width:16,height:16,borderRadius:4,background:bg,
     display:"flex",alignItems:"center",justifyContent:"center",
-    fontSize:8,fontWeight:900,color:"#fff",flexShrink:0,
+    fontSize:9,fontWeight:900,color:"#fff",flexShrink:0,
   }}>{c==="W"?"V":c==="L"?"D":"N"}</div>;
 }
 
@@ -1631,7 +1688,7 @@ function StRow({r,zc,viewMode}){
     {/* Rang */}
     <div className="bc" style={{
       width:22,fontSize:12,fontWeight:900,textAlign:"center",flexShrink:0,
-      color:r.rank===1?"#e65c00":r.rank<=3?"#555":"#999",
+      color:r.rank===1?"#00b86b":r.rank<=3?"#555":"#999",
     }}>{r.rank}</div>
 
     {/* Logo + Nom + Forme */}
@@ -1667,7 +1724,7 @@ function StRow({r,zc,viewMode}){
     {/* Points */}
     <div className="bc" style={{
       width:32,textAlign:"center",fontSize:16,fontWeight:900,flexShrink:0,
-      color:isTop?"#e65c00":"#1a1d23",
+      color:isTop?"#00b86b":"#1a1d23",
     }}>{r.points}</div>
   </div>;
 }
@@ -1702,7 +1759,7 @@ function KnockoutMatch({m}){
 }
 
 function StandingsTab(){
-  const[lid,setLid]=useState(39),[s,setS]=useState(2024);
+  const[lid,setLid]=useState(39),[s,setS]=useState(CUR_SEASON);
   const[allGroups,setAllGroups]=useState([]),[rounds,setRounds]=useState([]),[selRound,setSelRound]=useState("");
   const[roundMatches,setRoundMatches]=useState([]),[view,setView]=useState("standings");
   const[st,setSt]=useState("load"),[err,setErr]=useState(""),[cfg,setCfg]=useState(false);
@@ -1785,7 +1842,7 @@ function StandingsTab(){
           <div className="bc" style={{fontSize:15,fontWeight:800,overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap",color:"#1a1d23"}}>{l?.name??"—"}</div>
           <div style={{fontSize:11,color:"#888",marginTop:2}}>Saison {s}/{s+1}</div>
         </div>
-        <div style={{background:"#e65c00",borderRadius:8,padding:"4px 10px"}}>
+        <div style={{background:"#00b86b",borderRadius:8,padding:"4px 10px"}}>
           <span style={{fontSize:11,color:"#fff",fontWeight:700}}>⚙️</span>
         </div>
       </div>
@@ -1809,10 +1866,10 @@ function StandingsTab(){
         return<button key={v} onClick={()=>setViewMode(v)} className="bc" style={{
           flex:1,padding:"11px 4px",border:"none",
           background:a?"#fff":"#f7f7f7",
-          color:a?"#e65c00":"#888",
+          color:a?"#00b86b":"#888",
           fontSize:11,fontWeight:a?800:500,
           cursor:"pointer",letterSpacing:.3,
-          borderBottom:a?"2px solid #e65c00":"2px solid transparent",
+          borderBottom:a?"2px solid #00b86b":"2px solid transparent",
           transition:"all .2s",
         }}>{lb}</button>;
       })}
@@ -1832,10 +1889,10 @@ function StandingsTab(){
               background:"rgba(230,92,0,.06)",
               borderBottom:"1px solid rgba(230,92,0,.15)",
               borderTop:gi>0?"1px solid rgba(0,0,0,.06)":"none",
-              borderLeft:"4px solid #e65c00",
+              borderLeft:"4px solid #00b86b",
               display:"flex",alignItems:"center",gap:8,
             }}>
-              <span className="bc" style={{fontSize:11,fontWeight:800,color:"#e65c00",letterSpacing:1.5,textTransform:"uppercase"}}>GROUPE {grpName.replace("Group ","")}</span>
+              <span className="bc" style={{fontSize:11,fontWeight:800,color:"#00b86b",letterSpacing:1.5,textTransform:"uppercase"}}>GROUPE {grpName.replace("Group ","")}</span>
             </div>}
             {/* Header colonnes style Besocer */}
             <div style={{
@@ -1913,7 +1970,7 @@ function StandingsTab(){
       <div style={{padding:"4px 16px 16px"}}>
         <span style={{fontSize:16,fontWeight:700}}>Compétition</span>
       </div>
-      <div style={{padding:"0 16px",display:"flex",flexDirection:"column",gap:18,paddingBottom:48}}>
+      <div style={{padding:"0 16px",display:"flex",flexDirection:"column",gap:18,paddingBottom:"calc(48px + env(safe-area-inset-bottom))"}}>
         <div><div style={{fontSize:10,fontWeight:700,color:T.t3,letterSpacing:1.3,textTransform:"uppercase",marginBottom:9}}>COMPÉTITION</div>
           <select value={lid} onChange={e=>{setLid(+e.target.value);setView("standings");}} style={SEL}>
             {REGIONS2.map(r=><optgroup key={r} label={r}>{LEAGUES.filter(l=>l.region===r).map(l=><option key={l.id} value={l.id}>{l.flag} {l.name} ({l.country})</option>)}</optgroup>)}
@@ -1930,7 +1987,7 @@ function StandingsTab(){
 // ONGLET BUTEURS
 //
 function ScorersTab(){
-  const[lid,setLid]=useState(39),[s,setS]=useState(2024),[type,setTy]=useState("scorers"),[list,setList]=useState([]),[st,setSt]=useState("load");
+  const[lid,setLid]=useState(39),[s,setS]=useState(CUR_SEASON),[type,setTy]=useState("scorers"),[list,setList]=useState([]),[st,setSt]=useState("load");
   useEffect(()=>{let c=false;setSt("load");setList([]);const path=type==="assists"?`/players/topassists?league=${lid}&season=${s}`:`/players/topscorers?league=${lid}&season=${s}`;api(path,3600000).then(d=>{if(!c){setList(d);setSt("ok");}}).catch(()=>{if(!c)setSt("err");});return()=>{c=true;};},[lid,s,type]);
   const SEL={width:"100%",background:T.bg2,border:`1px solid ${T.bg4}`,color:T.t1,borderRadius:8,padding:"8px 11px",fontSize:12,fontWeight:600,outline:"none",cursor:"pointer"};
   return<div style={{display:"flex",flexDirection:"column",height:"100%",width:"100%",overflow:"hidden"}}>
@@ -1941,7 +1998,7 @@ function ScorersTab(){
       <div style={{flex:1,minWidth:120}}><select value={lid} onChange={e=>setLid(+e.target.value)} style={SEL}>{REGIONS.map(r=><optgroup key={r} label={r}>{LEAGUES.filter(l=>l.region===r).map(l=><option key={l.id} value={l.id}>{l.flag} {l.name}</option>)}</optgroup>)}</select></div>
       <div style={{minWidth:110}}><select value={s} onChange={e=>setS(+e.target.value)} style={SEL}>{SEASONS.map(x=><option key={x} value={x}>{x}/{x+1}</option>)}</select></div>
     </div>
-    <div style={{flex:1,overflowY:"auto"}}>
+    <div style={{flex:1,overflowY:"auto",paddingBottom:"env(safe-area-inset-bottom)"}}>
       {st==="load"?<div style={{display:"flex",justifyContent:"center",padding:52}}><Spin s={26}/></div>
       :st==="err"||list.length===0?<div style={{textAlign:"center",padding:"56px 24px",display:"flex",flexDirection:"column",alignItems:"center",gap:10}}><div style={{fontSize:40,opacity:.4}}>⚽</div><div className="bc" style={{fontSize:16,fontWeight:800,color:T.t2,letterSpacing:.3}}>Données indisponibles</div><div style={{fontSize:12,color:T.t4}}>Essayez une autre ligue ou saison</div></div>
       :list.slice(0,30).map((p,i)=>{
@@ -1974,11 +2031,11 @@ function ScorersTab(){
 // ONGLET CALENDRIER
 //
 function CalendarTab({favs,onFav}){
-  const[lid,setLid]=useState(39),[s,setS]=useState(2024),[byD,setByD]=useState({}),[st,setSt]=useState("load"),[detail,setDt]=useState(null);
+  const[lid,setLid]=useState(39),[s,setS]=useState(CUR_SEASON),[byD,setByD]=useState({}),[st,setSt]=useState("load"),[detail,setDt]=useState(null);
   useEffect(()=>{
     let c=false;setSt("load");setByD({});
     const from=today(),to=new Date();to.setDate(to.getDate()+28);
-    api(`/fixtures?league=${lid}&season=${s}&from=${from}&to=${to.toISOString().slice(0,10)}&status=NS`,1800000)
+    api(`/fixtures?league=${lid}&season=${s}&from=${from}&to=${to.toISOString().slice(0,3600000)}&status=NS`,3600000)
       .then(data=>{if(c)return;const g={};data.forEach(f=>{const d=f.fixture.date.slice(0,10);if(!g[d])g[d]=[];g[d].push(f);});setByD(g);setSt("ok");})
       .catch(()=>{if(!c)setSt("err");});
     return()=>{c=true;};
@@ -1987,19 +2044,42 @@ function CalendarTab({favs,onFav}){
     if(openMatch._ctrl) openMatch._ctrl.abort();
     openMatch._ctrl=new AbortController();
     const sig=openMatch._ctrl.signal;
-    setDt({loading:true});
+
+    // Phase 1 — Affichage immédiat depuis cache si dispo
+    const cached=_cache.get(`/fixtures?id=${id}`);
+    const cachedFix=cached?.d?.[0]??null;
+    if(cachedFix){
+      setDt({partial:true,data:{fixture:cachedFix,stats:[],events:[],lineups:[],players:[],h2h:[],injuries:[]}});
+    } else {
+      setDt({loading:true});
+    }
+
     try{
-      const fx=await api(`/fixtures?id=${id}`,15000,sig);
+      // Cache adaptatif selon statut match
+      const sh=cachedFix?.fixture?.status?.short??"NS";
+      const isLive=LIVE_ST.has(sh);
+      const isDone=DONE_ST.has(sh);
+      const matchTTL=isLive?15000:isDone?10800000:21600000;
+      const detailTTL=isLive?15000:isDone?10800000:3600000;
+
+      const fx=await api(`/fixtures?id=${id}`,matchTTL,sig);
       const fix=fx[0];if(!fix)throw new Error("Match introuvable");
       const started=!NS_ST.has(fix.fixture.status.short);
-      const hid=fix.teams.home.id,aid=fix.teams.away.id,fid=fix.fixture.id,lid=fix.league.id,seas=fix.league.season;
-      const[stats,evts,lineups,plrs,h2h,injuries]=await Promise.all([
-        started?api(`/fixtures/statistics?fixture=${fid}`,15000,sig).catch(()=>[]):Promise.resolve([]),
-        started?api(`/fixtures/events?fixture=${fid}`,15000,sig).catch(()=>[]):Promise.resolve([]),
-        api(`/fixtures/lineups?fixture=${fid}`,15000,sig).catch(()=>[]),
-        started?api(`/fixtures/players?fixture=${fid}`,15000,sig).catch(()=>[]):Promise.resolve([]),
+      const hid=fix.teams.home.id,aid=fix.teams.away.id,fid=fix.fixture.id;
+
+      // Phase 2 — Events + Stats (visible en premier)
+      const[evts,stats]=await Promise.all([
+        started?api(`/fixtures/events?fixture=${fid}`,detailTTL,sig).catch(()=>[]):Promise.resolve([]),
+        started?api(`/fixtures/statistics?fixture=${fid}`,detailTTL,sig).catch(()=>[]):Promise.resolve([]),
+      ]);
+      setDt(prev=>({...prev,partial:true,data:{...prev?.data,fixture:fix,stats,events:evts}}));
+
+      // Phase 3 — Lineups + Players + H2H + Injuries (arrière-plan)
+      const[lineups,plrs,h2h,injuries]=await Promise.all([
+        api(`/fixtures/lineups?fixture=${fid}`,detailTTL,sig).catch(()=>[]),
+        started?api(`/fixtures/players?fixture=${fid}`,detailTTL,sig).catch(()=>[]):Promise.resolve([]),
         api(`/fixtures/headtohead?h2h=${hid}-${aid}&last=50`,86400000,sig).catch(()=>[]),
-        api(`/injuries?fixture=${fid}`,15000,sig).catch(()=>[]),
+        api(`/injuries?fixture=${fid}`,isDone?10800000:3600000,sig).catch(()=>[]),
       ]);
       setDt({data:{fixture:fix,stats,events:evts,lineups,players:plrs,h2h,injuries}});
     }catch(e){if(e.name!=="AbortError")setDt({error:e.message});}
@@ -2010,7 +2090,7 @@ function CalendarTab({favs,onFav}){
       <div style={{flex:2}}><select value={lid} onChange={e=>setLid(+e.target.value)} style={SEL}>{REGIONS.map(r=><optgroup key={r} label={r}>{LEAGUES.filter(l=>l.region===r).map(l=><option key={l.id} value={l.id}>{l.flag} {l.name}</option>)}</optgroup>)}</select></div>
       <div style={{flex:1}}><select value={s} onChange={e=>setS(+e.target.value)} style={SEL}>{SEASONS.map(x=><option key={x} value={x}>{x}/{x+1}</option>)}</select></div>
     </div>
-    <div style={{flex:1,overflowY:"auto"}}>
+    <div style={{flex:1,overflowY:"auto",paddingBottom:"env(safe-area-inset-bottom)"}}>
       {st==="load"?<div style={{display:"flex",justifyContent:"center",padding:52}}><Spin s={26}/></div>
       :st==="err"?<div style={{textAlign:"center",padding:"44px 24px",color:T.t3}}>Données indisponibles</div>
       :Object.keys(byD).length===0?<div style={{textAlign:"center",padding:"56px 24px"}}><div style={{fontSize:44,marginBottom:14}}>📭</div><div style={{fontSize:15,color:T.t2}}>Aucun match à venir</div></div>
@@ -2046,6 +2126,27 @@ const NAV=[
 //
 // ONGLET TRANSFERTS
 //
+// ── Supabase Config ─────────────────────────────────────────
+const SB_URL = "https://iqeqlsxjiklygywjirqs.supabase.co";
+const SB_KEY = "sb_publishable_IS9q0rpm-NFpEm_jNoKTTA_q_xX4-0m";
+
+async function sbGet(table, params=""){
+  // Appel via Edge Function publique (contourne le problème de clé)
+  const url = `${SB_URL}/functions/v1/get-transfers?${params}`;
+  const r = await fetch(url, {
+    method: "GET",
+    headers: {
+      "Content-Type": "application/json",
+      "apikey": SB_KEY,
+      "Authorization": "Bearer " + SB_KEY,
+    }
+  });
+  const txt = await r.text();
+  if(!r.ok) throw new Error("HTTP " + r.status + ": " + txt);
+  try { return JSON.parse(txt); }
+  catch(e) { throw new Error("Parse: " + txt.slice(0,100)); }
+}
+
 const TOP_LEAGUES=[
   // ── Top 5 ──
   {id:39, name:"Premier League",  flag:"🏴󠁧󠁢󠁥󠁮󠁧󠁿"},
@@ -2106,60 +2207,228 @@ const TOP_LEAGUES=[
 const POS_COLORS={"ATT":"#e53535","MIL":"#00b86b","DEF":"#1976d2","GAR":"#7c4dff"};
 const POS_MAP={"Attacker":"ATT","Midfielder":"MIL","Defender":"DEF","Goalkeeper":"GAR"};
 
+// ── AFRICA TRANSFERS COMPONENT ──────────────────────────────
+const RELIABILITY_INFO={
+  5:{label:"OFFICIEL",   color:"#00b86b", bg:"rgba(0,184,107,.12)", stars:"⭐⭐⭐⭐⭐"},
+  4:{label:"CONFIRMÉ",   color:"#42a5f5", bg:"rgba(66,165,245,.12)", stars:"⭐⭐⭐⭐"},
+  3:{label:"PROBABLE",   color:"#f59e0b", bg:"rgba(245,158,11,.12)", stars:"⭐⭐⭐"},
+  2:{label:"RUMEUR",     color:"#ff9800", bg:"rgba(255,152,0,.12)",  stars:"⭐⭐"},
+  1:{label:"INCERTAIN",  color:"#e53535", bg:"rgba(229,53,53,.12)",  stars:"⭐"},
+};
+
+function AfricaTransferCard({t}){
+  const rel=RELIABILITY_INFO[t.reliability_score]||RELIABILITY_INFO[3];
+  const typeColor=t.transfer_type==="Loan"?"#ff9800":t.transfer_type==="Free Transfer"?"#00b86b":"#1976d2";
+  const date=t.published_at?new Date(t.published_at).toLocaleDateString("fr-FR",{day:"2-digit",month:"short",hour:"2-digit",minute:"2-digit"}):"";
+  return<div style={{
+    background:"#fff",margin:"0 10px 10px",borderRadius:14,
+    boxShadow:"0 1px 5px rgba(0,0,0,.08)",
+    borderLeft:`4px solid ${rel.color}`,
+    animation:"fadeIn .2s ease",overflow:"hidden",
+  }}>
+    {/* Header joueur */}
+    <div style={{display:"flex",alignItems:"center",gap:10,padding:"12px 14px 10px"}}>
+      <div style={{width:44,height:44,borderRadius:22,background:"#f0f2f5",display:"flex",alignItems:"center",justifyContent:"center",flexShrink:0,overflow:"hidden"}}>
+        {t.player_photo
+          ?<img src={t.player_photo} width={44} height={44} style={{objectFit:"cover",borderRadius:22}} onError={e=>e.target.style.display="none"}/>
+          :<span style={{fontSize:20}}>👤</span>}
+      </div>
+      <div style={{flex:1,minWidth:0}}>
+        <div className="bc" style={{fontSize:15,fontWeight:800,color:"#1a1d23",overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap"}}>{t.player_name}</div>
+        <div style={{fontSize:11,color:"#999",marginTop:2}}>{t.country}{t.league?` · ${t.league}`:""}{date?` · ${date}`:""}</div>
+      </div>
+      {/* Badge fiabilité */}
+      <div style={{background:rel.bg,borderRadius:8,padding:"4px 8px",flexShrink:0,textAlign:"center"}}>
+        <div className="bc" style={{fontSize:9,fontWeight:900,color:rel.color,letterSpacing:.5}}>{rel.label}</div>
+        <div style={{fontSize:10}}>{rel.stars}</div>
+      </div>
+    </div>
+    {/* Clubs */}
+    <div style={{display:"flex",alignItems:"center",gap:8,background:"#f7f8fa",margin:"0 10px",borderRadius:10,padding:"9px 12px"}}>
+      <span className="bc" style={{fontSize:13,fontWeight:700,color:"#555",flex:1,overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap"}}>{t.from_club||"?"}</span>
+      <div style={{flexShrink:0,display:"flex",flexDirection:"column",alignItems:"center",gap:2}}>
+        <span style={{fontSize:18,color:"#00b86b",fontWeight:900}}>→</span>
+        {t.fee&&t.fee!=="null"
+          ?<span className="bc" style={{fontSize:10,fontWeight:800,color:"#00b86b",background:"rgba(0,184,107,.1)",borderRadius:6,padding:"1px 6px"}}>{t.fee}</span>
+          :<span style={{fontSize:9,color:"#bbb",fontStyle:"italic"}}>N/C</span>}
+      </div>
+      <span className="bc" style={{fontSize:13,fontWeight:800,color:"#1a1d23",flex:1,textAlign:"right",overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap"}}>{t.to_club||"?"}</span>
+    </div>
+    {/* Footer */}
+    <div style={{display:"flex",alignItems:"center",gap:8,padding:"8px 14px 10px"}}>
+      {t.transfer_type&&<span style={{background:typeColor+"18",borderRadius:8,padding:"3px 8px",fontSize:10,fontWeight:800,color:typeColor}}>{t.transfer_type}</span>}
+      {t.summary&&<span style={{fontSize:11,color:"#888",flex:1,overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap"}}>{t.summary}</span>}
+      {t.source_url&&<a href={t.source_url} target="_blank" rel="noopener" style={{flexShrink:0,background:"rgba(25,118,210,.08)",border:"1px solid rgba(25,118,210,.15)",borderRadius:8,padding:"4px 9px",fontSize:10,fontWeight:700,color:"#42a5f5",textDecoration:"none"}}>🔗 Source</a>}
+    </div>
+  </div>;
+}
+
+function AfricaTransfers({data,st,onRefresh}){
+  const[filter,setFilter]=useState("all");
+  const countries=["all","Algérie","Maroc","Tunisie","Égypte"];
+  const filtered=filter==="all"?data:data.filter(t=>t.country===filter);
+
+  return<div style={{display:"flex",flexDirection:"column",height:"100%",overflow:"hidden"}}>
+    {/* Filtre pays */}
+    <div style={{background:"#fff",borderBottom:"1px solid rgba(0,0,0,.08)",padding:"8px 12px",flexShrink:0}}>
+      <div style={{overflowX:"auto",display:"flex",gap:6,paddingBottom:2}}>
+        {countries.map(c=>{
+          const a=filter===c;
+          const flags={"all":"🌍","Algérie":"🇩🇿","Maroc":"🇲🇦","Tunisie":"🇹🇳","Égypte":"🇪🇬"};
+          return<button key={c} onClick={()=>setFilter(c)} className="bc" style={{
+            flexShrink:0,padding:"6px 12px",borderRadius:20,border:"none",
+            background:a?"linear-gradient(135deg,#00b86b,#009657)":"rgba(0,0,0,.07)",
+            color:a?"#fff":"#555",fontSize:11,fontWeight:a?800:600,cursor:"pointer",
+            whiteSpace:"nowrap",
+          }}>{flags[c]||"🌍"} {c==="all"?"Tous":c}</button>;
+        })}
+        <button onClick={onRefresh} className="bc" style={{
+          flexShrink:0,padding:"6px 12px",borderRadius:20,border:"none",
+          background:"rgba(0,0,0,.07)",color:"#555",fontSize:11,fontWeight:600,cursor:"pointer",
+        }}>🔄</button>
+      </div>
+    </div>
+    {/* Contenu */}
+    <div style={{flex:1,overflowY:"auto",paddingTop:8,paddingBottom:"calc(20px + env(safe-area-inset-bottom))"}}>
+      {st==="load"&&<div style={{padding:"60px 20px",textAlign:"center"}}><Spin/><div className="bc" style={{marginTop:12,color:T.t3,fontSize:13}}>Chargement...</div></div>}
+      {st==="err"&&<div style={{textAlign:"center",padding:"60px 20px"}}>
+        <div style={{fontSize:40,marginBottom:12}}>❌</div>
+        <div className="bc" style={{fontSize:13,color:T.t3}}>Impossible de charger les transferts africains</div>
+        <button onClick={onRefresh} style={{marginTop:14,background:"#00b86b",border:"none",color:"#fff",borderRadius:10,padding:"10px 20px",fontSize:13,fontWeight:700,cursor:"pointer"}}>Réessayer</button>
+      </div>}
+      {st==="empty"&&<div style={{textAlign:"center",padding:"60px 20px"}}>
+        <div style={{fontSize:44,marginBottom:12}}>🌍</div>
+        <div className="bc" style={{fontSize:15,fontWeight:700,color:T.t2,marginBottom:6}}>Aucun transfert africain</div>
+        <div style={{fontSize:12,color:T.t3}}>Les transferts vérifiés apparaîtront ici</div>
+      </div>}
+      {st==="ok"&&<>
+        {/* Info banner */}
+        <div style={{margin:"0 10px 10px",padding:"9px 13px",background:"rgba(0,184,107,.06)",borderRadius:10,border:"1px solid rgba(0,184,107,.15)",display:"flex",alignItems:"center",gap:7}}>
+          <span>✅</span>
+          <span style={{fontSize:11,color:"#555",lineHeight:1.4}}>Transferts vérifiés · Sources officielles uniquement</span>
+          <span className="bc" style={{marginLeft:"auto",fontSize:10,fontWeight:800,color:"#00b86b"}}>{filtered.length} transferts</span>
+        </div>
+        {filtered.length===0
+          ?<div style={{textAlign:"center",padding:"32px",color:T.t3,fontSize:13}}>Aucun transfert pour {filter}</div>
+          :filtered.map(t=><AfricaTransferCard key={t.id} t={t}/>)
+        }
+      </>}
+    </div>
+  </div>;
+}
+
 function TransferCard({t}){
   const player=t.player;
   const transfer=t.transfers?.[0];
   if(!transfer) return null;
-  const isLoan=transfer.type?.toLowerCase().includes("loan");
-  const isFree=transfer.type?.toLowerCase().includes("free");
+
+  const rawType=(transfer.type||"").toLowerCase();
+  const isLoan=rawType.includes("loan")||rawType.includes("prêt");
+  const isFree=rawType.includes("free")||rawType.includes("gratuit")||rawType.includes("libre");
+  const isNA=!transfer.type||transfer.type==="N/A"||transfer.type==="?";
   const fee=transfer.fees;
+  const hasFee=fee&&fee!=="?"&&fee!=="0"&&fee!=="N/A"&&fee!==null&&!isFree;
+
   const fromTeam=transfer.teams?.out;
   const toTeam=transfer.teams?.in;
   const pos=POS_MAP[player?.position]||"";
   const posColor=POS_COLORS[pos]||"#888";
-  const dateStr=transfer.date?new Date(transfer.date).toLocaleDateString("fr-FR",{day:"2-digit",month:"short",year:"numeric"}).toUpperCase():"";
+
+  // Badge type
+  const typeBadge=isFree
+    ?{label:"Agent libre", bg:"rgba(0,184,107,.12)", color:"#00b86b"}
+    :isLoan
+    ?{label:"Prêt",        bg:"rgba(255,152,0,.12)", color:"#ff9800"}
+    :isNA
+    ?{label:"Transfert",   bg:"rgba(100,100,100,.1)", color:"#888"}
+    :{label:transfer.type, bg:"rgba(25,118,210,.1)", color:"#1976d2"};
 
   return<div style={{
-    background:"#fff",borderRadius:14,
-    margin:"0 10px 10px",padding:"14px",
-    boxShadow:"0 1px 6px rgba(0,0,0,.08)",
-    border:"1px solid rgba(0,0,0,.06)",
+    background:"#fff",
+    margin:"0 10px 10px",padding:"14px 14px 12px",
+    boxShadow:"0 1px 5px rgba(0,0,0,.07)",
+    borderRadius:14,
+    borderLeft:`4px solid ${typeBadge.color}`,
     animation:"fadeIn .2s ease",
   }}>
-    <div style={{display:"flex",alignItems:"center",gap:12}}>
+    {/* Ligne 1: joueur + badge type */}
+    <div style={{display:"flex",alignItems:"center",gap:10,marginBottom:10}}>
       <div style={{position:"relative",flexShrink:0}}>
-        <Avatar src={player?.photo} size={50} style={{border:"2px solid rgba(0,0,0,.08)"}}/>
-        {pos&&<div style={{position:"absolute",bottom:-4,left:"50%",transform:"translateX(-50%)",background:posColor,borderRadius:6,padding:"1px 5px",border:"1.5px solid #fff"}}>
-          <span className="bc" style={{fontSize:8,fontWeight:800,color:"#fff",letterSpacing:.3}}>{pos}</span>
+        <Avatar src={player?.photo} size={44}/>
+        {pos&&<div style={{position:"absolute",bottom:-3,left:"50%",transform:"translateX(-50%)",
+          background:posColor,borderRadius:5,padding:"1px 4px",border:"1.5px solid #fff"}}>
+          <span className="bc" style={{fontSize:9,fontWeight:900,color:"#fff"}}>{pos}</span>
         </div>}
       </div>
       <div style={{flex:1,minWidth:0}}>
-        <span className="bc" style={{fontSize:15,fontWeight:800,color:"#1a1d23",display:"block",overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap"}}>{player?.name}</span>
-        <div className="bc" style={{fontSize:11,color:"#777",marginTop:2,lineHeight:1.4}}>{transfer.type||"Transfert"}</div>
+        <div className="bc" style={{fontSize:15,fontWeight:800,color:"#1a1d23",
+          overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap"}}>{player?.name||"Joueur inconnu"}</div>
+        {player?.age&&<div style={{fontSize:11,color:"#999",marginTop:1}}>{player.age} ans · {player.nationality||""}</div>}
       </div>
-      <div style={{display:"flex",flexDirection:"column",alignItems:"center",gap:5,flexShrink:0}}>
-        <div style={{display:"flex",alignItems:"center",gap:6}}>
-          <Logo src={fromTeam?.logo} size={26}/>
-          <span style={{fontSize:14,color:"#bbb",fontWeight:700}}>→</span>
-          <Logo src={toTeam?.logo} size={26}/>
-        </div>
-        {fee&&fee!=="?"&&fee!=="0"&&!isFree&&<span className="bc" style={{fontSize:11,fontWeight:800,color:"#00b86b"}}>{fee}</span>}
-        {(isFree||fee==="Free")&&<span className="bc" style={{fontSize:10,color:"#00b86b",fontWeight:700}}>Agent libre</span>}
-        {isLoan&&!isFree&&<span className="bc" style={{fontSize:10,color:"#ff9800",fontWeight:700}}>Prêt</span>}
+      <div style={{
+        background:typeBadge.bg,borderRadius:8,padding:"4px 10px",flexShrink:0,
+      }}>
+        <span className="bc" style={{fontSize:10,fontWeight:800,color:typeBadge.color,letterSpacing:.4}}>{typeBadge.label}</span>
+      </div>
+    </div>
+
+    {/* Ligne 2: clubs avec noms */}
+    <div style={{display:"flex",alignItems:"center",gap:8,
+      background:"rgba(0,0,0,.02)",borderRadius:10,padding:"8px 10px"}}>
+      {/* Club départ */}
+      <div style={{flex:1,display:"flex",alignItems:"center",gap:6,minWidth:0}}>
+        <Logo src={fromTeam?.logo} size={24}/>
+        <span className="bc" style={{fontSize:12,fontWeight:600,color:"#444",
+          overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap"}}>
+          {fromTeam?.name||"Inconnu"}
+        </span>
+      </div>
+      {/* Flèche centrale */}
+      <div style={{flexShrink:0,display:"flex",flexDirection:"column",alignItems:"center",gap:2}}>
+        <span style={{fontSize:16,color:"#00b86b",fontWeight:900}}>→</span>
+        {/* Montant */}
+        {hasFee
+          ?<span className="bc" style={{fontSize:10,fontWeight:800,color:"#00b86b",
+              background:"rgba(0,184,107,.1)",borderRadius:6,padding:"2px 6px"}}>{fee}</span>
+          :isFree
+          ?<span className="bc" style={{fontSize:9,fontWeight:700,color:"#00b86b"}}>Gratuit</span>
+          :<span className="bc" style={{fontSize:9,color:"#bbb",fontStyle:"italic"}}>Non divulgué</span>
+        }
+      </div>
+      {/* Club arrivée */}
+      <div style={{flex:1,display:"flex",alignItems:"center",gap:6,minWidth:0,justifyContent:"flex-end"}}>
+        <span className="bc" style={{fontSize:12,fontWeight:700,color:"#1a1d23",
+          overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap",textAlign:"right"}}>
+          {toTeam?.name||"Inconnu"}
+        </span>
+        <Logo src={toTeam?.logo} size={24}/>
       </div>
     </div>
   </div>;
 }
 
 function TransfersTab(){
-  const[filter,setFilter]=useState("official");
+  const[view,setView]=useState("africa"); // africa | recent | competition
   const[lid,setLid]=useState(39);
   const[data,setData]=useState([]);
   const[st,setSt]=useState("load");
   const[showFilters,setShowFilters]=useState(false);
   const[typeFilters,setTypeFilters]=useState([]);
+  const[africaData,setAfricaData]=useState([]);
+  const[africaSt,setAfricaSt]=useState("load");
   const yr=new Date().getFullYear();
   const season=new Date().getMonth()<6?yr-1:yr;
+
+  // Charger les transferts africains depuis Supabase
+  useEffect(()=>{
+    if(view!=="africa")return;
+    let c=false;
+    setAfricaSt("load");setAfricaData([]);
+    sbGet("transfers_africa","status=eq.published&order=published_at.desc&limit=50")
+      .then(d=>{if(!c){setAfricaData(d);setAfricaSt(d.length?"ok":"empty");}})
+      .catch(e=>{console.error("Supabase err:",e);if(!c)setAfricaSt("err");});
+    return()=>{c=true;};
+  },[view]);
 
   useEffect(()=>{
     let cancelled=false;
@@ -2169,8 +2438,6 @@ function TransfersTab(){
         if(cancelled)return;
         const filtered=d.filter(t=>{
           const type=(t.transfers?.[0]?.type||"").toLowerCase();
-          const officialOk=filter==="rumour"?type.includes("rumour"):!type.includes("rumour");
-          if(!officialOk)return false;
           if(typeFilters.length===0)return true;
           return typeFilters.some(tf=>type.includes(tf.toLowerCase()));
         }).sort((a,b)=>new Date(b.transfers?.[0]?.date||0)-new Date(a.transfers?.[0]?.date||0));
@@ -2179,7 +2446,7 @@ function TransfersTab(){
       })
       .catch(()=>{if(!cancelled)setSt("err");});
     return()=>{cancelled=true;};
-  },[lid,filter,season,typeFilters]);
+  },[lid,season,typeFilters]);
 
   const byDate=data.reduce((acc,t)=>{
     const d=t.transfers?.[0]?.date||"";
@@ -2189,15 +2456,13 @@ function TransfersTab(){
     return acc;
   },{});
 
-  const[view,setView]=useState("recent"); // recent | competition
-
   return<div style={{display:"flex",flexDirection:"column",height:"100%",background:T.bg0,overflow:"hidden"}}>
-    {/* Toggle DERNIER / COMPÉTITIONS */}
-    <div style={{display:"flex",background:"#fff",borderBottom:"2px solid rgba(0,0,0,.08)",flexShrink:0}}>
-      {[["recent","DERNIER"],["competition","COMPÉTITIONS"]].map(([v,lb])=>{
+    {/* Toggle AFRIQUE / EUROPE / COMPÉTITIONS */}
+    <div style={{display:"flex",background:"#fff",borderBottom:"2px solid rgba(0,0,0,.08)",flexShrink:0,overflowX:"auto"}}>
+      {[["africa","🌍 AFRIQUE"],["recent","🌍 EUROPE"],["competition","🏆 COMPÉTITIONS"]].map(([v,lb])=>{
         const a=view===v;
         return<button key={v} onClick={()=>setView(v)} className="bc" style={{
-          flex:1,padding:"13px 4px",border:"none",background:"transparent",
+          flexShrink:0,padding:"13px 14px",border:"none",background:"transparent",
           color:a?"#00b86b":"#999",fontSize:12,fontWeight:a?800:600,
           cursor:"pointer",letterSpacing:.5,
           borderBottom:a?"3px solid #00b86b":"3px solid transparent",
@@ -2218,17 +2483,12 @@ function TransfersTab(){
         })}
       </div>
       <div style={{display:"flex",gap:8,alignItems:"center"}}>
-        {/* Toggle Officiel/Rumeur */}
-        <div style={{display:"flex",flex:1,background:"rgba(0,0,0,.06)",borderRadius:10,padding:3,gap:3}}>
-          {[["official","✅ OFFICIEL"],["rumour","💬 RUMEUR"]].map(([v,lb])=>
-            <button key={v} onClick={()=>setFilter(v)} className="bc" style={{
-              flex:1,padding:"9px 4px",borderRadius:8,border:"none",
-              background:filter===v?"linear-gradient(135deg,#00b86b,#009657)":"transparent",
-              color:filter===v?"#fff":"#777",
-              fontSize:12,fontWeight:800,cursor:"pointer",
-              transition:"all .2s",letterSpacing:.5,
-            }}>{lb}</button>
-          )}
+        {/* Badge officiel */}
+        <div style={{display:"flex",flex:1,alignItems:"center",gap:6,
+          background:"rgba(0,184,107,.08)",borderRadius:10,padding:"9px 12px",
+          border:"1px solid rgba(0,184,107,.2)"}}>
+          <span style={{fontSize:14}}>✅</span>
+          <span className="bc" style={{fontSize:11,fontWeight:800,color:"#00b86b",letterSpacing:.4}}>TRANSFERTS OFFICIELS CONFIRMÉS</span>
         </div>
         {/* Bouton Filtres */}
         <button onClick={()=>setShowFilters(f=>!f)} className="bc" style={{
@@ -2237,7 +2497,7 @@ function TransfersTab(){
           color:typeFilters.length?"#fff":"#555",
           fontSize:12,fontWeight:800,cursor:"pointer",flexShrink:0,
           transition:"all .2s",
-        }}>⚙️ {typeFilters.length?`Filtres (${typeFilters.length})`:"Filtres"}</button>
+        }}>⚙️ {typeFilters.length?`(${typeFilters.length})`:"Filtres"}</button>
       </div>
       {/* Panneau filtres — overlay plein écran */}
       {showFilters&&<div onClick={()=>setShowFilters(false)} style={{
@@ -2261,7 +2521,7 @@ function TransfersTab(){
           </div>
           {/* Liste */}
           <div style={{overflowY:"auto",flex:1}}>
-            {["Transfert","Prêt","Transfert gratuit","Prêt W/B","Fin du prêt","Retraité","Libéré","Agent libre","Renouvellement"].map(type=>{
+            {["Transfert","Loan","Free Transfer","Loan Return"].map(type=>{
               const active=typeFilters.includes(type);
               return<div key={type} onClick={()=>setTypeFilters(f=>active?f.filter(x=>x!==type):[...f,type])} style={{
                 display:"flex",alignItems:"center",justifyContent:"space-between",
@@ -2296,7 +2556,7 @@ function TransfersTab(){
         </div>
       </div>}
     </div>
-    <div style={{flex:1,overflowY:"auto"}}>
+    <div style={{flex:1,overflowY:"auto",paddingBottom:"env(safe-area-inset-bottom)"}}>
       {st==="load"&&<div style={{padding:"60px 20px",textAlign:"center"}}><Spin/><div className="bc" style={{marginTop:12,color:T.t3,fontSize:13}}>Chargement des transferts...</div></div>}
       {st==="err"&&<div style={{textAlign:"center",padding:"60px 20px"}}>
         <div style={{fontSize:40,marginBottom:12}}>❌</div>
@@ -2307,7 +2567,17 @@ function TransfersTab(){
         <div className="bc" style={{fontSize:15,fontWeight:700,color:T.t2,marginBottom:6}}>Aucun transfert</div>
         <div className="bc" style={{fontSize:12,color:T.t3}}>Pas de données pour cette sélection</div>
       </div>}
-      {st==="ok"&&<div style={{paddingTop:8,paddingBottom:20}}>
+      {st==="ok"&&<div style={{paddingTop:8,paddingBottom:"calc(20px + env(safe-area-inset-bottom))"}}>
+        {/* Info banner */}
+        <div style={{margin:"0 10px 12px",padding:"10px 14px",
+          background:"rgba(0,184,107,.06)",borderRadius:10,
+          border:"1px solid rgba(0,184,107,.15)",
+          display:"flex",alignItems:"center",gap:8}}>
+          <span style={{fontSize:14}}>ℹ️</span>
+          <span style={{fontSize:11,color:"#555",lineHeight:1.4}}>
+            Transferts officiellement confirmés · Les montants ne sont pas toujours divulgués par les clubs
+          </span>
+        </div>
         {Object.entries(byDate).map(([date,transfers])=><div key={date}>
           <div style={{padding:"12px 14px 8px",background:T.bg0}}>
             <div style={{display:"flex",alignItems:"center",gap:8}}>
@@ -2320,6 +2590,12 @@ function TransfersTab(){
         </div>)}
       </div>}
     </div></>}
+    {view==="africa"&&<AfricaTransfers data={africaData} st={africaSt} onRefresh={()=>{
+      setAfricaSt("load");
+      sbGet("transfers_africa","status=eq.published&order=published_at.desc&limit=50")
+        .then(d=>{setAfricaData(d);setAfricaSt(d.length?"ok":"empty");})
+        .catch(()=>setAfricaSt("err"));
+    }}/>}
     {view==="competition"&&<CompetitionTransfers/>}
   </div>;
 }
@@ -2358,6 +2634,13 @@ function CompetitionTransfers(){
   return<div style={{display:"flex",flexDirection:"column",height:"100%",overflow:"hidden"}}>
     {/* Sélecteur ligue */}
     <div style={{background:"#fff",borderBottom:"1px solid rgba(0,0,0,.08)",padding:"10px 12px",flexShrink:0}}>
+      {/* Badge officiel */}
+      <div style={{display:"flex",alignItems:"center",gap:6,
+        background:"rgba(0,184,107,.08)",borderRadius:10,padding:"8px 12px",
+        border:"1px solid rgba(0,184,107,.2)",marginBottom:10}}>
+        <span style={{fontSize:14}}>✅</span>
+        <span className="bc" style={{fontSize:11,fontWeight:800,color:"#00b86b",letterSpacing:.4}}>TRANSFERTS OFFICIELS CONFIRMÉS</span>
+      </div>
       <div style={{overflowX:"auto",display:"flex",gap:6,paddingBottom:2}}>
         {TOP_LEAGUES.map(l=>{
           const a=l.id===lid;
@@ -2371,14 +2654,14 @@ function CompetitionTransfers(){
       </div>
     </div>
     {/* Liste par club */}
-    <div style={{flex:1,overflowY:"auto"}}>
+    <div style={{flex:1,overflowY:"auto",paddingBottom:"env(safe-area-inset-bottom)"}}>
       {st==="load"&&<div style={{padding:"60px 20px",textAlign:"center"}}><Spin/><div className="bc" style={{marginTop:12,color:T.t3,fontSize:13}}>Chargement...</div></div>}
       {st==="empty"&&<div style={{textAlign:"center",padding:"60px 20px"}}>
         <div style={{fontSize:40,marginBottom:12}}>📋</div>
         <div className="bc" style={{fontSize:14,color:T.t3}}>Aucun transfert pour cette compétition</div>
       </div>}
       {st==="err"&&<div style={{textAlign:"center",padding:"60px 20px",color:T.t3}}>Erreur de chargement</div>}
-      {st==="ok"&&<div style={{paddingBottom:20}}>
+      {st==="ok"&&<div style={{paddingBottom:"calc(20px + env(safe-area-inset-bottom))"}}>
         {data.map(({club,players})=><div key={club.id} style={{marginBottom:4}}>
           {/* Header club */}
           <div style={{display:"flex",alignItems:"center",gap:10,padding:"12px 14px 8px",background:"rgba(0,0,0,.02)",borderBottom:"1px solid rgba(0,0,0,.06)"}}>
@@ -2399,7 +2682,7 @@ function CompetitionTransfers(){
               <div style={{position:"relative",flexShrink:0}}>
                 <Avatar src={player?.photo} size={38}/>
                 {pos&&<div style={{position:"absolute",bottom:-3,left:"50%",transform:"translateX(-50%)",background:posColor,borderRadius:4,padding:"1px 4px",border:"1px solid #fff"}}>
-                  <span className="bc" style={{fontSize:7,fontWeight:800,color:"#fff"}}>{pos}</span>
+                  <span className="bc" style={{fontSize:9,fontWeight:800,color:"#fff"}}>{pos}</span>
                 </div>}
               </div>
               <div style={{flex:1,minWidth:0}}>
@@ -2459,11 +2742,8 @@ function computeStandings(allMatches,upToRound,rounds){
 }
 
 function ResultsTab(){
-  const yr=new Date().getFullYear();
-  const curSeason=new Date().getMonth()<6?yr-1:yr;
-
   const[lid,setLid]=useState(39);
-  const[season,setSeason]=useState(curSeason);
+  const[season,setSeason]=useState(CUR_SEASON);
   const[rounds,setRounds]=useState([]);
   const[selRound,setSelRound]=useState("");
   const[roundIdx,setRoundIdx]=useState(0);
@@ -2476,7 +2756,7 @@ function ResultsTab(){
   const[tabView,setTabView]=useState("results"); // results | standings
 
   const league=LEAGUES.find(l=>l.id===lid)||LEAGUES[0];
-  const SEASONS_LIST=Array.from({length:30},(_,i)=>curSeason-i);
+  const SEASONS_LIST=Array.from({length:30},(_,i)=>CUR_SEASON-i);
 
   // Charger les journées de la saison
   useEffect(()=>{
@@ -2615,7 +2895,7 @@ function ResultsTab(){
     </div>
 
     {/* Liste des matchs */}
-    <div style={{flex:1,overflowY:"auto"}}>
+    <div style={{flex:1,overflowY:"auto",paddingBottom:"env(safe-area-inset-bottom)"}}>
       {stMatches==="load"&&<div style={{padding:"60px 20px",textAlign:"center"}}><Spin/><div className="bc" style={{marginTop:12,color:"#888",fontSize:13}}>Chargement des matchs...</div></div>}
       {stMatches==="empty"&&<div style={{textAlign:"center",padding:"60px 20px"}}>
         <div style={{fontSize:40,marginBottom:12}}>📋</div>
@@ -2627,7 +2907,7 @@ function ResultsTab(){
       </div>}
 
       {/* ── VUE CLASSEMENT CALCULÉ ─────────────────────── */}
-      {tabView==="standings"&&<div style={{paddingBottom:20}}>
+      {tabView==="standings"&&<div style={{paddingBottom:"calc(20px + env(safe-area-inset-bottom))"}}>
         {(!selRound||stAll==="load")&&<div style={{padding:"60px 20px",textAlign:"center"}}><Spin/><div className="bc" style={{marginTop:12,color:"#888",fontSize:13}}>Calcul du classement...</div></div>}
         {selRound&&stAll==="ok"&&computedStandings.length===0&&<div style={{textAlign:"center",padding:"60px 20px"}}>
           <div style={{fontSize:40,marginBottom:12}}>📋</div>
@@ -2665,7 +2945,7 @@ function ResultsTab(){
                   <div style={{display:"flex",gap:2,marginTop:2}}>
                     {r.form.slice(-5).map((f,j)=>{
                       const bg=f==="W"?"#00b86b":f==="L"?"#e53535":"#888";
-                      return<div key={j} className="bc" style={{width:13,height:13,borderRadius:3,background:bg,fontSize:7,fontWeight:900,color:"#fff",display:"flex",alignItems:"center",justifyContent:"center"}}>
+                      return<div key={j} className="bc" style={{width:13,height:13,borderRadius:3,background:bg,fontSize:9,fontWeight:900,color:"#fff",display:"flex",alignItems:"center",justifyContent:"center"}}>
                         {f==="W"?"V":f==="L"?"D":"N"}
                       </div>;
                     })}
@@ -2694,7 +2974,7 @@ function ResultsTab(){
         <div className="bc" style={{fontSize:13,color:"#999"}}>Erreur de chargement</div>
       </div>}
 
-      {tabView==="results"&&stMatches==="ok"&&<div style={{paddingBottom:20}}>
+      {tabView==="results"&&stMatches==="ok"&&<div style={{paddingBottom:"calc(20px + env(safe-area-inset-bottom))"}}>
         {Object.entries(byTime).map(([timeLabel,ms])=><div key={timeLabel}>
           {/* Header date/heure */}
           <div style={{
@@ -2785,7 +3065,7 @@ function ResultsTab(){
       <div style={{padding:"4px 16px 16px"}}>
         <span style={{fontSize:16,fontWeight:800,color:"#1a1d23"}}>🔍 Configuration</span>
       </div>
-      <div style={{padding:"0 16px",display:"flex",flexDirection:"column",gap:16,paddingBottom:48}}>
+      <div style={{padding:"0 16px",display:"flex",flexDirection:"column",gap:16,paddingBottom:"calc(48px + env(safe-area-inset-bottom))"}}>
         <div>
           <div className="bc" style={{fontSize:10,fontWeight:800,color:"#888",letterSpacing:1.2,marginBottom:8}}>COMPÉTITION</div>
           <select value={lid} onChange={e=>setLid(+e.target.value)} style={SEL}>
@@ -2847,7 +3127,7 @@ function App(){
       try{
         const favIds=[...favs];
         for(const id of favIds){
-          const fx=await api(`/fixtures?id=${id}`,0);
+          const fx=await api(`/fixtures?id=${id}`,15000);
           const fix=fx[0];if(!fix)continue;
           const s=fix.fixture.status.short;
           const hg=fix.goals.home??0,ag=fix.goals.away??0;
@@ -2858,7 +3138,7 @@ function App(){
           if(s==="HT") new Notification(`⏸ Mi-temps`,{body:`${hName} ${hg} - ${ag} ${aName}`});
           else if(s==="FT") new Notification(`🏁 Fin du match`,{body:`${hName} ${hg} - ${ag} ${aName}`});
           else if(LIVE_ST.has(s)){
-            const events=await api(`/fixtures/events?fixture=${id}`,0);
+            const events=await api(`/fixtures/events?fixture=${id}`,15000);
             const lastGoal=events.filter(e=>e.type==="Goal").pop();
             if(lastGoal){
               const gKey=`${id}_goal_${lastGoal.time?.elapsed}`;
@@ -2920,6 +3200,9 @@ function App(){
           <div style={{display:"flex",alignItems:"center",gap:6,background:"rgba(255,255,255,.2)",border:"1px solid rgba(255,255,255,.3)",borderRadius:20,padding:"5px 11px"}}>
             <div className="live-dot"/>
             <span className="bc" style={{fontSize:11,fontWeight:800,color:"#fff",letterSpacing:1.2}}>LIVE</span>
+          </div>
+          <div title={`API: ${_apiCallsToday}/7500 req aujourd'hui`} style={{background:"rgba(0,0,0,.2)",borderRadius:12,padding:"3px 8px",cursor:"default"}}>
+            <span style={{fontSize:9,color:"rgba(255,255,255,.6)",fontWeight:700}}>{_apiCallsToday}<span style={{opacity:.6}}>/7500</span></span>
           </div>
         </div>
       </div>
