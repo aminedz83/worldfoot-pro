@@ -2126,7 +2126,6 @@ const JSK_YELLOW = "#FFD700";
 function JSKTab(){
   const[articles,setArticles]=useState([]);
   const[st,setSt]=useState("load");
-  const[openUrl,setOpenUrl]=useState(null);
   const[lastUpdate,setLastUpdate]=useState(null);
 
   const load=()=>{
@@ -2144,14 +2143,10 @@ function JSKTab(){
 
   useEffect(()=>{load();},[]);
 
-  if(openUrl) return<div style={{display:"flex",flexDirection:"column",height:"100%",background:"#fff"}}>
-    <div style={{display:"flex",alignItems:"center",gap:10,padding:"12px 14px",background:JSK_GREEN,flexShrink:0}}>
-      <button onClick={()=>setOpenUrl(null)} style={{background:"rgba(255,255,255,.2)",border:"none",borderRadius:10,padding:"7px 14px",color:"#fff",fontSize:13,fontWeight:800,cursor:"pointer"}}>← Retour</button>
-      <img src={JSK_LOGO} width={28} height={28} style={{borderRadius:"50%",objectFit:"cover"}}/>
-      <span style={{fontSize:13,fontWeight:800,color:"#fff",flex:1}}>JS Kabylie</span>
-    </div>
-    <iframe src={openUrl} style={{flex:1,border:"none",width:"100%"}} title="article" sandbox="allow-scripts allow-same-origin allow-popups allow-forms"/>
-  </div>;
+  // Ouvrir article dans nouvel onglet Safari (iframe bloque les sites)
+  const openArticle = (url) => {
+    if(url) window.open(url, '_blank', 'noopener');
+  };
 
   return<div style={{display:"flex",flexDirection:"column",height:"100%",background:"#f0f2f5",overflow:"hidden"}}>
 
@@ -2195,12 +2190,18 @@ function JSKTab(){
 
       {st==="ok"&&<div style={{padding:"10px 0 20px"}}>
         {/* 1ER ARTICLE — Grande carte hero */}
-        {articles[0]&&<div onClick={()=>setOpenUrl(articles[0].link)} style={{margin:"0 12px 14px",cursor:"pointer"}}>
+        {articles[0]&&<div onClick={()=>openArticle(articles[0].link)} style={{margin:"0 12px 14px",cursor:"pointer"}}>
           <div style={{borderRadius:18,overflow:"hidden",boxShadow:"0 6px 30px rgba(0,0,0,.15)",position:"relative"}}>
             <div style={{position:"relative",height:220,background:"#111",overflow:"hidden"}}>
-              <img src={articles[0].image||JSK_LOGO} alt=""
-                style={{width:"100%",height:"100%",objectFit:"cover",opacity:.85}}
-                onError={e=>{e.target.src=JSK_LOGO;e.target.style.objectFit="contain";e.target.style.padding="20px";}}/>
+              {articles[0].image&&articles[0].image!==JSK_LOGO
+                ?<img src={articles[0].image} alt="" style={{width:"100%",height:"100%",objectFit:"cover",opacity:.85}}
+                  onError={e=>{e.target.style.display="none";}}/>
+                :<div style={{width:"100%",height:"100%",background:"linear-gradient(135deg,#006B3C 0%,#004d2a 50%,#003d20 100%)",display:"flex",alignItems:"center",justifyContent:"center",flexDirection:"column",gap:12}}>
+                  <img src={JSK_LOGO} width={80} height={80} style={{objectFit:"contain",filter:"drop-shadow(0 4px 20px rgba(0,0,0,.5))"}}/>
+                  <div style={{display:"flex",gap:6}}>
+                    {[...Array(5)].map((_,i)=><div key={i} style={{width:6,height:6,borderRadius:"50%",background:i%2===0?"#FFD700":"rgba(255,255,255,.4)"}}/>)}
+                  </div>
+                </div>}
               <div style={{position:"absolute",inset:0,background:"linear-gradient(0deg,rgba(0,0,0,.85) 0%,rgba(0,0,0,.1) 60%)"}}/>
               {/* Badge source */}
               <div style={{position:"absolute",top:12,left:12,background:JSK_GREEN,borderRadius:8,padding:"3px 10px"}}>
@@ -2221,11 +2222,14 @@ function JSKTab(){
 
         {/* GRILLE 2 colonnes pour articles 2-3 */}
         {articles.length>1&&<div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:10,margin:"0 12px 14px"}}>
-          {articles.slice(1,3).map((a,i)=><div key={i} onClick={()=>setOpenUrl(a.link)} style={{cursor:"pointer"}}>
+          {articles.slice(1,3).map((a,i)=><div key={i} onClick={()=>openArticle(a.link)} style={{cursor:"pointer"}}>
             <div style={{borderRadius:14,overflow:"hidden",boxShadow:"0 3px 15px rgba(0,0,0,.1)",background:"#fff"}}>
               <div style={{position:"relative",height:110,background:"#111"}}>
-                <img src={a.image||JSK_LOGO} alt="" style={{width:"100%",height:"100%",objectFit:"cover",opacity:.85}}
-                  onError={e=>{e.target.src=JSK_LOGO;e.target.style.objectFit="contain";e.target.style.padding="10px";}}/>
+                {a.image&&a.image!==JSK_LOGO
+                  ?<img src={a.image} alt="" style={{width:"100%",height:"100%",objectFit:"cover",opacity:.85}} onError={e=>e.target.style.display="none"}/>
+                  :<div style={{width:"100%",height:"100%",background:"linear-gradient(135deg,#006B3C,#004d2a)",display:"flex",alignItems:"center",justifyContent:"center"}}>
+                    <img src={JSK_LOGO} width={40} height={40} style={{objectFit:"contain",opacity:.9}}/>
+                  </div>}
                 <div style={{position:"absolute",inset:0,background:"linear-gradient(0deg,rgba(0,0,0,.7) 0%,transparent 60%)"}}/>
                 <div style={{position:"absolute",top:6,left:6,background:JSK_GREEN,borderRadius:6,padding:"2px 7px"}}>
                   <span style={{fontSize:9,fontWeight:900,color:"#fff"}}>{a.source}</span>
@@ -2240,11 +2244,14 @@ function JSKTab(){
         </div>}
 
         {/* LISTE pour les articles suivants */}
-        {articles.slice(3).map((a,i)=><div key={i} onClick={()=>setOpenUrl(a.link)}
+        {articles.slice(3).map((a,i)=><div key={i} onClick={()=>openArticle(a.link)}
           style={{display:"flex",gap:12,margin:"0 12px 10px",background:"#fff",borderRadius:14,overflow:"hidden",boxShadow:"0 2px 8px rgba(0,0,0,.06)",cursor:"pointer",alignItems:"stretch"}}>
           <div style={{width:90,flexShrink:0,position:"relative",background:"#111"}}>
-            <img src={a.image||JSK_LOGO} alt="" style={{width:"100%",height:"100%",objectFit:"cover",opacity:.9,display:"block"}}
-              onError={e=>{e.target.src=JSK_LOGO;e.target.style.objectFit="contain";e.target.style.padding="8px";}}/>
+            {a.image&&a.image!==JSK_LOGO
+              ?<img src={a.image} alt="" style={{width:"100%",height:"100%",objectFit:"cover",opacity:.9,display:"block"}} onError={e=>e.target.style.display="none"}/>
+              :<div style={{width:"100%",height:"100%",background:"linear-gradient(135deg,#006B3C,#003d20)",display:"flex",alignItems:"center",justifyContent:"center"}}>
+                <img src={JSK_LOGO} width={36} height={36} style={{objectFit:"contain",opacity:.9}}/>
+              </div>}
           </div>
           <div style={{flex:1,padding:"10px 12px 10px 0",display:"flex",flexDirection:"column",justifyContent:"space-between"}}>
             <div style={{fontSize:13,fontWeight:700,color:"#1a1d23",lineHeight:1.35,display:"-webkit-box",WebkitLineClamp:3,WebkitBoxOrient:"vertical",overflow:"hidden"}}>{a.title}</div>
