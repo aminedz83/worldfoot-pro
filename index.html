@@ -2114,6 +2114,155 @@ function CalendarTab({favs,onFav}){
 //
 // APP ROOT
 //
+
+//
+// ONGLET JSK — Actualité JS Kabylie style magazine
+//
+const JSK_FEED_URL = "https://iqeqlsxjiklygywjirqs.supabase.co/functions/v1/jsk-news";
+const JSK_LOGO = "https://upload.wikimedia.org/wikipedia/fr/5/5c/JS_Kabylie_logo.png";
+const JSK_GREEN = "#006B3C";
+const JSK_YELLOW = "#FFD700";
+
+function JSKTab(){
+  const[articles,setArticles]=useState([]);
+  const[st,setSt]=useState("load");
+  const[openUrl,setOpenUrl]=useState(null);
+  const[lastUpdate,setLastUpdate]=useState(null);
+
+  const load=()=>{
+    setSt("load");
+    fetch(JSK_FEED_URL)
+      .then(r=>r.json())
+      .then(d=>{
+        if(!d||!d.items) throw new Error("no items");
+        setArticles(d.items);
+        setLastUpdate(new Date());
+        setSt(d.items.length?"ok":"empty");
+      })
+      .catch(()=>setSt("err"));
+  };
+
+  useEffect(()=>{load();},[]);
+
+  if(openUrl) return<div style={{display:"flex",flexDirection:"column",height:"100%",background:"#fff"}}>
+    <div style={{display:"flex",alignItems:"center",gap:10,padding:"12px 14px",background:JSK_GREEN,flexShrink:0}}>
+      <button onClick={()=>setOpenUrl(null)} style={{background:"rgba(255,255,255,.2)",border:"none",borderRadius:10,padding:"7px 14px",color:"#fff",fontSize:13,fontWeight:800,cursor:"pointer"}}>← Retour</button>
+      <img src={JSK_LOGO} width={28} height={28} style={{borderRadius:"50%",objectFit:"cover"}}/>
+      <span style={{fontSize:13,fontWeight:800,color:"#fff",flex:1}}>JS Kabylie</span>
+    </div>
+    <iframe src={openUrl} style={{flex:1,border:"none",width:"100%"}} title="article" sandbox="allow-scripts allow-same-origin allow-popups allow-forms"/>
+  </div>;
+
+  return<div style={{display:"flex",flexDirection:"column",height:"100%",background:"#f0f2f5",overflow:"hidden"}}>
+
+    {/* Header JSK */}
+    <div style={{background:`linear-gradient(135deg,${JSK_GREEN} 0%,#004d2a 100%)`,flexShrink:0,padding:"14px 16px 12px",position:"relative",overflow:"hidden"}}>
+      <div style={{position:"absolute",inset:0,background:"radial-gradient(ellipse 120% 80% at 80% 50%,rgba(255,215,0,.12) 0%,transparent 60%)",pointerEvents:"none"}}/>
+      <div style={{display:"flex",alignItems:"center",gap:12,position:"relative"}}>
+        <div style={{position:"relative"}}>
+          <img src={JSK_LOGO} width={52} height={52} style={{borderRadius:"50%",border:"3px solid "+JSK_YELLOW,objectFit:"cover",boxShadow:"0 4px 20px rgba(0,0,0,.3)"}}
+            onError={e=>{e.target.style.display="none";}}/>
+        </div>
+        <div style={{flex:1}}>
+          <div className="bc" style={{fontSize:22,fontWeight:900,color:"#fff",letterSpacing:-.3,lineHeight:1}}>JS Kabylie</div>
+          <div style={{fontSize:11,color:JSK_YELLOW,fontWeight:700,letterSpacing:1.5,marginTop:2}}>ACTUALITÉ · 24H</div>
+          {lastUpdate&&<div style={{fontSize:10,color:"rgba(255,255,255,.5)",marginTop:2}}>Mis à jour {lastUpdate.toLocaleTimeString("fr-FR",{hour:"2-digit",minute:"2-digit"})}</div>}
+        </div>
+        <button onClick={load} style={{background:"rgba(255,255,255,.15)",border:"1px solid rgba(255,255,255,.2)",borderRadius:10,padding:"8px 12px",color:"#fff",fontSize:12,fontWeight:700,cursor:"pointer"}}>↻</button>
+      </div>
+    </div>
+
+    {/* Contenu */}
+    <div style={{flex:1,overflowY:"auto",WebkitOverflowScrolling:"touch"}}>
+
+      {st==="load"&&<div style={{padding:"60px 0",textAlign:"center"}}>
+        <Spin/>
+        <div style={{marginTop:12,color:"#888",fontSize:13,fontWeight:600}}>Chargement des actualités...</div>
+      </div>}
+
+      {st==="err"&&<div style={{padding:"60px 20px",textAlign:"center"}}>
+        <div style={{fontSize:40,marginBottom:12}}>📡</div>
+        <div style={{fontSize:15,fontWeight:700,color:"#333",marginBottom:6}}>Impossible de charger</div>
+        <div style={{fontSize:13,color:"#888",marginBottom:20}}>Vérifiez votre connexion</div>
+        <button onClick={load} style={{background:JSK_GREEN,color:"#fff",border:"none",borderRadius:12,padding:"12px 28px",fontSize:14,fontWeight:800,cursor:"pointer"}}>Réessayer</button>
+      </div>}
+
+      {st==="empty"&&<div style={{padding:"60px 20px",textAlign:"center"}}>
+        <div style={{fontSize:40,marginBottom:12}}>📰</div>
+        <div style={{fontSize:15,fontWeight:700,color:"#333"}}>Aucune actualité récente</div>
+        <div style={{fontSize:13,color:"#888",marginTop:6}}>Revenez dans quelques heures</div>
+      </div>}
+
+      {st==="ok"&&<div style={{padding:"10px 0 20px"}}>
+        {/* 1ER ARTICLE — Grande carte hero */}
+        {articles[0]&&<div onClick={()=>setOpenUrl(articles[0].link)} style={{margin:"0 12px 14px",cursor:"pointer"}}>
+          <div style={{borderRadius:18,overflow:"hidden",boxShadow:"0 6px 30px rgba(0,0,0,.15)",position:"relative"}}>
+            <div style={{position:"relative",height:220,background:"#111",overflow:"hidden"}}>
+              <img src={articles[0].image||JSK_LOGO} alt=""
+                style={{width:"100%",height:"100%",objectFit:"cover",opacity:.85}}
+                onError={e=>{e.target.src=JSK_LOGO;e.target.style.objectFit="contain";e.target.style.padding="20px";}}/>
+              <div style={{position:"absolute",inset:0,background:"linear-gradient(0deg,rgba(0,0,0,.85) 0%,rgba(0,0,0,.1) 60%)"}}/>
+              {/* Badge source */}
+              <div style={{position:"absolute",top:12,left:12,background:JSK_GREEN,borderRadius:8,padding:"3px 10px"}}>
+                <span style={{fontSize:10,fontWeight:900,color:"#fff",letterSpacing:.5}}>{articles[0].source}</span>
+              </div>
+              {/* Badge À LA UNE */}
+              <div style={{position:"absolute",top:12,right:12,background:JSK_YELLOW,borderRadius:8,padding:"3px 10px"}}>
+                <span className="bc" style={{fontSize:10,fontWeight:900,color:"#000",letterSpacing:.5}}>À LA UNE</span>
+              </div>
+              {/* Titre en bas */}
+              <div style={{position:"absolute",bottom:0,left:0,right:0,padding:"12px 14px"}}>
+                <div style={{fontSize:16,fontWeight:800,color:"#fff",lineHeight:1.3,marginBottom:4}}>{articles[0].title}</div>
+                <div style={{fontSize:11,color:"rgba(255,255,255,.6)"}}>{articles[0].date}</div>
+              </div>
+            </div>
+          </div>
+        </div>}
+
+        {/* GRILLE 2 colonnes pour articles 2-3 */}
+        {articles.length>1&&<div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:10,margin:"0 12px 14px"}}>
+          {articles.slice(1,3).map((a,i)=><div key={i} onClick={()=>setOpenUrl(a.link)} style={{cursor:"pointer"}}>
+            <div style={{borderRadius:14,overflow:"hidden",boxShadow:"0 3px 15px rgba(0,0,0,.1)",background:"#fff"}}>
+              <div style={{position:"relative",height:110,background:"#111"}}>
+                <img src={a.image||JSK_LOGO} alt="" style={{width:"100%",height:"100%",objectFit:"cover",opacity:.85}}
+                  onError={e=>{e.target.src=JSK_LOGO;e.target.style.objectFit="contain";e.target.style.padding="10px";}}/>
+                <div style={{position:"absolute",inset:0,background:"linear-gradient(0deg,rgba(0,0,0,.7) 0%,transparent 60%)"}}/>
+                <div style={{position:"absolute",top:6,left:6,background:JSK_GREEN,borderRadius:6,padding:"2px 7px"}}>
+                  <span style={{fontSize:9,fontWeight:900,color:"#fff"}}>{a.source}</span>
+                </div>
+              </div>
+              <div style={{padding:"8px 10px 10px"}}>
+                <div style={{fontSize:12,fontWeight:700,color:"#1a1d23",lineHeight:1.3,display:"-webkit-box",WebkitLineClamp:3,WebkitBoxOrient:"vertical",overflow:"hidden"}}>{a.title}</div>
+                <div style={{fontSize:10,color:"#bbb",marginTop:5}}>{a.date}</div>
+              </div>
+            </div>
+          </div>)}
+        </div>}
+
+        {/* LISTE pour les articles suivants */}
+        {articles.slice(3).map((a,i)=><div key={i} onClick={()=>setOpenUrl(a.link)}
+          style={{display:"flex",gap:12,margin:"0 12px 10px",background:"#fff",borderRadius:14,overflow:"hidden",boxShadow:"0 2px 8px rgba(0,0,0,.06)",cursor:"pointer",alignItems:"stretch"}}>
+          <div style={{width:90,flexShrink:0,position:"relative",background:"#111"}}>
+            <img src={a.image||JSK_LOGO} alt="" style={{width:"100%",height:"100%",objectFit:"cover",opacity:.9,display:"block"}}
+              onError={e=>{e.target.src=JSK_LOGO;e.target.style.objectFit="contain";e.target.style.padding="8px";}}/>
+          </div>
+          <div style={{flex:1,padding:"10px 12px 10px 0",display:"flex",flexDirection:"column",justifyContent:"space-between"}}>
+            <div style={{fontSize:13,fontWeight:700,color:"#1a1d23",lineHeight:1.35,display:"-webkit-box",WebkitLineClamp:3,WebkitBoxOrient:"vertical",overflow:"hidden"}}>{a.title}</div>
+            <div style={{display:"flex",alignItems:"center",gap:6,marginTop:6}}>
+              <div style={{background:JSK_GREEN,borderRadius:5,padding:"2px 7px"}}>
+                <span style={{fontSize:9,fontWeight:900,color:"#fff"}}>{a.source}</span>
+              </div>
+              <span style={{fontSize:10,color:"#bbb"}}>{a.date}</span>
+            </div>
+          </div>
+        </div>)}
+
+        <div style={{height:20}}/>
+      </div>}
+    </div>
+  </div>;
+}
+
 const NAV=[
   {id:"scores",   label:"Scores",    icon:a=><svg width="23" height="23" viewBox="0 0 24 24" fill={a?"currentColor":"none"} stroke="currentColor" strokeWidth={a?0:1.7}>{a?<path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm-1 14H9V8h2v8zm4 0h-2V8h2v8z"/>:<><circle cx="12" cy="12" r="10"/><line x1="9" y1="8" x2="9" y2="16"/><line x1="15" y1="8" x2="15" y2="16"/></>}</svg>},
   {id:"standings",label:"Classement",icon:a=><svg width="23" height="23" viewBox="0 0 24 24" fill={a?"currentColor":"none"} stroke="currentColor" strokeWidth={a?0:1.7}>{a?<path d="M7.5 21H2V9h5.5v12zm7.25-18h-5.5v18h5.5V3zM22 11h-5.5v10H22V11z"/>:<><rect x="2" y="9" width="5.5" height="12" rx="1"/><rect x="9.25" y="3" width="5.5" height="18" rx="1"/><rect x="16.5" y="11" width="5.5" height="10" rx="1"/></>}</svg>},
@@ -2121,6 +2270,7 @@ const NAV=[
   {id:"calendar", label:"Calendrier",icon:a=><svg width="23" height="23" viewBox="0 0 24 24" fill={a?"currentColor":"none"} stroke="currentColor" strokeWidth={a?0:1.7}>{a?<path d="M17 12h-5v5h5v-5zM16 1v2H8V1H6v2H5c-1.1 0-2 .9-2 2v14c0 1.1.9 2 2 2h14c1.1 0 2-.9 2-2V5c0-1.1-.9-2-2-2h-1V1h-2zm3 18H5V8h14v11z"/>:<><rect x="3" y="4" width="18" height="18" rx="2"/><path d="M16 2v4M8 2v4M3 10h18"/></>}</svg>},
   {id:"transfers",label:"Transferts",icon:a=><svg width="23" height="23" viewBox="0 0 24 24" fill={a?"currentColor":"none"} stroke="currentColor" strokeWidth={a?0:1.7}>{a?<path d="M8 5v14l11-7L8 5zM3 5h2v14H3V5z"/>:<><polygon points="8,5 19,12 8,19"/><line x1="3" y1="5" x2="3" y2="19"/><line x1="6" y1="5" x2="6" y2="19"/></>}</svg>},
   {id:"results",  label:"Résultats", icon:a=><svg width="23" height="23" viewBox="0 0 24 24" fill={a?"currentColor":"none"} stroke="currentColor" strokeWidth={a?0:1.7}>{a?<path d="M19 3H5c-1.1 0-2 .9-2 2v14c0 1.1.9 2 2 2h14c1.1 0 2-.9 2-2V5c0-1.1-.9-2-2-2zm-7 3c1.93 0 3.5 1.57 3.5 3.5S13.93 13 12 13s-3.5-1.57-3.5-3.5S10.07 6 12 6zm7 13H5v-.23c0-.62.28-1.2.76-1.58C7.47 15.82 9.64 15 12 15s4.53.82 6.24 2.19c.48.38.76.97.76 1.58V19z"/>:<><rect x="3" y="3" width="18" height="18" rx="2"/><path d="M8 12h8M8 8h8M8 16h5"/></>}</svg>},
+  {id:"jsk", label:"JSK", icon:a=><div style={{width:23,height:23,borderRadius:"50%",overflow:"hidden",border:a?"2px solid #fff":"2px solid rgba(255,255,255,.3)",flexShrink:0,display:"flex",alignItems:"center",justifyContent:"center",background:a?"#00b86b":"transparent",fontSize:12,fontWeight:900,color:"#fff"}}>K</div>},
 ];
 
 //
@@ -3242,6 +3392,7 @@ function App(){
       {scr==="calendar"  &&<CalendarTab  favs={favs} onFav={toggleFav}/>}
       {scr==="transfers" &&<TransfersTab/>}
       {scr==="results"   &&<ResultsTab/>}
+      {scr==="jsk"       &&<JSKTab/>}
     </div>
     <div style={{height:"env(safe-area-inset-bottom)",background:T.bg0,flexShrink:0}}/>
   </div>;
