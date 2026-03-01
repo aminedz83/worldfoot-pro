@@ -2220,7 +2220,23 @@ function AfricaTransferCard({t}){
   const countryFlags = {"Algérie":"🇩🇿","Maroc":"🇲🇦","Tunisie":"🇹🇳","Égypte":"🇪🇬","Afrique":"🌍"};
   const flag = countryFlags[t.country]||"🌍";
 
-  return<a href={t.source_url||"#"} target="_blank" rel="noopener" style={{textDecoration:"none",display:"block",margin:"0 10px 10px"}}>
+  // Décoder les entités HTML
+  const decodeHtml = (str) => {
+    if(!str) return "";
+    return str.replace(/&amp;/g,"&").replace(/&lt;/g,"<").replace(/&gt;/g,">")
+              .replace(/&quot;/g,'"').replace(/&#039;/g,"'").replace(/&apos;/g,"'")
+              .replace(/&#(\d+);/g,(_,n)=>String.fromCharCode(n))
+              .replace(/&[a-z]+;/gi,"");
+  };
+  const cleanTitle = decodeHtml(t.player_name);
+
+  const openArticle = (e) => {
+    e.preventDefault();
+    e.stopPropagation();
+    if(t.source_url) window.open(t.source_url, "_blank", "noopener");
+  };
+
+  return<div onClick={openArticle} style={{textDecoration:"none",display:"block",margin:"0 10px 10px",cursor:"pointer"}}>
     <div style={{background:"#fff",borderRadius:14,boxShadow:"0 1px 6px rgba(0,0,0,.08)",borderLeft:`4px solid ${srcColor}`,overflow:"hidden"}}>
       {/* Source + date + pays */}
       <div style={{display:"flex",alignItems:"center",gap:8,padding:"10px 14px 8px"}}>
@@ -2232,14 +2248,14 @@ function AfricaTransferCard({t}){
       </div>
       {/* Titre */}
       <div style={{padding:"0 14px 12px"}}>
-        <div style={{fontSize:14,fontWeight:700,color:"#1a1d23",lineHeight:1.45,marginBottom:10}}>{t.player_name}</div>
+        <div style={{fontSize:14,fontWeight:700,color:"#1a1d23",lineHeight:1.45,marginBottom:10}}>{cleanTitle}</div>
         <div style={{display:"flex",alignItems:"center",gap:6}}>
           <span style={{background:typeColor+"18",borderRadius:20,padding:"3px 10px",fontSize:10,fontWeight:800,color:typeColor}}>{t.transfer_type||"Mercato"}</span>
           <span style={{marginLeft:"auto",fontSize:12,color:"#42a5f5",fontWeight:700}}>Lire l'article →</span>
         </div>
       </div>
     </div>
-  </a>;
+  </div>;
 }
 
 function AfricaTransfers({data,st,onRefresh}){
