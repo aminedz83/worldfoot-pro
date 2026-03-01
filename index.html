@@ -2241,7 +2241,7 @@ function JSKTab(){
           <div style={{fontSize:11,color:JSK_YELLOW,fontWeight:700,letterSpacing:1.5,marginTop:2}}>ACTUALITE · 48H</div>
           {lastUpdate&&<div style={{fontSize:10,color:"rgba(255,255,255,.5)",marginTop:2}}>Mis a jour {lastUpdate.toLocaleTimeString("fr-FR",{hour:"2-digit",minute:"2-digit"})}</div>}
         </div>
-        <button onClick={load} style={{background:"rgba(255,255,255,.15)",border:"1px solid rgba(255,255,255,.2)",borderRadius:10,padding:"8px 12px",color:"#fff",fontSize:14,fontWeight:700,cursor:"pointer"}} onClick2>&#8635;</button>
+        <button onClick={load} style={{background:"rgba(255,255,255,.15)",border:"1px solid rgba(255,255,255,.2)",borderRadius:10,padding:"8px 12px",color:"#fff",fontSize:14,fontWeight:700,cursor:"pointer"}}>&#8635;</button>
       </div>
     </div>
     <div style={{flex:1,overflowY:"auto",WebkitOverflowScrolling:"touch",paddingTop:10}}>
@@ -3272,10 +3272,11 @@ function App(){
   };
   // Vérifier nouveaux articles JSK toutes les 15min
   useEffect(()=>{
+    let alive=true;
     const check=()=>{
       const lastSeen=parseInt(localStorage.getItem("jsk_last_seen")||"0");
       fetch(JSK_FEED_URL).then(r=>r.json()).then(d=>{
-        if(!d||!d.items||!d.items.length) return;
+        if(!alive||!d||!d.items||!d.items.length) return;
         const newest=new Date(d.items[0].pubDate).getTime();
         if(newest>lastSeen && lastSeen>0){
           const newCount=d.items.filter(a=>new Date(a.pubDate).getTime()>lastSeen).length;
@@ -3287,7 +3288,7 @@ function App(){
     };
     check();
     const t=setInterval(check,15*60*1000);
-    return()=>clearInterval(t);
+    return()=>{alive=false;clearInterval(t);};
   },[]);
   // Badge Transferts
   const[transferBadge,setTransferBadge]=useState(()=>{
@@ -3298,10 +3299,11 @@ function App(){
     try{localStorage.setItem("transfer_badge","0");}catch{}
   };
   useEffect(()=>{
+    let alive=true;
     const check=()=>{
       const lastSeen=parseInt(localStorage.getItem("transfer_last_seen")||"0");
       fetch("https://iqeqlsxjiklygywjirqs.supabase.co/functions/v1/get-transfers").then(r=>r.json()).then(d=>{
-        if(!d||!d.length) return;
+        if(!alive||!d||!d.length) return;
         const newest=new Date(d[0].published_at||d[0].created_at).getTime();
         if(newest>lastSeen && lastSeen>0){
           const newCount=d.filter(t=>new Date(t.published_at||t.created_at).getTime()>lastSeen).length;
@@ -3313,7 +3315,7 @@ function App(){
     };
     check();
     const t=setInterval(check,15*60*1000);
-    return()=>clearInterval(t);
+    return()=>{alive=false;clearInterval(t);};
   },[]);
 
   // Quand on ouvre JSK ou Transferts, effacer le badge
