@@ -2210,50 +2210,50 @@ const RELIABILITY_INFO={
 };
 
 function AfricaTransferCard({t}){
-  const rel=RELIABILITY_INFO[t.reliability_score]||RELIABILITY_INFO[3];
-  const typeColor=t.transfer_type==="Loan"?"#ff9800":t.transfer_type==="Free Transfer"?"#00b86b":"#1976d2";
-  const date=t.published_at?new Date(t.published_at).toLocaleDateString("fr-FR",{day:"2-digit",month:"short",hour:"2-digit",minute:"2-digit"}):"";
-  return<div style={{
-    background:"#fff",margin:"0 10px 10px",borderRadius:14,
-    boxShadow:"0 1px 5px rgba(0,0,0,.08)",
-    borderLeft:`4px solid ${rel.color}`,
-    animation:"fadeIn .2s ease",overflow:"hidden",
-  }}>
-    {/* Header joueur */}
-    <div style={{display:"flex",alignItems:"center",gap:10,padding:"12px 14px 10px"}}>
-      <div style={{width:44,height:44,borderRadius:22,background:"#f0f2f5",display:"flex",alignItems:"center",justifyContent:"center",flexShrink:0,overflow:"hidden"}}>
-        {t.player_photo
-          ?<img src={t.player_photo} width={44} height={44} style={{objectFit:"cover",borderRadius:22}} onError={e=>e.target.style.display="none"}/>
-          :<span style={{fontSize:20}}>👤</span>}
+  const SOURCE_COLORS = {
+    "Dzfoot":"#00883a","El Heddaf":"#c8002d","MarocSport":"#c8002d",
+    "KingFut":"#1a1a2e","BBC Afrique":"#bb1919","FootMercato":"#ff6b00",
+  };
+  const srcColor = SOURCE_COLORS[t.source_name]||"#00b86b";
+  const date = t.published_at ? new Date(t.published_at).toLocaleDateString("fr-FR",{day:"2-digit",month:"short",hour:"2-digit",minute:"2-digit"}) : "";
+  const typeColor = t.transfer_type==="Loan"?"#ff9800":t.transfer_type==="Coach"?"#9c27b0":t.transfer_type==="Free Transfer"?"#00b86b":"#1976d2";
+  const countryFlags = {"Algérie":"🇩🇿","Maroc":"🇲🇦","Tunisie":"🇹🇳","Égypte":"🇪🇬","Afrique":"🌍"};
+  const flag = countryFlags[t.country]||"🌍";
+
+  return<a href={t.source_url||"#"} target="_blank" rel="noopener" style={{textDecoration:"none",display:"block",margin:"0 10px 10px"}}>
+    <div style={{
+      background:"#fff",borderRadius:14,
+      boxShadow:"0 1px 6px rgba(0,0,0,.08)",
+      borderLeft:`4px solid ${srcColor}`,
+      overflow:"hidden",transition:"transform .15s,box-shadow .15s",
+    }}>
+      {/* Source + date */}
+      <div style={{display:"flex",alignItems:"center",gap:8,padding:"10px 14px 6px"}}>
+        <div style={{background:srcColor,borderRadius:6,padding:"2px 8px",flexShrink:0}}>
+          <span style={{fontSize:10,fontWeight:900,color:"#fff",letterSpacing:.5}}>{t.source_name||"SOURCE"}</span>
+        </div>
+        <span style={{fontSize:11,color:"#bbb"}}>{flag} {t.country}</span>
+        <span style={{marginLeft:"auto",fontSize:11,color:"#bbb"}}>{date}</span>
       </div>
-      <div style={{flex:1,minWidth:0}}>
-        <div className="bc" style={{fontSize:15,fontWeight:800,color:"#1a1d23",overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap"}}>{t.player_name}</div>
-        <div style={{fontSize:11,color:"#999",marginTop:2}}>{t.country}{t.league?` · ${t.league}`:""}{date?` · ${date}`:""}</div>
-      </div>
-      {/* Badge fiabilité */}
-      <div style={{background:rel.bg,borderRadius:8,padding:"4px 8px",flexShrink:0,textAlign:"center"}}>
-        <div className="bc" style={{fontSize:9,fontWeight:900,color:rel.color,letterSpacing:.5}}>{rel.label}</div>
-        <div style={{fontSize:10}}>{rel.stars}</div>
+      {/* Titre article */}
+      <div style={{padding:"4px 14px 10px"}}>
+        <div style={{fontSize:14,fontWeight:700,color:"#1a1d23",lineHeight:1.4,marginBottom:8}}>{t.player_name}</div>
+        {/* Clubs si disponibles */}
+        {t.from_club&&<div style={{display:"flex",alignItems:"center",gap:8,background:"#f7f8fa",borderRadius:10,padding:"8px 12px",marginBottom:8}}>
+          {t.from_club_logo&&<img src={t.from_club_logo} width={24} height={24} style={{borderRadius:4,objectFit:"contain"}} onError={e=>e.target.style.display="none"}/>}
+          <span style={{fontSize:12,fontWeight:700,color:"#555",flex:1}}>{t.from_club}</span>
+          <span style={{color:"#00b86b",fontWeight:900,fontSize:16}}>→</span>
+          {t.to_club_logo&&<img src={t.to_club_logo} width={24} height={24} style={{borderRadius:4,objectFit:"contain"}} onError={e=>e.target.style.display="none"}/>}
+          <span style={{fontSize:12,fontWeight:800,color:"#1a1d23",flex:1,textAlign:"right"}}>{t.to_club||"?"}</span>
+        </div>}
+        {/* Tags */}
+        <div style={{display:"flex",gap:6,alignItems:"center"}}>
+          {t.transfer_type&&<span style={{background:typeColor+"18",borderRadius:20,padding:"3px 10px",fontSize:10,fontWeight:800,color:typeColor}}>{t.transfer_type}</span>}
+          <span style={{marginLeft:"auto",fontSize:11,color:"#42a5f5",fontWeight:700}}>Lire l'article →</span>
+        </div>
       </div>
     </div>
-    {/* Clubs */}
-    <div style={{display:"flex",alignItems:"center",gap:8,background:"#f7f8fa",margin:"0 10px",borderRadius:10,padding:"9px 12px"}}>
-      <span className="bc" style={{fontSize:13,fontWeight:700,color:"#555",flex:1,overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap"}}>{t.from_club||"?"}</span>
-      <div style={{flexShrink:0,display:"flex",flexDirection:"column",alignItems:"center",gap:2}}>
-        <span style={{fontSize:18,color:"#00b86b",fontWeight:900}}>→</span>
-        {t.fee&&t.fee!=="null"
-          ?<span className="bc" style={{fontSize:10,fontWeight:800,color:"#00b86b",background:"rgba(0,184,107,.1)",borderRadius:6,padding:"1px 6px"}}>{t.fee}</span>
-          :<span style={{fontSize:9,color:"#bbb",fontStyle:"italic"}}>N/C</span>}
-      </div>
-      <span className="bc" style={{fontSize:13,fontWeight:800,color:"#1a1d23",flex:1,textAlign:"right",overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap"}}>{t.to_club||"?"}</span>
-    </div>
-    {/* Footer */}
-    <div style={{display:"flex",alignItems:"center",gap:8,padding:"8px 14px 10px"}}>
-      {t.transfer_type&&<span style={{background:typeColor+"18",borderRadius:8,padding:"3px 8px",fontSize:10,fontWeight:800,color:typeColor}}>{t.transfer_type}</span>}
-      {t.summary&&<span style={{fontSize:11,color:"#888",flex:1,overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap"}}>{t.summary}</span>}
-      {t.source_url&&<a href={t.source_url} target="_blank" rel="noopener" style={{flexShrink:0,background:"rgba(25,118,210,.08)",border:"1px solid rgba(25,118,210,.15)",borderRadius:8,padding:"4px 9px",fontSize:10,fontWeight:700,color:"#42a5f5",textDecoration:"none"}}>🔗 Source</a>}
-    </div>
-  </div>;
+  </a>;
 }
 
 function AfricaTransfers({data,st,onRefresh}){
@@ -2297,9 +2297,9 @@ function AfricaTransfers({data,st,onRefresh}){
       {st==="ok"&&<>
         {/* Info banner */}
         <div style={{margin:"0 10px 10px",padding:"9px 13px",background:"rgba(0,184,107,.06)",borderRadius:10,border:"1px solid rgba(0,184,107,.15)",display:"flex",alignItems:"center",gap:7}}>
-          <span>✅</span>
-          <span style={{fontSize:11,color:"#555",lineHeight:1.4}}>Transferts vérifiés · Sources officielles uniquement</span>
-          <span className="bc" style={{marginLeft:"auto",fontSize:10,fontWeight:800,color:"#00b86b"}}>{filtered.length} transferts</span>
+          <span>📰</span>
+          <span style={{fontSize:11,color:"#555",lineHeight:1.4}}>Revue de presse mercato · Dzfoot, El Heddaf, BBC, KingFut...</span>
+          <span className="bc" style={{marginLeft:"auto",fontSize:10,fontWeight:800,color:"#00b86b"}}>{filtered.length} articles</span>
         </div>
         {filtered.length===0
           ?<div style={{textAlign:"center",padding:"32px",color:T.t3,fontSize:13}}>Aucun transfert pour {filter}</div>
