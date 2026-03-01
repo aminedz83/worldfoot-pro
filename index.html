@@ -2209,7 +2209,7 @@ const RELIABILITY_INFO={
   1:{label:"INCERTAIN",  color:"#e53535", bg:"rgba(229,53,53,.12)",  stars:"⭐"},
 };
 
-function AfricaTransferCard({t}){
+function AfricaTransferCard({t,onOpen}){
   const SOURCE_COLORS = {
     "Dzfoot":"#00883a","El Heddaf":"#c8002d","MarocSport":"#c8002d",
     "KingFut":"#1a1a2e","BBC Afrique":"#bb1919","FootMercato":"#ff6b00",
@@ -2233,7 +2233,7 @@ function AfricaTransferCard({t}){
   const openArticle = (e) => {
     e.preventDefault();
     e.stopPropagation();
-    if(t.source_url) window.open(t.source_url, "_blank", "noopener");
+    if(t.source_url && onOpen) onOpen(t.source_url);
   };
 
   return<div onClick={openArticle} style={{textDecoration:"none",display:"block",margin:"0 10px 10px",cursor:"pointer"}}>
@@ -2260,8 +2260,17 @@ function AfricaTransferCard({t}){
 
 function AfricaTransfers({data,st,onRefresh}){
   const[filter,setFilter]=useState("all");
+  const[articleUrl,setArticleUrl]=useState(null);
   const countries=["all","Algérie","Maroc","Tunisie","Égypte"];
   const filtered=filter==="all"?data:data.filter(t=>t.country===filter);
+
+  if(articleUrl) return<div style={{display:"flex",flexDirection:"column",height:"100%",background:"#fff"}}>
+    <div style={{display:"flex",alignItems:"center",gap:10,padding:"12px 14px",background:"#00b86b",flexShrink:0}}>
+      <button onClick={()=>setArticleUrl(null)} style={{background:"rgba(255,255,255,.25)",border:"none",borderRadius:10,padding:"7px 14px",color:"#fff",fontSize:13,fontWeight:800,cursor:"pointer"}}>← Retour</button>
+      <span style={{fontSize:13,fontWeight:700,color:"#fff",flex:1,overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap"}}>Article</span>
+    </div>
+    <iframe src={articleUrl} style={{flex:1,border:"none",width:"100%"}} title="article" sandbox="allow-scripts allow-same-origin allow-popups allow-forms"/>
+  </div>;
 
   return<div style={{display:"flex",flexDirection:"column",height:"100%",overflow:"hidden"}}>
     {/* Filtre pays */}
@@ -2305,7 +2314,7 @@ function AfricaTransfers({data,st,onRefresh}){
         </div>
         {filtered.length===0
           ?<div style={{textAlign:"center",padding:"32px",color:T.t3,fontSize:13}}>Aucun transfert pour {filter}</div>
-          :filtered.map(t=><AfricaTransferCard key={t.id} t={t}/>)
+          :filtered.map(t=><AfricaTransferCard key={t.id} t={t} onOpen={setArticleUrl}/>)
         }
       </>}
     </div>
