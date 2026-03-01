@@ -146,6 +146,31 @@ window.addEventListener('load', function() {
 
 const {useState,useEffect,useCallback,useRef,useMemo}=React;
 
+// ── CACHE LOCAL ──────────────────────────────────────────────
+const CACHE_TTL = 15 * 60 * 1000; // 15 minutes
+
+function cacheSet(key, data) {
+  try { localStorage.setItem(key, JSON.stringify({data, ts: Date.now()})); } catch {}
+}
+
+function cacheGet(key) {
+  try {
+    const raw = localStorage.getItem(key);
+    if (!raw) return null;
+    const {data, ts} = JSON.parse(raw);
+    if (Date.now() - ts > CACHE_TTL) return null;
+    return data;
+  } catch { return null; }
+}
+
+function cacheGetStale(key) {
+  try {
+    const raw = localStorage.getItem(key);
+    if (!raw) return null;
+    return JSON.parse(raw).data;
+  } catch { return null; }
+}
+
 //
 // CONFIG
 //
@@ -2149,11 +2174,16 @@ function JSKTab(){
   const[selected,setSelected]=useState(null);
   const[lastUpdate,setLastUpdate]=useState(null);
   const load=()=>{
-    setSt("load");
+    // Afficher le cache immédiatement
+    const stale = cacheGetStale("jsk_articles");
+    if(stale && stale.length) { setArticles(stale); setSt("ok"); }
+    else setSt("load");
+    // Mettre à jour en arrière-plan
     fetch(JSK_FEED_URL).then(r=>r.json()).then(d=>{
       if(!d||!d.items) throw new Error();
+      cacheSet("jsk_articles", d.items);
       setArticles(d.items);setLastUpdate(new Date());setSt(d.items.length?"ok":"empty");
-    }).catch(()=>setSt("err"));
+    }).catch(()=>{ if(!stale) setSt("err"); });
   };
   useEffect(()=>{load();},[]);
 
@@ -2543,10 +2573,14 @@ function TransfersTab(){
   useEffect(()=>{
     if(view!=="africa")return;
     let c=false;
-    setAfricaSt("load");setAfricaData([]);
+    // Cache stale-while-revalidate
+    const stale=cacheGetStale("africa_transfers");
+    if(stale&&stale.length){setAfricaData(stale);setAfricaSt("ok");}
+    else setAfricaSt("load");
+    setAfricaData(stale||[]);
     sbGet("transfers_africa","status=eq.published&order=published_at.desc&limit=50")
-      .then(d=>{if(!c){setAfricaData(d);setAfricaSt(d.length?"ok":"empty");}})
-      .catch(e=>{console.error("Supabase err:",e);if(!c)setAfricaSt("err");});
+      .then(d=>{if(!c){cacheSet("africa_transfers",d);setAfricaData(d);setAfricaSt(d.length?"ok":"empty");}})
+      .catch(e=>{console.error("Supabase err:",e);if(!c&&!stale)setAfricaSt("err");});
     return()=>{c=true;};
   },[view]);
 
