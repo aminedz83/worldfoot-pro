@@ -3503,28 +3503,16 @@ function App(){
       <div style={{position:"absolute",inset:0,background:"radial-gradient(ellipse 80% 100% at 50% -20%,rgba(255,255,255,.1) 0%,transparent 70%)",pointerEvents:"none"}}/>
       <div style={{display:"flex",alignItems:"center",justifyContent:"space-between",padding:"13px 16px 0",position:"relative"}}>
         <div style={{display:"flex",alignItems:"center",gap:10}}>
-          {/* Logo avec glow — appui long = déconnexion */}
-          {(()=>{
-            const[showLogout,setShowLogout]=React.useState(false);
-            return<div style={{position:"relative"}}>
-              <div
-                onTouchStart={e=>{const el=e.currentTarget;el._t=setTimeout(()=>setShowLogout(v=>!v),800);}}
-                onTouchEnd={e=>{clearTimeout(e.currentTarget._t);}}
-                style={{width:34,height:34,background:"rgba(255,255,255,.2)",borderRadius:10,display:"flex",alignItems:"center",justifyContent:"center",fontSize:18,boxShadow:"0 3px 12px rgba(0,0,0,.15)",flexShrink:0,cursor:"pointer",userSelect:"none",WebkitUserSelect:"none"}}>⚡</div>
-              {showLogout&&<div style={{position:"absolute",top:42,left:0,background:"#1a1d23",border:"1px solid rgba(255,255,255,.1)",borderRadius:12,padding:"6px",zIndex:999,boxShadow:"0 8px 24px rgba(0,0,0,.4)",minWidth:140}}>
-                <button onClick={()=>{localStorage.removeItem("wf_auth");window.location.href="login.html";}} style={{width:"100%",padding:"10px 14px",background:"rgba(229,57,53,.15)",border:"1px solid rgba(229,57,53,.2)",borderRadius:8,color:"#ff8a80",fontSize:12,fontWeight:700,cursor:"pointer",textAlign:"left"}}>⏻ Déconnexion</button>
-                <button onClick={()=>setShowLogout(false)} style={{width:"100%",padding:"8px 14px",background:"none",border:"none",color:"rgba(255,255,255,.3)",fontSize:11,cursor:"pointer",marginTop:4}}>Annuler</button>
-              </div>}
-            </div>;
-          })()}
+          {/* Logo */}
+          <div style={{width:34,height:34,background:"rgba(255,255,255,.2)",borderRadius:10,display:"flex",alignItems:"center",justifyContent:"center",fontSize:18,boxShadow:"0 3px 12px rgba(0,0,0,.15)",flexShrink:0}}>⚡</div>
           <div>
             <div className="bc" style={{fontSize:24,fontWeight:900,color:"#fff",letterSpacing:-.5,lineHeight:1,textTransform:"uppercase"}}>WorldFoot</div>
             <div style={{fontSize:9,color:"rgba(255,255,255,.8)",fontWeight:700,letterSpacing:2.5,textTransform:"uppercase",marginTop:1}}>PRO · LIVE · By Amine</div>
           </div>
         </div>
         <div style={{display:"flex",alignItems:"center",gap:8}}>
-          {installEvt&&<button onClick={()=>{installEvt.prompt();installEvt.userChoice.then(()=>setIE(null));}} style={{background:"rgba(255,255,255,.2)",border:"1px solid rgba(255,255,255,.3)",color:"#fff",borderRadius:8,padding:"5px 11px",fontSize:11,fontWeight:700,cursor:"pointer"}}>📲 Installer</button>}
-          {typeof Notification!=="undefined"&&notifPerm!=="granted"&&<button onClick={requestNotif} style={{background:"rgba(255,255,255,.2)",border:"1px solid rgba(255,255,255,.3)",color:"#fff",borderRadius:8,padding:"5px 11px",fontSize:11,fontWeight:700,cursor:"pointer"}}>🔔 Alertes</button>}
+          {installEvt&&<button onClick={()=>{installEvt.prompt();installEvt.userChoice.then(()=>setIE(null));}} style={{background:"rgba(255,255,255,.2)",border:"1px solid rgba(255,255,255,.3)",color:"#fff",borderRadius:8,padding:"5px 11px",fontSize:11,fontWeight:700,cursor:"pointer",display:"none"}}>📲 Installer</button>}
+          {typeof Notification!=="undefined"&&notifPerm!=="granted"&&<button onClick={requestNotif} style={{background:"rgba(255,255,255,.2)",border:"1px solid rgba(255,255,255,.3)",color:"#fff",borderRadius:8,padding:"5px 11px",fontSize:11,fontWeight:700,cursor:"pointer",display:"none"}}>🔔 Alertes</button>}
           {notifPerm==="granted"&&favs.size>0&&<div style={{background:"rgba(255,255,255,.2)",border:"1px solid rgba(255,255,255,.3)",borderRadius:8,padding:"5px 11px",display:"flex",alignItems:"center",gap:4}}>
             <span style={{fontSize:10}}>🔔</span>
             <span className="bc" style={{fontSize:10,fontWeight:700,color:"#fff"}}>{favs.size} favori{favs.size!==1?"s":""}</span>
@@ -3536,6 +3524,7 @@ function App(){
           <div title={`API: ${_apiCallsToday}/7500 req aujourd'hui`} style={{background:"rgba(0,0,0,.2)",borderRadius:12,padding:"3px 8px",cursor:"default"}}>
             <span style={{fontSize:9,color:"rgba(255,255,255,.6)",fontWeight:700}}>{_apiCallsToday}<span style={{opacity:.6}}>/7500</span></span>
           </div>
+          <button title="Déconnexion" onClick={()=>{localStorage.removeItem("wf_auth");window.location.href="login.html";}} style={{background:"rgba(255,255,255,.08)",border:"1px solid rgba(255,255,255,.1)",borderRadius:8,padding:"4px 9px",cursor:"pointer",color:"rgba(255,255,255,.4)",fontSize:13,lineHeight:1,flexShrink:0}}>⏻</button>
 
         </div>
       </div>
