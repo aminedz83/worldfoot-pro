@@ -1,0 +1,533 @@
+<!DOCTYPE html>
+
+<html lang="fr">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<title>WorldFoot PRO</title>
+<link href="https://fonts.googleapis.com/css2?family=Bebas+Neue&family=Montserrat:wght@300;400;500;600;700;800;900&display=swap" rel="stylesheet">
+<style>
+:root {
+  --g1: #006B3C;
+  --g2: #00883a;
+  --g3: #004d2a;
+  --gold: #FFD700;
+  --gold2: #FFC107;
+}
+* { margin:0; padding:0; box-sizing:border-box; -webkit-tap-highlight-color:transparent; }
+
+body {
+min-height: 100vh;
+min-height: 100dvh;
+background: #020c06;
+font-family: ‘Montserrat’, sans-serif;
+display: flex;
+align-items: center;
+justify-content: center;
+overflow: hidden;
+position: relative;
+}
+
+/* ── BG ── */
+.bg {
+position: fixed;
+inset: 0;
+z-index: 0;
+}
+.bg-noise {
+position: absolute;
+inset: 0;
+opacity: .04;
+background-image: url(“data:image/svg+xml,%3Csvg viewBox=‘0 0 256 256’ xmlns=‘http://www.w3.org/2000/svg’%3E%3Cfilter id=‘n’%3E%3CfeTurbulence type=‘fractalNoise’ baseFrequency=‘0.9’ numOctaves=‘4’ stitchTiles=‘stitch’/%3E%3C/filter%3E%3Crect width=‘100%25’ height=‘100%25’ filter=‘url(%23n)’/%3E%3C/svg%3E”);
+background-size: 200px;
+}
+.bg-radial {
+position: absolute;
+inset: 0;
+background:
+radial-gradient(ellipse 100% 70% at 50% -10%, rgba(0,107,60,.7) 0%, transparent 65%),
+radial-gradient(ellipse 70% 50% at 110% 110%, rgba(0,60,30,.5) 0%, transparent 55%),
+radial-gradient(ellipse 50% 40% at -10% 90%, rgba(255,215,0,.04) 0%, transparent 50%);
+}
+.bg-lines {
+position: absolute;
+inset: 0;
+background-image:
+linear-gradient(rgba(0,107,60,.06) 1px, transparent 1px),
+linear-gradient(90deg, rgba(0,107,60,.06) 1px, transparent 1px);
+background-size: 50px 50px;
+mask-image: radial-gradient(ellipse 90% 90% at 50% 50%, black 20%, transparent 80%);
+}
+.orb {
+position: absolute;
+border-radius: 50%;
+filter: blur(80px);
+animation: orb-float ease-in-out infinite;
+}
+.o1 { width:400px;height:400px;background:rgba(0,107,60,.25);top:-150px;left:-100px;animation-duration:10s;animation-delay:0s; }
+.o2 { width:250px;height:250px;background:rgba(255,215,0,.06);bottom:-80px;right:-80px;animation-duration:13s;animation-delay:-4s; }
+.o3 { width:180px;height:180px;background:rgba(0,136,58,.2);top:40%;right:-60px;animation-duration:9s;animation-delay:-7s; }
+@keyframes orb-float {
+0%,100% { transform:translateY(0) scale(1); }
+50% { transform:translateY(-40px) scale(1.08); }
+}
+
+/* Particles */
+.ptc { position:absolute; border-radius:50%; background:var(–gold); opacity:0; animation:rise linear infinite; }
+@keyframes rise {
+0% { transform:translateY(110vh); opacity:0; }
+5% { opacity:.7; }
+95% { opacity:.2; }
+100% { transform:translateY(-10vh) translateX(20px); opacity:0; }
+}
+
+/* ── CONTAINER ── */
+.wrap {
+position: relative;
+z-index: 10;
+width: 100%;
+max-width: 400px;
+padding: 24px 20px;
+display: flex;
+flex-direction: column;
+align-items: center;
+animation: rise-in .9s cubic-bezier(.22,1,.36,1) forwards;
+}
+@keyframes rise-in {
+from { opacity:0; transform:translateY(50px); }
+to   { opacity:1; transform:translateY(0); }
+}
+
+/* ── HEADER ── */
+.header { text-align:center; margin-bottom:40px; }
+
+.logo-zone {
+position: relative;
+display: inline-flex;
+align-items: center;
+justify-content: center;
+margin-bottom: 22px;
+}
+.ring-outer {
+position: absolute;
+width: 130px; height: 130px;
+border-radius: 50%;
+border: 1px dashed rgba(255,215,0,.2);
+animation: spin 20s linear infinite;
+}
+.ring-mid {
+position: absolute;
+width: 112px; height: 112px;
+border-radius: 50%;
+border: 2px solid transparent;
+background: linear-gradient(#020c06,#020c06) padding-box,
+linear-gradient(135deg, var(–gold), var(–g1), var(–gold)) border-box;
+animation: spin 6s linear infinite reverse;
+}
+.ring-glow {
+position: absolute;
+width: 100px; height: 100px;
+border-radius: 50%;
+background: radial-gradient(circle, rgba(0,107,60,.5) 0%, transparent 70%);
+animation: pulse-glow 3s ease-in-out infinite;
+}
+@keyframes pulse-glow {
+0%,100% { transform:scale(1); opacity:.6; }
+50% { transform:scale(1.3); opacity:1; }
+}
+@keyframes spin {
+from { transform:rotate(0deg); }
+to   { transform:rotate(360deg); }
+}
+.logo-img {
+width: 88px; height: 88px;
+border-radius: 50%;
+object-fit: cover;
+position: relative;
+z-index: 2;
+box-shadow: 0 0 0 3px rgba(0,107,60,.8), 0 0 30px rgba(0,107,60,.6), 0 8px 32px rgba(0,0,0,.5);
+}
+
+.stars-row {
+display: flex;
+justify-content: center;
+gap: 7px;
+margin-bottom: 14px;
+}
+.star {
+width: 7px; height: 7px;
+background: var(–gold);
+clip-path: polygon(50% 0%,61% 35%,98% 35%,68% 57%,79% 91%,50% 70%,21% 91%,32% 57%,2% 35%,39% 35%);
+animation: twinkle 2.5s ease-in-out infinite;
+}
+.star:nth-child(2){animation-delay:.3s}
+.star:nth-child(3){animation-delay:.6s}
+.star:nth-child(4){animation-delay:.9s}
+.star:nth-child(5){animation-delay:1.2s}
+.star:nth-child(6){animation-delay:1.5s}
+.star:nth-child(7){animation-delay:1.8s}
+@keyframes twinkle {
+0%,100% { opacity:.3; transform:scale(.8); }
+50% { opacity:1; transform:scale(1.3); }
+}
+
+.app-name {
+font-family: ‘Bebas Neue’, sans-serif;
+font-size: 48px;
+letter-spacing: 4px;
+line-height: 1;
+color: #fff;
+text-shadow: 0 0 60px rgba(0,107,60,.8);
+}
+.app-name em { color: var(–gold); font-style:normal; }
+
+.tagline {
+font-size: 9px;
+font-weight: 700;
+letter-spacing: 5px;
+color: rgba(255,255,255,.3);
+text-transform: uppercase;
+margin-top: 7px;
+}
+
+.badge-by {
+display: inline-block;
+margin-top: 10px;
+padding: 4px 14px;
+border-radius: 50px;
+border: 1px solid rgba(255,215,0,.2);
+background: rgba(255,215,0,.05);
+font-size: 10px;
+font-weight: 700;
+letter-spacing: 2px;
+color: rgba(255,215,0,.6);
+}
+
+/* ── CARD ── */
+.card {
+width: 100%;
+background: rgba(255,255,255,.03);
+backdrop-filter: blur(24px);
+-webkit-backdrop-filter: blur(24px);
+border: 1px solid rgba(255,255,255,.07);
+border-radius: 28px;
+padding: 32px 28px 28px;
+box-shadow:
+0 40px 80px rgba(0,0,0,.5),
+0 0 0 1px rgba(0,107,60,.1) inset,
+0 1px 0 rgba(255,255,255,.08) inset;
+position: relative;
+overflow: hidden;
+}
+.card::before {
+content: ‘’;
+position: absolute;
+top: 0; left: 10%; right: 10%;
+height: 1px;
+background: linear-gradient(90deg, transparent, rgba(0,107,60,.6), rgba(255,215,0,.3), rgba(0,107,60,.6), transparent);
+}
+
+.card-head { margin-bottom: 26px; }
+.card-title {
+font-size: 22px;
+font-weight: 900;
+color: #fff;
+letter-spacing: -.5px;
+}
+.card-sub {
+font-size: 11px;
+color: rgba(255,255,255,.3);
+margin-top: 4px;
+font-weight: 500;
+letter-spacing: .5px;
+}
+
+/* Champs */
+.field { margin-bottom: 18px; }
+.field-label {
+display: block;
+font-size: 9px;
+font-weight: 800;
+letter-spacing: 2.5px;
+color: rgba(255,255,255,.3);
+text-transform: uppercase;
+margin-bottom: 8px;
+}
+.inp-wrap { position: relative; }
+.inp-ico {
+position: absolute;
+left: 16px; top: 50%;
+transform: translateY(-50%);
+font-size: 15px;
+opacity: .4;
+pointer-events: none;
+z-index: 1;
+}
+input {
+width: 100%;
+padding: 16px 16px 16px 46px;
+background: rgba(255,255,255,.05);
+border: 1px solid rgba(255,255,255,.08);
+border-radius: 14px;
+color: #fff;
+font-size: 15px;
+font-family: ‘Montserrat’, sans-serif;
+font-weight: 500;
+outline: none;
+transition: all .3s;
+-webkit-appearance: none;
+}
+input::placeholder { color: rgba(255,255,255,.2); }
+input:focus {
+border-color: rgba(0,136,58,.6);
+background: rgba(0,107,60,.12);
+box-shadow: 0 0 0 3px rgba(0,107,60,.15);
+}
+.eye {
+position: absolute;
+right: 14px; top: 50%;
+transform: translateY(-50%);
+background: none; border: none;
+cursor: pointer; font-size: 16px;
+opacity: .3; transition: opacity .2s;
+padding: 6px;
+}
+.eye:hover { opacity: .8; }
+
+/* Erreur */
+.err {
+display: none;
+background: rgba(239,68,68,.1);
+border: 1px solid rgba(239,68,68,.2);
+border-radius: 12px;
+padding: 12px 16px;
+margin-bottom: 18px;
+font-size: 12px;
+color: #fca5a5;
+font-weight: 600;
+}
+
+/* Bouton */
+.btn {
+width: 100%;
+padding: 17px;
+background: linear-gradient(135deg, var(–g3) 0%, var(–g1) 40%, var(–g2) 100%);
+border: 1px solid rgba(0,107,60,.5);
+border-radius: 16px;
+color: #fff;
+font-size: 14px;
+font-weight: 800;
+font-family: ‘Montserrat’, sans-serif;
+letter-spacing: 1px;
+text-transform: uppercase;
+cursor: pointer;
+position: relative;
+overflow: hidden;
+transition: all .3s;
+box-shadow: 0 8px 32px rgba(0,107,60,.35), 0 2px 0 rgba(255,255,255,.1) inset;
+}
+.btn::after {
+content: ‘’;
+position: absolute;
+inset: 0;
+background: linear-gradient(180deg, rgba(255,255,255,.12) 0%, transparent 100%);
+opacity: 1;
+border-radius: inherit;
+}
+.btn:active { transform: scale(.98); }
+.btn:disabled { opacity: .5; cursor: not-allowed; }
+
+.btn-inner {
+position: relative;
+z-index: 1;
+display: flex;
+align-items: center;
+justify-content: center;
+gap: 10px;
+}
+
+.spinner {
+width: 16px; height: 16px;
+border: 2px solid rgba(255,255,255,.3);
+border-top-color: #fff;
+border-radius: 50%;
+animation: spin .7s linear infinite;
+display: none;
+}
+
+/* Séparateur */
+.sep {
+display: flex;
+align-items: center;
+gap: 12px;
+margin: 22px 0 18px;
+}
+.sep-line { flex:1; height:1px; background:rgba(255,255,255,.06); }
+.sep-txt {
+font-size: 9px;
+font-weight: 700;
+letter-spacing: 3px;
+color: rgba(255,255,255,.15);
+}
+
+.member-note {
+text-align: center;
+font-size: 10px;
+color: rgba(255,255,255,.15);
+letter-spacing: .5px;
+}
+
+/* Footer */
+.footer {
+margin-top: 28px;
+font-size: 9px;
+font-weight: 700;
+letter-spacing: 3px;
+color: rgba(255,255,255,.12);
+text-align: center;
+}
+</style>
+
+</head>
+<body>
+
+<div class="bg">
+  <div class="bg-noise"></div>
+  <div class="bg-radial"></div>
+  <div class="bg-lines"></div>
+  <div class="orb o1"></div>
+  <div class="orb o2"></div>
+  <div class="orb o3"></div>
+  <div id="ptc"></div>
+</div>
+
+<div class="wrap">
+
+  <!-- HEADER -->
+
+  <div class="header">
+    <div class="logo-zone">
+      <div class="ring-outer"></div>
+      <div class="ring-mid"></div>
+      <div class="ring-glow"></div>
+      <img class="logo-img" src="https://i.imgur.com/TkG4iVH_d.webp?maxwidth=760&fidelity=grand" alt="JSK"
+        onerror="this.style.display='none'"/>
+    </div>
+    <div class="stars-row">
+      <div class="star"></div><div class="star"></div><div class="star"></div>
+      <div class="star"></div><div class="star"></div><div class="star"></div>
+      <div class="star"></div>
+    </div>
+    <div class="app-name">World<em>Foot</em> PRO</div>
+    <div class="tagline">Football · Live · Actualités</div>
+    <div class="badge-by">BY AMINE</div>
+  </div>
+
+  <!-- CARD -->
+
+  <div class="card">
+    <div class="card-head">
+      <div class="card-title">Connexion</div>
+      <div class="card-sub">Accès membre exclusif</div>
+    </div>
+
+```
+<div class="field">
+  <label class="field-label">Identifiant</label>
+  <div class="inp-wrap">
+    <span class="inp-ico">👤</span>
+    <input id="u" type="text" placeholder="Votre identifiant" autocomplete="username"
+      onkeydown="if(event.key==='Enter')document.getElementById('p').focus()"/>
+  </div>
+</div>
+
+<div class="field">
+  <label class="field-label">Mot de passe</label>
+  <div class="inp-wrap">
+    <span class="inp-ico">🔒</span>
+    <input id="p" type="password" placeholder="••••••••" autocomplete="current-password"
+      onkeydown="if(event.key==='Enter')login()"/>
+    <button class="eye" id="eye" onclick="toggleEye()">👁️</button>
+  </div>
+</div>
+
+<div class="err" id="err">⚠️ Identifiant ou mot de passe incorrect</div>
+
+<button class="btn" id="btn" onclick="login()">
+  <div class="btn-inner">
+    <div class="spinner" id="sp"></div>
+    <span id="bt">Se connecter</span>
+  </div>
+</button>
+
+<div class="sep">
+  <div class="sep-line"></div>
+  <div class="sep-txt">JS KABYLIE</div>
+  <div class="sep-line"></div>
+</div>
+
+<div class="member-note">Accès réservé aux membres</div>
+```
+
+  </div>
+
+  <div class="footer">WORLDFOOT PRO · V2.0 · 2026</div>
+</div>
+
+<script>
+// Particules
+const pc = document.getElementById('ptc');
+for(let i=0;i<25;i++){
+  const d = document.createElement('div');
+  d.className = 'ptc';
+  d.style.cssText = `left:${Math.random()*100}%;width:${1+Math.random()*2}px;height:${1+Math.random()*2}px;animation-duration:${10+Math.random()*15}s;animation-delay:${Math.random()*12}s;`;
+  pc.appendChild(d);
+}
+
+function toggleEye(){
+  const p = document.getElementById('p');
+  const e = document.getElementById('eye');
+  p.type = p.type==='password' ? 'text' : 'password';
+  e.textContent = p.type==='password' ? '👁️' : '🙈';
+}
+
+function login(){
+  const u = document.getElementById('u').value.trim().toLowerCase();
+  const p = document.getElementById('p').value;
+  const btn = document.getElementById('btn');
+  const err = document.getElementById('err');
+  const sp = document.getElementById('sp');
+  const bt = document.getElementById('bt');
+
+  err.style.display = 'none';
+  if(!u||!p) return;
+
+  btn.disabled = true;
+  sp.style.display = 'block';
+  bt.textContent = 'Connexion...';
+
+  setTimeout(()=>{
+    if(u==='amine' && p==='jsk2024'){
+      sp.style.display = 'none';
+      bt.textContent = '✓ Bienvenue !';
+      localStorage.setItem('wf_auth','1');
+      setTimeout(()=>{ window.location.href='index.html'; }, 700);
+    } else {
+      err.style.display = 'block';
+      btn.disabled = false;
+      sp.style.display = 'none';
+      bt.textContent = 'Se connecter';
+      document.getElementById('p').value = '';
+    }
+  }, 1000);
+}
+
+if(localStorage.getItem('wf_auth')==='1'){
+  window.location.href = 'index.html';
+}
+</script>
+
+</body>
+</html>
