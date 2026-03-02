@@ -3504,22 +3504,19 @@ function App(){
       <div style={{display:"flex",alignItems:"center",justifyContent:"space-between",padding:"13px 16px 0",position:"relative"}}>
         <div style={{display:"flex",alignItems:"center",gap:10}}>
           {/* Logo avec glow — appui long = déconnexion */}
-          <div
-            onTouchStart={e=>{const el=e.currentTarget;el._t=setTimeout(()=>{if(window.confirm("Se déconnecter ?")){localStorage.removeItem("wf_auth");window.location.href="login.html";}},800);}}
-            onTouchEnd={e=>{clearTimeout(e.currentTarget._t);}}
-            onContextMenu={e=>{e.preventDefault();if(window.confirm("Se déconnecter ?")){localStorage.removeItem("wf_auth");window.location.href="login.html";}}}
-            style={{
-              width:34,height:34,
-              background:"rgba(255,255,255,.2)",
-              borderRadius:10,
-              display:"flex",alignItems:"center",justifyContent:"center",
-              fontSize:18,
-              boxShadow:"0 3px 12px rgba(0,0,0,.15)",
-              flexShrink:0,
-              cursor:"pointer",
-              userSelect:"none",
-              WebkitUserSelect:"none",
-            }}>⚡</div>
+          {(()=>{
+            const[showLogout,setShowLogout]=React.useState(false);
+            return<div style={{position:"relative"}}>
+              <div
+                onTouchStart={e=>{const el=e.currentTarget;el._t=setTimeout(()=>setShowLogout(v=>!v),800);}}
+                onTouchEnd={e=>{clearTimeout(e.currentTarget._t);}}
+                style={{width:34,height:34,background:"rgba(255,255,255,.2)",borderRadius:10,display:"flex",alignItems:"center",justifyContent:"center",fontSize:18,boxShadow:"0 3px 12px rgba(0,0,0,.15)",flexShrink:0,cursor:"pointer",userSelect:"none",WebkitUserSelect:"none"}}>⚡</div>
+              {showLogout&&<div style={{position:"absolute",top:42,left:0,background:"#1a1d23",border:"1px solid rgba(255,255,255,.1)",borderRadius:12,padding:"6px",zIndex:999,boxShadow:"0 8px 24px rgba(0,0,0,.4)",minWidth:140}}>
+                <button onClick={()=>{localStorage.removeItem("wf_auth");window.location.href="login.html";}} style={{width:"100%",padding:"10px 14px",background:"rgba(229,57,53,.15)",border:"1px solid rgba(229,57,53,.2)",borderRadius:8,color:"#ff8a80",fontSize:12,fontWeight:700,cursor:"pointer",textAlign:"left"}}>⏻ Déconnexion</button>
+                <button onClick={()=>setShowLogout(false)} style={{width:"100%",padding:"8px 14px",background:"none",border:"none",color:"rgba(255,255,255,.3)",fontSize:11,cursor:"pointer",marginTop:4}}>Annuler</button>
+              </div>}
+            </div>;
+          })()}
           <div>
             <div className="bc" style={{fontSize:24,fontWeight:900,color:"#fff",letterSpacing:-.5,lineHeight:1,textTransform:"uppercase"}}>WorldFoot</div>
             <div style={{fontSize:9,color:"rgba(255,255,255,.8)",fontWeight:700,letterSpacing:2.5,textTransform:"uppercase",marginTop:1}}>PRO · LIVE · By Amine</div>
