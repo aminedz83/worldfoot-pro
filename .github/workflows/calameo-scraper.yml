@@ -31,7 +31,6 @@ jobs:
           APIFY_KEY = os.environ["APIFY_KEY"]
           SB_URL = "https://iqeqlsxjiklygywjirqs.supabase.co"
           SB_KEY = os.environ["SUPABASE_KEY"]
-          BUCKET = "competition-une"
 
           SB_HEADERS = {
               "apikey": SB_KEY,
@@ -69,46 +68,30 @@ jobs:
 
           print(f"Found {len(items)} posts")
 
+          # Vider ancienne data
+          requests.delete(
+              f"{SB_URL}/rest/v1/competition_une?id=gte.0",
+              headers=SB_HEADERS
+          )
+
           for post in items:
               try:
                   media = post.get("media", [])
-                  image_temp_url = media[0].get("url") if media else None
+                  image_url = media[0].get("url") if media else None
                   facebook_url = post.get("url", "")
-                  title = post.get("text", "")[:100] or "Edition du jour"
+                  title = post.get("text", "")[:150] or "Edition du jour"
                   published_at = post.get("time", datetime.now().isoformat())
 
-                  if not image_temp_url:
-                      print(f"Skip - no image: {title[:30]}")
+                  if not image_url:
+                      print(f"Skip - no image")
                       continue
-
-                  img_response = requests.get(image_temp_url, timeout=15)
-                  if not img_response.ok:
-                      print(f"Skip - image download failed: {img_response.status_code}")
-                      continue
-
-                  file_name = facebook_url.split("/")[-1].split("?")[0] or str(int(time.time()))
-                  file_name = f"{file_name}.jpg"
-
-                  upload = requests.post(
-                      f"{SB_URL}/storage/v1/object/{BUCKET}/{file_name}",
-                      headers={
-                          "apikey": SB_KEY,
-                          "Authorization": "Bearer " + SB_KEY,
-                          "Content-Type": "image/jpeg",
-                          "x-upsert": "true"
-                      },
-                      data=img_response.content
-                  )
-                  print(f"Upload: {upload.status_code}")
-
-                  permanent_url = f"{SB_URL}/storage/v1/object/public/{BUCKET}/{file_name}"
 
                   res = requests.post(
                       f"{SB_URL}/rest/v1/competition_une",
                       headers=SB_HEADERS,
                       json={
                           "title": title,
-                          "image_url": permanent_url,
+                          "image_url": image_url,
                           "facebook_url": facebook_url,
                           "published_at": published_at
                       }
