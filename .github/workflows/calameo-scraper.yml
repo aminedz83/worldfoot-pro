@@ -44,7 +44,7 @@ jobs:
               headers={"Authorization": f"Bearer {APIFY_KEY}"},
               json={
                   "startUrls": [{"url": "https://www.facebook.com/competitionalgerie"}],
-                  "resultsLimit": 5
+                  "resultsLimit": 10
               }
           ).json()
 
@@ -81,6 +81,12 @@ jobs:
                   facebook_url = post.get("url", "")
                   title = post.get("text", "")[:150] or "Edition du jour"
                   published_at = post.get("time", datetime.now().isoformat())
+
+                  # Filtrer uniquement les posts de la une
+                  keywords = ["la une", "competition du", "compétition du", "edition du", "une de"]
+                  if not any(k in title.lower() for k in keywords):
+                      print(f"Skip - pas une: {title[:40]}")
+                      continue
 
                   if not image_url:
                       print(f"Skip - no image")
