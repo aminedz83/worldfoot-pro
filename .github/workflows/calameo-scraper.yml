@@ -68,7 +68,6 @@ jobs:
 
           print(f"Found {len(items)} posts")
 
-          # Vider ancienne data
           requests.delete(
               f"{SB_URL}/rest/v1/competition_une?id=gte.0",
               headers=SB_HEADERS
@@ -76,7 +75,8 @@ jobs:
 
           for post in items:
               try:
-                  # URL directe de l'image
+                  print(f"POST KEYS: {list(post.keys())}")
+
                   photo_image = post.get("photo_image", {})
                   media = post.get("media", [])
                   image_url = (photo_image.get("uri") if photo_image
@@ -87,7 +87,6 @@ jobs:
                   title = post.get("text", "")[:150] or "Edition du jour"
                   published_at = post.get("time", datetime.now().isoformat())
 
-                  # Filtrer uniquement les posts de la une
                   keywords = ["la une", "competition du", "compétition du", "edition du", "une de"]
                   if not any(k in title.lower() for k in keywords):
                       print(f"Skip - pas une: {title[:40]}")
@@ -97,7 +96,7 @@ jobs:
                       print(f"Skip - no image: {title[:40]}")
                       continue
 
-                  print(f"Image URL: {image_url[:60]}")
+                  print(f"Image URL: {image_url[:80]}")
 
                   res = requests.post(
                       f"{SB_URL}/rest/v1/competition_une",
