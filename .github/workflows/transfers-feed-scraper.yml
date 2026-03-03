@@ -41,34 +41,32 @@ jobs:
 
           SOURCES = [
               {"name": "DZFoot", "url": "https://www.dzfoot.com/feed/"},
-              {"name": "Competition", "url": "https://www.competition.dz/feed/"},
-              {"name": "Le Buteur", "url": "https://www.lebuteur.com/feed/"},
-              {"name": "El Heddaf", "url": "https://www.elheddaf.com/feed/"},
-              {"name": "Goal", "url": "https://www.goal.com/fr-dz/feeds/news"},
-              {"name": "Foot Mercato", "url": "https://www.footmercato.net/feed/"},
+              {"name": "Competition", "url": "https://www.competition.dz/feed/rss/"},
+              {"name": "Le Buteur", "url": "https://www.lebuteur.com/rss/feed/"},
+              {"name": "El Heddaf", "url": "https://www.elheddaf.com/rss/"},
+              {"name": "Foot Mercato", "url": "https://www.footmercato.net/flux-rss/articles.rss"},
+              {"name": "But Football", "url": "https://www.butfootballclub.fr/feed/"},
           ]
 
           AFRICA_KEYWORDS = [
               "algerie", "algérie", "kabylie", "jsk", "mca", "usma", "crb",
               "csc", "usmh", "nahd", "belouizdad", "oran", "setif", "biskra",
-              "tlemcen", "bejaia", "bordj", "verts", "ligue 1",
+              "tlemcen", "bejaia", "bordj", "verts", "ligue 1 algerie",
               "tunisie", "esperance", "espérance", "club africain", "sfaxien", "etoile du sahel",
               "maroc", "wydad", "raja", "far rabat", "renaissance berkane",
               "egypte", "al ahly", "ahly", "zamalek", "pyramids",
               "afrique du sud", "kaizer", "orlando pirates", "sundowns",
-              "caf", "ligue des champions africaine", "coupe caf",
+              "caf", "coupe caf",
           ]
 
           EUROPE_KEYWORDS = [
-              "premier league", "ligue 1", "liga", "serie a", "bundesliga",
+              "premier league", "la liga", "serie a", "bundesliga", "ligue 1",
               "champions league", "ligue des champions",
               "manchester", "liverpool", "arsenal", "chelsea",
               "psg", "paris saint germain", "marseille", "lyon",
               "real madrid", "barcelone", "atletico",
               "juventus", "milan", "inter",
               "bayern", "dortmund",
-              "transfert", "mercato", "signature", "contrat",
-              "france", "espagne", "italie", "allemagne", "angleterre", "portugal",
           ]
 
           def detect_region(title):
@@ -91,16 +89,11 @@ jobs:
                   pass
               return None
 
-          # Vider ancienne data
-          requests.delete(
-              f"{SB_URL}/rest/v1/transfers_feed?id=gte.0",
-              headers=SB_HEADERS
-          )
-
           for src in SOURCES:
               try:
                   print(f"\nScraping {src['name']}...")
                   r = requests.get(src["url"], headers=HEADERS, timeout=15)
+                  print(f"Status: {r.status_code}")
                   soup = BeautifulSoup(r.text, "lxml-xml")
                   items = soup.find_all("item")[:20]
                   print(f"Found {len(items)} items")
