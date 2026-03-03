@@ -48,45 +48,6 @@ jobs:
               {"name": "Foot Mercato", "url": "https://www.footmercato.net/feed/"},
           ]
 
-          TRANSFER_KEYWORDS = ["transfert", "recrutement", "contrat", "pret", "prêt", "signature", "recrute", "signe", "mercato", "arrive", "quitte", "prolonge"]
-
-          AFRICA_CLUBS = [
-              "kabylie", "jsk", "js kabylie",
-              "mca", "mc alger", "mouloudia",
-              "usma", "usm alger",
-              "crb", "chabab",
-              "csc", "constantine",
-              "usmh", "hussein dey",
-              "nahd", "nasria",
-              "belouizdad", "csb",
-              "mc oran", "oran",
-              "setif", "ese",
-              "biskra", "usmb",
-              "tlemcen", "wat",
-              "bejaia", "jsmb",
-              "bordj", "rbcb",
-              "algerie", "algérie", "equipe nationale",
-              "esperance", "espérance", "est",
-              "club africain", "ca tunis",
-              "etoile du sahel", "ess",
-              "sfaxien", "css",
-              "bizertin", "cab",
-              "tunisie",
-              "wydad", "wac",
-              "raja", "rca",
-              "far rabat",
-              "renaissance berkane", "rsb",
-              "maroc",
-              "al ahly", "ahly",
-              "zamalek",
-              "pyramids",
-              "egypte",
-              "kaizer chiefs",
-              "orlando pirates",
-              "mamelodi sundowns",
-              "afrique du sud",
-          ]
-
           def get_og_image(url):
               try:
                   r = requests.get(url, headers=HEADERS, timeout=8)
@@ -113,15 +74,6 @@ jobs:
                           link = item.find("link").text.strip() if item.find("link") else ""
 
                           if not title or not link:
-                              continue
-
-                          title_lower = title.lower()
-                          print(f"Title: {title[:60]}")
-
-                          if not any(k in title_lower for k in TRANSFER_KEYWORDS):
-                              continue
-
-                          if not any(k in title_lower for k in AFRICA_CLUBS):
                               continue
 
                           pub_date = item.find("pubDate").text if item.find("pubDate") else ""
