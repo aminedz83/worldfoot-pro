@@ -23,6 +23,8 @@ jobs:
         run: |
           python3 - <<PYEOF
           import requests
+          import re
+          import urllib.parse
           from bs4 import BeautifulSoup
           import os
           from datetime import datetime
@@ -53,6 +55,12 @@ jobs:
                   pass
               return None
 
+          def extract_real_url(link):
+              m = re.search(r"url=(https[^&]+)", link)
+              if m:
+                  return urllib.parse.unquote(m.group(1))
+              return link
+
           r = requests.get(RSS_URL, headers=HEADERS, timeout=15)
           soup = BeautifulSoup(r.text, "xml")
           items = soup.find_all("item")[:15]
@@ -61,10 +69,36 @@ jobs:
           for item in items:
               try:
                   title = item.find("title").text.strip()
-                  link = item.find("link").text.strip() if item.find("link") else ""
+                  raw_link = item.find("link").text.strip() if item.find("link") else ""
                   pub_date = item.find("pubDate").text if item.find("pubDate") else ""
                   source = item.find("source").text if item.find("source") else "Google News"
 
-                  # Extraire vrai lien Google News
-                  if "news.google.com" in link:
-                      m = __import__("re").search(r"url=(https?[​​​​​​​​​​​​​​​​
+                  link = extract_real_url(raw_link)
+                  print(f"Fetching: {link[:60]}")
+                  image = get_og_image(link)
+                  print(f"Image: {image[:50] if image else 'None'}")
+
+                  published_at = datetime.now().isoformat()
+                  if pub_date:
+                      try:
+                          published_at = datetime.strptime(pub_date, "%a, %d %b %Y %H:%M:%S %Z").isoformat()
+                      except:
+                          pass
+
+                  res = requests.post(
+                      f"{SB_URL}/rest/v1/jsk_articles",
+                      headers=SB_HEADERS,
+                      json={
+                          "title": title,
+                          "link": link,
+                          "image": image or "",
+                          "source": source,
+                          "published_at": published_at
+                      }
+                  )
+                  print(f"OK: {title[:40]} -> {res.status_code}")
+                  time.sleep(1)
+
+              except Exception as e:
+                  print(f"Error: {e}")
+          PYEOF
