@@ -23,7 +23,6 @@ jobs:
         run: |
           python3 - <<PYEOF
           import requests
-          import re
           from bs4 import BeautifulSoup
           import os
           from datetime import datetime
@@ -31,7 +30,7 @@ jobs:
 
           SB_URL = "https://iqeqlsxjiklygywjirqs.supabase.co"
           SB_KEY = os.environ["SUPABASE_KEY"]
-          HEADERS = {"User-Agent": "Mozilla/5.0 (iPhone; CPU iPhone OS 16_0 like Mac OS X) AppleWebKit/605.1.15"}
+          HEADERS = {"User-Agent": "Mozilla/5.0"}
 
           SB_HEADERS = {
               "apikey": SB_KEY,
@@ -42,25 +41,6 @@ jobs:
 
           RSS_URL = "https://news.google.com/rss/search?q=JS+Kabylie&hl=fr&gl=DZ&ceid=DZ:fr"
 
-          def get_real_url(google_url):
-              try:
-                  r = requests.get(google_url, headers=HEADERS, timeout=8, allow_redirects=True)
-                  return r.url
-              except:
-                  return google_url
-
-          def get_og_image(url):
-              try:
-                  r = requests.get(url, headers=HEADERS, timeout=8)
-                  soup = BeautifulSoup(r.text, "html.parser")
-                  og = soup.find("meta", property="og:image")
-                  if og: return og.get("content")
-                  tw = soup.find("meta", attrs={"name": "twitter:image"})
-                  if tw: return tw.get("content")
-              except:
-                  pass
-              return None
-
           r = requests.get(RSS_URL, headers=HEADERS, timeout=15)
           soup = BeautifulSoup(r.text, "lxml-xml")
           items = soup.find_all("item")[:15]
@@ -69,14 +49,9 @@ jobs:
           for item in items:
               try:
                   title = item.find("title").text.strip()
-                  raw_link = item.find("link").text.strip() if item.find("link") else ""
+                  link = item.find("link").text.strip() if item.find("link") else ""
                   pub_date = item.find("pubDate").text if item.find("pubDate") else ""
                   source = item.find("source").text if item.find("source") else "Google News"
-
-                  real_link = get_real_url(raw_link)
-                  print(f"Real URL: {real_link[:60]}")
-                  image = get_og_image(real_link)
-                  print(f"Image: {image[:50] if image else 'None'}")
 
                   published_at = datetime.now().isoformat()
                   if pub_date:
@@ -90,14 +65,14 @@ jobs:
                       headers=SB_HEADERS,
                       json={
                           "title": title,
-                          "link": real_link,
-                          "image": image or "",
+                          "link": link,
+                          "image": None,
                           "source": source,
                           "published_at": published_at
                       }
                   )
                   print(f"OK: {title[:40]} -> {res.status_code}")
-                  time.sleep(2)
+                  time.sleep(1)
 
               except Exception as e:
                   print(f"Error: {e}")
