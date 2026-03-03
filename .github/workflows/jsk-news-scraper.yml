@@ -1,0 +1,99 @@
+name: JSK News Scraper
+
+on:
+  schedule:
+    - cron: '0 */2 * * *'
+  workflow_dispatch:
+
+jobs:
+  scrape:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Setup Python
+        uses: actions/setup-python@v4
+        with:
+          python-version: '3.11'
+
+      - name: Install dependencies
+        run: pip install requests
+
+      - name: Run scraper
+        env:
+          SUPABASE_KEY: ${{ secrets.SUPABASE_KEY }}
+          APIFY_KEY: ${{ secrets.APIFY_KEY }}
+        run: |
+          python3 - <<PYEOF
+          import requests
+          import os
+          from datetime import datetime
+          import time
+
+          APIFY_KEY = os.environ["APIFY_KEY"]
+          SB_URL = "https://iqeqlsxjiklygywjirqs.supabase.co"
+          SB_KEY = os.environ["SUPABASE_KEY"]
+
+          SB_HEADERS = {
+              "apikey": SB_KEY,
+              "Authorization": "Bearer " + SB_KEY,
+              "Content-Type": "application/json",
+              "Prefer": "resolution=ignore-duplicates"
+          }
+
+          # Lancer Apify Google News JSK
+          run = requests.post(
+              "https://api.apify.com/v2/acts/apify~google-news-scraper/runs",
+              headers={"Authorization": f"Bearer {APIFY_KEY}"},
+              json={
+                  "query": "JS Kabylie",
+                  "maxResults": 20,
+                  "language": "fr"
+              }
+          ).json()
+
+          run_id = run["data"]["id"]
+          print(f"Run ID: {run_id}")
+
+          for i in range(20):
+              time.sleep(15)
+              status = requests.get(
+                  f"https://api.apify.com/v2/actor-runs/{run_id}",
+                  headers={"Authorization": f"Bearer {APIFY_KEY}"}
+              ).json()["data"]["status"]
+              print(f"Status: {status}")
+              if status == "SUCCEEDED":
+                  break
+
+          items = requests.get(
+              f"https://api.apify.com/v2/actor-runs/{run_id}/dataset/items",
+              headers={"Authorization": f"Bearer {APIFY_KEY}"}
+          ).json()
+
+          print(f"Found {len(items)} articles")
+
+          for item in items:
+              try:
+                  title = item.get("title", "")
+                  link = item.get("url") or item.get("link", "")
+                  image = item.get("image") or item.get("thumbnail", "")
+                  source = item.get("source") or item.get("publisher", "Google News")
+                  published_at = item.get("publishedAt") or item.get("date", datetime.now().isoformat())
+
+                  if not title or not link:
+                      continue
+
+                  res = requests.post(
+                      f"{SB_URL}/rest/v1/jsk_articles",
+                      headers=SB_HEADERS,
+                      json={
+                          "title": title,
+                          "link": link,
+                          "image": image,
+                          "source": source,
+                          "published_at": published_at
+                      }
+                  )
+                  print(f"OK: {title[:40]} -> {res.status_code}")
+
+              except Exception as e:
+                  print(f"Error: {e}")
+          PYEOF
