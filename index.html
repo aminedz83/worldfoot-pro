@@ -2286,19 +2286,24 @@ function JSKCard({a,onOpen}){
   </div>;
 }
 
+const COMPETITION_UNE_URL = "https://iqeqlsxjiklygywjirqs.supabase.co/rest/v1/competition_une?order=published_at.desc&limit=10";
+
 function JSKTab(){
   const[articles,setArticles]=useState([]);
   const[st,setSt]=useState("load");
   const[selected,setSelected]=useState(null);
   const[lastUpdate,setLastUpdate]=useState(null);
+  const[view,setView]=useState("actualites"); // actualites | une
+  const[unes,setUnes]=useState([]);
+  const[uneSt,setUneSt]=useState("load");
+
+  // Charger actualites JSK
   const load=(force=false)=>{
     if(!force){
-      // Afficher le cache immédiatement au démarrage
       const stale = cacheGetStale("jsk_articles");
       if(stale && stale.length) { setArticles(stale); setSt("ok"); }
       else setSt("load");
     } else {
-      // Forcer le rechargement
       setSt("load");
     }
     fetch(JSK_FEED_URL).then(r=>r.json()).then(d=>{
@@ -2307,11 +2312,31 @@ function JSKTab(){
       setArticles(d.items);setLastUpdate(new Date());setSt(d.items.length?"ok":"empty");
     }).catch(()=>{ if(force) setSt("err"); });
   };
+
+  // Charger La Une depuis Supabase
+  const loadUne=(force=false)=>{
+    if(!force){
+      const stale=cacheGetStale("competition_une");
+      if(stale&&stale.length){setUnes(stale);setUneSt("ok");}
+      else setUneSt("load");
+    } else setUneSt("load");
+    fetch(COMPETITION_UNE_URL,{
+      headers:{
+        "apikey":SB_KEY,
+        "Authorization":"Bearer "+SB_KEY,
+      }
+    }).then(r=>r.json()).then(d=>{
+      if(!Array.isArray(d))throw new Error();
+      cacheSet("competition_une",d);
+      setUnes(d);setUneSt(d.length?"ok":"empty");
+    }).catch(()=>{if(force)setUneSt("err");});
+  };
+
   useEffect(()=>{load(false);},[]);
+  useEffect(()=>{if(view==="une")loadUne(false);},[view]);
 
   const openArt = (a) => {
     if(!a) return;
-    // Extraire le vrai lien depuis Google News
     if(a.link && a.link.includes('news.google.com')){
       const m = a.link.match(/url=(https?[^&]+)/);
       if(m) { setSelected({...a, link: decodeURIComponent(m[1])}); return; }
@@ -2372,47 +2397,127 @@ function JSKTab(){
     </div>
   </div>;
 
-  return<div style={{display:"flex",flexDirection:"column",height:"100%",background:"#f0f2f5",overflow:"hidden"}}>
+  return<div style={{display:"flex",flexDirection:"column",height:"100%",background:T.bg0,overflow:"hidden"}}>
+
+    {/* ── HEADER JSK PREMIUM ── */}
     <div style={{
       background:"linear-gradient(160deg,"+JSK_GREEN+" 0%,#004d2a 60%,#002d1a 100%)",
-      flexShrink:0,padding:"16px 16px 14px",
+      flexShrink:0,padding:"16px 16px 0",
       position:"relative",overflow:"hidden",
       boxShadow:"0 4px 20px rgba(0,107,60,.2)",
     }}>
-      {/* Décoratif */}
       <div style={{position:"absolute",inset:0,pointerEvents:"none"}}>
         <div style={{position:"absolute",top:-20,right:-10,width:120,height:120,borderRadius:"50%",background:"rgba(255,215,0,.06)"}}/>
         <div style={{position:"absolute",bottom:-15,left:-5,width:80,height:80,borderRadius:"50%",background:"rgba(255,255,255,.03)"}}/>
       </div>
-      <div style={{display:"flex",alignItems:"center",gap:13,position:"relative"}}>
+      <div style={{display:"flex",alignItems:"center",gap:13,position:"relative",marginBottom:14}}>
         <div style={{position:"relative"}}>
           <img src={JSK_LOGO} width={54} height={54} style={{borderRadius:"50%",objectFit:"cover",display:"block",border:"2.5px solid "+JSK_YELLOW,boxShadow:"0 4px 20px rgba(0,0,0,.3)"}}/>
           <div style={{position:"absolute",bottom:0,right:-2,width:14,height:14,background:"#22c55e",borderRadius:"50%",border:"2px solid white"}}/>
         </div>
         <div style={{flex:1}}>
           <div className="bc" style={{fontSize:23,fontWeight:900,color:"#fff",lineHeight:1,letterSpacing:-.3}}>JS Kabylie</div>
-          <div style={{fontSize:10,color:JSK_YELLOW,fontWeight:700,letterSpacing:2,marginTop:3,textTransform:"uppercase"}}>Actualités · Direct</div>
-          {lastUpdate&&<div style={{fontSize:9,color:"rgba(255,255,255,.45)",marginTop:2}}>↻ {lastUpdate.toLocaleTimeString("fr-FR",{hour:"2-digit",minute:"2-digit"})}</div>}
+          <div style={{fontSize:10,color:JSK_YELLOW,fontWeight:700,letterSpacing:2,marginTop:3,textTransform:"uppercase"}}>
+            {view==="actualites"?"Actualités · Direct":"La Une · Compétition"}
+          </div>
+          {lastUpdate&&view==="actualites"&&<div style={{fontSize:9,color:"rgba(255,255,255,.45)",marginTop:2}}>↻ {lastUpdate.toLocaleTimeString("fr-FR",{hour:"2-digit",minute:"2-digit"})}</div>}
         </div>
-        <button onClick={()=>load(true)} style={{
+        <button onClick={()=>view==="actualites"?load(true):loadUne(true)} style={{
           background:"rgba(255,255,255,.12)",border:"1px solid rgba(255,255,255,.18)",
           borderRadius:12,padding:"9px 13px",color:"#fff",fontSize:14,cursor:"pointer",
-          transition:"background .2s",
         }}>↻</button>
       </div>
+
+      {/* ── TOGGLE ACTUALITES / LA UNE ── */}
+      <div style={{display:"flex",borderTop:"1px solid rgba(255,255,255,.1)"}}>
+        {[["actualites","📱 Actualités"],["une","📰 La Une"]].map(([v,lb])=>{
+          const a=view===v;
+          return<button key={v} onClick={()=>setView(v)} className="bc" style={{
+            flex:1,padding:"11px 0",border:"none",background:"transparent",
+            color:a?"#fff":"rgba(255,255,255,.45)",
+            fontSize:12,fontWeight:a?800:600,cursor:"pointer",
+            letterSpacing:.5,position:"relative",
+            borderBottom:a?"2.5px solid "+JSK_YELLOW:"2.5px solid transparent",
+            transition:"all .2s",
+          }}>{lb}</button>;
+        })}
+      </div>
     </div>
+
+    {/* ── CONTENU ── */}
     <div style={{flex:1,overflowY:"auto",WebkitOverflowScrolling:"touch",paddingTop:10}}>
-      {st==="load"&&<div style={{padding:"60px 0",textAlign:"center"}}><Spin/><div style={{marginTop:12,color:"#888",fontSize:13}}>Chargement...</div></div>}
-      {st==="err"&&<div style={{padding:"60px 20px",textAlign:"center"}}>
-        <div style={{fontSize:40,marginBottom:12}}>&#128225;</div>
-        <div style={{fontSize:15,fontWeight:700,color:"#333",marginBottom:16}}>Impossible de charger</div>
-        <button onClick={load} style={{background:JSK_GREEN,color:"#fff",border:"none",borderRadius:12,padding:"12px 28px",fontSize:14,fontWeight:800,cursor:"pointer"}}>Reessayer</button>
-      </div>}
-      {st==="empty"&&<div style={{padding:"60px 20px",textAlign:"center"}}>
-        <div style={{fontSize:40,marginBottom:12}}>&#128240;</div>
-        <div style={{fontSize:15,fontWeight:700,color:"#333"}}>Aucune actualite recente</div>
-      </div>}
-      {st==="ok"&&articles.map((a,i)=><JSKCard key={i} a={a} onOpen={openArt}/>)}
+
+      {/* ACTUALITES */}
+      {view==="actualites"&&<>
+        {st==="load"&&<div style={{padding:"60px 0",textAlign:"center"}}><Spin/><div style={{marginTop:12,color:T.t3,fontSize:13}}>Chargement...</div></div>}
+        {st==="err"&&<div style={{padding:"60px 20px",textAlign:"center"}}>
+          <div style={{fontSize:40,marginBottom:12}}>📡</div>
+          <div style={{fontSize:15,fontWeight:700,color:T.t1,marginBottom:16}}>Impossible de charger</div>
+          <button onClick={()=>load(true)} style={{background:JSK_GREEN,color:"#fff",border:"none",borderRadius:12,padding:"12px 28px",fontSize:14,fontWeight:800,cursor:"pointer"}}>Réessayer</button>
+        </div>}
+        {st==="empty"&&<div style={{padding:"60px 20px",textAlign:"center"}}>
+          <div style={{fontSize:40,marginBottom:12}}>📰</div>
+          <div style={{fontSize:15,fontWeight:700,color:T.t1}}>Aucune actualité récente</div>
+        </div>}
+        {st==="ok"&&articles.map((a,i)=><JSKCard key={i} a={a} onOpen={openArt}/>)}
+      </>}
+
+      {/* LA UNE */}
+      {view==="une"&&<>
+        {uneSt==="load"&&<div style={{padding:"60px 0",textAlign:"center"}}><Spin/><div style={{marginTop:12,color:T.t3,fontSize:13}}>Chargement...</div></div>}
+        {uneSt==="err"&&<div style={{padding:"60px 20px",textAlign:"center"}}>
+          <div style={{fontSize:40,marginBottom:12}}>📡</div>
+          <div style={{fontSize:15,fontWeight:700,color:T.t1,marginBottom:16}}>Impossible de charger</div>
+          <button onClick={()=>loadUne(true)} style={{background:JSK_GREEN,color:"#fff",border:"none",borderRadius:12,padding:"12px 28px",fontSize:14,fontWeight:800,cursor:"pointer"}}>Réessayer</button>
+        </div>}
+        {uneSt==="empty"&&<div style={{padding:"60px 20px",textAlign:"center"}}>
+          <div style={{fontSize:40,marginBottom:12}}>📰</div>
+          <div style={{fontSize:15,fontWeight:700,color:T.t1}}>Aucune une disponible</div>
+        </div>}
+        {uneSt==="ok"&&<div style={{padding:"12px 14px"}}>
+          {unes.map((u,i)=><div key={i} onClick={()=>window.open(u.facebook_url||"https://www.facebook.com/competitionalgerie","_blank","noopener")} style={{
+            background:"#fff",borderRadius:16,overflow:"hidden",
+            marginBottom:14,
+            border:`1px solid ${T.line}`,
+            boxShadow:T.shadowSm,
+            cursor:"pointer",
+            transition:"transform .15s,box-shadow .15s",
+          }}
+          onMouseEnter={e=>{e.currentTarget.style.transform="scale(1.01)";e.currentTarget.style.boxShadow=T.shadow;}}
+          onMouseLeave={e=>{e.currentTarget.style.transform="scale(1)";e.currentTarget.style.boxShadow=T.shadowSm;}}
+          >
+            {/* Image une */}
+            <div style={{width:"100%",height:220,background:"linear-gradient(135deg,#1a1d23,#2d3142)",position:"relative",overflow:"hidden"}}>
+              {u.image_url
+                ?<img src={u.image_url} alt="" style={{width:"100%",height:"100%",objectFit:"cover"}}
+                    onError={e=>{e.target.style.display="none";}}/>
+                :<div style={{width:"100%",height:"100%",display:"flex",alignItems:"center",justifyContent:"center",flexDirection:"column",gap:8}}>
+                  <div style={{fontSize:40}}>📰</div>
+                  <div style={{fontSize:12,color:"rgba(255,255,255,.5)"}}>Compétition</div>
+                </div>}
+              {/* Badge */}
+              <div style={{position:"absolute",top:10,left:10,background:"rgba(0,0,0,.7)",borderRadius:8,padding:"4px 10px",backdropFilter:"blur(8px)"}}>
+                <span style={{fontSize:10,fontWeight:800,color:"#fff",letterSpacing:1}}>📰 LA UNE</span>
+              </div>
+            </div>
+            {/* Info */}
+            <div style={{padding:"14px 16px",display:"flex",alignItems:"center",justifyContent:"space-between"}}>
+              <div>
+                <div style={{fontSize:13,fontWeight:700,color:T.t1,marginBottom:3}}>{u.title||"Edition du jour"}</div>
+                <div style={{fontSize:11,color:T.t3}}>{u.published_at?new Date(u.published_at).toLocaleDateString("fr-FR",{weekday:"long",day:"2-digit",month:"long"}):""}</div>
+              </div>
+              <div style={{
+                background:"linear-gradient(135deg,#1877f2,#0d5ed9)",
+                borderRadius:10,padding:"8px 14px",
+                display:"flex",alignItems:"center",gap:6,flexShrink:0,
+              }}>
+                <span style={{fontSize:11,fontWeight:800,color:"#fff"}}>Voir →</span>
+              </div>
+            </div>
+          </div>)}
+        </div>}
+      </>}
+
       <div style={{height:20}}/>
     </div>
   </div>;
