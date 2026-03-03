@@ -2475,44 +2475,36 @@ function JSKTab(){
           <div style={{fontSize:15,fontWeight:700,color:T.t1}}>Aucune une disponible</div>
         </div>}
         {uneSt==="ok"&&<div style={{padding:"12px 14px"}}>
-          {unes.map((u,i)=><div key={i} onClick={()=>window.open(u.facebook_url||"https://www.facebook.com/competitionalgerie","_blank","noopener")} style={{
+          {unes.map((u,i)=><div key={i} style={{
             background:"#fff",borderRadius:16,overflow:"hidden",
             marginBottom:14,
             border:`1px solid ${T.line}`,
             boxShadow:T.shadowSm,
-            cursor:"pointer",
-            transition:"transform .15s,box-shadow .15s",
-          }}
-          onMouseEnter={e=>{e.currentTarget.style.transform="scale(1.01)";e.currentTarget.style.boxShadow=T.shadow;}}
-          onMouseLeave={e=>{e.currentTarget.style.transform="scale(1)";e.currentTarget.style.boxShadow=T.shadowSm;}}
-          >
-            {/* Image une */}
-            <div style={{width:"100%",height:220,background:"linear-gradient(135deg,#1a1d23,#2d3142)",position:"relative",overflow:"hidden"}}>
+          }}>
+            {/* Header date + badge */}
+            <div style={{padding:"10px 14px 8px",display:"flex",alignItems:"center",justifyContent:"space-between"}}>
+              <div style={{display:"flex",alignItems:"center",gap:6}}>
+                <div style={{background:"#d32f2f",borderRadius:6,padding:"3px 9px"}}>
+                  <span style={{fontSize:10,fontWeight:900,color:"#fff",letterSpacing:.8}}>📰 LA UNE</span>
+                </div>
+                <span style={{fontSize:11,fontWeight:700,color:T.t2}}>Compétition</span>
+              </div>
+              <span style={{fontSize:10,color:T.t3}}>{u.published_at?new Date(u.published_at).toLocaleDateString("fr-FR",{weekday:"short",day:"2-digit",month:"short"}):""}</span>
+            </div>
+            {/* Image pleine largeur — hauteur automatique */}
+            <div style={{width:"100%",background:"#111"}}>
               {u.image_url
-                ?<img src={u.image_url} alt="" style={{width:"100%",height:"100%",objectFit:"cover"}}
-                    onError={e=>{e.target.style.display="none";}}/>
-                :<div style={{width:"100%",height:"100%",display:"flex",alignItems:"center",justifyContent:"center",flexDirection:"column",gap:8}}>
+                ?<img src={u.image_url} alt="La une" style={{
+                    width:"100%",
+                    height:"auto",
+                    display:"block",
+                    objectFit:"contain",
+                  }}
+                  onError={e=>{e.target.style.display="none";}}/>
+                :<div style={{height:300,display:"flex",alignItems:"center",justifyContent:"center",flexDirection:"column",gap:8}}>
                   <div style={{fontSize:40}}>📰</div>
                   <div style={{fontSize:12,color:"rgba(255,255,255,.5)"}}>Compétition</div>
                 </div>}
-              {/* Badge */}
-              <div style={{position:"absolute",top:10,left:10,background:"rgba(0,0,0,.7)",borderRadius:8,padding:"4px 10px",backdropFilter:"blur(8px)"}}>
-                <span style={{fontSize:10,fontWeight:800,color:"#fff",letterSpacing:1}}>📰 LA UNE</span>
-              </div>
-            </div>
-            {/* Info */}
-            <div style={{padding:"14px 16px",display:"flex",alignItems:"center",justifyContent:"space-between"}}>
-              <div>
-                <div style={{fontSize:13,fontWeight:700,color:T.t1,marginBottom:3}}>{u.title||"Edition du jour"}</div>
-                <div style={{fontSize:11,color:T.t3}}>{u.published_at?new Date(u.published_at).toLocaleDateString("fr-FR",{weekday:"long",day:"2-digit",month:"long"}):""}</div>
-              </div>
-              <div style={{
-                background:"linear-gradient(135deg,#1877f2,#0d5ed9)",
-                borderRadius:10,padding:"8px 14px",
-                display:"flex",alignItems:"center",gap:6,flexShrink:0,
-              }}>
-                <span style={{fontSize:11,fontWeight:800,color:"#fff"}}>Voir →</span>
-              </div>
             </div>
           </div>)}
         </div>}
