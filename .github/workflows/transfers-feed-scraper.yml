@@ -1,0 +1,115 @@
+name: Transfers Feed Scraper
+
+on:
+  schedule:
+    - cron: '0 */2 * * *'
+  workflow_dispatch:
+
+jobs:
+  scrape:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Setup Python
+        uses: actions/setup-python@v4
+        with:
+          python-version: '3.11'
+
+      - name: Install dependencies
+        run: pip install requests beautifulsoup4 lxml
+
+      - name: Run scraper
+        env:
+          SUPABASE_KEY: ${{ secrets.SUPABASE_KEY }}
+        run: |
+          python3 - <<PYEOF
+          import requests
+          from bs4 import BeautifulSoup
+          import os
+          from datetime import datetime
+          import time
+
+          SB_URL = "https://iqeqlsxjiklygywjirqs.supabase.co"
+          SB_KEY = os.environ["SUPABASE_KEY"]
+          HEADERS = {"User-Agent": "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36"}
+
+          SB_HEADERS = {
+              "apikey": SB_KEY,
+              "Authorization": "Bearer " + SB_KEY,
+              "Content-Type": "application/json",
+              "Prefer": "resolution=ignore-duplicates"
+          }
+
+          SOURCES = [
+              {"name": "DZFoot", "url": "https://www.dzfoot.com/feed/"},
+              {"name": "Competition", "url": "https://www.competition.dz/feed/"},
+              {"name": "Le Buteur", "url": "https://www.lebuteur.com/feed/"},
+              {"name": "El Heddaf", "url": "https://www.elheddaf.com/feed/"},
+              {"name": "Goal", "url": "https://www.goal.com/fr-dz/feeds/news"},
+              {"name": "Foot Mercato", "url": "https://www.footmercato.net/feed/"},
+          ]
+
+          KEYWORDS = ["transfert", "recrutement", "contrat", "pret", "prêt", "signature", "recrute", "signe", "mercato", "arrive", "quitte", "prolonge"]
+
+          def get_og_image(url):
+              try:
+                  r = requests.get(url, headers=HEADERS, timeout=8)
+                  soup = BeautifulSoup(r.text, "html.parser")
+                  og = soup.find("meta", property="og:image")
+                  if og: return og.get("content")
+                  tw = soup.find("meta", attrs={"name": "twitter:image"})
+                  if tw: return tw.get("content")
+              except:
+                  pass
+              return None
+
+          for src in SOURCES:
+              try:
+                  print(f"\nScraping {src['name']}...")
+                  r = requests.get(src["url"], headers=HEADERS, timeout=15)
+                  soup = BeautifulSoup(r.text, "lxml-xml")
+                  items = soup.find_all("item")[:20]
+                  print(f"Found {len(items)} items")
+
+                  for item in items:
+                      try:
+                          title = item.find("title").text.strip() if item.find("title") else ""
+                          link = item.find("link").text.strip() if item.find("link") else ""
+
+                          if not title or not link:
+                              continue
+
+                          title_lower = title.lower()
+                          if not any(k in title_lower for k in KEYWORDS):
+                              continue
+
+                          pub_date = item.find("pubDate").text if item.find("pubDate") else ""
+
+                          image = get_og_image(link)
+                          print(f"OK: {title[:40]} | Image: {'✅' if image else '❌'}")
+
+                          published_at = datetime.now().isoformat()
+                          if pub_date:
+                              try:
+                                  published_at = datetime.strptime(pub_date, "%a, %d %b %Y %H:%M:%S %Z").isoformat()
+                              except:
+                                  pass
+
+                          requests.post(
+                              f"{SB_URL}/rest/v1/transfers_feed",
+                              headers=SB_HEADERS,
+                              json={
+                                  "title": title,
+                                  "link": link,
+                                  "image": image,
+                                  "source": src["name"],
+                                  "published_at": published_at
+                              }
+                          )
+                          time.sleep(1)
+
+                      except Exception as e:
+                          print(f"Error item: {e}")
+
+              except Exception as e:
+                  print(f"Error source {src['name']}: {e}")
+          PYEOF
