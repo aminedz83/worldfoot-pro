@@ -48,6 +48,37 @@ jobs:
               {"name": "Foot Mercato", "url": "https://www.footmercato.net/feed/"},
           ]
 
+          AFRICA_KEYWORDS = [
+              "algerie", "algérie", "kabylie", "jsk", "mca", "usma", "crb",
+              "csc", "usmh", "nahd", "belouizdad", "oran", "setif", "biskra",
+              "tlemcen", "bejaia", "bordj", "verts", "ligue 1",
+              "tunisie", "esperance", "espérance", "club africain", "sfaxien", "etoile du sahel",
+              "maroc", "wydad", "raja", "far rabat", "renaissance berkane",
+              "egypte", "al ahly", "ahly", "zamalek", "pyramids",
+              "afrique du sud", "kaizer", "orlando pirates", "sundowns",
+              "caf", "ligue des champions africaine", "coupe caf",
+          ]
+
+          EUROPE_KEYWORDS = [
+              "premier league", "ligue 1", "liga", "serie a", "bundesliga",
+              "champions league", "ligue des champions",
+              "manchester", "liverpool", "arsenal", "chelsea",
+              "psg", "paris saint germain", "marseille", "lyon",
+              "real madrid", "barcelone", "atletico",
+              "juventus", "milan", "inter",
+              "bayern", "dortmund",
+              "transfert", "mercato", "signature", "contrat",
+              "france", "espagne", "italie", "allemagne", "angleterre", "portugal",
+          ]
+
+          def detect_region(title):
+              title_lower = title.lower()
+              africa_score = sum(1 for k in AFRICA_KEYWORDS if k in title_lower)
+              europe_score = sum(1 for k in EUROPE_KEYWORDS if k in title_lower)
+              if africa_score >= europe_score:
+                  return "afrique"
+              return "europe"
+
           def get_og_image(url):
               try:
                   r = requests.get(url, headers=HEADERS, timeout=8)
@@ -59,6 +90,12 @@ jobs:
               except:
                   pass
               return None
+
+          # Vider ancienne data
+          requests.delete(
+              f"{SB_URL}/rest/v1/transfers_feed?id=gte.0",
+              headers=SB_HEADERS
+          )
 
           for src in SOURCES:
               try:
@@ -78,7 +115,8 @@ jobs:
 
                           pub_date = item.find("pubDate").text if item.find("pubDate") else ""
                           image = get_og_image(link)
-                          print(f"OK: {title[:40]} | Image: {'oui' if image else 'non'}")
+                          region = detect_region(title)
+                          print(f"OK: {title[:40]} | {region} | Image: {'oui' if image else 'non'}")
 
                           published_at = datetime.now().isoformat()
                           if pub_date:
@@ -95,7 +133,8 @@ jobs:
                                   "link": link,
                                   "image": image,
                                   "source": src["name"],
-                                  "published_at": published_at
+                                  "published_at": published_at,
+                                  "region": region
                               }
                           )
                           time.sleep(1)
