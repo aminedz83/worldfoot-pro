@@ -75,11 +75,7 @@ jobs:
 
           for post in items:
               try:
-                  print(f"POST KEYS: {list(post.keys())}")
-
                   media = post.get("media", [])
-                  image_url = media[0].get("url") if media else None
-
                   facebook_url = post.get("url", "")
                   title = post.get("text", "")[:150] or "Edition du jour"
                   published_at = post.get("time", datetime.now().isoformat())
@@ -88,6 +84,18 @@ jobs:
                   if not any(k in title.lower() for k in keywords):
                       print(f"Skip - pas une: {title[:40]}")
                       continue
+
+                  # Debug media pour le post une
+                  print(f"MEDIA DATA: {media}")
+
+                  image_url = None
+                  if media:
+                      m = media[0]
+                      image_url = (m.get("thumbnail") or
+                                   m.get("image") or
+                                   m.get("photo_image", {}).get("uri") or
+                                   m.get("uri") or
+                                   m.get("url"))
 
                   if not image_url:
                       print(f"Skip - no image: {title[:40]}")
