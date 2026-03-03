@@ -2818,6 +2818,31 @@ function TransferCard({t}){
   </div>;
 }
 
+const TRANSFERS_FEED_URL = "https://iqeqlsxjiklygywjirqs.supabase.co/rest/v1/transfers_feed?order=published_at.desc&limit=30";
+
+function FeedCard({item,onOpen}){
+  return<div onClick={()=>onOpen(item)} className="card-hover" style={{
+    background:"#fff",borderRadius:14,overflow:"hidden",
+    marginBottom:10,border:`1px solid ${T.line}`,
+    boxShadow:T.shadowSm,cursor:"pointer",
+    display:"flex",flexDirection:"column",
+  }}>
+    {item.image&&<div style={{width:"100%",height:160,overflow:"hidden",background:"#f0f2f5"}}>
+      <img src={item.image} alt="" style={{width:"100%",height:"100%",objectFit:"cover"}}
+        onError={e=>{e.target.parentNode.style.display="none";}}/>
+    </div>}
+    <div style={{padding:"12px 14px"}}>
+      <div style={{display:"flex",alignItems:"center",gap:6,marginBottom:6}}>
+        <div style={{background:T.redL,borderRadius:6,padding:"2px 8px"}}>
+          <span style={{fontSize:10,fontWeight:800,color:T.red}}>{item.source}</span>
+        </div>
+        <span style={{fontSize:10,color:T.t3}}>{item.published_at?new Date(item.published_at).toLocaleDateString("fr-FR",{day:"2-digit",month:"short"}):""}</span>
+      </div>
+      <div style={{fontSize:14,fontWeight:700,color:T.t1,lineHeight:1.4}}>{item.title}</div>
+    </div>
+  </div>;
+}
+
 function TransfersTab(){
   const[view,setView]=useState("africa"); // africa | recent | competition
   const[lid,setLid]=useState(39);
@@ -2827,8 +2852,27 @@ function TransfersTab(){
   const[typeFilters,setTypeFilters]=useState([]);
   const[africaData,setAfricaData]=useState([]);
   const[africaSt,setAfricaSt]=useState("load");
+  const[feedData,setFeedData]=useState([]);
+  const[feedSt,setFeedSt]=useState("load");
+  const[selectedFeed,setSelectedFeed]=useState(null);
   const yr=new Date().getFullYear();
   const season=new Date().getMonth()<6?yr-1:yr;
+
+  // Charger le feed transferts
+  useEffect(()=>{
+    if(view!=="africa"&&view!=="recent")return;
+    const region=view==="africa"?"afrique":"europe";
+    const stale=cacheGetStale("transfers_feed_"+region);
+    if(stale&&stale.length){setFeedData(stale);setFeedSt("ok");}
+    else setFeedSt("load");
+    fetch(TRANSFERS_FEED_URL+`&region=eq.${region}`,{
+      headers:{"apikey":SB_KEY,"Authorization":"Bearer "+SB_KEY}
+    }).then(r=>r.json()).then(d=>{
+      if(!Array.isArray(d))throw new Error();
+      cacheSet("transfers_feed_"+region,d);
+      setFeedData(d);setFeedSt(d.length?"ok":"empty");
+    }).catch(()=>setFeedSt("err"));
+  },[view]);
 
   // Charger les transferts africains depuis Supabase
   useEffect(()=>{
@@ -2871,6 +2915,34 @@ function TransfersTab(){
     return acc;
   },{});
 
+  if(selectedFeed) return<div style={{display:"flex",flexDirection:"column",height:"100%",background:T.bg0}}>
+    <div style={{background:T.red,flexShrink:0,padding:"13px 16px",display:"flex",alignItems:"center",gap:10,boxShadow:T.shadowRed}}>
+      <button onClick={()=>setSelectedFeed(null)} style={{background:"rgba(255,255,255,.2)",border:"1px solid rgba(255,255,255,.25)",borderRadius:10,padding:"7px 13px",color:"#fff",fontSize:13,fontWeight:800,cursor:"pointer"}}>← Retour</button>
+      <span className="bc" style={{fontSize:15,fontWeight:800,color:"#fff",flex:1}}>{selectedFeed.source}</span>
+    </div>
+    <div style={{flex:1,overflowY:"auto",WebkitOverflowScrolling:"touch"}}>
+      <div style={{padding:"16px"}}>
+        {selectedFeed.image&&<div style={{width:"100%",borderRadius:14,overflow:"hidden",marginBottom:16,background:"#f0f2f5"}}>
+          <img src={selectedFeed.image} alt="" style={{width:"100%",height:"auto",display:"block"}}/>
+        </div>}
+        <div style={{fontSize:19,fontWeight:800,color:T.t1,lineHeight:1.45,marginBottom:16}}>{selectedFeed.title}</div>
+        <div style={{display:"flex",justifyContent:"center",marginBottom:16}}>
+          <a href={selectedFeed.link} target="_blank" rel="noopener" style={{
+            display:"inline-flex",alignItems:"center",gap:10,
+            background:T.redG,color:"#fff",textDecoration:"none",
+            borderRadius:16,padding:"15px 32px",boxShadow:T.shadowRed,
+          }}>
+            <span style={{fontSize:15,fontWeight:800}}>Lire l'article</span>
+            <span style={{opacity:.8}}>→</span>
+          </a>
+        </div>
+        <div style={{borderRadius:14,overflow:"hidden",border:`1px solid ${T.line}`,height:380,boxShadow:T.shadowSm}}>
+          <iframe src={selectedFeed.link} style={{width:"100%",height:"100%",border:"none"}} sandbox="allow-scripts allow-same-origin allow-popups allow-forms" title="article"/>
+        </div>
+      </div>
+    </div>
+  </div>;
+
   return<div style={{display:"flex",flexDirection:"column",height:"100%",background:T.bg0,overflow:"hidden"}}>
     {/* Toggle AFRIQUE / EUROPE / COMPÉTITIONS — premium */}
     <div style={{
@@ -2893,7 +2965,12 @@ function TransfersTab(){
         })}
       </div>
     </div>
-    {view==="recent"&&<><div style={{background:"#fff",borderBottom:"1px solid rgba(0,0,0,.08)",padding:"10px 12px",flexShrink:0,boxShadow:"0 2px 8px rgba(0,0,0,.06)",position:"relative",zIndex:50}}>
+    {view==="recent"&&<div style={{flex:1,overflowY:"auto",WebkitOverflowScrolling:"touch",padding:"10px 14px 80px"}}>
+      {feedSt==="load"&&<div style={{padding:"40px 0",textAlign:"center"}}><Spin/></div>}
+      {feedSt==="ok"&&feedData.map((item,i)=><FeedCard key={i} item={item} onOpen={setSelectedFeed}/>)}
+      {feedSt==="empty"&&<div style={{padding:"40px 20px",textAlign:"center",color:T.t3}}>Aucun article disponible</div>}
+    </div>}
+    {view==="recent"&&false&&<><div style={{background:"#fff",borderBottom:"1px solid rgba(0,0,0,.08)",padding:"10px 12px",flexShrink:0,boxShadow:"0 2px 8px rgba(0,0,0,.06)",position:"relative",zIndex:50}}>
       <div style={{overflowX:"auto",display:"flex",gap:6,marginBottom:10,paddingBottom:2}}>
         {TOP_LEAGUES.map(l=>{
           const a=l.id===lid;
@@ -3013,12 +3090,12 @@ function TransfersTab(){
         </div>)}
       </div>}
     </div></>}
-    {view==="africa"&&<AfricaTransfers data={africaData} st={africaSt} onRefresh={()=>{
-      setAfricaSt("load");
-      sbGet("transfers_africa","status=eq.published&order=published_at.desc&limit=50")
-        .then(d=>{setAfricaData(d);setAfricaSt(d.length?"ok":"empty");})
-        .catch(()=>setAfricaSt("err"));
-    }}/>}
+    {view==="africa"&&<div style={{flex:1,overflowY:"auto",WebkitOverflowScrolling:"touch",padding:"10px 14px 80px"}}>
+      {feedSt==="load"&&<div style={{padding:"40px 0",textAlign:"center"}}><Spin/><div style={{marginTop:10,color:T.t3,fontSize:13}}>Chargement...</div></div>}
+      {feedSt==="ok"&&feedData.map((item,i)=><FeedCard key={i} item={item} onOpen={setSelectedFeed}/>)}
+      {feedSt==="empty"&&<div style={{padding:"40px 20px",textAlign:"center",color:T.t3,fontSize:14}}>Aucun article disponible</div>}
+      {feedSt==="err"&&<div style={{padding:"40px 20px",textAlign:"center",color:T.t3,fontSize:14}}>Erreur de chargement</div>}
+    </div>}
     {view==="competition"&&<CompetitionTransfers/>}
   </div>;
 }
