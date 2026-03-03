@@ -2860,16 +2860,15 @@ function TransfersTab(){
 
   // Charger le feed transferts
   useEffect(()=>{
-    if(view!=="africa"&&view!=="recent")return;
-    const region=view==="africa"?"afrique":"europe";
-    const stale=cacheGetStale("transfers_feed_"+region);
+    if(view!=="news")return;
+    const stale=cacheGetStale("transfers_feed_all");
     if(stale&&stale.length){setFeedData(stale);setFeedSt("ok");}
     else setFeedSt("load");
-    fetch(TRANSFERS_FEED_URL+`&region=eq.${region}`,{
+    fetch(TRANSFERS_FEED_URL,{
       headers:{"apikey":SB_KEY,"Authorization":"Bearer "+SB_KEY}
     }).then(r=>r.json()).then(d=>{
       if(!Array.isArray(d))throw new Error();
-      cacheSet("transfers_feed_"+region,d);
+      cacheSet("transfers_feed_all",d);
       setFeedData(d);setFeedSt(d.length?"ok":"empty");
     }).catch(()=>setFeedSt("err"));
   },[view]);
@@ -2953,7 +2952,7 @@ function TransfersTab(){
       padding:"0 4px",
     }}>
       <div style={{display:"flex",overflowX:"auto"}}>
-        {[["africa","🌍 Afrique"],["recent","🌍 Europe"],["competition","🏆 Compétitions"]].map(([v,lb])=>{
+        {[["africa","🌍 Afrique"],["recent","🌍 Europe"],["news","📰 News"],["competition","🏆 Compétitions"]].map(([v,lb])=>{
           const a=view===v;
           return<button key={v} onClick={()=>setView(v)} className="bc" style={{
             flexShrink:0,padding:"13px 14px 11px",border:"none",background:"transparent",
@@ -3090,7 +3089,14 @@ function TransfersTab(){
         </div>)}
       </div>}
     </div></>}
-    {view==="africa"&&<div style={{flex:1,overflowY:"auto",WebkitOverflowScrolling:"touch",padding:"10px 14px 80px"}}>
+    {view==="africa"&&<div style={{flex:1,overflowY:"auto",WebkitOverflowScrolling:"touch"}}>
+      {africaSt==="load"&&<div style={{padding:"60px 0",textAlign:"center"}}><Spin/><div style={{marginTop:12,color:T.t3,fontSize:13}}>Chargement...</div></div>}
+      {africaSt==="err"&&<div style={{padding:"60px 20px",textAlign:"center"}}><div style={{fontSize:40,marginBottom:12}}>📡</div><div style={{fontSize:15,fontWeight:700,color:T.t1,marginBottom:16}}>Impossible de charger</div></div>}
+      {africaSt==="empty"&&<div style={{padding:"60px 20px",textAlign:"center"}}><div style={{fontSize:40,marginBottom:12}}>🌍</div><div style={{fontSize:15,fontWeight:700,color:T.t1}}>Aucun transfert récent</div></div>}
+      {africaSt==="ok"&&africaData.map((t,i)=><AfricaTransferCard key={i} t={t}/>)}
+      <div style={{height:20}}/>
+    </div>}
+    {view==="news"&&<div style={{flex:1,overflowY:"auto",WebkitOverflowScrolling:"touch",padding:"10px 14px 80px"}}>
       {feedSt==="load"&&<div style={{padding:"40px 0",textAlign:"center"}}><Spin/><div style={{marginTop:10,color:T.t3,fontSize:13}}>Chargement...</div></div>}
       {feedSt==="ok"&&feedData.map((item,i)=><FeedCard key={i} item={item} onOpen={setSelectedFeed}/>)}
       {feedSt==="empty"&&<div style={{padding:"40px 20px",textAlign:"center",color:T.t3,fontSize:14}}>Aucun article disponible</div>}
