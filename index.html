@@ -2428,19 +2428,34 @@ function JSKTab(){
         }}>↻</button>
       </div>
 
-      {/* ── TOGGLE ACTUALITES / LA UNE ── */}
-      <div style={{display:"flex",borderTop:"1px solid rgba(255,255,255,.1)"}}>
-        {[["actualites","📱 Actualités"],["une","📰 La Une"]].map(([v,lb])=>{
-          const a=view===v;
-          return<button key={v} onClick={()=>setView(v)} className="bc" style={{
-            flex:1,padding:"11px 0",border:"none",background:"transparent",
-            color:a?"#fff":"rgba(255,255,255,.45)",
-            fontSize:12,fontWeight:a?800:600,cursor:"pointer",
-            letterSpacing:.5,position:"relative",
-            borderBottom:a?"2.5px solid "+JSK_YELLOW:"2.5px solid transparent",
-            transition:"all .2s",
-          }}>{lb}</button>;
-        })}
+      {/* ── TOGGLE ACTUALITES / LA UNE — PREMIUM ── */}
+      <div style={{padding:"10px 16px 12px",borderTop:"1px solid rgba(255,255,255,.08)"}}>
+        <div style={{
+          display:"flex",
+          background:"rgba(0,0,0,.25)",
+          borderRadius:14,
+          padding:3,
+          gap:3,
+        }}>
+          {[["actualites","📱","Actualités"],["une","📰","La Une"]].map(([v,ic,lb])=>{
+            const a=view===v;
+            return<button key={v} onClick={()=>setView(v)} className="bc" style={{
+              flex:1,padding:"9px 0",border:"none",cursor:"pointer",
+              borderRadius:11,
+              background:a?"rgba(255,255,255,.18)":"transparent",
+              color:a?"#fff":"rgba(255,255,255,.4)",
+              fontSize:12,fontWeight:a?800:500,
+              letterSpacing:.3,
+              display:"flex",alignItems:"center",justifyContent:"center",gap:5,
+              transition:"all .25s",
+              boxShadow:a?"0 2px 8px rgba(0,0,0,.2)":"none",
+            }}>
+              <span style={{fontSize:13}}>{ic}</span>
+              <span>{lb}</span>
+              {a&&<div style={{width:4,height:4,borderRadius:"50%",background:JSK_YELLOW,marginLeft:2}}/>}
+            </button>;
+          })}
+        </div>
       </div>
     </div>
 
@@ -2949,18 +2964,30 @@ function TransfersTab(){
       borderBottom:`1px solid ${T.line}`,
       flexShrink:0,
       boxShadow:"0 2px 12px rgba(0,0,0,.05)",
-      padding:"0 4px",
+      padding:"10px 14px",
     }}>
-      <div style={{display:"flex",overflowX:"auto"}}>
-        {[["africa","🌍 Afrique"],["recent","🌍 Europe"],["news","📰 News"],["competition","🏆 Compétitions"]].map(([v,lb])=>{
+      <div style={{
+        display:"flex",
+        background:T.bg2,
+        borderRadius:14,
+        padding:3,
+        gap:2,
+      }}>
+        {[["africa","🌍","Afrique"],["recent","🏆","Europe"],["news","📰","News"],["competition","⚽","Compét."]].map(([v,ic,lb])=>{
           const a=view===v;
           return<button key={v} onClick={()=>setView(v)} className="bc" style={{
-            flexShrink:0,padding:"13px 14px 11px",border:"none",background:"transparent",
-            color:a?T.green:T.t3,fontSize:12,fontWeight:a?800:600,
-            cursor:"pointer",letterSpacing:.5,
-            borderBottom:a?`3px solid ${T.green}`:"3px solid transparent",
-            transition:"all .2s",
-          }}>{lb}</button>;
+            flex:1,padding:"9px 4px",border:"none",cursor:"pointer",
+            borderRadius:11,
+            background:a?T.green:"transparent",
+            color:a?"#fff":T.t3,
+            fontSize:10,fontWeight:a?800:500,
+            display:"flex",flexDirection:"column",alignItems:"center",gap:2,
+            transition:"all .25s",
+            boxShadow:a?`0 3px 12px rgba(0,193,112,.3)`:"none",
+          }}>
+            <span style={{fontSize:14}}>{ic}</span>
+            <span style={{letterSpacing:.2}}>{lb}</span>
+          </button>;
         })}
       </div>
     </div>
