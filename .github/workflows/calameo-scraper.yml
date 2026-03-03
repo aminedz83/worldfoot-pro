@@ -27,12 +27,12 @@ jobs:
           import requests
           import os
           from datetime import datetime
+          import time
 
           APIFY_KEY = os.environ["APIFY_KEY"]
           SB_URL = os.environ["SUPABASE_URL"]
           SB_KEY = os.environ["SUPABASE_KEY"]
 
-          # Lancer le scraper Apify
           run = requests.post(
               "https://api.apify.com/v2/acts/apify~facebook-posts-scraper/runs",
               headers={"Authorization": f"Bearer {APIFY_KEY}"},
@@ -45,8 +45,6 @@ jobs:
           run_id = run["data"]["id"]
           print(f"Run ID: {run_id}")
 
-          # Attendre la fin
-          import time
           for i in range(20):
               time.sleep(15)
               status = requests.get(
@@ -57,7 +55,6 @@ jobs:
               if status == "SUCCEEDED":
                   break
 
-          # Récupérer les résultats
           items = requests.get(
               f"https://api.apify.com/v2/actor-runs/{run_id}/dataset/items",
               headers={"Authorization": f"Bearer {APIFY_KEY}"}
@@ -86,7 +83,7 @@ jobs:
                       json={
                           "title": title,
                           "image_url": image_url,
-                          "pdf_url": facebook_url,
+                          "facebook_url": facebook_url,
                           "published_at": published_at
                       }
                   )
