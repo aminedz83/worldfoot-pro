@@ -1,4 +1,4 @@
-name: Calameo Scraper
+name: Competition Une Scraper
 
 on:
   schedule:
@@ -15,42 +15,66 @@ jobs:
           python-version: '3.11'
 
       - name: Install dependencies
-        run: pip install requests beautifulsoup4
+        run: pip install requests
 
       - name: Run scraper
         env:
           SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
           SUPABASE_KEY: ${{ secrets.SUPABASE_KEY }}
+          APIFY_KEY: ${{ secrets.APIFY_KEY }}
         run: |
           python3 - <<PYEOF
           import requests
-          from bs4 import BeautifulSoup
           import os
           from datetime import datetime
-          import json
 
-          CALAMEO_URL = "https://fr.calameo.com/accounts/008156103"
-          HEADERS = {"User-Agent": "Mozilla/5.0"}
+          APIFY_KEY = os.environ["APIFY_KEY"]
           SB_URL = os.environ["SUPABASE_URL"]
           SB_KEY = os.environ["SUPABASE_KEY"]
 
-          r = requests.get(CALAMEO_URL, headers=HEADERS, timeout=15)
-          soup = BeautifulSoup(r.text, "html.parser")
-          books = soup.select("article, .book, li.item")[:10]
-          print(f"Found {len(books)} items")
+          # Lancer le scraper Apify
+          run = requests.post(
+              "https://api.apify.com/v2/acts/apify~facebook-posts-scraper/runs",
+              headers={"Authorization": f"Bearer {APIFY_KEY}"},
+              json={
+                  "startUrls": [{"url": "https://www.facebook.com/competitionalgerie"}],
+                  "resultsLimit": 5
+              }
+          ).json()
 
-          for book in books:
+          run_id = run["data"]["id"]
+          print(f"Run ID: {run_id}")
+
+          # Attendre la fin
+          import time
+          for i in range(20):
+              time.sleep(15)
+              status = requests.get(
+                  f"https://api.apify.com/v2/actor-runs/{run_id}",
+                  headers={"Authorization": f"Bearer {APIFY_KEY}"}
+              ).json()["data"]["status"]
+              print(f"Status: {status}")
+              if status == "SUCCEEDED":
+                  break
+
+          # Récupérer les résultats
+          items = requests.get(
+              f"https://api.apify.com/v2/actor-runs/{run_id}/dataset/items",
+              headers={"Authorization": f"Bearer {APIFY_KEY}"}
+          ).json()
+
+          print(f"Found {len(items)} posts")
+
+          for post in items:
               try:
-                  link = book.find("a", href=True)
-                  img = book.find("img")
-                  title_el = book.find(["h2","h3","h4","span"])
-                  if not link: continue
-                  href = link["href"]
-                  pdf_url = "https://fr.calameo.com" + href if href.startswith("/") else href
-                  image_url = img.get("src") or img.get("data-src") if img else None
-                  title = title_el.get_text(strip=True) if title_el else "Edition du jour"
+                  image_url = post.get("media", [{}])[0].get("url") if post.get("media") else None
+                  facebook_url = post.get("url", "")
+                  title = post.get("text", "")[:100] or "Edition du jour"
+                  published_at = post.get("time", datetime.now().isoformat())
 
-                  payload = {"title": title, "image_url": image_url, "pdf_url": pdf_url, "published_at": datetime.now().isoformat()}
+                  if not image_url:
+                      continue
+
                   res = requests.post(
                       f"{SB_URL}/rest/v1/competition_une",
                       headers={
@@ -59,7 +83,12 @@ jobs:
                           "Content-Type": "application/json",
                           "Prefer": "resolution=ignore-duplicates"
                       },
-                      json=payload
+                      json={
+                          "title": title,
+                          "image_url": image_url,
+                          "pdf_url": facebook_url,
+                          "published_at": published_at
+                      }
                   )
                   print(f"OK: {title} -> {res.status_code}")
               except Exception as e:
