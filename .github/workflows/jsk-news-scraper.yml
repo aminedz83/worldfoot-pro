@@ -24,7 +24,6 @@ jobs:
           python3 - <<PYEOF
           import requests
           import re
-          import urllib.parse
           from bs4 import BeautifulSoup
           import os
           from datetime import datetime
@@ -32,7 +31,7 @@ jobs:
 
           SB_URL = "https://iqeqlsxjiklygywjirqs.supabase.co"
           SB_KEY = os.environ["SUPABASE_KEY"]
-          HEADERS = {"User-Agent": "Mozilla/5.0"}
+          HEADERS = {"User-Agent": "Mozilla/5.0 (iPhone; CPU iPhone OS 16_0 like Mac OS X) AppleWebKit/605.1.15"}
 
           SB_HEADERS = {
               "apikey": SB_KEY,
@@ -42,6 +41,13 @@ jobs:
           }
 
           RSS_URL = "https://news.google.com/rss/search?q=JS+Kabylie&hl=fr&gl=DZ&ceid=DZ:fr"
+
+          def get_real_url(google_url):
+              try:
+                  r = requests.get(google_url, headers=HEADERS, timeout=8, allow_redirects=True)
+                  return r.url
+              except:
+                  return google_url
 
           def get_og_image(url):
               try:
@@ -55,12 +61,6 @@ jobs:
                   pass
               return None
 
-          def extract_real_url(link):
-              m = re.search(r"url=(https[^&]+)", link)
-              if m:
-                  return urllib.parse.unquote(m.group(1))
-              return link
-
           r = requests.get(RSS_URL, headers=HEADERS, timeout=15)
           soup = BeautifulSoup(r.text, "lxml-xml")
           items = soup.find_all("item")[:15]
@@ -73,9 +73,9 @@ jobs:
                   pub_date = item.find("pubDate").text if item.find("pubDate") else ""
                   source = item.find("source").text if item.find("source") else "Google News"
 
-                  link = extract_real_url(raw_link)
-                  print(f"Fetching: {link[:60]}")
-                  image = get_og_image(link)
+                  real_link = get_real_url(raw_link)
+                  print(f"Real URL: {real_link[:60]}")
+                  image = get_og_image(real_link)
                   print(f"Image: {image[:50] if image else 'None'}")
 
                   published_at = datetime.now().isoformat()
@@ -90,14 +90,14 @@ jobs:
                       headers=SB_HEADERS,
                       json={
                           "title": title,
-                          "link": link,
+                          "link": real_link,
                           "image": image or "",
                           "source": source,
                           "published_at": published_at
                       }
                   )
                   print(f"OK: {title[:40]} -> {res.status_code}")
-                  time.sleep(1)
+                  time.sleep(2)
 
               except Exception as e:
                   print(f"Error: {e}")
