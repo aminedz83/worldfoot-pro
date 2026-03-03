@@ -15,7 +15,7 @@ jobs:
           python-version: '3.11'
 
       - name: Install dependencies
-        run: pip install requests beautifulsoup4 supabase
+        run: pip install requests beautifulsoup4
 
       - name: Run scraper
         env:
@@ -25,16 +25,20 @@ jobs:
           python3 - <<PYEOF
           import requests
           from bs4 import BeautifulSoup
-          from supabase import create_client
           import os
           from datetime import datetime
+          import json
+
           CALAMEO_URL = "https://fr.calameo.com/accounts/008156103"
           HEADERS = {"User-Agent": "Mozilla/5.0"}
-          sb = create_client(os.environ["SUPABASE_URL"], os.environ["SUPABASE_KEY"])
+          SB_URL = os.environ["SUPABASE_URL"]
+          SB_KEY = os.environ["SUPABASE_KEY"]
+
           r = requests.get(CALAMEO_URL, headers=HEADERS, timeout=15)
           soup = BeautifulSoup(r.text, "html.parser")
           books = soup.select("article, .book, li.item")[:10]
           print(f"Found {len(books)} items")
+
           for book in books:
               try:
                   link = book.find("a", href=True)
@@ -45,8 +49,19 @@ jobs:
                   pdf_url = "https://fr.calameo.com" + href if href.startswith("/") else href
                   image_url = img.get("src") or img.get("data-src") if img else None
                   title = title_el.get_text(strip=True) if title_el else "Edition du jour"
-                  sb.table("competition_une").upsert({"title": title, "image_url": image_url, "pdf_url": pdf_url, "published_at": datetime.now().isoformat()}, on_conflict="pdf_url").execute()
-                  print(f"OK: {title}")
+
+                  payload = {"title": title, "image_url": image_url, "pdf_url": pdf_url, "published_at": datetime.now().isoformat()}
+                  res = requests.post(
+                      f"{SB_URL}/rest/v1/competition_une",
+                      headers={
+                          "apikey": SB_KEY,
+                          "Authorization": f"Bearer {SB_KEY}",
+                          "Content-Type": "application/json",
+                          "Prefer": "resolution=ignore-duplicates"
+                      },
+                      json=payload
+                  )
+                  print(f"OK: {title} -> {res.status_code}")
               except Exception as e:
                   print(f"Error: {e}")
           PYEOF
