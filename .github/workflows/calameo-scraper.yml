@@ -19,7 +19,6 @@ jobs:
 
       - name: Run scraper
         env:
-          SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
           SUPABASE_KEY: ${{ secrets.SUPABASE_KEY }}
           APIFY_KEY: ${{ secrets.APIFY_KEY }}
         run: |
@@ -30,7 +29,7 @@ jobs:
           import time
 
           APIFY_KEY = os.environ["APIFY_KEY"]
-          SB_URL = os.environ["SUPABASE_URL"]
+          SB_URL = "https://iqeqlsxjiklygywjirqs.supabase.co"
           SB_KEY = os.environ["SUPABASE_KEY"]
           BUCKET = "competition-une"
 
@@ -41,7 +40,6 @@ jobs:
               "Prefer": "resolution=ignore-duplicates"
           }
 
-          # Lancer Apify
           run = requests.post(
               "https://api.apify.com/v2/acts/apify~facebook-posts-scraper/runs",
               headers={"Authorization": f"Bearer {APIFY_KEY}"},
@@ -54,7 +52,6 @@ jobs:
           run_id = run["data"]["id"]
           print(f"Run ID: {run_id}")
 
-          # Attendre fin
           for i in range(20):
               time.sleep(15)
               status = requests.get(
@@ -65,7 +62,6 @@ jobs:
               if status == "SUCCEEDED":
                   break
 
-          # Récupérer posts
           items = requests.get(
               f"https://api.apify.com/v2/actor-runs/{run_id}/dataset/items",
               headers={"Authorization": f"Bearer {APIFY_KEY}"}
@@ -85,17 +81,14 @@ jobs:
                       print(f"Skip - no image: {title[:30]}")
                       continue
 
-                  # Télécharger image
                   img_response = requests.get(image_temp_url, timeout=15)
                   if not img_response.ok:
                       print(f"Skip - image download failed: {img_response.status_code}")
                       continue
 
-                  # Nom fichier unique basé sur facebook_url
                   file_name = facebook_url.split("/")[-1].split("?")[0] or str(int(time.time()))
                   file_name = f"{file_name}.jpg"
 
-                  # Upload dans Supabase Storage
                   upload = requests.post(
                       f"{SB_URL}/storage/v1/object/{BUCKET}/{file_name}",
                       headers={
@@ -108,10 +101,8 @@ jobs:
                   )
                   print(f"Upload: {upload.status_code}")
 
-                  # URL permanente
                   permanent_url = f"{SB_URL}/storage/v1/object/public/{BUCKET}/{file_name}"
 
-                  # Insérer dans Supabase
                   res = requests.post(
                       f"{SB_URL}/rest/v1/competition_une",
                       headers=SB_HEADERS,
