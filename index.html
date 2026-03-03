@@ -2875,7 +2875,7 @@ function TransfersTab(){
 
   // Charger le feed transferts
   useEffect(()=>{
-    if(view!=="news")return;
+    if(view!=="news"&&view!=="africa")return;
     const stale=cacheGetStale("transfers_feed_all");
     if(stale&&stale.length){setFeedData(stale);setFeedSt("ok");}
     else setFeedSt("load");
@@ -3116,11 +3116,11 @@ function TransfersTab(){
         </div>)}
       </div>}
     </div></>}
-    {view==="africa"&&<div style={{flex:1,overflowY:"auto",WebkitOverflowScrolling:"touch"}}>
-      {africaSt==="load"&&<div style={{padding:"60px 0",textAlign:"center"}}><Spin/><div style={{marginTop:12,color:T.t3,fontSize:13}}>Chargement...</div></div>}
-      {africaSt==="err"&&<div style={{padding:"60px 20px",textAlign:"center"}}><div style={{fontSize:40,marginBottom:12}}>📡</div><div style={{fontSize:15,fontWeight:700,color:T.t1,marginBottom:16}}>Impossible de charger</div></div>}
-      {africaSt==="empty"&&<div style={{padding:"60px 20px",textAlign:"center"}}><div style={{fontSize:40,marginBottom:12}}>🌍</div><div style={{fontSize:15,fontWeight:700,color:T.t1}}>Aucun transfert récent</div></div>}
-      {africaSt==="ok"&&africaData.map((t,i)=><AfricaTransferCard key={i} t={t}/>)}
+    {view==="africa"&&<div style={{flex:1,overflowY:"auto",WebkitOverflowScrolling:"touch",padding:"10px 14px 80px"}}>
+      {feedSt==="load"&&<div style={{padding:"40px 0",textAlign:"center"}}><Spin/><div style={{marginTop:12,color:T.t3,fontSize:13}}>Chargement...</div></div>}
+      {feedSt==="err"&&<div style={{padding:"60px 20px",textAlign:"center"}}><div style={{fontSize:40,marginBottom:12}}>📡</div><div style={{fontSize:15,fontWeight:700,color:T.t1,marginBottom:16}}>Impossible de charger</div></div>}
+      {feedSt==="empty"&&<div style={{padding:"60px 20px",textAlign:"center"}}><div style={{fontSize:40,marginBottom:12}}>🌍</div><div style={{fontSize:15,fontWeight:700,color:T.t1}}>Aucun article récent</div></div>}
+      {feedSt==="ok"&&feedData.filter(item=>item.region==="afrique").map((item,i)=><FeedCard key={i} item={item} onOpen={setSelectedFeed}/>)}
       <div style={{height:20}}/>
     </div>}
     {view==="news"&&<div style={{flex:1,overflowY:"auto",WebkitOverflowScrolling:"touch",padding:"10px 14px 80px"}}>
