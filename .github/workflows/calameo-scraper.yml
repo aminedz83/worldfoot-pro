@@ -76,8 +76,13 @@ jobs:
 
           for post in items:
               try:
+                  # URL directe de l'image
+                  photo_image = post.get("photo_image", {})
                   media = post.get("media", [])
-                  image_url = media[0].get("url") if media else None
+                  image_url = (photo_image.get("uri") if photo_image
+                               else media[0].get("url") if media
+                               else None)
+
                   facebook_url = post.get("url", "")
                   title = post.get("text", "")[:150] or "Edition du jour"
                   published_at = post.get("time", datetime.now().isoformat())
@@ -89,8 +94,10 @@ jobs:
                       continue
 
                   if not image_url:
-                      print(f"Skip - no image")
+                      print(f"Skip - no image: {title[:40]}")
                       continue
+
+                  print(f"Image URL: {image_url[:60]}")
 
                   res = requests.post(
                       f"{SB_URL}/rest/v1/competition_une",
