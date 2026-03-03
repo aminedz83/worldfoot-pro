@@ -39,16 +39,21 @@ jobs:
               "Prefer": "resolution=ignore-duplicates"
           }
 
-          # Lancer Apify Google News JSK
           run = requests.post(
-              "https://api.apify.com/v2/acts/apify~google-news-scraper/runs",
+              "https://api.apify.com/v2/acts/lhotanova~google-news-scraper/runs",
               headers={"Authorization": f"Bearer {APIFY_KEY}"},
               json={
                   "query": "JS Kabylie",
-                  "maxResults": 20,
+                  "maxItems": 20,
                   "language": "fr"
               }
           ).json()
+
+          print(f"Run response: {run}")
+
+          if "data" not in run:
+              print(f"Error: {run}")
+              exit(1)
 
           run_id = run["data"]["id"]
           print(f"Run ID: {run_id}")
@@ -72,9 +77,10 @@ jobs:
 
           for item in items:
               try:
+                  print(f"ITEM KEYS: {list(item.keys())}")
                   title = item.get("title", "")
                   link = item.get("url") or item.get("link", "")
-                  image = item.get("image") or item.get("thumbnail", "")
+                  image = item.get("image") or item.get("thumbnail") or item.get("imageUrl", "")
                   source = item.get("source") or item.get("publisher", "Google News")
                   published_at = item.get("publishedAt") or item.get("date", datetime.now().isoformat())
 
