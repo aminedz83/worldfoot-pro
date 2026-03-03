@@ -15,7 +15,7 @@ jobs:
           python-version: '3.11'
 
       - name: Install dependencies
-        run: pip install requests beautifulsoup4
+        run: pip install requests beautifulsoup4 lxml
 
       - name: Run scraper
         env:
@@ -62,7 +62,7 @@ jobs:
               return link
 
           r = requests.get(RSS_URL, headers=HEADERS, timeout=15)
-          soup = BeautifulSoup(r.text, "xml")
+          soup = BeautifulSoup(r.text, "lxml-xml")
           items = soup.find_all("item")[:15]
           print(f"Found {len(items)} articles")
 
