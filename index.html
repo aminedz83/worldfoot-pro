@@ -232,8 +232,8 @@ function cacheGetStale(key) {
 //
 // CONFIG
 //
-const API_KEY = "0086afd53133fead6ead7b383cba0448";
-const BASE    = "https://v3.football.api-sports.io";
+const API_KEY = "15a065303fmsh91c9db0c343d865p187713jsnd6619bb2378a";
+const BASE    = "https://api-football-v1.p.rapidapi.com/v3";
 const REFRESH = 15;
 
 //
@@ -414,7 +414,7 @@ async function api(path,ttl=15000,signal=null){
   const now=Date.now();
   if(_cache.has(path)&&now-_cache.get(path).t<ttl) return _cache.get(path).d;
   _trackApiCall();
-  const r=await fetch(BASE+path,{headers:{"x-apisports-key":API_KEY},signal});
+  const r=await fetch(BASE+path,{headers:{"x-rapidapi-key":API_KEY,"x-rapidapi-host":"api-football-v1.p.rapidapi.com"},signal});
   if(!r.ok) throw new Error(`Erreur HTTP ${r.status}`);
   const j=await r.json();
   if(j.errors&&Object.keys(j.errors).length){
