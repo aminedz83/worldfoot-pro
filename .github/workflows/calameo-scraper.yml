@@ -2,46 +2,41 @@ name: Competition Une Scraper
 
 on:
   schedule:
-    - cron: '0 */2 * * *'
+    - cron: '*/30 * * * *'
   workflow_dispatch:
 
 jobs:
   scrape:
     runs-on: ubuntu-latest
     steps:
-      - name: Setup Python
-        uses: actions/setup-python@v4
-        with:
-          python-version: '3.11'
-
-      - name: Install dependencies
-        run: pip install requests
-
-      - name: Run scraper
+      - name: Run Apify scraper
         env:
+          APIFY_TOKEN: ${{ secrets.APIFY_TOKEN }}
           SUPABASE_KEY: ${{ secrets.SUPABASE_KEY }}
-          APIFY_KEY: ${{ secrets.APIFY_KEY }}
         run: |
+          pip install requests --quiet
+
           python3 - <<PYEOF
           import requests
           import os
-          from datetime import datetime
           import time
+          from datetime import datetime
 
-          APIFY_KEY = os.environ["APIFY_KEY"]
+          APIFY_TOKEN = os.environ["APIFY_TOKEN"]
+          SUPABASE_KEY = os.environ["SUPABASE_KEY"]
           SB_URL = "https://iqeqlsxjiklygywjirqs.supabase.co"
-          SB_KEY = os.environ["SUPABASE_KEY"]
 
           SB_HEADERS = {
-              "apikey": SB_KEY,
-              "Authorization": "Bearer " + SB_KEY,
+              "apikey": SUPABASE_KEY,
+              "Authorization": "Bearer " + SUPABASE_KEY,
               "Content-Type": "application/json",
-              "Prefer": "resolution=ignore-duplicates"
+              "Prefer": "resolution=merge-duplicates"
           }
 
+          KEYWORDS = ["la une", "competition du", "compétition du", "edition du", "une de"]
+
           run = requests.post(
-              "https://api.apify.com/v2/acts/apify~facebook-posts-scraper/runs",
-              headers={"Authorization": f"Bearer {APIFY_KEY}"},
+              f"https://api.apify.com/v2/acts/apify~facebook-posts-scraper/runs?token={APIFY_TOKEN}",
               json={
                   "startUrls": [{"url": "https://www.facebook.com/competitionalgerie"}],
                   "resultsLimit": 20
@@ -51,70 +46,48 @@ jobs:
           run_id = run["data"]["id"]
           print(f"Run ID: {run_id}")
 
-          for i in range(20):
-              time.sleep(15)
+          for _ in range(24):
+              time.sleep(10)
               status = requests.get(
-                  f"https://api.apify.com/v2/actor-runs/{run_id}",
-                  headers={"Authorization": f"Bearer {APIFY_KEY}"}
+                  f"https://api.apify.com/v2/actor-runs/{run_id}?token={APIFY_TOKEN}"
               ).json()["data"]["status"]
               print(f"Status: {status}")
               if status == "SUCCEEDED":
                   break
 
           items = requests.get(
-              f"https://api.apify.com/v2/actor-runs/{run_id}/dataset/items",
-              headers={"Authorization": f"Bearer {APIFY_KEY}"}
+              f"https://api.apify.com/v2/actor-runs/{run_id}/dataset/items?token={APIFY_TOKEN}"
           ).json()
 
-          print(f"Found {len(items)} posts")
+          print(f"Posts: {len(items)}")
 
-          requests.delete(
-              f"{SB_URL}/rest/v1/competition_une?id=gte.0",
-              headers=SB_HEADERS
-          )
+          for item in items:
+              text = (item.get("text") or "").lower()
+              if not any(k in text for k in KEYWORDS):
+                  continue
 
-          for post in items:
-              try:
-                  media = post.get("media", [])
-                  facebook_url = post.get("url", "")
-                  title = post.get("text", "")[:150] or "Edition du jour"
-                  published_at = post.get("time", datetime.now().isoformat())
+              image = None
+              if item.get("photo_image"):
+                  image = item["photo_image"].get("uri")
+              elif item.get("media") and len(item["media"]) > 0:
+                  image = item["media"][0].get("thumbnail")
 
-                  keywords = ["la une", "competition du", "compétition du", "edition du", "une de"]
-                  if not any(k in title.lower() for k in keywords):
-                      print(f"Skip - pas une: {title[:40]}")
-                      continue
+              if not image:
+                  continue
 
-                  # Debug media pour le post une
-                  print(f"MEDIA DATA: {media}")
+              url = item.get("url") or item.get("postUrl") or ""
+              published_at = item.get("time") or datetime.now().isoformat()
 
-                  image_url = None
-                  if media:
-                      m = media[0]
-                      image_url = (m.get("thumbnail") or
-                                   m.get("image") or
-                                   m.get("photo_image", {}).get("uri") or
-                                   m.get("uri") or
-                                   m.get("url"))
-
-                  if not image_url:
-                      print(f"Skip - no image: {title[:40]}")
-                      continue
-
-                  print(f"Image URL: {image_url[:80]}")
-
-                  res = requests.post(
-                      f"{SB_URL}/rest/v1/competition_une",
-                      headers=SB_HEADERS,
-                      json={
-                          "title": title,
-                          "image_url": image_url,
-                          "facebook_url": facebook_url,
-                          "published_at": published_at
-                      }
-                  )
-                  print(f"OK: {title[:40]} -> {res.status_code}")
-
-              except Exception as e:
-                  print(f"Error: {e}")
+              res = requests.post(
+                  f"{SB_URL}/rest/v1/competition_une",
+                  headers=SB_HEADERS,
+                  json={
+                      "title": "La Une · Compétition",
+                      "image_url": image,
+                      "facebook_url": url,
+                      "published_at": published_at
+                  }
+              )
+              print(f"Saved: {res.status_code} - {image[:50]}")
+              break
           PYEOF
