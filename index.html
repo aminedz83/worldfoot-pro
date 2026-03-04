@@ -2537,6 +2537,7 @@ const NAV=[
   {id:"scorers",  label:"Buteurs",   icon:a=><svg width="23" height="23" viewBox="0 0 24 24" fill={a?"currentColor":"none"} stroke="currentColor" strokeWidth={a?0:1.7}>{a?<path d="M12 12c2.7 0 4.8-2.1 4.8-4.8S14.7 2.4 12 2.4 7.2 4.5 7.2 7.2 9.3 12 12 12zm0 2.4c-3.2 0-9.6 1.6-9.6 4.8v2.4h19.2v-2.4c0-3.2-6.4-4.8-9.6-4.8z"/>:<><circle cx="12" cy="7.2" r="4.8"/><path d="M2.4 21.6v-2.4c0-3.2 6.4-4.8 9.6-4.8s9.6 1.6 9.6 4.8v2.4"/></>}</svg>},
   {id:"calendar", label:"Calendrier",icon:a=><svg width="23" height="23" viewBox="0 0 24 24" fill={a?"currentColor":"none"} stroke="currentColor" strokeWidth={a?0:1.7}>{a?<path d="M17 12h-5v5h5v-5zM16 1v2H8V1H6v2H5c-1.1 0-2 .9-2 2v14c0 1.1.9 2 2 2h14c1.1 0 2-.9 2-2V5c0-1.1-.9-2-2-2h-1V1h-2zm3 18H5V8h14v11z"/>:<><rect x="3" y="4" width="18" height="18" rx="2"/><path d="M16 2v4M8 2v4M3 10h18"/></>}</svg>},
   {id:"transfers",label:"Transferts",icon:a=><svg width="23" height="23" viewBox="0 0 24 24" fill={a?"currentColor":"none"} stroke="currentColor" strokeWidth={a?0:1.7}>{a?<path d="M8 5v14l11-7L8 5zM3 5h2v14H3V5z"/>:<><polygon points="8,5 19,12 8,19"/><line x1="3" y1="5" x2="3" y2="19"/><line x1="6" y1="5" x2="6" y2="19"/></>}</svg>},
+  {id:"actu",     label:"Actualités", icon:a=><svg width="23" height="23" viewBox="0 0 24 24" fill={a?"currentColor":"none"} stroke="currentColor" strokeWidth={a?0:1.7}>{a?<path d="M20 3H4v10c0 2.21 1.79 4 4 4h6c2.21 0 4-1.79 4-4v-3h2c1.11 0 2-.89 2-2V5c0-1.11-.89-2-2-2zm0 5h-2V5h2v3zM4 19h16v2H4z"/>:<><path d="M4 22h16v-2H4v2zm0-6h16v-2H4v2zm0-4h10V8H4v4zm0-6v2h16V5H4z"/></>}</svg>},
   {id:"results",  label:"Résultats", icon:a=><svg width="23" height="23" viewBox="0 0 24 24" fill={a?"currentColor":"none"} stroke="currentColor" strokeWidth={a?0:1.7}>{a?<path d="M19 3H5c-1.1 0-2 .9-2 2v14c0 1.1.9 2 2 2h14c1.1 0 2-.9 2-2V5c0-1.1-.9-2-2-2zm-7 3c1.93 0 3.5 1.57 3.5 3.5S13.93 13 12 13s-3.5-1.57-3.5-3.5S10.07 6 12 6zm7 13H5v-.23c0-.62.28-1.2.76-1.58C7.47 15.82 9.64 15 12 15s4.53.82 6.24 2.19c.48.38.76.97.76 1.58V19z"/>:<><rect x="3" y="3" width="18" height="18" rx="2"/><path d="M8 12h8M8 8h8M8 16h5"/></>}</svg>},
   {id:"jsk", label:"JSK", icon:a=><div style={{position:"relative",display:"inline-flex"}}><div style={{width:23,height:23,borderRadius:"50%",overflow:"hidden",border:a?"2px solid #fff":"2px solid rgba(255,255,255,.3)",flexShrink:0,display:"flex",alignItems:"center",justifyContent:"center",background:a?"#00b86b":"transparent",fontSize:12,fontWeight:900,color:"#fff"}}>K</div></div>},
 ];
@@ -2863,7 +2864,7 @@ function FeedCard({item,onOpen,accent="red"}){
 }
 
 function TransfersTab(){
-  const[view,setView]=useState("africa"); // africa | recent | competition
+  const[view,setView]=useState("competition"); // competition
   const[lid,setLid]=useState(39);
   const[data,setData]=useState([]);
   const[st,setSt]=useState("load");
@@ -2977,7 +2978,7 @@ function TransfersTab(){
         padding:3,
         gap:2,
       }}>
-        {[["africa","🌍","Afrique"],["recent","🏆","Europe"],["news","📰","News"],["competition","⚽","Compét."]].map(([v,ic,lb])=>{
+        {[["competition","🏆","Compét."]].map(([v,ic,lb])=>{
           const a=view===v;
           return<button key={v} onClick={()=>setView(v)} className="bc" style={{
             flex:1,padding:"9px 4px",border:"none",cursor:"pointer",
@@ -3636,6 +3637,255 @@ function ResultsTab(){
   </div>;
 }
 
+const ACTU_VIEWS=[
+  {id:"afrique", icon:"🇩🇿", label:"Algérie", color:"#00c170", bg:"rgba(0,193,112,.12)"},
+  {id:"europe",  icon:"🏆",  label:"Europe",  color:"#1877f2", bg:"rgba(24,119,242,.12)"},
+  {id:"news",    icon:"🌐",  label:"Tout",    color:"#f59e0b", bg:"rgba(245,158,11,.12)"},
+];
+
+function PremiumFeedCard({item,onOpen,viewId}){
+  const vd=ACTU_VIEWS.find(v=>v.id===viewId)||ACTU_VIEWS[0];
+  return<div onClick={()=>onOpen(item)} style={{
+    background:"#fff",borderRadius:18,overflow:"hidden",
+    marginBottom:14,
+    boxShadow:"0 2px 16px rgba(0,0,0,.07)",
+    cursor:"pointer",
+    transition:"transform .15s,box-shadow .15s",
+  }}
+  onTouchStart={e=>{e.currentTarget.style.transform="scale(.98)";e.currentTarget.style.boxShadow="0 1px 8px rgba(0,0,0,.05)";}}
+  onTouchEnd={e=>{e.currentTarget.style.transform="scale(1)";e.currentTarget.style.boxShadow="0 2px 16px rgba(0,0,0,.07)";}}
+  >
+    {/* Image hero */}
+    {item.image&&<div style={{width:"100%",height:180,overflow:"hidden",background:"#f0f2f5",position:"relative"}}>
+      <img src={item.image} alt="" style={{width:"100%",height:"100%",objectFit:"cover",display:"block"}}
+        onError={e=>{e.target.parentNode.style.display="none";}}/>
+      {/* Gradient overlay */}
+      <div style={{position:"absolute",bottom:0,left:0,right:0,height:60,background:"linear-gradient(0deg,rgba(0,0,0,.4),transparent)"}}/>
+      {/* Source badge sur l'image */}
+      <div style={{position:"absolute",top:10,left:10,
+        background:"rgba(0,0,0,.6)",backdropFilter:"blur(8px)",
+        borderRadius:8,padding:"4px 10px",
+        border:"1px solid rgba(255,255,255,.15)",
+      }}>
+        <span style={{fontSize:10,fontWeight:800,color:"#fff",letterSpacing:.5}}>{item.source}</span>
+      </div>
+    </div>}
+    {/* Contenu */}
+    <div style={{padding:"14px 16px 16px"}}>
+      {/* Tags */}
+      <div style={{display:"flex",alignItems:"center",gap:6,marginBottom:8}}>
+        <div style={{
+          background:vd.bg,borderRadius:20,
+          padding:"3px 10px",
+          display:"flex",alignItems:"center",gap:4,
+        }}>
+          <span style={{fontSize:11}}>{vd.icon}</span>
+          <span style={{fontSize:10,fontWeight:800,color:vd.color,letterSpacing:.3}}>{vd.label}</span>
+        </div>
+        {!item.image&&<div style={{background:"rgba(0,0,0,.06)",borderRadius:20,padding:"3px 10px"}}>
+          <span style={{fontSize:10,fontWeight:600,color:T.t3}}>{item.source}</span>
+        </div>}
+        <div style={{flex:1}}/>
+        <span style={{fontSize:10,color:T.t3,fontWeight:500}}>
+          {item.published_at?new Date(item.published_at).toLocaleDateString("fr-FR",{day:"2-digit",month:"short"}):""}
+        </span>
+      </div>
+      {/* Titre */}
+      <div style={{
+        fontSize:15,fontWeight:800,color:T.t1,
+        lineHeight:1.45,letterSpacing:-.2,
+      }}>{item.title}</div>
+      {/* Footer */}
+      <div style={{
+        marginTop:12,display:"flex",alignItems:"center",justifyContent:"space-between",
+      }}>
+        <div style={{display:"flex",alignItems:"center",gap:4}}>
+          <div style={{width:3,height:3,borderRadius:"50%",background:vd.color}}/>
+          <div style={{width:3,height:3,borderRadius:"50%",background:vd.color,opacity:.5}}/>
+          <div style={{width:3,height:3,borderRadius:"50%",background:vd.color,opacity:.25}}/>
+        </div>
+        <div style={{
+          background:vd.bg,borderRadius:10,
+          padding:"6px 14px",
+          display:"flex",alignItems:"center",gap:5,
+        }}>
+          <span style={{fontSize:11,fontWeight:800,color:vd.color}}>Lire</span>
+          <span style={{fontSize:11,color:vd.color}}>→</span>
+        </div>
+      </div>
+    </div>
+  </div>;
+}
+
+function ActuTab(){
+  const[view,setView]=useState("afrique");
+  const[feedData,setFeedData]=useState([]);
+  const[feedSt,setFeedSt]=useState("load");
+  const[selected,setSelected]=useState(null);
+
+  useEffect(()=>{
+    const stale=cacheGetStale("transfers_feed_all");
+    if(stale&&stale.length){setFeedData(stale);setFeedSt("ok");}
+    else setFeedSt("load");
+    fetch(TRANSFERS_FEED_URL,{
+      headers:{"apikey":SB_KEY,"Authorization":"Bearer "+SB_KEY}
+    }).then(r=>r.json()).then(d=>{
+      if(!Array.isArray(d))throw new Error();
+      cacheSet("transfers_feed_all",d);
+      setFeedData(d);setFeedSt(d.length?"ok":"empty");
+    }).catch(()=>setFeedSt("err"));
+  },[]);
+
+  const getFiltered=()=>{
+    if(view==="afrique") return feedData.filter(item=>{
+      if(item.source!=="DZFoot") return false;
+      const t=(item.title||"").toLowerCase();
+      return ["algérie","algerie","verts","jsk","kabylie","mca","usma","crb","csc","usmh","nahd","belouizdad","ligue 1","coupe d'algérie","coupe d'algerie","faf"].some(k=>t.includes(k));
+    });
+    if(view==="europe") return feedData.filter(item=>item.source==="But Football");
+    return feedData;
+  };
+
+  const vd=ACTU_VIEWS.find(v=>v.id===view)||ACTU_VIEWS[0];
+
+  if(selected) return<div style={{display:"flex",flexDirection:"column",height:"100%",background:T.bg0}}>
+    {/* Header article */}
+    <div style={{
+      background:`linear-gradient(135deg,${vd.color},${vd.color}cc)`,
+      flexShrink:0,padding:"13px 16px",
+      display:"flex",alignItems:"center",gap:10,
+      boxShadow:`0 4px 20px ${vd.color}33`,
+    }}>
+      <button onClick={()=>setSelected(null)} style={{
+        background:"rgba(255,255,255,.2)",border:"1px solid rgba(255,255,255,.3)",
+        borderRadius:10,padding:"7px 13px",color:"#fff",fontSize:13,fontWeight:800,cursor:"pointer",
+      }}>← Retour</button>
+      <div style={{
+        background:"rgba(255,255,255,.15)",borderRadius:8,padding:"3px 10px",
+      }}>
+        <span style={{fontSize:11,fontWeight:800,color:"#fff"}}>{selected.source}</span>
+      </div>
+    </div>
+    <div style={{flex:1,overflowY:"auto",WebkitOverflowScrolling:"touch"}}>
+      {selected.image&&<div style={{width:"100%",height:220,overflow:"hidden",position:"relative"}}>
+        <img src={selected.image} alt="" style={{width:"100%",height:"100%",objectFit:"cover"}}/>
+        <div style={{position:"absolute",inset:0,background:"linear-gradient(0deg,rgba(0,0,0,.3),transparent)"}}/>
+      </div>}
+      <div style={{padding:"20px 16px"}}>
+        <div style={{
+          fontSize:20,fontWeight:900,color:T.t1,
+          lineHeight:1.4,marginBottom:20,letterSpacing:-.3,
+        }}>{selected.title}</div>
+        <div style={{display:"flex",justifyContent:"center",marginBottom:20}}>
+          <a href={selected.link} target="_blank" rel="noopener" style={{
+            display:"inline-flex",alignItems:"center",gap:10,
+            background:`linear-gradient(135deg,${vd.color},${vd.color}cc)`,
+            color:"#fff",textDecoration:"none",
+            borderRadius:16,padding:"15px 36px",
+            boxShadow:`0 6px 24px ${vd.color}40`,
+            fontSize:15,fontWeight:800,
+          }}>
+            Lire l'article complet →
+          </a>
+        </div>
+        <div style={{borderRadius:16,overflow:"hidden",border:`1px solid ${T.line}`,height:380,boxShadow:T.shadowSm}}>
+          <iframe src={selected.link} style={{width:"100%",height:"100%",border:"none"}} sandbox="allow-scripts allow-same-origin allow-popups allow-forms" title="article"/>
+        </div>
+      </div>
+    </div>
+  </div>;
+
+  return<div style={{display:"flex",flexDirection:"column",height:"100%",background:T.bg0,overflow:"hidden"}}>
+
+    {/* ── HEADER PREMIUM ── */}
+    <div style={{
+      background:"linear-gradient(160deg,#0f1117 0%,#1a1d23 50%,#252836 100%)",
+      flexShrink:0,
+      position:"relative",overflow:"hidden",
+    }}>
+      {/* Décoratifs */}
+      <div style={{position:"absolute",inset:0,pointerEvents:"none"}}>
+        <div style={{position:"absolute",top:-30,right:-20,width:150,height:150,borderRadius:"50%",background:`radial-gradient(circle,${vd.color}22,transparent 70%)`}}/>
+        <div style={{position:"absolute",bottom:-20,left:-10,width:100,height:100,borderRadius:"50%",background:"rgba(255,255,255,.02)"}}/>
+      </div>
+      {/* Titre */}
+      <div style={{padding:"18px 18px 14px",position:"relative",display:"flex",alignItems:"center",gap:12}}>
+        <div style={{
+          width:42,height:42,borderRadius:12,
+          background:`linear-gradient(135deg,${vd.color},${vd.color}99)`,
+          display:"flex",alignItems:"center",justifyContent:"center",
+          fontSize:20,
+          boxShadow:`0 4px 16px ${vd.color}40`,
+          flexShrink:0,
+        }}>{vd.icon}</div>
+        <div>
+          <div className="bc" style={{fontSize:22,fontWeight:900,color:"#fff",letterSpacing:-.4,lineHeight:1}}>Actualités</div>
+          <div style={{fontSize:10,color:"rgba(255,255,255,.4)",fontWeight:600,marginTop:3,letterSpacing:.5}}>FOOTBALL · MIS À JOUR TOUTES LES 2H</div>
+        </div>
+        <div style={{flex:1}}/>
+        <div style={{
+          background:"rgba(255,255,255,.08)",borderRadius:10,
+          padding:"6px 10px",
+          border:"1px solid rgba(255,255,255,.08)",
+        }}>
+          <div style={{fontSize:9,color:"rgba(255,255,255,.5)",fontWeight:600,letterSpacing:.5}}>LIVE</div>
+          <div style={{width:6,height:6,borderRadius:"50%",background:"#22c55e",margin:"2px auto 0",boxShadow:"0 0 6px #22c55e"}}/>
+        </div>
+      </div>
+
+      {/* ── TOGGLE SEGMENTS PREMIUM ── */}
+      <div style={{padding:"0 16px 16px",position:"relative"}}>
+        <div style={{
+          display:"flex",
+          background:"rgba(255,255,255,.06)",
+          borderRadius:16,padding:4,gap:3,
+          border:"1px solid rgba(255,255,255,.08)",
+        }}>
+          {ACTU_VIEWS.map(({id,icon,label,color})=>{
+            const a=view===id;
+            return<button key={id} onClick={()=>setView(id)} className="bc" style={{
+              flex:1,padding:"10px 4px",border:"none",cursor:"pointer",
+              borderRadius:13,
+              background:a?`linear-gradient(135deg,${color}33,${color}22)`:"transparent",
+              color:a?"#fff":"rgba(255,255,255,.3)",
+              fontSize:10,fontWeight:a?800:500,
+              display:"flex",flexDirection:"column",alignItems:"center",gap:3,
+              transition:"all .3s",
+              boxShadow:a?`0 4px 16px ${color}30,inset 0 1px 0 rgba(255,255,255,.1)`:"none",
+              border:a?`1px solid ${color}44`:"1px solid transparent",
+            }}>
+              <span style={{fontSize:16,filter:a?"none":"grayscale(1)",transition:"filter .3s"}}>{icon}</span>
+              <span style={{letterSpacing:.3}}>{label}</span>
+              {a&&<div style={{width:16,height:2,borderRadius:2,background:color,boxShadow:`0 0 6px ${color}`}}/>}
+            </button>;
+          })}
+        </div>
+      </div>
+    </div>
+
+    {/* ── CONTENU ── */}
+    <div style={{flex:1,overflowY:"auto",WebkitOverflowScrolling:"touch",padding:"12px 14px 80px"}}>
+      {feedSt==="load"&&<div style={{padding:"60px 0",textAlign:"center"}}>
+        <Spin/>
+        <div style={{marginTop:12,color:T.t3,fontSize:13}}>Chargement des actualités...</div>
+      </div>}
+      {feedSt==="err"&&<div style={{padding:"60px 20px",textAlign:"center"}}>
+        <div style={{fontSize:48,marginBottom:12}}>📡</div>
+        <div style={{fontSize:16,fontWeight:800,color:T.t1,marginBottom:8}}>Impossible de charger</div>
+        <div style={{fontSize:13,color:T.t3}}>Vérifiez votre connexion</div>
+      </div>}
+      {feedSt==="ok"&&getFiltered().length===0&&<div style={{padding:"60px 20px",textAlign:"center"}}>
+        <div style={{fontSize:48,marginBottom:12}}>📰</div>
+        <div style={{fontSize:16,fontWeight:800,color:T.t1,marginBottom:8}}>Aucun article</div>
+        <div style={{fontSize:13,color:T.t3}}>Revenez plus tard</div>
+      </div>}
+      {feedSt==="ok"&&getFiltered().map((item,i)=>(
+        <PremiumFeedCard key={i} item={item} onOpen={setSelected} viewId={view}/>
+      ))}
+    </div>
+  </div>;
+}
+
 function App(){
   const[scr,setScr]=useState(()=>{
     try{return sessionStorage.getItem("wf_last_tab")||"scores";}catch{return "scores";}
@@ -3915,6 +4165,7 @@ function App(){
       {scr==="scorers"   &&<ScorersTab/>}
       {scr==="calendar"  &&<CalendarTab  favs={favs} onFav={toggleFav}/>}
       {scr==="transfers" &&<TransfersTab/>}
+      {scr==="actu"      &&<ActuTab/>}
       {scr==="results"   &&<ResultsTab/>}
       {scr==="jsk"       &&<JSKTab/>}
     </div>
