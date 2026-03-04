@@ -2835,12 +2835,15 @@ function TransferCard({t}){
 
 const TRANSFERS_FEED_URL = "https://iqeqlsxjiklygywjirqs.supabase.co/rest/v1/transfers_feed?order=published_at.desc&limit=30";
 
-function FeedCard({item,onOpen}){
+function FeedCard({item,onOpen,accent="red"}){
+  const bgColor = accent==="green" ? "rgba(0,193,112,.1)" : T.redL;
+  const textColor = accent==="green" ? T.green : T.red;
   return<div onClick={()=>onOpen(item)} className="card-hover" style={{
     background:"#fff",borderRadius:14,overflow:"hidden",
     marginBottom:10,border:`1px solid ${T.line}`,
     boxShadow:T.shadowSm,cursor:"pointer",
     display:"flex",flexDirection:"column",
+    borderLeft: accent==="green" ? `3px solid ${T.green}` : `3px solid ${T.red}`,
   }}>
     {item.image&&<div style={{width:"100%",height:160,overflow:"hidden",background:"#f0f2f5"}}>
       <img src={item.image} alt="" style={{width:"100%",height:"100%",objectFit:"cover"}}
@@ -2848,8 +2851,8 @@ function FeedCard({item,onOpen}){
     </div>}
     <div style={{padding:"12px 14px"}}>
       <div style={{display:"flex",alignItems:"center",gap:6,marginBottom:6}}>
-        <div style={{background:T.redL,borderRadius:6,padding:"2px 8px"}}>
-          <span style={{fontSize:10,fontWeight:800,color:T.red}}>{item.source}</span>
+        <div style={{background:bgColor,borderRadius:6,padding:"2px 8px"}}>
+          <span style={{fontSize:10,fontWeight:800,color:textColor}}>{item.source}</span>
         </div>
         <span style={{fontSize:10,color:T.t3}}>{item.published_at?new Date(item.published_at).toLocaleDateString("fr-FR",{day:"2-digit",month:"short"}):""}</span>
       </div>
@@ -3120,7 +3123,10 @@ function TransfersTab(){
       {feedSt==="load"&&<div style={{padding:"40px 0",textAlign:"center"}}><Spin/><div style={{marginTop:12,color:T.t3,fontSize:13}}>Chargement...</div></div>}
       {feedSt==="err"&&<div style={{padding:"60px 20px",textAlign:"center"}}><div style={{fontSize:40,marginBottom:12}}>📡</div><div style={{fontSize:15,fontWeight:700,color:T.t1,marginBottom:16}}>Impossible de charger</div></div>}
       {feedSt==="empty"&&<div style={{padding:"60px 20px",textAlign:"center"}}><div style={{fontSize:40,marginBottom:12}}>🌍</div><div style={{fontSize:15,fontWeight:700,color:T.t1}}>Aucun article récent</div></div>}
-      {feedSt==="ok"&&feedData.filter(item=>item.region==="afrique").map((item,i)=><FeedCard key={i} item={item} onOpen={setSelectedFeed}/>)}
+      {feedSt==="ok"&&feedData.filter(item=>{
+        const t=(item.title||"").toLowerCase();
+        return ["algérie","algerie","verts","jsk","kabylie","mca","usma","crb","csc","usmh","nahd","belouizdad","ligue 1","coupe d'algérie","coupe d'algerie","faf"].some(k=>t.includes(k));
+      }).map((item,i)=><FeedCard key={i} item={item} onOpen={setSelectedFeed} accent="green"/>)}
       <div style={{height:20}}/>
     </div>}
     {view==="news"&&<div style={{flex:1,overflowY:"auto",WebkitOverflowScrolling:"touch",padding:"10px 14px 80px"}}>
