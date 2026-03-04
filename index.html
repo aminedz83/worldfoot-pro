@@ -2055,16 +2055,20 @@ function StandingsTab(){
             {grp.map(r=><StRow key={r.rank+"-"+gi} r={r} zc={zc} viewMode={viewMode}/>)}
           </div>;
         })}
-        {/* Légende style Besocer */}
+        {/* Légende dynamique */}
         {(st==="ok"||st==="groups")&&<div style={{padding:"16px 14px 32px",background:"#f7f8fa"}}>
           <div className="bc" style={{fontSize:11,fontWeight:800,color:"#555",letterSpacing:.8,marginBottom:10,textAlign:"center"}}>LÉGENDE</div>
           <div style={{display:"flex",flexDirection:"column",gap:4}}>
-            {[
-              {c:"#00b86b", lb:"Ligue des Champions CAF / Qualification"},
-              {c:"#42a5f5", lb:"CAF Confederation Cup"},
-              {c:"rgba(150,150,150,.5)", lb:"Mi-tableau"},
-              {c:"#e53535", lb:"Relégation / Barrage"},
-            ].map(({c,lb})=><div key={lb} style={{
+            {(()=>{
+              const region=byId(lid)?.region||"";
+              const isAfrica=region==="Afrique"||region==="Algérie";
+              return[
+                {c:"#00b86b", lb: isAfrica?"Ligue des Champions CAF / Qualification":"Ligue des Champions UEFA / Qualification"},
+                {c:"#42a5f5", lb: isAfrica?"CAF Confederation Cup":"Ligue Europa / Conférence UEFA"},
+                {c:"rgba(150,150,150,.5)", lb:"Mi-tableau"},
+                {c:"#e53535", lb:"Relégation / Barrage"},
+              ];
+            })().map(({c,lb})=><div key={lb} style={{
               display:"flex",alignItems:"center",gap:10,
               padding:"10px 12px",
               background:"#fff",
@@ -2147,7 +2151,9 @@ function ScorersTab(){
       :list.slice(0,30).map((p,i)=>{
         const pl=p.player,st2=p.statistics?.[0],val=type==="assists"?(st2?.goals?.assists??0):(st2?.goals?.total??0);
         const md=i===0?"🥇":i===1?"🥈":i===2?"🥉":null,mc=i===0?T.gold:i===1?"#c0c0c0":i===2?"#cd7f32":T.bg4;
-        const isTop3=i<3;const maxVal=list[0]?.statistics?.[0]?.(type==="assists"?"goals":"goals")?.assists??list[0]?.statistics?.[0]?.goals?.total??1;const pct2=Math.round((val/(maxVal||1))*100);return<div key={pl.id} style={{display:"flex",alignItems:"center",gap:12,padding:"11px 14px",borderBottom:`1px solid ${T.line}`,transition:"background .15s",width:"100%",borderLeft:isTop3?`3px solid ${i===0?T.gold:i===1?"#c0c0c0":"#cd7f32"}`:"3px solid transparent",position:"relative",overflow:"hidden"}} onMouseEnter={e=>e.currentTarget.style.background=T.bg3} onMouseLeave={e=>e.currentTarget.style.background="transparent"}>
+        const isTop3=i<3;
+        const maxVal=type==="assists"?(list[0]?.statistics?.[0]?.goals?.assists??1):(list[0]?.statistics?.[0]?.goals?.total??1);
+        const pct2=Math.round((val/(maxVal||1))*100);return<div key={pl.id} style={{display:"flex",alignItems:"center",gap:12,padding:"11px 14px",borderBottom:`1px solid ${T.line}`,transition:"background .15s",width:"100%",borderLeft:isTop3?`3px solid ${i===0?T.gold:i===1?"#c0c0c0":"#cd7f32"}`:"3px solid transparent",position:"relative",overflow:"hidden"}} onMouseEnter={e=>e.currentTarget.style.background=T.bg3} onMouseLeave={e=>e.currentTarget.style.background="transparent"}>
           <div style={{position:"absolute",bottom:0,left:0,height:2,width:`${pct2}%`,background:i===0?"linear-gradient(90deg,#f0a500,transparent)":i===1?"linear-gradient(90deg,#c0c0c0,transparent)":i===2?"linear-gradient(90deg,#cd7f32,transparent)":"linear-gradient(90deg,rgba(229,53,53,.5),transparent)",transition:"width .5s ease",borderRadius:1}}/>
           <div className="bc" style={{width:30,textAlign:"center",flexShrink:0}}>{md?<span style={{fontSize:24,lineHeight:1}}>{md}</span>:<span className="bc" style={{fontSize:14,fontWeight:800,color:T.t4}}>{i+1}</span>}</div>
           <div style={{position:"relative",flexShrink:0}}>
