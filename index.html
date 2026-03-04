@@ -1166,6 +1166,63 @@ function AnalysePanel({h2h,homeTeam,awayTeam,hSt=[],aSt=[],homeHistory=[],awayHi
 
 
 //
+function PlayersStatsPanel({players,homeTeam,awayTeam}){
+  const[selTeam,setSelTeam]=useState("home");
+  const teamData=players.find(t=>t.team?.id===(selTeam==="home"?homeTeam?.id:awayTeam?.id));
+  const plrs=teamData?.players??[];
+  if(!plrs.length) return<div style={{textAlign:"center",padding:"44px 20px",color:T.t3,fontSize:13}}>Statistiques joueurs non disponibles</div>;
+  return<div style={{display:"flex",flexDirection:"column",height:"100%"}}>
+    <div style={{display:"flex",background:T.bg2,borderRadius:10,padding:3,margin:"10px 14px",gap:2}}>
+      {[["home",homeTeam],["away",awayTeam]].map(([v,team])=>{
+        const a=selTeam===v;
+        return<button key={v} onClick={()=>setSelTeam(v)} className="bc" style={{
+          flex:1,padding:"8px",border:"none",borderRadius:8,cursor:"pointer",
+          background:a?T.green:"transparent",color:a?"#fff":T.t3,
+          fontSize:11,fontWeight:a?800:500,transition:"all .2s",
+          display:"flex",alignItems:"center",justifyContent:"center",gap:6,
+        }}>
+          <Logo src={team?.logo} size={16}/>
+          <span>{team?.name}</span>
+        </button>;
+      })}
+    </div>
+    <div style={{flex:1,overflowY:"auto"}}>
+      {plrs.map(({player:pl,statistics:sts})=>{
+        const st=sts?.[0]??{};
+        const rating=parseFloat(st.games?.rating??0);
+        const ratingColor=rating>=8?"#00c170":rating>=7?"#f59e0b":rating>=6?"#888":"#e53535";
+        return<div key={pl.id} style={{
+          display:"flex",alignItems:"center",gap:10,
+          padding:"10px 14px",borderBottom:`1px solid ${T.line}`,
+        }}>
+          <Avatar src={pl.photo} size={40}/>
+          <div style={{flex:1,minWidth:0}}>
+            <div className="bc" style={{fontSize:13,fontWeight:700,color:T.t1,overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap"}}>{pl.name}</div>
+            <div style={{fontSize:10,color:T.t3,marginTop:2}}>
+              {st.games?.position||""} · {st.games?.minutes??0}min
+            </div>
+            <div style={{display:"flex",gap:8,marginTop:4,flexWrap:"wrap"}}>
+              {(st.goals?.total??0)>0&&<span style={{fontSize:10,color:T.green,fontWeight:700}}>⚽ {st.goals.total}</span>}
+              {(st.goals?.assists??0)>0&&<span style={{fontSize:10,color:"#f59e0b",fontWeight:700}}>🎯 {st.goals.assists}</span>}
+              {(st.cards?.yellow??0)>0&&<span style={{fontSize:10}}>🟨 {st.cards.yellow}</span>}
+              {(st.cards?.red??0)>0&&<span style={{fontSize:10}}>🟥 {st.cards.red}</span>}
+              {(st.shots?.on??0)>0&&<span style={{fontSize:10,color:T.t3}}>🎯 {st.shots.on} tirs</span>}
+            </div>
+          </div>
+          {rating>0&&<div style={{
+            width:36,height:36,borderRadius:10,
+            background:ratingColor,
+            display:"flex",alignItems:"center",justifyContent:"center",
+            flexShrink:0,
+          }}>
+            <span className="bc" style={{fontSize:13,fontWeight:900,color:"#fff"}}>{rating.toFixed(1)}</span>
+          </div>}
+        </div>;
+      })}
+    </div>
+  </div>;
+}
+
 // MODULE COMPOSITIONS + SCH MAS
 //
 function ComposPanel({lineups,players,homeTeam,awayTeam,isPartial}){
@@ -1301,7 +1358,7 @@ const gv=(arr,k)=>arr.find(x=>x.type===k)?.value??0;
     (players.some(t=>t.players?.length)||isPartial)?{id:"joueurs",  label:"👤 Joueurs"}:null,
     (injuries.length||isPartial)          ?{id:"absents",  label:"🤕 Absents"} :null,
     (h2h.length||isPartial)               ?{id:"h2h",      label:"H2H"}       :null,
-    (h2h.length||isPartial)               ?{id:"analyse",  label:"📊 Analyse"} :null,
+    (hSt.length||h2h.length||isPartial)   ?{id:"analyse",  label:"📊 Analyse"} :null,
   ].filter(Boolean);
 
   const SK_CATS=[
