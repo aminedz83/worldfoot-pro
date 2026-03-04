@@ -3124,6 +3124,7 @@ function TransfersTab(){
       {feedSt==="err"&&<div style={{padding:"60px 20px",textAlign:"center"}}><div style={{fontSize:40,marginBottom:12}}>📡</div><div style={{fontSize:15,fontWeight:700,color:T.t1,marginBottom:16}}>Impossible de charger</div></div>}
       {feedSt==="empty"&&<div style={{padding:"60px 20px",textAlign:"center"}}><div style={{fontSize:40,marginBottom:12}}>🌍</div><div style={{fontSize:15,fontWeight:700,color:T.t1}}>Aucun article récent</div></div>}
       {feedSt==="ok"&&feedData.filter(item=>{
+        if(item.source!=="DZFoot") return false;
         const t=(item.title||"").toLowerCase();
         return ["algérie","algerie","verts","jsk","kabylie","mca","usma","crb","csc","usmh","nahd","belouizdad","ligue 1","coupe d'algérie","coupe d'algerie","faf"].some(k=>t.includes(k));
       }).map((item,i)=><FeedCard key={i} item={item} onOpen={setSelectedFeed} accent="green"/>)}
