@@ -945,82 +945,94 @@
 		  const min=useMinute(s.elapsed,s.short);
 		  const flash=useFlash(m.goals.home,m.goals.away);
 		  const hg=m.goals.home,ag=m.goals.away,has=hg!==null&&ag!==null,hw=has&&hg>ag,aw=has&&ag>hg;
-		  const barColor=live?T.red:sh==="HT"||sh==="BT"?T.gold:susp?T.orange:canc?T.red:"transparent";
-		  const stLabel=sh==="HT"?"MT":sh==="BT"?"Pause":sh==="P"?"Tab":sh==="SUSP"?"Susp.":sh==="INT"?"Inter.":sh==="ABD"?"Arrêté":sh==="CANC"?"Annulé":sh==="PST"?"Reporté":sh==="TBD"?"TBD":sh==="AWD"?"T.vert":sh==="WO"?"Forfait":sh==="AET"?"Ap.Pr.":sh==="PEN"?"Tab":"FT";
-		  const stColor=sh==="HT"||sh==="BT"?T.gold:susp?T.orange:canc?T.red:sh==="PST"?T.yellow:T.t3;
-		  return<div onClick={onOpen} className="row-anim" style={{
-		    display:"flex",alignItems:"center",minHeight:52,cursor:"pointer",
-		    borderBottom:`1px solid ${T.line}`,
-		    background:flash?"rgba(229,53,53,.08)":canc||susp?"rgba(0,0,0,.2)":"transparent",
-		    animation:flash?"gFlash 4s ease forwards":"none",
-		    transition:"background .18s",opacity:canc?0.45:1,width:"100%",
-		    position:"relative",
+		  const stLabel=sh==="HT"?"Mi-temps":sh==="BT"?"Pause":sh==="P"?"Tirs":sh==="SUSP"?"Suspendu":sh==="INT"?"Interr.":sh==="ABD"?"Arrêté":sh==="CANC"?"Annulé":sh==="PST"?"Reporté":sh==="TBD"?"TBD":sh==="AWD"?"Tab.vert":sh==="WO"?"Forfait":sh==="AET"?"Ap.Pr.":sh==="PEN"?"Tab":"FT";
+		  const stColor=live?"#e53535":sh==="HT"||sh==="BT"?"#f59f00":susp?"#f0a030":canc?"#e53535":sh==="PST"?"#f59f00":"#999";
+		  const odds=m._odds||null;
+		  return<div onClick={onOpen} style={{
+		    display:"flex",alignItems:"center",minHeight:58,cursor:"pointer",
+		    borderBottom:"1px solid rgba(0,0,0,.06)",
+		    background:flash?"rgba(229,53,53,.04)":"#fff",
+		    transition:"background .15s",
+		    opacity:canc?0.5:1,
+		    padding:"0 12px 0 0",
 		  }}
-		  onMouseEnter={e=>e.currentTarget.style.background=flash?"rgba(229,53,53,.1)":"rgba(255,255,255,.025)"}
-		  onMouseLeave={e=>e.currentTarget.style.background=flash?"rgba(229,53,53,.08)":canc||susp?"rgba(0,0,0,.2)":"transparent"}
+		  onMouseEnter={e=>e.currentTarget.style.background="#f8f9fc"}
+		  onMouseLeave={e=>e.currentTarget.style.background=flash?"rgba(229,53,53,.04)":"#fff"}
 		  >
-		    {/* Barre color e gauche */}
-		    <div style={{width:3,alignSelf:"stretch",flexShrink:0,background:barColor,animation:live?"pulse 1.4s infinite":susp?"pulse 2.5s infinite":"none",borderRadius:"0 2px 2px 0"}}/>
-		    {/* Statut / Heure */}
-		    <div style={{width:44,textAlign:"center",flexShrink:0,padding:"0 3px"}}>
-		      {live
-		        ?<span className="bc" style={{fontSize:13,fontWeight:800,color:T.red,animation:"lGlow 2s infinite",display:"block"}}>{min}'</span>
-		        :sh==="NS"
-		        ?<span className="bc" style={{fontSize:13,fontWeight:700,color:T.t2}}>{hhmm(m.fixture.date)}</span>
-		        :<span className="bc" style={{fontSize:10,fontWeight:800,color:stColor,display:"block",lineHeight:1.3}}>{stLabel}</span>}
-		    </div>
-		    {/*  quipes */}
-		    <div style={{flex:1,minWidth:0,padding:"7px 8px 7px 4px",display:"flex",flexDirection:"column",gap:6}}>
-		      <div style={{display:"flex",alignItems:"center",gap:7}}>
-		        <Logo src={m.teams.home.logo} size={16}/>
-		        <span className="bc" style={{fontSize:14,fontWeight:hw?800:500,color:aw?T.t3:T.t1,flex:1,overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap",letterSpacing:.2}}>{m.teams.home.name}</span>
-		      </div>
-		      <div style={{display:"flex",alignItems:"center",gap:7}}>
-		        <Logo src={m.teams.away.logo} size={16}/>
-		        <span className="bc" style={{fontSize:14,fontWeight:aw?800:500,color:hw?T.t3:T.t1,flex:1,overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap",letterSpacing:.2}}>{m.teams.away.name}</span>
-		      </div>
-		    </div>
-		    {/* Scores */}
-		    <div style={{width:28,display:"flex",flexDirection:"column",alignItems:"center",gap:6,flexShrink:0}}>
-		      {has?<>
-		        <span className="bc" style={{fontSize:16,fontWeight:hw?900:600,lineHeight:1,color:flash?T.red:hw?"#fff":T.t3,animation:flash?"sPop .55s ease":"none"}}>{hg}</span>
-		        <span className="bc" style={{fontSize:16,fontWeight:aw?900:600,lineHeight:1,color:flash?T.red:aw?"#fff":T.t3,animation:flash?"sPop .55s ease .12s":"none"}}>{ag}</span>
-		      </>:<span style={{fontSize:12,color:T.t4,marginTop:4}}>-</span>}
-		    </div>
 		    {/* Favori */}
-		    <button onClick={e=>{e.stopPropagation();onFav();}} style={{background:"none",border:"none",color:isFav?T.gold:T.t5,fontSize:15,padding:"0 13px 0 5px",lineHeight:1,flexShrink:0,cursor:"pointer",transition:"color .15s"}}>{isFav?"★":"☆"}</button>
-		    {/* Flash but   ligne rouge en bas */}
-		    {flash&&<div style={{position:"absolute",bottom:0,left:0,right:0,height:1,background:"linear-gradient(90deg,transparent,rgba(229,53,53,.6),transparent)"}}/>}
+		    <button onClick={e=>{e.stopPropagation();onFav();}} style={{background:"none",border:"none",color:isFav?"#f59f00":"#ccc",fontSize:17,padding:"0 10px",lineHeight:1,flexShrink:0,cursor:"pointer",transition:"color .15s"}}>{isFav?"★":"☆"}</button>
+		    {/* Logos + Equipes */}
+		    <div style={{flex:1,minWidth:0,display:"flex",flexDirection:"column",gap:5,padding:"8px 0"}}>
+		      <div style={{display:"flex",alignItems:"center",gap:8}}>
+		        <Logo src={m.teams.home.logo} size={20}/>
+		        <span style={{fontSize:14,fontWeight:hw?700:400,color:hw?"#111":aw?"#bbb":"#222",flex:1,overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap"}}>{m.teams.home.name}</span>
+		      </div>
+		      <div style={{display:"flex",alignItems:"center",gap:8}}>
+		        <Logo src={m.teams.away.logo} size={20}/>
+		        <span style={{fontSize:14,fontWeight:aw?700:400,color:aw?"#111":hw?"#bbb":"#222",flex:1,overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap"}}>{m.teams.away.name}</span>
+		      </div>
+		    </div>
+		    {/* Heure / Statut */}
+		    <div style={{display:"flex",flexDirection:"column",alignItems:"center",gap:5,flexShrink:0,minWidth:52,marginRight:4}}>
+		      {live
+		        ?<span style={{fontSize:12,fontWeight:800,color:"#e53535",animation:"lGlow 2s infinite"}}>{min}’</span>
+		        :sh==="HT"||sh==="BT"
+		        ?<span style={{fontSize:12,fontWeight:800,color:"#f59f00"}}>{stLabel}</span>
+		        :sh==="NS"
+		        ?<span style={{fontSize:13,fontWeight:600,color:"#333"}}>{hhmm(m.fixture.date)}</span>
+		        :<span style={{fontSize:11,fontWeight:700,color:stColor}}>{stLabel}</span>
+		      }
+		      {/* Scores */}
+		      <div style={{display:"flex",flexDirection:"column",alignItems:"center",gap:4}}>
+		        {has?<>
+		          <span style={{fontSize:16,fontWeight:hw?900:500,color:flash?"#e53535":hw?"#111":"#bbb",lineHeight:1,animation:flash?"sPop .55s ease":"none"}}>{hg}</span>
+		          <span style={{fontSize:16,fontWeight:aw?900:500,color:flash?"#e53535":aw?"#111":"#bbb",lineHeight:1,animation:flash?"sPop .55s ease .12s":"none"}}>{ag}</span>
+		        </>:<>
+		          <span style={{fontSize:14,color:"#ccc",lineHeight:1}}>-</span>
+		          <span style={{fontSize:14,color:"#ccc",lineHeight:1}}>-</span>
+		        </>}
+		      </div>
+		    </div>
+		    {/* Cotes si disponibles */}
+		    {odds&&<div style={{display:"flex",flexDirection:"column",alignItems:"flex-end",gap:5,flexShrink:0,minWidth:36}}>
+		      <span style={{fontSize:12,color:"#bbb",lineHeight:1}}>{odds[0]}</span>
+		      <span style={{fontSize:12,color:"#bbb",lineHeight:1}}>{odds[1]}</span>
+		      <span style={{fontSize:12,color:"#bbb",lineHeight:1}}>{odds[2]}</span>
+		    </div>}
 		  </div>;
 		}
 
 		function LeagueBlock({group,onOpen,favs,onFav}){
 		  const[open,setOpen]=useState(true);
 		  const lv=group.matches.filter(m=>LIVE_ST.has(m.fixture.status.short)).length;
-		  return<div style={{borderBottom:`1px solid ${T.line}`}}>
+		  return<div style={{marginBottom:2}}>
 		    <div onClick={()=>setOpen(v=>!v)} style={{
-		      display:"flex",alignItems:"center",gap:9,padding:"8px 14px",
+		      display:"flex",alignItems:"center",gap:10,
+		      padding:"11px 14px",
 		      cursor:"pointer",
-		      background:"linear-gradient(90deg,#f8f9fc 0%,#f4f5f9 100%)",
-		      borderBottom:`1px solid ${T.line}`,
-		      userSelect:"none",width:"100%",
-		      transition:"background .15s",
+		      background:"#fff",
+		      borderBottom:"1px solid rgba(0,0,0,.07)",
+		      borderTop:"1px solid rgba(0,0,0,.05)",
+		      userSelect:"none",
 		    }}
-		    onMouseEnter={e=>e.currentTarget.style.background="#f0f2f6"}
-		    onMouseLeave={e=>e.currentTarget.style.background="linear-gradient(90deg,#f8f9fc 0%,#f4f5f9 100%)"}
+		    onMouseEnter={e=>e.currentTarget.style.background="#f9f9f9"}
+		    onMouseLeave={e=>e.currentTarget.style.background="#fff"}
 		    >
-		      <Logo src={group.lg.logo} size={16}/>
-		      <span className="bc" style={{fontSize:12,fontWeight:700,color:T.t3,flex:1,overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap",letterSpacing:.6,textTransform:"uppercase"}}>{group.lg.country} · {group.lg.name}</span>
-		      {lv>0&&<span className="bc" style={{
-		        fontSize:10,fontWeight:800,color:"#e53535",
-		        background:"rgba(229,53,53,.12)",
-		        border:"1px solid rgba(229,53,53,.2)",
-		        padding:"2px 8px",borderRadius:20,flexShrink:0,
-		        letterSpacing:.8,animation:"pulse 1.5s infinite",
-		      }}>● {lv} LIVE</span>}
-		      <span style={{fontSize:9,color:T.t4,marginLeft:2}}>{open?"▾":"▸"}</span>
+		      <div style={{width:38,height:38,borderRadius:9,background:"#f5f6f8",border:"1px solid #eee",display:"flex",alignItems:"center",justifyContent:"center",flexShrink:0}}>
+		        <Logo src={group.lg.logo} size={26}/>
+		      </div>
+		      <div style={{flex:1,minWidth:0}}>
+		        <div style={{fontSize:15,fontWeight:700,color:"#111",overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap"}}>{group.lg.name}</div>
+		        <div style={{display:"flex",alignItems:"center",gap:5,marginTop:2}}>
+		          <span style={{fontSize:12,color:"#888",fontWeight:500,textTransform:"uppercase",letterSpacing:.4}}>{group.lg.country}</span>
+		        </div>
+		      </div>
+		      {lv>0&&<span style={{fontSize:10,fontWeight:800,color:"#e53535",background:"rgba(229,53,53,.1)",border:"1px solid rgba(229,53,53,.2)",padding:"2px 8px",borderRadius:20,flexShrink:0,animation:"pulse 1.5s infinite"}}>● {lv} LIVE</span>}
+		      <span style={{fontSize:12,color:"#ccc",marginLeft:6}}>{open?"▾":"▸"}</span>
 		    </div>
-		    {open&&group.matches.map(m=><Row key={m.fixture.id} match={m} onOpen={()=>onOpen(m.fixture.id)} isFav={favs.has(m.fixture.id)} onFav={()=>onFav(m.fixture.id)}/>)}
+		    {open&&<div style={{background:"#fff"}}>
+		      {group.matches.map(m=><Row key={m.fixture.id} match={m} onOpen={()=>onOpen(m.fixture.id)} isFav={favs.has(m.fixture.id)} onFav={()=>onFav(m.fixture.id)}/>)}
+		    </div>}
 		  </div>;
 		}
 
