@@ -1075,8 +1075,50 @@
 		          <Bar label="Fautes" hv={hFoul} av={aFoul}/>
 		          <Bar label="Cartons jaunes" hv={hYel} av={aYel} c1="#f0b429" c2="#f0b429"/>
 		        </div>
-		        <div style={{padding:"10px 14px",background:"rgba(255,165,0,.07)",borderRadius:10,border:"1px solid rgba(255,165,0,.2)",textAlign:"center"}}>
-		          <span style={{fontSize:11,color:"#f0a030"}}>⚠️ H2H non disponible — stats du match uniquement</span>
+		        {/* Over/Under estimé depuis les tirs */}
+		        {(hShots+aShots)>0&&(()=>{
+		          const totalShots=hShots+aShots;
+		          const totalOT=hOT+aOT;
+		          // Estimation buts attendus : tirs cadrés * taux conversion moyen 0.33
+		          const xG=parseFloat((totalOT*0.33).toFixed(2));
+		          const over15=Math.min(95,Math.round(40+totalOT*8));
+		          const over25=Math.min(90,Math.round(20+totalOT*7));
+		          const over35=Math.min(80,Math.round(5+totalOT*5));
+		          const btts=Math.min(85,Math.round(20+Math.min(hOT,aOT)*12));
+		          const MiniBar=({val,label,color,sub})=><div style={{marginBottom:12}}>
+		            <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:5}}>
+		              <span style={{fontSize:12,fontWeight:700,color:T.t1}}>{label}</span>
+		              <span style={{fontSize:13,fontWeight:900,color}}>{val}%</span>
+		            </div>
+		            <div style={{position:"relative",height:8,background:T.bg3,borderRadius:6,overflow:"hidden"}}>
+		              <div style={{position:"absolute",left:0,top:0,height:"100%",width:`${val}%`,background:color,borderRadius:6,transition:"width .5s"}}/>
+		            </div>
+		            {sub&&<div style={{fontSize:10,color:T.t4,marginTop:3}}>{sub}</div>}
+		          </div>;
+		          return<div style={{marginBottom:16}}>
+		            <div style={{fontSize:11,fontWeight:800,color:T.t3,letterSpacing:1,textTransform:"uppercase",marginBottom:12}}>🎯 Over/Under (estimé)</div>
+		            <div style={{padding:"10px 14px",background:T.bg2,borderRadius:12,border:`1px solid ${T.line}`,marginBottom:14,display:"flex",justifyContent:"space-between",alignItems:"center"}}>
+		              <div style={{textAlign:"center"}}>
+		                <div style={{fontSize:22,fontWeight:900,color:T.green}}>{xG}</div>
+		                <div style={{fontSize:10,color:T.t3}}>xG estimé</div>
+		              </div>
+		              <div style={{textAlign:"center"}}>
+		                <div style={{fontSize:22,fontWeight:900,color:T.t2}}>{totalShots}</div>
+		                <div style={{fontSize:10,color:T.t3}}>Tirs totaux</div>
+		              </div>
+		              <div style={{textAlign:"center"}}>
+		                <div style={{fontSize:22,fontWeight:900,color:T.orange}}>{totalOT}</div>
+		                <div style={{fontSize:10,color:T.t3}}>Cadrés</div>
+		              </div>
+		            </div>
+		            <MiniBar val={over15} label="Over 1.5" color={T.green} sub={`${totalOT} tirs cadrés · xG ${xG}`}/>
+		            <MiniBar val={over25} label="Over 2.5" color={over25>55?T.green:T.orange}/>
+		            <MiniBar val={over35} label="Over 3.5" color={over35>50?T.orange:T.red}/>
+		            <MiniBar val={btts} label="Les deux marquent" color={T.blueB} sub={`${hOT} cadrés DOM · ${aOT} cadrés EXT`}/>
+		          </div>;
+		        })()}
+		        <div style={{padding:"10px 14px",background:"rgba(255,165,0,.07)",borderRadius:10,border:"1px solid rgba(255,165,0,.2)",textAlign:"center",marginTop:8}}>
+		          <span style={{fontSize:11,color:"#f0a030"}}>⚠️ H2H non disponible — estimations basées sur les stats du match</span>
 		        </div>
 		      </div>;
 		    }
