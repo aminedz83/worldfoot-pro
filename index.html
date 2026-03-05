@@ -11,7 +11,7 @@
 		<meta http-equiv="Expires" content="0" />
 		<meta
 			name="viewport"
-			content="width=device-width,initial-scale=1.0,viewport-fit=cover,shrink-to-fit=no"
+			content="width=device-width,initial-scale=1.0,viewport-fit=cover"
 		/>
 		<meta name="theme-color" content="#00b86b" />
 		<meta name="mobile-web-app-capable" content="yes" />
@@ -111,41 +111,20 @@
 			html {
 				height: 100%;
 				-webkit-text-size-adjust: 100%;
-				text-size-adjust: 100%;
-				/* Force rendu HD sur écrans Retina */
-				-webkit-font-smoothing: antialiased;
-				-moz-osx-font-smoothing: grayscale;
-				text-rendering: optimizeLegibility;
 			}
 			body {
 				height: 100%;
+				background: #f4f5f7;
 				font-family: "Barlow", -apple-system, BlinkMacSystemFont,
-					"SF Pro Display", sans-serif;
+					sans-serif;
 				color: #1a1d23;
 				background: #eef0f5;
 				-webkit-tap-highlight-color: transparent;
 				-webkit-font-smoothing: antialiased;
 				-moz-osx-font-smoothing: grayscale;
-				text-rendering: optimizeLegibility;
 				overscroll-behavior: none;
 				overflow: hidden;
 				letter-spacing: 0.01em;
-				/* Rendu pixel parfait */
-				-webkit-backface-visibility: hidden;
-				backface-visibility: hidden;
-			}
-			/* Images nettes sur écrans Retina */
-			img {
-				image-rendering: -webkit-optimize-contrast;
-				image-rendering: crisp-edges;
-				-webkit-backface-visibility: hidden;
-				backface-visibility: hidden;
-				transform: translateZ(0);
-			}
-			/* Bordures et éléments nets */
-			* {
-				-webkit-font-smoothing: antialiased;
-				-moz-osx-font-smoothing: grayscale;
 			}
 			#root {
 				height: 100dvh;
@@ -333,13 +312,6 @@
 
 		.bc {
 			font-family: “Barlow Condensed”, sans-serif;
-			-webkit-font-smoothing: antialiased;
-		}
-		/* GPU acceleration - rendu net */
-		.row-anim, img, canvas {
-			-webkit-backface-visibility: hidden;
-			backface-visibility: hidden;
-			transform: translateZ(0);
 		}
 
 		/* Point LIVE rouge */
@@ -513,31 +485,26 @@
 
 		// ── CACHE LOCAL ──────────────────────────────────────────────
 		const CACHE_TTL = 15 * 60 * 1000; // 15 minutes
-		const CACHE_TTL_UNE = 60 * 60 * 1000; // 1h pour la Une
 
-		function cacheSet(key, data, ttl) {
-		  try { localStorage.setItem(key, JSON.stringify({data, ts: Date.now(), ttl: ttl||CACHE_TTL})); } catch {}
+		function cacheSet(key, data) {
+		  try { localStorage.setItem(key, JSON.stringify({data, ts: Date.now()})); } catch {}
 		}
 
 		function cacheGet(key) {
 		  try {
 		    const raw = localStorage.getItem(key);
 		    if (!raw) return null;
-		    const {data, ts, ttl} = JSON.parse(raw);
-		    if (Date.now() - ts > (ttl||CACHE_TTL)) return null;
+		    const {data, ts} = JSON.parse(raw);
+		    if (Date.now() - ts > CACHE_TTL) return null;
 		    return data;
 		  } catch { return null; }
 		}
 
 		function cacheGetStale(key) {
-		  // Retourne les données même périmées SAUF si > 24h (pour forcer refresh quotidien)
 		  try {
 		    const raw = localStorage.getItem(key);
 		    if (!raw) return null;
-		    const {data, ts} = JSON.parse(raw);
-		    // Si > 24h, on force un rechargement complet
-		    if (Date.now() - ts > 86400000) return null;
-		    return data;
+		    return JSON.parse(raw).data;
 		  } catch { return null; }
 		}
 
@@ -552,153 +519,120 @@
 		// LIGUES
 		//
 		const LEAGUES=[
-		  //
-		  {id:2,  name:"Champions League", country:"Europe",    flag:"🏆",region:"Coupes EU",   isCup:true,hasGroups:true, hasKnockout:true},
-		  {id:3,  name:"Europa League",    country:"Europe",    flag:"🟠",region:"Coupes EU",   isCup:true,hasGroups:true, hasKnockout:true},
-		  {id:848,name:"Conference Lge",   country:"Europe",    flag:"🔵",region:"Coupes EU",   isCup:true,hasGroups:true, hasKnockout:true},
-		  //
-		  {id:16, name:"FA Cup",           country:"Angleterre",flag:"🏴󠁧󠁢󠁥󠁮󠁧󠁿",region:"Coupes Nat.", isCup:true,hasKnockout:true},
-		  {id:137,name:"Coppa Italia",     country:"Italie",    flag:"🇮🇹",region:"Coupes Nat.", isCup:true,hasKnockout:true},
-		  {id:143,name:"Copa del Rey",     country:"Espagne",   flag:"🇪🇸",region:"Coupes Nat.", isCup:true,hasKnockout:true},
-		  {id:81, name:"DFB Pokal",        country:"Allemagne", flag:"🇩🇪",region:"Coupes Nat.", isCup:true,hasKnockout:true},
-		  {id:66, name:"Coupe de France",  country:"France",    flag:"🇫🇷",region:"Coupes Nat.", isCup:true,hasKnockout:true},
-		  {id:65, name:"Coupe de la Ligue",country:"France",    flag:"🇫🇷",region:"Coupes Nat.", isCup:true,hasKnockout:true},
-		  {id:48, name:"League Cup",       country:"Angleterre",flag:"🏴󠁧󠁢󠁥󠁮󠁧󠁿",region:"Coupes Nat.", isCup:true,hasKnockout:true},
-		  {id:556,name:"Super Cup UEFA",   country:"Europe",    flag:"🏆",region:"Coupes Nat.", isCup:true},
-		  //
-		  {id:39, name:"Premier League",   country:"Angleterre",flag:"🏴󠁧󠁢󠁥󠁮󠁧󠁿",region:"Top 5"},
-		  {id:140,name:"La Liga",          country:"Espagne",   flag:"🇪🇸",region:"Top 5"},
-		  {id:135,name:"Serie A",          country:"Italie",    flag:"🇮🇹",region:"Top 5"},
-		  {id:78, name:"Bundesliga",       country:"Allemagne", flag:"🇩🇪",region:"Top 5"},
-		  {id:61, name:"Ligue 1",          country:"France",    flag:"🇫🇷",region:"Top 5"},
-		  //
-		  // 🇬🇧 Îles Britanniques
-		  {id:40, name:"Championship",     country:"Angleterre",flag:"🏴󠁧󠁢󠁥󠁮󠁧󠁿",region:"Europe"},
-		  {id:41, name:"League One",       country:"Angleterre",flag:"🏴󠁧󠁢󠁥󠁮󠁧󠁿",region:"Europe"},
-		  {id:42, name:"League Two",       country:"Angleterre",flag:"🏴󠁧󠁢󠁥󠁮󠁧󠁿",region:"Europe"},
-		  {id:179,name:"Premiership",      country:"Ecosse",    flag:"🏴󠁧󠁢󠁳󠁣󠁴󠁿",region:"Europe"},
-		  {id:180,name:"Championship",     country:"Ecosse",    flag:"🏴󠁧󠁢󠁳󠁣󠁴󠁿",region:"Europe"},
-		  {id:107,name:"Premier League",   country:"Irlande",   flag:"🇮🇪",region:"Europe"},
-		  {id:130,name:"Premier League",   country:"Pays de Galles",flag:"🏴󠁧󠁢󠁷󠁬󠁳󠁿",region:"Europe"},
-		  // 🇳🇱 Benelux
-		  {id:88, name:"Eredivisie",       country:"Pays-Bas",  flag:"🇳🇱",region:"Europe"},
-		  {id:89, name:"Eerste Divisie",   country:"Pays-Bas",  flag:"🇳🇱",region:"Europe"},
-		  {id:144,name:"Pro League",       country:"Belgique",  flag:"🇧🇪",region:"Europe"},
-		  {id:145,name:"Eerste Klasse A",  country:"Belgique",  flag:"🇧🇪",region:"Europe"},
-		  {id:382,name:"BGL Ligue",        country:"Luxembourg",flag:"🇱🇺",region:"Europe"},
-		  // 🇵🇹 Ibérique
-		  {id:94, name:"Primeira Liga",    country:"Portugal",  flag:"🇵🇹",region:"Europe"},
-		  {id:95, name:"Liga Portugal 2",  country:"Portugal",  flag:"🇵🇹",region:"Europe"},
-		  // 🇩🇪 DACH
-		  {id:79, name:"Bundesliga 2",     country:"Allemagne", flag:"🇩🇪",region:"Europe"},
-		  {id:80, name:"3. Liga",          country:"Allemagne", flag:"🇩🇪",region:"Europe"},
-		  {id:169,name:"Super League",     country:"Suisse",    flag:"🇨🇭",region:"Europe"},
-		  {id:170,name:"Challenge League", country:"Suisse",    flag:"🇨🇭",region:"Europe"},
-		  {id:218,name:"Bundesliga Autr.", country:"Autriche",  flag:"🇦🇹",region:"Europe"},
-		  // 🇫🇷 France
-		  {id:62, name:"Ligue 2",          country:"France",    flag:"🇫🇷",region:"Europe"},
-		  {id:63, name:"National",         country:"France",    flag:"🇫🇷",region:"Europe"},
-		  // 🇮🇹 Italie
-		  {id:136,name:"Serie B",          country:"Italie",    flag:"🇮🇹",region:"Europe"},
-		  {id:138,name:"Serie C",          country:"Italie",    flag:"🇮🇹",region:"Europe"},
-		  // 🇪🇸 Espagne
-		  {id:141,name:"Segunda División", country:"Espagne",   flag:"🇪🇸",region:"Europe"},
-		  {id:142,name:"Primera RFEF",     country:"Espagne",   flag:"🇪🇸",region:"Europe"},
-		  // 🇸🇪🇳🇴🇩🇰 Scandinavie
-		  {id:113,name:"Allsvenskan",      country:"Suède",     flag:"🇸🇪",region:"Europe"},
-		  {id:114,name:"Superettan",       country:"Suède",     flag:"🇸🇪",region:"Europe"},
-		  {id:103,name:"Eliteserien",      country:"Norvège",   flag:"🇳🇴",region:"Europe"},
-		  {id:104,name:"1. divisjon",      country:"Norvège",   flag:"🇳🇴",region:"Europe"},
-		  {id:119,name:"Superliga",        country:"Danemark",  flag:"🇩🇰",region:"Europe"},
-		  {id:120,name:"1. Division",      country:"Danemark",  flag:"🇩🇰",region:"Europe"},
-		  {id:322,name:"Veikkausliiga",    country:"Finlande",  flag:"🇫🇮",region:"Europe"},
-		  {id:116,name:"Úrvalsdeild",      country:"Islande",   flag:"🇮🇸",region:"Europe"},
-		  // 🇹🇷 Turquie & Balkans
-		  {id:203,name:"Süper Lig",        country:"Turquie",   flag:"🇹🇷",region:"Europe"},
-		  {id:204,name:"1. Lig",           country:"Turquie",   flag:"🇹🇷",region:"Europe"},
-		  {id:270,name:"Super League",     country:"Grèce",     flag:"🇬🇷",region:"Europe"},
-		  {id:271,name:"Super League 2",   country:"Grèce",     flag:"🇬🇷",region:"Europe"},
-		  {id:286,name:"HNL",              country:"Croatie",   flag:"🇭🇷",region:"Europe"},
-		  {id:290,name:"Prva Liga",        country:"Serbie",    flag:"🇷🇸",region:"Europe"},
-		  {id:393,name:"A Pfokozat",       country:"Hongrie",   flag:"🇭🇺",region:"Europe"},
-		  {id:332,name:"Fortuna Liga",     country:"Slovaquie", flag:"🇸🇰",region:"Europe"},
-		  {id:332,name:"HNK",              country:"Bosnie",    flag:"🇧🇦",region:"Europe"},
-		  {id:387,name:"1. SNL",           country:"Slovénie",  flag:"🇸🇮",region:"Europe"},
-		  {id:389,name:"Superliga",        country:"Bulgarie",  flag:"🇧🇬",region:"Europe"},
-		  {id:283,name:"Liga 1",           country:"Roumanie",  flag:"🇷🇴",region:"Europe"},
-		  // 🇵🇱 Europe de l'Est
-		  {id:106,name:"Ekstraklasa",      country:"Pologne",   flag:"🇵🇱",region:"Europe"},
-		  {id:108,name:"I. liga",          country:"Tchéquie",  flag:"🇨🇿",region:"Europe"},
-		  {id:235,name:"Premier Liga",     country:"Ukraine",   flag:"🇺🇦",region:"Europe"},
-		  {id:329,name:"Vysshaya Liga",    country:"Biélorussie",flag:"🇧🇾",region:"Europe"},
-		  {id:370,name:"A Lyga",           country:"Lituanie",  flag:"🇱🇹",region:"Europe"},
-		  {id:371,name:"Virsliga",         country:"Lettonie",  flag:"🇱🇻",region:"Europe"},
-		  {id:372,name:"Meistriliiga",     country:"Estonie",   flag:"🇪🇪",region:"Europe"},
-		  {id:373,name:"Premier League",   country:"Arménie",   flag:"🇦🇲",region:"Europe"},
-		  {id:374,name:"Premier League",   country:"Géorgie",   flag:"🇬🇪",region:"Europe"},
-		  {id:375,name:"Premier League",   country:"Azerbaïdjan",flag:"🇦🇿",region:"Europe"},
-		  {id:351,name:"Premier League",   country:"Kazakhstan",flag:"🇰🇿",region:"Europe"},
-		  // 🇷🇺 Russie
-		  {id:302,name:"Premier Liga",     country:"Russie",    flag:"🇷🇺",region:"Europe"},
-		  // 🇮🇱🇨🇾 Méditerranée
-		  {id:307,name:"Ligat ha'Al",      country:"Israël",    flag:"🇮🇱",region:"Europe"},
-		  {id:262,name:"1. Division",      country:"Chypre",    flag:"🇨🇾",region:"Europe"},
-		  {id:233,name:"1re Ligue",        country:"Albanie",   flag:"🇦🇱",region:"Europe"},
-		  {id:385,name:"Prva CFL",         country:"Monténégro",flag:"🇲🇪",region:"Europe"},
-		  {id:383,name:"1. HNL",           country:"Kosovo",    flag:"🇽🇰",region:"Europe"},
-		  {id:386,name:"Premier League",   country:"Macédoine", flag:"🇲🇰",region:"Europe"},
-		  //
-		  {id:71, name:"Brasileirao",      country:"Bresil",    flag:"🇧🇷",region:"Ameriques"},
-		  {id:128,name:"Liga Profesional", country:"Argentine", flag:"🇦🇷",region:"Ameriques"},
-		  {id:253,name:"MLS",              country:"USA",       flag:"🇺🇸",region:"Ameriques"},
-		  {id:262,name:"Liga MX",          country:"Mexique",   flag:"🇲🇽",region:"Ameriques"},
-		  {id:13, name:"Copa Libertadores",country:"Amer. Sud", flag:"🌎",region:"Ameriques",  isCup:true,hasGroups:true,hasKnockout:true},
-		  {id:11, name:"Copa Sudamericana",country:"Amer. Sud", flag:"🌎",region:"Ameriques",  isCup:true,hasGroups:true,hasKnockout:true},
-		  //
-		  // 🌍 Afrique du Nord
-		  {id:168,name:"Ligue Pro 1",      country:"Algérie",   flag:"🇩🇿",region:"Afrique"},
-		  {id:199,name:"Botola Pro",       country:"Maroc",     flag:"🇲🇦",region:"Afrique"},
-		  {id:233,name:"Premier League",   country:"Égypte",    flag:"🇪🇬",region:"Afrique"},
-		  {id:211,name:"Ligue 1 Pro",      country:"Tunisie",   flag:"🇹🇳",region:"Afrique"},
-		  {id:390,name:"Premier League",   country:"Libye",     flag:"🇱🇾",region:"Afrique"},
-		  {id:391,name:"Division 1",       country:"Mauritanie",flag:"🇲🇷",region:"Afrique"},
-		  // 🌍 Afrique de l'Ouest
-		  {id:272,name:"NPFL",             country:"Nigeria",   flag:"🇳🇬",region:"Afrique"},
-		  {id:392,name:"Premier League",   country:"Ghana",     flag:"🇬🇭",region:"Afrique"},
-		  {id:384,name:"Ligue 1",          country:"Sénégal",   flag:"🇸🇳",region:"Afrique"},
-		  {id:385,name:"Ligue 1",          country:"Côte d'Ivoire",flag:"🇨🇮",region:"Afrique"},
-		  {id:396,name:"MTN FA Cup",       country:"Cameroun",  flag:"🇨🇲",region:"Afrique"},
-		  {id:397,name:"Ligue 1",          country:"Mali",      flag:"🇲🇱",region:"Afrique"},
-		  {id:398,name:"Ligue 1",          country:"Guinée",    flag:"🇬🇳",region:"Afrique"},
-		  {id:399,name:"Premier League",   country:"Sierra Leone",flag:"🇸🇱",region:"Afrique"},
-		  {id:400,name:"Premier League",   country:"Burkina Faso",flag:"🇧🇫",region:"Afrique"},
-		  // 🌍 Afrique de l'Est
-		  {id:363,name:"PSL",              country:"Afr. Sud",  flag:"🇿🇦",region:"Afrique"},
-		  {id:401,name:"KPL",              country:"Kenya",     flag:"🇰🇪",region:"Afrique"},
-		  {id:402,name:"NBC Premier Lge",  country:"Tanzanie",  flag:"🇹🇿",region:"Afrique"},
-		  {id:403,name:"StarTimes Uganda", country:"Ouganda",   flag:"🇺🇬",region:"Afrique"},
-		  {id:404,name:"Premier League",   country:"Éthiopie",  flag:"🇪🇹",region:"Afrique"},
-		  {id:405,name:"Super League",     country:"Zambie",    flag:"🇿🇲",region:"Afrique"},
-		  {id:406,name:"Castle Lager",     country:"Zimbabwe",  flag:"🇿🇼",region:"Afrique"},
-		  {id:407,name:"Premier League",   country:"Mozambique",flag:"🇲🇿",region:"Afrique"},
-		  {id:408,name:"MTN8",             country:"Botswana",  flag:"🇧🇼",region:"Afrique"},
-		  {id:409,name:"Premier League",   country:"Rwanda",    flag:"🇷🇼",region:"Afrique"},
-		  // 🌍 Coupes africaines
-		  {id:12, name:"CAF Champions",    country:"Afrique",   flag:"🌍",region:"Afrique",    isCup:true,hasGroups:true,hasKnockout:true},
-		  {id:20, name:"CAF Confédération",country:"Afrique",   flag:"🌍",region:"Afrique",    isCup:true,hasGroups:true,hasKnockout:true},
-		  {id:29, name:"CAN",              country:"Afrique",   flag:"🌍",region:"Afrique",    isCup:true,hasGroups:true,hasKnockout:true},
-		  //
-		  {id:202,name:"Saudi Pro League", country:"Arabie S.", flag:"🇸🇦",region:"Asie"},
-		  {id:98, name:"J-League",         country:"Japon",     flag:"🇯🇵",region:"Asie"},
-		  {id:292,name:"K League 1",       country:"Corée S.",  flag:"🇰🇷",region:"Asie"},
-		  {id:301,name:"Chinese Super Lge",country:"Chine",     flag:"🇨🇳",region:"Asie"},
-		  {id:17, name:"AFC Champions",    country:"Asie",      flag:"🌏",region:"Asie",       isCup:true,hasGroups:true,hasKnockout:true},
-		  {id:667,name:"AFC Cup",          country:"Asie",      flag:"🌏",region:"Asie",       isCup:true,hasGroups:true,hasKnockout:true},
-		  //
-		  {id:1,  name:"Coupe du Monde",   country:"Monde",     flag:"🌍",region:"Mondial",    isCup:true,hasGroups:true,hasKnockout:true},
-		  {id:4,  name:"Euro",             country:"Europe",    flag:"🇪🇺",region:"Mondial",    isCup:true,hasGroups:true,hasKnockout:true},
-		  {id:9,  name:"Copa America",     country:"Amériques", flag:"🌎",region:"Mondial",    isCup:true,hasGroups:true,hasKnockout:true},
-		  {id:34, name:"Coupe du Monde U20",country:"Monde",    flag:"🌍",region:"Mondial",    isCup:true,hasGroups:true,hasKnockout:true},
+		  // ═══ COUPES EUROPEENNES ═══
+		  {id:2,   name:"Champions League",        country:"Europe",        flag:"🏆",region:"Coupes EU",   isCup:true,hasGroups:true,hasKnockout:true},
+		  {id:3,   name:"Europa League",           country:"Europe",        flag:"🟠",region:"Coupes EU",   isCup:true,hasGroups:true,hasKnockout:true},
+		  {id:848, name:"Conference League",       country:"Europe",        flag:"🔵",region:"Coupes EU",   isCup:true,hasGroups:true,hasKnockout:true},
+		  // ═══ COUPES NATIONALES ═══
+		  {id:45,  name:"FA Cup",                  country:"Angleterre",    flag:"🏴‍☠️",region:"Coupes Nat.", isCup:true,hasKnockout:true},
+		  {id:48,  name:"League Cup",              country:"Angleterre",    flag:"🏴‍☠️",region:"Coupes Nat.", isCup:true,hasKnockout:true},
+		  {id:66,  name:"Coupe de France",         country:"France",        flag:"🇫🇷",region:"Coupes Nat.", isCup:true,hasKnockout:true},
+		  {id:137, name:"Coppa Italia",            country:"Italie",        flag:"🇮🇹",region:"Coupes Nat.", isCup:true,hasKnockout:true},
+		  {id:143, name:"Copa del Rey",            country:"Espagne",       flag:"🇪🇸",region:"Coupes Nat.", isCup:true,hasKnockout:true},
+		  {id:81,  name:"DFB Pokal",               country:"Allemagne",     flag:"🇩🇪",region:"Coupes Nat.", isCup:true,hasKnockout:true},
+		  {id:556, name:"Super Cup UEFA",          country:"Europe",        flag:"🏆",region:"Coupes Nat.", isCup:true},
+		  // ═══ TOP 5 ═══
+		  {id:39,  name:"Premier League",          country:"Angleterre",    flag:"🏴‍☠️",region:"Top 5"},
+		  {id:140, name:"La Liga",                 country:"Espagne",       flag:"🇪🇸",region:"Top 5"},
+		  {id:135, name:"Serie A",                 country:"Italie",        flag:"🇮🇹",region:"Top 5"},
+		  {id:78,  name:"Bundesliga",              country:"Allemagne",     flag:"🇩🇪",region:"Top 5"},
+		  {id:61,  name:"Ligue 1",                 country:"France",        flag:"🇫🇷",region:"Top 5"},
+		  // ═══ ANGLETERRE ═══
+		  {id:40,  name:"Championship",            country:"Angleterre",    flag:"🏴‍☠️",region:"Europe"},
+		  {id:41,  name:"League One",              country:"Angleterre",    flag:"🏴‍☠️",region:"Europe"},
+		  {id:42,  name:"League Two",              country:"Angleterre",    flag:"🏴‍☠️",region:"Europe"},
+		  // ═══ ECOSSE / IRLANDE ═══
+		  {id:179, name:"Premiership",             country:"Ecosse",        flag:"🏴‍☠️",region:"Europe"},
+		  {id:180, name:"Championship",            country:"Ecosse",        flag:"🏴‍☠️",region:"Europe"},
+		  {id:357, name:"Premier Division",        country:"Irlande",       flag:"🇮🇪",region:"Europe"},
+		  // ═══ BENELUX ═══
+		  {id:88,  name:"Eredivisie",              country:"Pays-Bas",      flag:"🇳🇱",region:"Europe"},
+		  {id:89,  name:"Eerste Divisie",          country:"Pays-Bas",      flag:"🇳🇱",region:"Europe"},
+		  {id:144, name:"Pro League",              country:"Belgique",      flag:"🇧🇪",region:"Europe"},
+		  {id:145, name:"Eerste Klasse A",         country:"Belgique",      flag:"🇧🇪",region:"Europe"},
+		  {id:382, name:"BGL Ligue",               country:"Luxembourg",    flag:"🇱🇺",region:"Europe"},
+		  // ═══ IBERIQUE ═══
+		  {id:94,  name:"Primeira Liga",           country:"Portugal",      flag:"🇵🇹",region:"Europe"},
+		  {id:95,  name:"Liga Portugal 2",         country:"Portugal",      flag:"🇵🇹",region:"Europe"},
+		  // ═══ DACH ═══
+		  {id:79,  name:"Bundesliga 2",            country:"Allemagne",     flag:"🇩🇪",region:"Europe"},
+		  {id:80,  name:"3. Liga",                 country:"Allemagne",     flag:"🇩🇪",region:"Europe"},
+		  {id:207, name:"Super League",            country:"Suisse",        flag:"🇨🇭",region:"Europe"},
+		  {id:208, name:"Challenge League",        country:"Suisse",        flag:"🇨🇭",region:"Europe"},
+		  {id:218, name:"Bundesliga",              country:"Autriche",      flag:"🇦🇹",region:"Europe"},
+		  // ═══ FRANCE ═══
+		  {id:62,  name:"Ligue 2",                 country:"France",        flag:"🇫🇷",region:"Europe"},
+		  {id:63,  name:"National",                country:"France",        flag:"🇫🇷",region:"Europe"},
+		  // ═══ ITALIE ═══
+		  {id:136, name:"Serie B",                 country:"Italie",        flag:"🇮🇹",region:"Europe"},
+		  // ═══ ESPAGNE ═══
+		  {id:141, name:"Segunda Division",        country:"Espagne",       flag:"🇪🇸",region:"Europe"},
+		  // ═══ SCANDINAVIE ═══
+		  {id:113, name:"Allsvenskan",             country:"Suede",         flag:"🇸🇪",region:"Europe"},
+		  {id:114, name:"Superettan",              country:"Suede",         flag:"🇸🇪",region:"Europe"},
+		  {id:103, name:"Eliteserien",             country:"Norvege",       flag:"🇳🇴",region:"Europe"},
+		  {id:104, name:"1. divisjon",             country:"Norvege",       flag:"🇳🇴",region:"Europe"},
+		  {id:119, name:"Superliga",               country:"Danemark",      flag:"🇩🇰",region:"Europe"},
+		  {id:120, name:"1. Division",             country:"Danemark",      flag:"🇩🇰",region:"Europe"},
+		  {id:244, name:"Veikkausliiga",           country:"Finlande",      flag:"🇫🇮",region:"Europe"},
+		  {id:164, name:"Urvalsdeild",             country:"Islande",       flag:"🇮🇸",region:"Europe"},
+		  // ═══ TURQUIE & BALKANS ═══
+		  {id:203, name:"Super Lig",               country:"Turquie",       flag:"🇹🇷",region:"Europe"},
+		  {id:204, name:"1. Lig",                  country:"Turquie",       flag:"🇹🇷",region:"Europe"},
+		  {id:197, name:"Super League",            country:"Grece",         flag:"🇬🇷",region:"Europe"},
+		  {id:210, name:"HNL",                     country:"Croatie",       flag:"🇭🇷",region:"Europe"},
+		  {id:290, name:"Prva Liga",               country:"Serbie",        flag:"🇷🇸",region:"Europe"},
+		  {id:271, name:"NB I",                    country:"Hongrie",       flag:"🇭🇺",region:"Europe"},
+		  {id:332, name:"Fortuna Liga",            country:"Slovaquie",     flag:"🇸🇰",region:"Europe"},
+		  {id:323, name:"Premier League",          country:"Bosnie",        flag:"🇧🇦",region:"Europe"},
+		  {id:283, name:"Liga 1",                  country:"Roumanie",      flag:"🇷🇴",region:"Europe"},
+		  // ═══ EUROPE DE L'EST ═══
+		  {id:106, name:"Ekstraklasa",             country:"Pologne",       flag:"🇵🇱",region:"Europe"},
+		  {id:345, name:"Fortuna Liga",            country:"Tcheque",       flag:"🇨🇿",region:"Europe"},
+		  {id:333, name:"Premier Liga",            country:"Ukraine",       flag:"🇺🇦",region:"Europe"},
+		  {id:235, name:"Premier Liga",            country:"Russie",        flag:"🇷🇺",region:"Europe"},
+		  {id:307, name:"Ligat ha Al",             country:"Israel",        flag:"🇮🇱",region:"Europe"},
+		  // ═══ AMERIQUES ═══
+		  {id:71,  name:"Brasileirao",             country:"Bresil",        flag:"🇧🇷",region:"Ameriques"},
+		  {id:128, name:"Liga Profesional",        country:"Argentine",     flag:"🇦🇷",region:"Ameriques"},
+		  {id:253, name:"MLS",                     country:"USA",           flag:"🇺🇸",region:"Ameriques"},
+		  {id:262, name:"Liga MX",                 country:"Mexique",       flag:"🇲🇽",region:"Ameriques"},
+		  {id:13,  name:"Copa Libertadores",       country:"Amer. Sud",     flag:"🌎",region:"Ameriques", isCup:true,hasGroups:true,hasKnockout:true},
+		  {id:11,  name:"Copa Sudamericana",       country:"Amer. Sud",     flag:"🌎",region:"Ameriques", isCup:true,hasGroups:true,hasKnockout:true},
+		  // ═══ ALGERIE ═══
+		  {id:197, name:"Ligue Professionnelle 1", country:"Algerie",       flag:"🇩🇿",region:"Algerie"},
+		  {id:198, name:"Ligue Professionnelle 2", country:"Algerie",       flag:"🇩🇿",region:"Algerie"},
+		  {id:199, name:"Coupe d Algerie",         country:"Algerie",       flag:"🇩🇿",region:"Algerie", isCup:true,hasKnockout:true},
+		  {id:200, name:"Coupe de la Ligue DZ",    country:"Algerie",       flag:"🇩🇿",region:"Algerie", isCup:true,hasKnockout:true},
+		  // ═══ AFRIQUE DU NORD ═══
+		  {id:200, name:"Botola Pro",              country:"Maroc",         flag:"🇲🇦",region:"Afrique"},
+		  {id:201, name:"Botola 2",                country:"Maroc",         flag:"🇲🇦",region:"Afrique"},
+		  {id:233, name:"Premier League",          country:"Egypte",        flag:"🇪🇬",region:"Afrique"},
+		  {id:211, name:"Ligue 1 Pro",             country:"Tunisie",       flag:"🇹🇳",region:"Afrique"},
+		  {id:212, name:"Ligue 2",                 country:"Tunisie",       flag:"🇹🇳",region:"Afrique"},
+		  // ═══ AFRIQUE SUB-SAHARIENNE ═══
+		  {id:363, name:"PSL",                     country:"Afr. du Sud",   flag:"🇿🇦",region:"Afrique"},
+		  {id:272, name:"NPFL",                    country:"Nigeria",       flag:"🇳🇬",region:"Afrique"},
+		  {id:279, name:"Premier League",          country:"Ghana",         flag:"🇬🇭",region:"Afrique"},
+		  {id:384, name:"Ligue 1",                 country:"Senegal",       flag:"🇸🇳",region:"Afrique"},
+		  {id:480, name:"MTN Ligue 1",             country:"Cote d Ivoire", flag:"🇨🇮",region:"Afrique"},
+		  {id:475, name:"Elite One",               country:"Cameroun",      flag:"🇨🇲",region:"Afrique"},
+		  // ═══ COUPES AFRICAINES ═══
+		  {id:12,  name:"CAF Champions",           country:"Afrique",       flag:"🌍",region:"Afrique",    isCup:true,hasGroups:true,hasKnockout:true},
+		  {id:20,  name:"CAF Confederation",       country:"Afrique",       flag:"🌍",region:"Afrique",    isCup:true,hasGroups:true,hasKnockout:true},
+		  {id:29,  name:"CAN",                     country:"Afrique",       flag:"🌍",region:"Afrique",    isCup:true,hasGroups:true,hasKnockout:true},
+		  // ═══ ASIE ═══
+		  {id:307, name:"Saudi Pro League",        country:"Arabie S.",     flag:"🇸🇦",region:"Asie"},
+		  {id:98,  name:"J-League",                country:"Japon",         flag:"🇯🇵",region:"Asie"},
+		  {id:292, name:"K League 1",              country:"Coree S.",      flag:"🇰🇷",region:"Asie"},
+		  {id:169, name:"Chinese Super League",    country:"Chine",         flag:"🇨🇳",region:"Asie"},
+		  {id:17,  name:"AFC Champions",           country:"Asie",          flag:"🌏",region:"Asie",       isCup:true,hasGroups:true,hasKnockout:true},
+		  {id:667, name:"AFC Cup",                 country:"Asie",          flag:"🌏",region:"Asie",       isCup:true,hasGroups:true,hasKnockout:true},
+		  // ═══ MONDIAL ═══
+		  {id:1,   name:"Coupe du Monde",          country:"Monde",         flag:"🌍",region:"Mondial",    isCup:true,hasGroups:true,hasKnockout:true},
+		  {id:4,   name:"Euro",                    country:"Europe",        flag:"🇪🇺",region:"Mondial",    isCup:true,hasGroups:true,hasKnockout:true},
+		  {id:9,   name:"Copa America",            country:"Ameriques",     flag:"🌎",region:"Mondial",    isCup:true,hasGroups:true,hasKnockout:true},
+		  {id:34,  name:"Coupe du Monde U20",      country:"Monde",         flag:"🌍",region:"Mondial",    isCup:true,hasGroups:true,hasKnockout:true},
 		];
 		const REGIONS = [...new Set(LEAGUES.map(l=>l.region))];
 		const SEASONS = Array.from({length:26},(_,i)=>2030-i);
@@ -712,36 +646,20 @@
 		//
 		// API   cache 15s
 		//
-		// CACHE INTELLIGENT PERSISTANT
 		const _cache=new Map();
-		const _CACHE_KEY="wf_cache_v3";
-		const _CALLS_KEY="wf_calls_";
-		// Charger cache depuis localStorage au demarrage
-		(()=>{ try{ const s=localStorage.getItem(_CACHE_KEY); if(s){ const now=Date.now(); JSON.parse(s).forEach(([k,v])=>{ if(now-v.t<v.ttl)_cache.set(k,v); }); } }catch(e){} })();
-		function _saveCache(){
-		  try{
-		    const now=Date.now();
-		    const valid=[..._cache.entries()].filter(([k,v])=>now-v.t<v.ttl).slice(-150);
-		    localStorage.setItem(_CACHE_KEY,JSON.stringify(valid));
-		  }catch(e){_cache.clear();}
-		}
-		// TTL par type de donnees
-		const TTL={LIVE:15000,SCORES:60000,DETAIL:60000,UPCOMING:21600000,DONE:86400000,STANDING:3600000,H2H:86400000,LINEUP:3600000,PLAYERS:3600000,INJURIES:3600000,TRANSFERS:86400000};
-		let _apiCallsToday=0,_apiCallsDate=new Date().toDateString();
-		try{_apiCallsToday=parseInt(localStorage.getItem(_CALLS_KEY+_apiCallsDate)||"0");}catch(e){}
+		let _apiCallsToday=parseInt(localStorage.getItem('wf_api_calls_'+new Date().toDateString())||'0');
+		let _apiCallsDate=new Date().toDateString();
 		function _trackApiCall(){
 		  const today=new Date().toDateString();
 		  if(today!==_apiCallsDate){_apiCallsToday=0;_apiCallsDate=today;}
 		  _apiCallsToday++;
-		  try{localStorage.setItem(_CALLS_KEY+today,_apiCallsToday);}catch(e){}
+		  try{localStorage.setItem('wf_api_calls_'+today,_apiCallsToday);}catch(e){}
 		}
 
+		const TTL={LIVE:15000,SCORES:60000,DONE:86400000,UPCOMING:21600000,STANDING:3600000,H2H:86400000,LINEUP:3600000,PLAYERS:3600000,INJURIES:3600000,TRANSFERS:86400000};
 		async function api(path,ttl=TTL.SCORES,signal=null){
 		  const now=Date.now();
-		  if(_cache.has(path)){
-		    const e=_cache.get(path);
-		    if(now-e.t<ttl) return e.d;
-		  }
+		  if(_cache.has(path)&&now-_cache.get(path).t<ttl) return _cache.get(path).d;
 		  _trackApiCall();
 		  const r=await fetch(BASE+path,{headers:{"x-apisports-key":API_KEY},signal});
 		  if(!r.ok) throw new Error(`Erreur HTTP ${r.status}`);
@@ -751,8 +669,7 @@
 		    throw new Error(typeof msg==="string"?msg:"Erreur API");
 		  }
 		  const d=j.response??[];
-		  _cache.set(path,{d,t:now,ttl});
-		  setTimeout(_saveCache,300);
+		  _cache.set(path,{d,t:now});
 		  return d;
 		}
 
@@ -874,33 +791,20 @@
 		}
 
 		function StatBar({label,hv,av,homeColor,awayColor}){
-		  const h=num(hv),a=num(av),hp=pct(h,a),ap=100-hp;
-		  const isXG=label&&label.includes("xG");
-		  const isPct=typeof hv==="string"&&hv.includes("%");
-		  const hc=homeColor||T.red;
-		  const ac=awayColor||T.blueB;
-		  return<div style={{marginBottom:14}}>
-		    <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:6}}>
-		      <span className="bc" style={{fontSize:15,fontWeight:800,color:isXG?"#82b1ff":T.t1,minWidth:36}}>{h}{isPct?"":" "}</span>
-		      <span className="bc" style={{fontSize:10,fontWeight:700,color:T.t3,letterSpacing:.8,textTransform:"uppercase",textAlign:"center",flex:1,padding:"0 8px"}}>{label}</span>
-		      <span className="bc" style={{fontSize:15,fontWeight:800,color:isXG?"#82b1ff":T.t1,minWidth:36,textAlign:"right"}}>{a}{isPct?"":" "}</span>
-		    </div>
-		    <div style={{position:"relative",height:6,background:T.bg3,borderRadius:3,overflow:"hidden"}}>
-		      <div style={{position:"absolute",left:0,top:0,height:"100%",width:`${hp}%`,background:`linear-gradient(90deg,${hc},${hc}cc)`,borderRadius:3,transition:"width .6s cubic-bezier(.4,0,.2,1)"}}/>
-		      <div style={{position:"absolute",right:0,top:0,height:"100%",width:`${ap}%`,background:`linear-gradient(270deg,${ac},${ac}cc)`,borderRadius:3,transition:"width .6s cubic-bezier(.4,0,.2,1)"}}/>
-		    </div>
-		  </div>;
+		  const h=num(hv),a=num(av);const hW=h>a,aW=a>h;const hc=homeColor||"#1a1aff",ac=awayColor||"#00c060";const isPct=typeof hv==="string"&&(hv+"").includes("%");const hp=isPct?h:pct(h,a);
+		  return<div style={{padding:"12px 0",borderBottom:"1px solid #f0f1f5"}}><div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:6}}><span style={{fontSize:15,fontWeight:800,color:hW?"#fff":"#222",background:hW?hc:"transparent",borderRadius:6,padding:hW?"3px 10px":"3px 0",minWidth:38,textAlign:"center"}}>{hv}</span><span style={{fontSize:12,fontWeight:600,color:"#666",textAlign:"center",flex:1,padding:"0 10px"}}>{label}</span><span style={{fontSize:15,fontWeight:800,color:aW?"#fff":"#222",background:aW?ac:"transparent",borderRadius:6,padding:aW?"3px 10px":"3px 0",minWidth:38,textAlign:"center"}}>{av}</span></div><div style={{display:"flex",height:5,borderRadius:3,overflow:"hidden",background:"#eee"}}><div style={{width:`${hp}%`,background:hc,transition:"width .5s"}}/><div style={{flex:1,background:ac,opacity:.7}}/></div></div>;
 		}
+```
 
+function MiniStat({label,val,color=T.t2,sub}){
+return<div style={{background:T.bg3,borderRadius:8,padding:“9px 14px”,flex:1,minWidth:70}}>
+<div style={{fontSize:20,fontWeight:900,color,lineHeight:1}}>{fmt(val)}</div>
+<div style={{fontSize:10,color:T.t3,marginTop:3,lineHeight:1.2}}>{label}</div>
+{sub&&<div style={{fontSize:9,color:T.t4,marginTop:2}}>{sub}</div>}
+</div>;
+}
 
-		function MiniStat({label,val,color=T.t2,sub}){
-		  return<div style={{background:T.bg3,borderRadius:8,padding:"9px 14px",flex:1,minWidth:70}}>
-		    <div style={{fontSize:20,fontWeight:900,color,lineHeight:1}}>{fmt(val)}</div>
-		    <div style={{fontSize:10,color:T.t3,marginTop:3,lineHeight:1.2}}>{label}</div>
-		    {sub&&<div style={{fontSize:9,color:T.t4,marginTop:2}}>{sub}</div>}
-		  </div>;
-		}
-
+```
 		// Sheet
 		function Sheet({open,onClose,children}){
 		  if(!open)return null;
@@ -910,23 +814,21 @@
 		      position:"relative",
 		      background:"#f0f2f6",
 		      borderRadius:"24px 24px 0 0",
-		      height:"92vh",
-		      maxHeight:"92vh",
+		      maxHeight:"88vh",
 		      display:"flex",
 		      flexDirection:"column",
 		      animation:"up .3s cubic-bezier(.22,1,.36,1)",
 		      boxShadow:"0 -8px 40px rgba(0,0,0,.15)",
-		      overflow:"hidden",
 		    }}>
 		      {/* Handle + bouton fermer sticky en haut */}
 		      <div style={{
 		        display:"flex",alignItems:"center",justifyContent:"center",
 		        padding:"12px 16px 8px",
 		        flexShrink:0,
+		        position:"sticky",top:0,
 		        background:T.bg1,
-		        borderRadius:"24px 24px 0 0",
-		        zIndex:10,
-		        borderBottom:`1px solid ${T.line}`,
+		        borderRadius:"20px 20px 0 0",
+		        zIndex:2,
 		      }}>
 		        <div style={{width:36,height:4,borderRadius:2,background:T.bg5}}/>
 		        <button onClick={onClose} style={{
@@ -947,7 +849,7 @@
 		  </div>;
 		}
 
-		// TERRAIN PREMIUM + FILTRES AiScore
+		// TERRAIN PREMIUM + FILTRES
 		function PitchPlayer({player,photoSrc,color,badgeVal,badgeColor}){
 		  const[imgErr,setImgErr]=React.useState(false);
 		  const nm=(player?.name||"").split(" ").slice(-1)[0].slice(0,11);
@@ -955,10 +857,8 @@
 		    <div style={{position:"relative",flexShrink:0}}>
 		      {player?.number&&<div style={{position:"absolute",top:-14,left:"50%",transform:"translateX(-50%)",fontSize:10,color:"rgba(255,255,255,.5)",fontWeight:600,whiteSpace:"nowrap"}}>#{player.number}</div>}
 		      <div style={{width:52,height:52,borderRadius:"50%",border:`2.5px solid ${color}`,overflow:"hidden",background:"#1a2e1a",display:"flex",alignItems:"center",justifyContent:"center",boxShadow:"0 3px 10px rgba(0,0,0,.5)"}}>
-		        {photoSrc&&!imgErr
-		          ?<img src={photoSrc} alt="" style={{width:"100%",height:"100%",objectFit:"cover",display:"block"}} onError={()=>setImgErr(true)}/>
-		          :<div style={{width:"100%",height:"100%",background:`${color}22`,display:"flex",alignItems:"center",justifyContent:"center"}}><span style={{fontSize:17,fontWeight:900,color,lineHeight:1}}>{player?.number}</span></div>
-		        }
+		        {photoSrc&&!imgErr?<img src={photoSrc} alt="" style={{width:"100%",height:"100%",objectFit:"cover"}} onError={()=>setImgErr(true)}/>
+		          :<div style={{width:"100%",height:"100%",background:`${color}22`,display:"flex",alignItems:"center",justifyContent:"center"}}><span style={{fontSize:17,fontWeight:900,color}}>{player?.number}</span></div>}
 		      </div>
 		      {badgeVal&&<div style={{position:"absolute",bottom:-8,left:"50%",transform:"translateX(-50%)",background:badgeColor||"#111",borderRadius:5,padding:"2px 6px",border:"1.5px solid rgba(255,255,255,.15)",minWidth:32,textAlign:"center",whiteSpace:"nowrap"}}>
 		        <span style={{fontSize:10,fontWeight:900,color:"#fff",lineHeight:1.2}}>{badgeVal}</span>
@@ -967,59 +867,37 @@
 		    <span style={{fontSize:10,fontWeight:700,color:"#fff",textShadow:"0 1px 4px rgba(0,0,0,1)",textAlign:"center",lineHeight:1.2,overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap",width:"100%",display:"block",marginTop:8}}>{nm}</span>
 		  </div>;
 		}
-
 		function PitchFull({hLineup,aLineup,hPlayers,aPlayers,homeTeam,awayTeam,pitchFilter}){
 		  const ph=(tp,pid)=>tp?.find(p=>p.player?.id===pid)?.player?.photo;
-		  const buildGrid=lineup=>{
-		    if(!lineup?.startXI?.length)return[];
-		    const pts=lineup.startXI.map(p=>p.player).filter(Boolean);
-		    const form=(lineup.formation||"4-4-2").split("-").map(Number);
-		    const rows=[1,...form];let idx=0;
-		    return rows.map(n=>{const r=[];for(let i=0;i<n&&idx<pts.length;i++)r.push(pts[idx++]);return r;});
-		  };
+		  const buildGrid=lineup=>{if(!lineup?.startXI?.length)return[];const pts=lineup.startXI.map(p=>p.player).filter(Boolean);const form=(lineup.formation||"4-4-2").split("-").map(Number);const rows=[1,...form];let idx=0;return rows.map(n=>{const r=[];for(let i=0;i<n&&idx<pts.length;i++)r.push(pts[idx++]);return r;});};
 		  const hGrid=buildGrid(hLineup),aGrid=buildGrid(aLineup);
 		  const hColor="#00c170",aColor="#42a5f5";
 		  const getBadge=(p,players,filter)=>{
 		    const info=players?.find(x=>x.player?.id===p?.id);
-		    if(filter==="age") return{val:p?.age?String(p.age):null,color:"#111"};
-		    if(filter==="height") return{val:p?.height?(p.height+"").replace(" cm","").replace("cm",""):null,color:"#111"};
-		    if(filter==="value"){
-		      const v=info?.player?.value||p?.value;
-		      if(!v)return{val:"-",color:"#111"};
-		      const fmt=v>=1000000?(v/1000000).toFixed(1)+"M€":v>=1000?Math.round(v/1000)+"k€":v+"€";
-		      return{val:fmt,color:"#111"};
-		    }
-		    const st=info?.statistics?.[0];
-		    const r=parseFloat(st?.games?.rating||0);
-		    if(!r)return{val:null,color:"#111"};
+		    if(filter==="age")return{val:p?.age?String(p.age):null,color:"#111"};
+		    if(filter==="height")return{val:p?.height?(p.height+"").replace(" cm","").replace("cm",""):null,color:"#111"};
+		    if(filter==="value"){const v=info?.player?.value||p?.value;if(!v)return{val:"-",color:"#111"};return{val:v>=1000000?(v/1000000).toFixed(1)+"M":v>=1000?Math.round(v/1000)+"k":v,color:"#111"};}
+		    const st=info?.statistics?.[0];const r=parseFloat(st?.games?.rating||0);if(!r)return{val:null,color:"#111"};
 		    return{val:r.toFixed(1),color:r>=8?"#00c170":r>=7?"#f59e0b":"#e53535"};
 		  };
 		  const Section=({grid,lineup,team,color,reverse,players})=><div style={{position:"relative",zIndex:1,padding:"18px 6px 8px"}}>
 		    <div style={{display:"flex",alignItems:"center",gap:6,justifyContent:reverse?"flex-end":"flex-start",marginBottom:12}}>
-		      {!reverse&&<><div style={{background:"rgba(0,0,0,.6)",borderRadius:7,padding:"4px 10px",border:`1px solid ${color}44`}}><span style={{fontSize:12,fontWeight:900,color}}>{lineup?.formation}</span></div><img src={team?.logo} alt="" style={{width:22,height:22,objectFit:"contain"}} onError={e=>e.target.style.display="none"}/><span style={{fontSize:12,fontWeight:700,color:"rgba(255,255,255,.85)",maxWidth:130,overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap"}}>{team?.name}</span></>}
-		      {reverse&&<><span style={{fontSize:12,fontWeight:700,color:"rgba(255,255,255,.85)",maxWidth:130,overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap"}}>{team?.name}</span><img src={team?.logo} alt="" style={{width:22,height:22,objectFit:"contain"}} onError={e=>e.target.style.display="none"}/><div style={{background:"rgba(0,0,0,.6)",borderRadius:7,padding:"4px 10px",border:`1px solid ${color}44`}}><span style={{fontSize:12,fontWeight:900,color}}>{lineup?.formation}</span></div></>}
+		      {!reverse&&<><div style={{background:"rgba(0,0,0,.6)",borderRadius:7,padding:"4px 10px"}}><span style={{fontSize:12,fontWeight:900,color}}>{lineup?.formation}</span></div><img src={team?.logo} alt="" style={{width:22,height:22,objectFit:"contain"}} onError={e=>e.target.style.display="none"}/><span style={{fontSize:12,fontWeight:700,color:"rgba(255,255,255,.85)",maxWidth:130,overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap"}}>{team?.name}</span></>}
+		      {reverse&&<><span style={{fontSize:12,fontWeight:700,color:"rgba(255,255,255,.85)",maxWidth:130,overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap"}}>{team?.name}</span><img src={team?.logo} alt="" style={{width:22,height:22,objectFit:"contain"}} onError={e=>e.target.style.display="none"}/><div style={{background:"rgba(0,0,0,.6)",borderRadius:7,padding:"4px 10px"}}><span style={{fontSize:12,fontWeight:900,color}}>{lineup?.formation}</span></div></>}
 		    </div>
 		    {(reverse?[...grid].reverse():grid).map((row,ri)=><div key={ri} style={{display:"flex",justifyContent:"space-evenly",alignItems:"flex-end",marginBottom:20}}>
-		      {row.map((p,pi)=>{
-		        const badge=getBadge(p,players,pitchFilter||"rating");
-		        return<PitchPlayer key={p.id??`${ri}-${pi}`} player={p} photoSrc={ph(players,p.id)} color={color} badgeVal={badge.val} badgeColor={badge.color}/>;
-		      })}
-		    </div>)}
+		      {row.map((p,pi)=>{const badge=getBadge(p,players,pitchFilter||"rating");return<PitchPlayer key={p.id??`${ri}-${pi}`} player={p} photoSrc={ph(players,p.id)} color={color} badgeVal={badge.val} badgeColor={badge.color}/>;})}</div>)}
 		  </div>;
-		  return<div style={{background:"linear-gradient(180deg,#1c5220 0%,#236127 18%,#276b2b 35%,#236127 52%,#1c5220 68%,#174718 84%,#1c5220 100%)",borderRadius:16,overflow:"hidden",position:"relative",boxShadow:"0 6px 32px rgba(0,0,0,.5)",width:"100%"}}>
-		    <div style={{position:"absolute",inset:0,pointerEvents:"none",backgroundImage:"repeating-linear-gradient(180deg,rgba(0,0,0,.06) 0px,rgba(0,0,0,.06) 28px,transparent 28px,transparent 56px)"}}/>
+		  return<div style={{background:"linear-gradient(180deg,#1c5220 0%,#236127 35%,#1c5220 68%,#174718 100%)",borderRadius:16,overflow:"hidden",position:"relative",width:"100%"}}>
 		    <svg style={{position:"absolute",inset:0,width:"100%",height:"100%",pointerEvents:"none"}} viewBox="0 0 100 100" preserveAspectRatio="none">
 		      <rect x={1.5} y={.8} width={97} height={98.4} fill="none" stroke="rgba(255,255,255,.15)" strokeWidth={.4}/>
 		      <line x1={1.5} y1={50} x2={98.5} y2={50} stroke="rgba(255,255,255,.15)" strokeWidth={.4}/>
 		      <circle cx={50} cy={50} r={13} fill="none" stroke="rgba(255,255,255,.12)" strokeWidth={.4}/>
-		      <circle cx={50} cy={50} r={.7} fill="rgba(255,255,255,.25)"/>
 		      <rect x={27} y={.8} width={46} height={17} fill="none" stroke="rgba(255,255,255,.12)" strokeWidth={.35}/>
-		      <rect x={37} y={.8} width={26} height={7} fill="none" stroke="rgba(255,255,255,.1)" strokeWidth={.3}/>
 		      <rect x={27} y={82.2} width={46} height={17} fill="none" stroke="rgba(255,255,255,.12)" strokeWidth={.35}/>
-		      <rect x={37} y={93} width={26} height={7} fill="none" stroke="rgba(255,255,255,.1)" strokeWidth={.3}/>
 		    </svg>
 		    {hGrid.length>0&&<Section grid={hGrid} lineup={hLineup} team={homeTeam} color={hColor} reverse={false} players={hPlayers}/>}
-		    <div style={{height:1,background:"rgba(255,255,255,.15)",margin:"0 12px",position:"relative",zIndex:2}}/>
+		    <div style={{height:1,background:"rgba(255,255,255,.15)",margin:"0 12px"}}/>
 		    {aGrid.length>0&&<Section grid={aGrid} lineup={aLineup} team={awayTeam} color={aColor} reverse={true} players={aPlayers}/>}
 		  </div>;
 		}
@@ -1038,94 +916,82 @@
 		  const min=useMinute(s.elapsed,s.short);
 		  const flash=useFlash(m.goals.home,m.goals.away);
 		  const hg=m.goals.home,ag=m.goals.away,has=hg!==null&&ag!==null,hw=has&&hg>ag,aw=has&&ag>hg;
-		  const stLabel=sh==="HT"?"Mi-temps":sh==="BT"?"Pause":sh==="P"?"Tirs":sh==="SUSP"?"Suspendu":sh==="INT"?"Interr.":sh==="ABD"?"Arrêté":sh==="CANC"?"Annulé":sh==="PST"?"Reporté":sh==="TBD"?"TBD":sh==="AWD"?"Tab.vert":sh==="WO"?"Forfait":sh==="AET"?"Ap.Pr.":sh==="PEN"?"Tab":"FT";
-		  const stColor=live?"#e53535":sh==="HT"||sh==="BT"?"#f59f00":susp?"#f0a030":canc?"#e53535":sh==="PST"?"#f59f00":"#999";
-		  const odds=m._odds||null;
-		  return<div onClick={onOpen} style={{
-		    display:"flex",alignItems:"center",minHeight:58,cursor:"pointer",
-		    borderBottom:"1px solid rgba(0,0,0,.06)",
-		    background:flash?"rgba(229,53,53,.04)":"#fff",
-		    transition:"background .15s",
-		    opacity:canc?0.5:1,
-		    padding:"0 12px 0 0",
+		  const barColor=live?T.red:sh==="HT"||sh==="BT"?T.gold:susp?T.orange:canc?T.red:"transparent";
+		  const stLabel=sh==="HT"?"MT":sh==="BT"?"Pause":sh==="P"?"Tab":sh==="SUSP"?"Susp.":sh==="INT"?"Inter.":sh==="ABD"?"Arrêté":sh==="CANC"?"Annulé":sh==="PST"?"Reporté":sh==="TBD"?"TBD":sh==="AWD"?"T.vert":sh==="WO"?"Forfait":sh==="AET"?"Ap.Pr.":sh==="PEN"?"Tab":"FT";
+		  const stColor=sh==="HT"||sh==="BT"?T.gold:susp?T.orange:canc?T.red:sh==="PST"?T.yellow:T.t3;
+		  return<div onClick={onOpen} className="row-anim" style={{
+		    display:"flex",alignItems:"center",minHeight:52,cursor:"pointer",
+		    borderBottom:`1px solid ${T.line}`,
+		    background:flash?"rgba(229,53,53,.08)":canc||susp?"rgba(0,0,0,.2)":"transparent",
+		    animation:flash?"gFlash 4s ease forwards":"none",
+		    transition:"background .18s",opacity:canc?0.45:1,width:"100%",
+		    position:"relative",
 		  }}
-		  onMouseEnter={e=>e.currentTarget.style.background="#f8f9fc"}
-		  onMouseLeave={e=>e.currentTarget.style.background=flash?"rgba(229,53,53,.04)":"#fff"}
+		  onMouseEnter={e=>e.currentTarget.style.background=flash?"rgba(229,53,53,.1)":"rgba(255,255,255,.025)"}
+		  onMouseLeave={e=>e.currentTarget.style.background=flash?"rgba(229,53,53,.08)":canc||susp?"rgba(0,0,0,.2)":"transparent"}
 		  >
-		    {/* Favori */}
-		    <button onClick={e=>{e.stopPropagation();onFav();}} style={{background:"none",border:"none",color:isFav?"#f59f00":"#ccc",fontSize:17,padding:"0 10px",lineHeight:1,flexShrink:0,cursor:"pointer",transition:"color .15s"}}>{isFav?"★":"☆"}</button>
-		    {/* Logos + Equipes */}
-		    <div style={{flex:1,minWidth:0,display:"flex",flexDirection:"column",gap:5,padding:"8px 0"}}>
-		      <div style={{display:"flex",alignItems:"center",gap:8}}>
-		        <Logo src={m.teams.home.logo} size={20}/>
-		        <span style={{fontSize:14,fontWeight:hw?700:400,color:hw?"#111":aw?"#bbb":"#222",flex:1,overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap"}}>{m.teams.home.name}</span>
-		      </div>
-		      <div style={{display:"flex",alignItems:"center",gap:8}}>
-		        <Logo src={m.teams.away.logo} size={20}/>
-		        <span style={{fontSize:14,fontWeight:aw?700:400,color:aw?"#111":hw?"#bbb":"#222",flex:1,overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap"}}>{m.teams.away.name}</span>
-		      </div>
-		    </div>
-		    {/* Heure / Statut */}
-		    <div style={{display:"flex",flexDirection:"column",alignItems:"center",gap:5,flexShrink:0,minWidth:52,marginRight:4}}>
+		    {/* Barre color e gauche */}
+		    <div style={{width:3,alignSelf:"stretch",flexShrink:0,background:barColor,animation:live?"pulse 1.4s infinite":susp?"pulse 2.5s infinite":"none",borderRadius:"0 2px 2px 0"}}/>
+		    {/* Statut / Heure */}
+		    <div style={{width:44,textAlign:"center",flexShrink:0,padding:"0 3px"}}>
 		      {live
-		        ?<span style={{fontSize:12,fontWeight:800,color:"#e53535",animation:"lGlow 2s infinite"}}>{min}’</span>
-		        :sh==="HT"||sh==="BT"
-		        ?<span style={{fontSize:12,fontWeight:800,color:"#f59f00"}}>{stLabel}</span>
+		        ?<span className="bc" style={{fontSize:13,fontWeight:800,color:T.red,animation:"lGlow 2s infinite",display:"block"}}>{min}'</span>
 		        :sh==="NS"
-		        ?<span style={{fontSize:13,fontWeight:600,color:"#333"}}>{hhmm(m.fixture.date)}</span>
-		        :<span style={{fontSize:11,fontWeight:700,color:stColor}}>{stLabel}</span>
-		      }
-		      {/* Scores */}
-		      <div style={{display:"flex",flexDirection:"column",alignItems:"center",gap:4}}>
-		        {has?<>
-		          <span style={{fontSize:16,fontWeight:hw?900:500,color:flash?"#e53535":hw?"#111":"#bbb",lineHeight:1,animation:flash?"sPop .55s ease":"none"}}>{hg}</span>
-		          <span style={{fontSize:16,fontWeight:aw?900:500,color:flash?"#e53535":aw?"#111":"#bbb",lineHeight:1,animation:flash?"sPop .55s ease .12s":"none"}}>{ag}</span>
-		        </>:<>
-		          <span style={{fontSize:14,color:"#ccc",lineHeight:1}}>-</span>
-		          <span style={{fontSize:14,color:"#ccc",lineHeight:1}}>-</span>
-		        </>}
+		        ?<span className="bc" style={{fontSize:13,fontWeight:700,color:T.t2}}>{hhmm(m.fixture.date)}</span>
+		        :<span className="bc" style={{fontSize:10,fontWeight:800,color:stColor,display:"block",lineHeight:1.3}}>{stLabel}</span>}
+		    </div>
+		    {/*  quipes */}
+		    <div style={{flex:1,minWidth:0,padding:"7px 8px 7px 4px",display:"flex",flexDirection:"column",gap:6}}>
+		      <div style={{display:"flex",alignItems:"center",gap:7}}>
+		        <Logo src={m.teams.home.logo} size={16}/>
+		        <span className="bc" style={{fontSize:14,fontWeight:hw?800:500,color:aw?T.t3:T.t1,flex:1,overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap",letterSpacing:.2}}>{m.teams.home.name}</span>
+		      </div>
+		      <div style={{display:"flex",alignItems:"center",gap:7}}>
+		        <Logo src={m.teams.away.logo} size={16}/>
+		        <span className="bc" style={{fontSize:14,fontWeight:aw?800:500,color:hw?T.t3:T.t1,flex:1,overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap",letterSpacing:.2}}>{m.teams.away.name}</span>
 		      </div>
 		    </div>
-		    {/* Cotes si disponibles */}
-		    {odds&&<div style={{display:"flex",flexDirection:"column",alignItems:"flex-end",gap:5,flexShrink:0,minWidth:36}}>
-		      <span style={{fontSize:12,color:"#bbb",lineHeight:1}}>{odds[0]}</span>
-		      <span style={{fontSize:12,color:"#bbb",lineHeight:1}}>{odds[1]}</span>
-		      <span style={{fontSize:12,color:"#bbb",lineHeight:1}}>{odds[2]}</span>
-		    </div>}
+		    {/* Scores */}
+		    <div style={{width:28,display:"flex",flexDirection:"column",alignItems:"center",gap:6,flexShrink:0}}>
+		      {has?<>
+		        <span className="bc" style={{fontSize:16,fontWeight:hw?900:600,lineHeight:1,color:flash?T.red:hw?"#fff":T.t3,animation:flash?"sPop .55s ease":"none"}}>{hg}</span>
+		        <span className="bc" style={{fontSize:16,fontWeight:aw?900:600,lineHeight:1,color:flash?T.red:aw?"#fff":T.t3,animation:flash?"sPop .55s ease .12s":"none"}}>{ag}</span>
+		      </>:<span style={{fontSize:12,color:T.t4,marginTop:4}}>-</span>}
+		    </div>
+		    {/* Favori */}
+		    <button onClick={e=>{e.stopPropagation();onFav();}} style={{background:"none",border:"none",color:isFav?T.gold:T.t5,fontSize:15,padding:"0 13px 0 5px",lineHeight:1,flexShrink:0,cursor:"pointer",transition:"color .15s"}}>{isFav?"★":"☆"}</button>
+		    {/* Flash but   ligne rouge en bas */}
+		    {flash&&<div style={{position:"absolute",bottom:0,left:0,right:0,height:1,background:"linear-gradient(90deg,transparent,rgba(229,53,53,.6),transparent)"}}/>}
 		  </div>;
 		}
 
 		function LeagueBlock({group,onOpen,favs,onFav}){
 		  const[open,setOpen]=useState(true);
 		  const lv=group.matches.filter(m=>LIVE_ST.has(m.fixture.status.short)).length;
-		  return<div style={{marginBottom:2}}>
+		  return<div style={{borderBottom:`1px solid ${T.line}`}}>
 		    <div onClick={()=>setOpen(v=>!v)} style={{
-		      display:"flex",alignItems:"center",gap:10,
-		      padding:"11px 14px",
+		      display:"flex",alignItems:"center",gap:9,padding:"8px 14px",
 		      cursor:"pointer",
-		      background:"#fff",
-		      borderBottom:"1px solid rgba(0,0,0,.07)",
-		      borderTop:"1px solid rgba(0,0,0,.05)",
-		      userSelect:"none",
+		      background:"linear-gradient(90deg,#f8f9fc 0%,#f4f5f9 100%)",
+		      borderBottom:`1px solid ${T.line}`,
+		      userSelect:"none",width:"100%",
+		      transition:"background .15s",
 		    }}
-		    onMouseEnter={e=>e.currentTarget.style.background="#f9f9f9"}
-		    onMouseLeave={e=>e.currentTarget.style.background="#fff"}
+		    onMouseEnter={e=>e.currentTarget.style.background="#f0f2f6"}
+		    onMouseLeave={e=>e.currentTarget.style.background="linear-gradient(90deg,#f8f9fc 0%,#f4f5f9 100%)"}
 		    >
-		      <div style={{width:38,height:38,borderRadius:9,background:"#f5f6f8",border:"1px solid #eee",display:"flex",alignItems:"center",justifyContent:"center",flexShrink:0}}>
-		        <Logo src={group.lg.logo} size={26}/>
-		      </div>
-		      <div style={{flex:1,minWidth:0}}>
-		        <div style={{fontSize:15,fontWeight:700,color:"#111",overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap"}}>{group.lg.name}</div>
-		        <div style={{display:"flex",alignItems:"center",gap:5,marginTop:2}}>
-		          <span style={{fontSize:12,color:"#888",fontWeight:500,textTransform:"uppercase",letterSpacing:.4}}>{group.lg.country}</span>
-		        </div>
-		      </div>
-		      {lv>0&&<span style={{fontSize:10,fontWeight:800,color:"#e53535",background:"rgba(229,53,53,.1)",border:"1px solid rgba(229,53,53,.2)",padding:"2px 8px",borderRadius:20,flexShrink:0,animation:"pulse 1.5s infinite"}}>● {lv} LIVE</span>}
-		      <span style={{fontSize:12,color:"#ccc",marginLeft:6}}>{open?"▾":"▸"}</span>
+		      <Logo src={group.lg.logo} size={16}/>
+		      <span className="bc" style={{fontSize:12,fontWeight:700,color:T.t3,flex:1,overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap",letterSpacing:.6,textTransform:"uppercase"}}>{group.lg.country} · {group.lg.name}</span>
+		      {lv>0&&<span className="bc" style={{
+		        fontSize:10,fontWeight:800,color:"#e53535",
+		        background:"rgba(229,53,53,.12)",
+		        border:"1px solid rgba(229,53,53,.2)",
+		        padding:"2px 8px",borderRadius:20,flexShrink:0,
+		        letterSpacing:.8,animation:"pulse 1.5s infinite",
+		      }}>● {lv} LIVE</span>}
+		      <span style={{fontSize:9,color:T.t4,marginLeft:2}}>{open?"▾":"▸"}</span>
 		    </div>
-		    {open&&<div style={{background:"#fff"}}>
-		      {group.matches.map(m=><Row key={m.fixture.id} match={m} onOpen={()=>onOpen(m.fixture.id)} isFav={favs.has(m.fixture.id)} onFav={()=>onFav(m.fixture.id)}/>)}
-		    </div>}
+		    {open&&group.matches.map(m=><Row key={m.fixture.id} match={m} onOpen={()=>onOpen(m.fixture.id)} isFav={favs.has(m.fixture.id)} onFav={()=>onFav(m.fixture.id)}/>)}
 		  </div>;
 		}
 
@@ -1136,103 +1002,7 @@
 		// COMPOSANT ANALYSE   Statistiques avanc es H2H
 		//
 		function AnalysePanel({h2h,homeTeam,awayTeam,hSt=[],aSt=[],homeHistory=[],awayHistory=[]}){
-		  if(!h2h||h2h.length===0){
-		    if(hSt.length>0||aSt.length>0){
-		      const getStat=(arr,name)=>parseInt(arr?.find(s=>s.type===name)?.value)||0;
-		      const hPoss=getStat(hSt,"Ball Possession")||50,aPoss=100-getStat(hSt,"Ball Possession")||50;
-		      const hShots=getStat(hSt,"Total Shots"),aShots=getStat(aSt,"Total Shots");
-		      const hOT=getStat(hSt,"Shots on Goal"),aOT=getStat(aSt,"Shots on Goal");
-		      const hCorn=getStat(hSt,"Corner Kicks"),aCorn=getStat(aSt,"Corner Kicks");
-		      const hFoul=getStat(hSt,"Fouls"),aFoul=getStat(aSt,"Fouls");
-		      const hYel=getStat(hSt,"Yellow Cards"),aYel=getStat(aSt,"Yellow Cards");
-		      const Bar=({label,hv,av,c1=T.red,c2=T.blueB})=>{
-		        const tot=hv+av||1;
-		        return<div style={{marginBottom:14}}>
-		          <div style={{display:"flex",justifyContent:"space-between",marginBottom:5}}>
-		            <span style={{fontSize:13,fontWeight:800,color:c1}}>{hv}</span>
-		            <span style={{fontSize:11,color:T.t3,fontWeight:600}}>{label}</span>
-		            <span style={{fontSize:13,fontWeight:800,color:c2}}>{av}</span>
-		          </div>
-		          <div style={{display:"flex",borderRadius:6,overflow:"hidden",height:8,background:T.bg3}}>
-		            <div style={{width:`${Math.round(hv/tot*100)}%`,background:c1,transition:"width .5s"}}/>
-		            <div style={{flex:1,background:c2,opacity:.7}}/>
-		          </div>
-		        </div>;
-		      };
-		      return<div style={{padding:"16px 16px 24px"}}>
-		        <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:18,padding:"12px 14px",background:T.bg2,borderRadius:14,border:`1px solid ${T.line}`}}>
-		          <div style={{display:"flex",alignItems:"center",gap:8}}><img src={homeTeam?.logo} style={{width:28,height:28,objectFit:"contain"}} onError={e=>e.target.style.display="none"}/><span style={{fontSize:12,fontWeight:800,color:T.t1}}>{homeTeam?.name}</span></div>
-		          <span style={{fontSize:11,color:T.t4}}>vs</span>
-		          <div style={{display:"flex",alignItems:"center",gap:8}}><span style={{fontSize:12,fontWeight:800,color:T.t1}}>{awayTeam?.name}</span><img src={awayTeam?.logo} style={{width:28,height:28,objectFit:"contain"}} onError={e=>e.target.style.display="none"}/></div>
-		        </div>
-		        <div style={{marginBottom:18}}>
-		          <div style={{fontSize:11,fontWeight:800,color:T.t3,letterSpacing:1,textTransform:"uppercase",marginBottom:10}}>⚽ Possession</div>
-		          <div style={{display:"flex",borderRadius:10,overflow:"hidden",height:32}}>
-		            <div style={{width:`${hPoss}%`,background:`linear-gradient(90deg,${T.red},${T.red}cc)`,display:"flex",alignItems:"center",justifyContent:"center"}}><span style={{fontSize:13,fontWeight:900,color:"#fff"}}>{hPoss}%</span></div>
-		            <div style={{flex:1,background:`linear-gradient(90deg,${T.blueB}cc,${T.blueB})`,display:"flex",alignItems:"center",justifyContent:"center"}}><span style={{fontSize:13,fontWeight:900,color:"#fff"}}>{aPoss}%</span></div>
-		          </div>
-		        </div>
-		        <div style={{marginBottom:16}}>
-		          <div style={{fontSize:11,fontWeight:800,color:T.t3,letterSpacing:1,textTransform:"uppercase",marginBottom:12}}>📊 Statistiques</div>
-		          <Bar label="Tirs" hv={hShots} av={aShots}/>
-		          <Bar label="Tirs cadres" hv={hOT} av={aOT}/>
-		          <Bar label="Corners" hv={hCorn} av={aCorn}/>
-		          <Bar label="Fautes" hv={hFoul} av={aFoul}/>
-		          <Bar label="Cartons jaunes" hv={hYel} av={aYel} c1="#f0b429" c2="#f0b429"/>
-		        </div>
-		        {/* Over/Under estimé depuis les tirs */}
-		        {(hShots+aShots)>0&&(()=>{
-		          const totalShots=hShots+aShots;
-		          const totalOT=hOT+aOT;
-		          // Estimation buts attendus : tirs cadrés * taux conversion moyen 0.33
-		          const xG=parseFloat((totalOT*0.33).toFixed(2));
-		          const over15=Math.min(95,Math.round(40+totalOT*8));
-		          const over25=Math.min(90,Math.round(20+totalOT*7));
-		          const over35=Math.min(80,Math.round(5+totalOT*5));
-		          const btts=Math.min(85,Math.round(20+Math.min(hOT,aOT)*12));
-		          const MiniBar=({val,label,color,sub})=><div style={{marginBottom:12}}>
-		            <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:5}}>
-		              <span style={{fontSize:12,fontWeight:700,color:T.t1}}>{label}</span>
-		              <span style={{fontSize:13,fontWeight:900,color}}>{val}%</span>
-		            </div>
-		            <div style={{position:"relative",height:8,background:T.bg3,borderRadius:6,overflow:"hidden"}}>
-		              <div style={{position:"absolute",left:0,top:0,height:"100%",width:`${val}%`,background:color,borderRadius:6,transition:"width .5s"}}/>
-		            </div>
-		            {sub&&<div style={{fontSize:10,color:T.t4,marginTop:3}}>{sub}</div>}
-		          </div>;
-		          return<div style={{marginBottom:16}}>
-		            <div style={{fontSize:11,fontWeight:800,color:T.t3,letterSpacing:1,textTransform:"uppercase",marginBottom:12}}>🎯 Over/Under (estimé)</div>
-		            <div style={{padding:"10px 14px",background:T.bg2,borderRadius:12,border:`1px solid ${T.line}`,marginBottom:14,display:"flex",justifyContent:"space-between",alignItems:"center"}}>
-		              <div style={{textAlign:"center"}}>
-		                <div style={{fontSize:22,fontWeight:900,color:T.green}}>{xG}</div>
-		                <div style={{fontSize:10,color:T.t3}}>xG estimé</div>
-		              </div>
-		              <div style={{textAlign:"center"}}>
-		                <div style={{fontSize:22,fontWeight:900,color:T.t2}}>{totalShots}</div>
-		                <div style={{fontSize:10,color:T.t3}}>Tirs totaux</div>
-		              </div>
-		              <div style={{textAlign:"center"}}>
-		                <div style={{fontSize:22,fontWeight:900,color:T.orange}}>{totalOT}</div>
-		                <div style={{fontSize:10,color:T.t3}}>Cadrés</div>
-		              </div>
-		            </div>
-		            <MiniBar val={over15} label="Over 1.5" color={T.green} sub={`${totalOT} tirs cadrés · xG ${xG}`}/>
-		            <MiniBar val={over25} label="Over 2.5" color={over25>55?T.green:T.orange}/>
-		            <MiniBar val={over35} label="Over 3.5" color={over35>50?T.orange:T.red}/>
-		            <MiniBar val={btts} label="Les deux marquent" color={T.blueB} sub={`${hOT} cadrés DOM · ${aOT} cadrés EXT`}/>
-		          </div>;
-		        })()}
-		        <div style={{padding:"10px 14px",background:"rgba(255,165,0,.07)",borderRadius:10,border:"1px solid rgba(255,165,0,.2)",textAlign:"center",marginTop:8}}>
-		          <span style={{fontSize:11,color:"#f0a030"}}>⚠️ H2H non disponible — estimations basées sur les stats du match</span>
-		        </div>
-		      </div>;
-		    }
-		    return<div style={{textAlign:"center",padding:"52px 20px",display:"flex",flexDirection:"column",alignItems:"center",gap:12}}>
-		      <div style={{fontSize:44}}>📊</div>
-		      <div style={{fontSize:15,fontWeight:700,color:T.t2}}>Analyse non disponible</div>
-		      <div style={{fontSize:12,color:T.t3}}>Pas assez de données pour ce match</div>
-		    </div>;
-		  }
+		  if(!h2h||h2h.length===0)return<div style={{textAlign:"center",padding:"44px 20px",color:T.t3,fontSize:13}}>Pas assez de données H2H</div>;
 
 		  const hid=homeTeam.id;
 
@@ -1649,38 +1419,18 @@
 
 		//
 		function PlayersStatsPanel({players,homeTeam,awayTeam}){
-		  const[selTeam,setSelTeam]=React.useState("home");
-		  const[sort,setSort]=React.useState("rating"); // rating | age | height | value
+		  const[selTeam,setSelTeam]=useState("home");
 		  const teamData=players.find(t=>t.team?.id===(selTeam==="home"?homeTeam?.id:awayTeam?.id));
-		  const plrs=(teamData?.players??[]).slice();
+		  const plrs=teamData?.players??[];
 		  if(!plrs.length) return<div style={{textAlign:"center",padding:"44px 20px",color:T.t3,fontSize:13}}>Statistiques joueurs non disponibles</div>;
-		  // Tri
-		  const sorted=plrs.slice().sort((a,b)=>{
-		    if(sort==="rating") return (parseFloat(b.statistics?.[0]?.games?.rating)||0)-(parseFloat(a.statistics?.[0]?.games?.rating)||0);
-		    if(sort==="age") return (a.player?.age||99)-(b.player?.age||99);
-		    if(sort==="height"){
-		      const h=p=>parseInt((p.player?.height||"0").replace("cm","").trim())||0;
-		      return h(b)-h(a);
-		    }
-		    if(sort==="value") return (b.player?.value||0)-(a.player?.value||0);
-		    return 0;
-		  });
-		  const FILTERS=[
-		    {id:"rating", icon:"★",       label:"Note"},
-		    {id:"age",    icon:"Age",      label:"Âge",    circle:true},
-		    {id:"height", icon:"📏",       label:"Taille"},
-		    {id:"value",  icon:"🏔️",      label:"Valeur marchande"},
-		  ];
-		  return<div style={{display:"flex",flexDirection:"column",height:"100%",background:"#f5f6f9"}}>
-		    {/* Sélection équipe */}
-		    <div style={{display:"flex",background:"#fff",padding:"10px 14px",gap:8,borderBottom:"1px solid rgba(0,0,0,.06)"}}>
+		  return<div style={{display:"flex",flexDirection:"column",height:"100%"}}>
+		    <div style={{display:"flex",background:T.bg2,borderRadius:10,padding:3,margin:"10px 14px",gap:2}}>
 		      {[["home",homeTeam],["away",awayTeam]].map(([v,team])=>{
 		        const a=selTeam===v;
-		        return<button key={v} onClick={()=>setSelTeam(v)} style={{
-		          flex:1,padding:"8px",border:"none",borderRadius:10,cursor:"pointer",
-		          background:a?"#1a1aff":"#f0f1f5",
-		          color:a?"#fff":"#555",
-		          fontSize:12,fontWeight:a?700:500,transition:"all .2s",
+		        return<button key={v} onClick={()=>setSelTeam(v)} className="bc" style={{
+		          flex:1,padding:"8px",border:"none",borderRadius:8,cursor:"pointer",
+		          background:a?T.green:"transparent",color:a?"#fff":T.t3,
+		          fontSize:11,fontWeight:a?800:500,transition:"all .2s",
 		          display:"flex",alignItems:"center",justifyContent:"center",gap:6,
 		        }}>
 		          <Logo src={team?.logo} size={16}/>
@@ -1688,69 +1438,36 @@
 		        </button>;
 		      })}
 		    </div>
-		    {/* Barre filtres style AiScore */}
-		    <div style={{display:"flex",alignItems:"center",gap:8,padding:"12px 14px",background:"#fff",borderBottom:"1px solid rgba(0,0,0,.06)",overflowX:"auto"}}>
-		      {FILTERS.map(f=>{
-		        const active=sort===f.id;
-		        return<button key={f.id} onClick={()=>setSort(f.id)} style={{
-		          display:"flex",alignItems:"center",gap:6,
-		          padding:active?"8px 16px":"0",
-		          width:active?undefined:40,
-		          height:40,
-		          borderRadius:20,
-		          border:"none",
-		          cursor:"pointer",
-		          background:active?"#1a1aff":"#eef0f5",
-		          color:active?"#fff":"#111",
-		          fontWeight:active?700:500,
-		          fontSize:13,
-		          flexShrink:0,
-		          transition:"all .2s",
-		          justifyContent:"center",
-		          whiteSpace:"nowrap",
-		        }}>
-		          {f.circle
-		            ?<div style={{width:24,height:24,borderRadius:"50%",background:active?"rgba(255,255,255,.25)":"#222",display:"flex",alignItems:"center",justifyContent:"center",flexShrink:0}}>
-		               <span style={{fontSize:9,fontWeight:900,color:"#fff",letterSpacing:-.5}}>{f.icon}</span>
-		             </div>
-		            :<span style={{fontSize:f.id==="rating"?16:14}}>{f.icon}</span>
-		          }
-		          {active&&<span>{f.label}</span>}
-		        </button>;
-		      })}
-		    </div>
-		    {/* Liste joueurs */}
-		    <div style={{flex:1,overflowY:"auto",background:"#fff"}}>
-		      {sorted.map(({player:pl,statistics:sts})=>{
+		    <div style={{flex:1,overflowY:"auto"}}>
+		      {plrs.map(({player:pl,statistics:sts})=>{
 		        const st=sts?.[0]??{};
 		        const rating=parseFloat(st.games?.rating??0);
 		        const ratingColor=rating>=8?"#00c170":rating>=7?"#f59e0b":rating>=6?"#888":"#e53535";
-		        // Valeur affichée selon le tri actif
-		        const badge=(()=>{
-		          if(sort==="age") return{val:pl.age?""+pl.age+"ans":"—",color:"#222",bg:"#f0f1f5"};
-		          if(sort==="height") return{val:pl.height||"—",color:"#1a1aff",bg:"rgba(26,26,255,.08)"};
-		          if(sort==="value") return{val:pl.value?"€"+pl.value:"N/A",color:"#00a36c",bg:"rgba(0,163,108,.08)"};
-		          return rating>0?{val:rating.toFixed(1),color:"#fff",bg:ratingColor}:{val:null};
-		        })();
 		        return<div key={pl.id} style={{
 		          display:"flex",alignItems:"center",gap:10,
-		          padding:"10px 14px",
-		          borderBottom:"1px solid rgba(0,0,0,.05)",
+		          padding:"10px 14px",borderBottom:`1px solid ${T.line}`,
 		        }}>
-		          <Avatar src={pl.photo} size={42}/>
+		          <Avatar src={pl.photo} size={40}/>
 		          <div style={{flex:1,minWidth:0}}>
-		            <div style={{fontSize:14,fontWeight:700,color:"#111",overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap"}}>{pl.name}</div>
-		            <div style={{fontSize:11,color:"#888",marginTop:2,display:"flex",gap:8,flexWrap:"wrap",alignItems:"center"}}>
-		              {st.games?.position&&<span style={{background:"#eef0f5",borderRadius:5,padding:"1px 6px",fontSize:10,fontWeight:600,color:"#555"}}>{st.games.position}</span>}
-		              <span>{st.games?.minutes??0} min</span>
-		              {(st.goals?.total??0)>0&&<span style={{color:"#00c170",fontWeight:700}}>⚽ {st.goals.total}</span>}
-		              {(st.goals?.assists??0)>0&&<span style={{color:"#f59e0b",fontWeight:700}}>🎯 {st.goals.assists}</span>}
-		              {(st.cards?.yellow??0)>0&&<span>🟨 {st.cards.yellow}</span>}
-		              {(st.cards?.red??0)>0&&<span>🟥 {st.cards.red}</span>}
+		            <div className="bc" style={{fontSize:13,fontWeight:700,color:T.t1,overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap"}}>{pl.name}</div>
+		            <div style={{fontSize:10,color:T.t3,marginTop:2}}>
+		              {st.games?.position||""} · {st.games?.minutes??0}min
+		            </div>
+		            <div style={{display:"flex",gap:8,marginTop:4,flexWrap:"wrap"}}>
+		              {(st.goals?.total??0)>0&&<span style={{fontSize:10,color:T.green,fontWeight:700}}>⚽ {st.goals.total}</span>}
+		              {(st.goals?.assists??0)>0&&<span style={{fontSize:10,color:"#f59e0b",fontWeight:700}}>🎯 {st.goals.assists}</span>}
+		              {(st.cards?.yellow??0)>0&&<span style={{fontSize:10}}>🟨 {st.cards.yellow}</span>}
+		              {(st.cards?.red??0)>0&&<span style={{fontSize:10}}>🟥 {st.cards.red}</span>}
+		              {(st.shots?.on??0)>0&&<span style={{fontSize:10,color:T.t3}}>🎯 {st.shots.on} tirs</span>}
 		            </div>
 		          </div>
-		          {badge.val&&<div style={{minWidth:40,height:36,borderRadius:10,background:badge.bg,display:"flex",alignItems:"center",justifyContent:"center",flexShrink:0,padding:"0 8px"}}>
-		            <span style={{fontSize:12,fontWeight:800,color:badge.color,whiteSpace:"nowrap"}}>{badge.val}</span>
+		          {rating>0&&<div style={{
+		            width:36,height:36,borderRadius:10,
+		            background:ratingColor,
+		            display:"flex",alignItems:"center",justifyContent:"center",
+		            flexShrink:0,
+		          }}>
+		            <span className="bc" style={{fontSize:13,fontWeight:900,color:"#fff"}}>{rating.toFixed(1)}</span>
 		          </div>}
 		        </div>;
 		      })}
@@ -1762,7 +1479,7 @@
 		//
 		function ComposPanel({lineups,players,homeTeam,awayTeam,isPartial}){
 		  const[view,setView]=useState("pitch");
-		  const[pitchFilter,setPitchFilter]=useState("rating"); // rating | age | height | value
+		  const[pitchFilter,setPitchFilter]=useState("rating");
 		  const hLu=lineups.find(l=>l.team?.id===homeTeam?.id);
 		  const aLu=lineups.find(l=>l.team?.id===awayTeam?.id);
 		  const hPh=players.find(t=>t.team?.id===homeTeam?.id)?.players??[];
@@ -1788,54 +1505,25 @@
 		  return<div>
 		    {/* Toggle vue + Filtres */}
 		    <div style={{background:"#fff",borderBottom:"1px solid rgba(0,0,0,.07)"}}>
-		      {/* Toggle Schéma / Listes */}
 		      <div style={{display:"flex",gap:6,padding:"10px 14px 8px"}}>
 		        <div style={{display:"flex",background:"#f0f1f5",borderRadius:10,padding:3,gap:2,flex:1}}>
 		          {[["pitch","⚽ Schéma"],["list","📋 Listes"]].map(([v,lb])=><button key={v} onClick={()=>setView(v)} style={{flex:1,background:view===v?"#1a1aff":"none",border:"none",color:view===v?"#fff":"#555",borderRadius:8,padding:"8px",fontSize:12,fontWeight:view===v?700:500,cursor:"pointer",transition:"all .15s"}}>{lb}</button>)}
 		        </div>
 		      </div>
-		      {/* Filtres AiScore - visibles uniquement en mode pitch */}
 		      {view==="pitch"&&<div style={{display:"flex",alignItems:"center",gap:8,padding:"0 14px 12px",overflowX:"auto"}}>
-		        {[
-		          {id:"rating", icon:"★",  label:"Note",            circle:false},
-		          {id:"age",    icon:"Age", label:"Âge",             circle:true},
-		          {id:"height", icon:"📏", label:"Taille",          circle:false},
-		          {id:"value",  icon:"🏔️", label:"Valeur marchande", circle:false},
-		        ].map(f=>{
+		        {[{id:"rating",icon:"★",label:"Note"},{id:"age",icon:"Age",label:"Âge",circle:true},{id:"height",icon:"📏",label:"Taille"},{id:"value",icon:"🏔️",label:"Valeur marchande"}].map(f=>{
 		          const active=pitchFilter===f.id;
-		          return<button key={f.id} onClick={()=>setPitchFilter(f.id)} style={{
-		            display:"flex",alignItems:"center",gap:6,
-		            padding:active?"8px 16px":"0",
-		            width:active?undefined:40,
-		            height:40,
-		            borderRadius:20,
-		            border:"none",
-		            cursor:"pointer",
-		            background:active?"#1a1aff":"#eef0f5",
-		            color:active?"#fff":"#111",
-		            fontWeight:active?700:500,
-		            fontSize:13,
-		            flexShrink:0,
-		            transition:"all .2s",
-		            justifyContent:"center",
-		            whiteSpace:"nowrap",
-		          }}>
-		            {f.circle
-		              ?<div style={{width:24,height:24,borderRadius:"50%",background:active?"rgba(255,255,255,.3)":"#222",display:"flex",alignItems:"center",justifyContent:"center",flexShrink:0}}>
-		                 <span style={{fontSize:9,fontWeight:900,color:"#fff"}}>{f.icon}</span>
-		               </div>
-		              :<span style={{fontSize:f.id==="rating"?16:14}}>{f.icon}</span>
-		            }
+		          return<button key={f.id} onClick={()=>setPitchFilter(f.id)} style={{display:"flex",alignItems:"center",gap:6,padding:active?"8px 16px":"0",width:active?undefined:40,height:40,borderRadius:20,border:"none",cursor:"pointer",background:active?"#1a1aff":"#eef0f5",color:active?"#fff":"#111",fontWeight:active?700:500,fontSize:13,flexShrink:0,transition:"all .2s",justifyContent:"center",whiteSpace:"nowrap"}}>
+		            {f.circle?<div style={{width:24,height:24,borderRadius:"50%",background:active?"rgba(255,255,255,.3)":"#222",display:"flex",alignItems:"center",justifyContent:"center"}}><span style={{fontSize:9,fontWeight:900,color:"#fff"}}>{f.icon}</span></div>:<span>{f.icon}</span>}
 		            {active&&<span>{f.label}</span>}
 		          </button>;
 		        })}
 		      </div>}
 		    </div>
 
-		    {/* Vue terrain premium */}
-		    {view==="pitch"&&<div style={{padding:"12px 10px 20px",background:"#111318"}}>
-		      <PitchFull hLineup={hLu} aLineup={aLu} hPlayers={hPh} aPlayers={aPh} homeTeam={homeTeam} awayTeam={awayTeam} pitchFilter={pitchFilter}/>
-		      <div style={{display:"none"}}>
+		    {/* Vue sch ma */}
+		    {view==="pitch"&&<div style={{padding:"14px 14px 20px"}}>
+		      <div style={{display:"flex",gap:10}}>
 		        {hLu&&<div style={{flex:1}}>
 		          <div style={{fontSize:12,color:T.red,fontWeight:700,textAlign:"center",marginBottom:7}}>{homeTeam?.name} <span style={{color:T.t3,fontWeight:400}}>({hLu.formation})</span></div>
 		          <Pitch lineup={hLu} isHome={true}/>
@@ -1933,8 +1621,8 @@
 		    (lineups.length||isPartial)           ?{id:"compos",   label:"⚽ Compos"} :null,
 		    (players.some(t=>t.players?.length)||isPartial)?{id:"joueurs",  label:"👤 Joueurs"}:null,
 		    (injuries.length||isPartial)          ?{id:"absents",  label:"🤕 Absents"} :null,
-		    {id:"h2h",      label:"H2H"},
-		    {id:"analyse",  label:"📊 Analyse"},
+		    (h2h.length||isPartial)               ?{id:"h2h",      label:"H2H"}       :null,
+		    (hSt.length||h2h.length||isPartial)   ?{id:"analyse",  label:"📊 Analyse"} :null,
 		  ].filter(Boolean);
 
 		  const SK_CATS=[
@@ -2117,11 +1805,9 @@
 		    {/* Contenu */}
 		    <div style={{paddingBottom:32,animation:"fadeIn .2s ease"}}>
 
-		      {tab==="resume"&&(mEvt.length===0
-		        ?<div style={{textAlign:"center",padding:"32px 20px",color:T.t3,fontSize:14,display:"flex",flexDirection:"column",alignItems:"center",gap:10}}>
-		           {isPartial?<><Spin s={20}/><span style={{fontSize:12}}>Chargement...</span></>:"Aucun événement"}
-		         </div>
-		        :mEvt.map((e,i)=><EvtCard key={i} e={e}/>))}
+		      {tab==="resume"&&<div style={{background:"#fff"}}>
+		        {events.length>0&&(()=>{const gx=e=>Math.min(((e.time?.elapsed||0)/90)*100,98);const hEv=events.filter(e=>e.team?.id===fix.teams.home.id),aEv=events.filter(e=>e.team?.id===fix.teams.away.id);const EI=({e})=>{if(e.type==="Goal")return<span style={{fontSize:10}}>⚽</span>;if(e.type==="Card"){const r=e.detail?.includes("Red")||e.detail?.includes("Second Yellow");return<div style={{width:7,height:10,background:r?"#e53535":"#fbbf24",borderRadius:1}}/>;}return null;};return<div style={{padding:"12px 14px",borderBottom:"1px solid #f0f1f5"}}><div style={{display:"flex",justifyContent:"space-between",marginBottom:4}}><span style={{fontSize:10,fontWeight:700,color:"#1a1aff"}}>{fix.teams.home.name}</span><span style={{fontSize:10,fontWeight:700,color:"#00c060"}}>{fix.teams.away.name}</span></div><div style={{position:"relative",height:20,marginBottom:2}}>{hEv.map((e,i)=><div key={i} style={{position:"absolute",left:`${gx(e)}%`,transform:"translateX(-50%)"}}><EI e={e}/></div>)}</div><div style={{height:3,background:"#f0f1f5",borderRadius:2,position:"relative"}}><div style={{position:"absolute",left:"50%",top:-2,width:1,height:7,background:"#ccc"}}/></div><div style={{position:"relative",height:20,marginTop:2}}>{aEv.map((e,i)=><div key={i} style={{position:"absolute",left:`${gx(e)}%`,transform:"translateX(-50%)"}}><EI e={e}/></div>)}</div><div style={{display:"flex",justifyContent:"space-between",marginTop:2}}><span style={{fontSize:10,color:"#bbb"}}>0'</span><span style={{fontSize:10,color:"#bbb"}}>45'</span><span style={{fontSize:10,color:"#bbb"}}>90'</span></div></div>;})()} <div style={{padding:"0 14px"}}><div style={{padding:"12px 0 6px",fontSize:15,fontWeight:800,color:"#111"}}>Événements</div>{events.length===0&&isPartial&&<div style={{textAlign:"center",padding:"20px",color:"#888",display:"flex",flexDirection:"column",alignItems:"center",gap:8}}><Spin s={18}/><span>Chargement...</span></div>}{[...events].sort((a,b)=>(b.time?.elapsed||0)-(a.time?.elapsed||0)).map((e,i)=>{const ih=e.team?.id===fix.teams.home.id,iG=e.type==="Goal",iC=e.type==="Card",iS=e.type==="subst",iR=iC&&(e.detail?.includes("Red")||e.detail?.includes("Second Yellow"));return<div key={i} style={{display:"flex",alignItems:"center",padding:"10px 0",borderBottom:"1px solid #f5f5f5",flexDirection:ih?"row":"row-reverse",gap:8}}>{iG&&<span style={{fontSize:16,flexShrink:0}}>⚽</span>}{iC&&<div style={{width:12,height:16,background:iR?"#e53535":"#fbbf24",borderRadius:2,flexShrink:0}}/>}{iS&&<div style={{width:20,height:20,borderRadius:"50%",background:ih?"rgba(26,26,255,.12)":"rgba(0,192,96,.12)",display:"flex",alignItems:"center",justifyContent:"center",flexShrink:0}}><span style={{fontSize:10,color:ih?"#1a1aff":"#00c060"}}>→</span></div>}<div style={{flex:1,minWidth:0,textAlign:ih?"left":"right"}}><div style={{fontSize:13,fontWeight:iG?800:600,color:"#222",overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap"}}>{e.player?.name||""}</div>{iS&&e.assist?.name&&<div style={{fontSize:11,color:ih?"#1a1aff":"#00c060",marginTop:1}}>{e.assist.name}</div>}{!iS&&e.assist?.name&&<div style={{fontSize:11,color:"#aaa",marginTop:1}}>{e.assist.name}</div>}</div><span style={{fontSize:13,fontWeight:700,color:"#555",flexShrink:0,minWidth:30,textAlign:"center"}}>{e.time?.elapsed}{e.time?.extra?`+${e.time.extra}`:""}'</span></div>;})}</div><div style={{padding:"12px 14px",background:"#f9f9f9",margin:"12px",borderRadius:12}}><div style={{display:"flex",flexWrap:"wrap",gap:"8px 18px"}}>{[{i:"⚽",l:"But"},{i:"🟨",l:"Carton jaune"},{i:"🟥",l:"Carton rouge"},{i:"🔄",l:"Remplacement"}].map(({i,l})=><div key={l} style={{display:"flex",alignItems:"center",gap:5}}><span style={{fontSize:13}}>{i}</span><span style={{fontSize:11,color:"#777"}}>{l}</span></div>)}</div></div>
+		      </div>}
 
 		      {tab==="evts"&&<div style={{padding:"12px 0",animation:"fadeIn .2s ease"}}>
 		        {evtGroups.length===0
@@ -2139,74 +1825,17 @@
 		        }
 		      </div>}
 
-		      {tab==="stats"&&<div style={{padding:"12px 14px",animation:"fadeIn .2s ease"}}>
-		        {/* Spinner si stats en cours de chargement */}
-		        {isPartial&&hSt.length===0&&<div style={{textAlign:"center",padding:"32px",display:"flex",flexDirection:"column",alignItems:"center",gap:10,color:T.t3}}><Spin s={22}/><span style={{fontSize:13}}>Chargement statistiques...</span></div>}
-		        {/* Graphique tirs premium */}
-		        {(()=>{
-		          const totalH=num(gv(hSt,"Total Shots")),totalA=num(gv(aSt,"Total Shots"));
-		          const onH=num(gv(hSt,"Shots on Goal")),onA=num(gv(aSt,"Shots on Goal"));
-		          const offH=num(gv(hSt,"Shots off Goal")),offA=num(gv(aSt,"Shots off Goal"));
-		          if(!totalH&&!totalA)return null;
-		          const maxT=Math.max(totalH,totalA,1);
-		          return<div style={{background:"linear-gradient(135deg,rgba(229,53,53,.08),rgba(41,121,255,.08))",border:`1px solid ${T.line}`,borderRadius:14,padding:"14px 16px",marginBottom:16}}>
-		            <div className="bc" style={{fontSize:11,fontWeight:800,color:T.t3,letterSpacing:1.2,textTransform:"uppercase",textAlign:"center",marginBottom:14}}>Vue Tirs</div>
-		            <div style={{display:"flex",gap:10,alignItems:"flex-end",justifyContent:"center",height:80}}>
-		              {/* Équipe domicile */}
-		              <div style={{display:"flex",flexDirection:"column",alignItems:"center",gap:4,flex:1}}>
-		                <div style={{width:"100%",display:"flex",flexDirection:"column",gap:2,justifyContent:"flex-end",height:70}}>
-		                  <div style={{width:"100%",height:`${Math.round((offH/maxT)*70)}px`,background:"rgba(229,53,53,.3)",borderRadius:"4px 4px 0 0",minHeight:offH?4:0,display:"flex",alignItems:"center",justifyContent:"center"}}>
-		                    {offH>0&&<span className="bc" style={{fontSize:10,fontWeight:700,color:T.red}}>{offH}</span>}
-		                  </div>
-		                  <div style={{width:"100%",height:`${Math.round((onH/maxT)*70)}px`,background:T.red,borderRadius:2,minHeight:onH?4:0,display:"flex",alignItems:"center",justifyContent:"center"}}>
-		                    {onH>0&&<span className="bc" style={{fontSize:11,fontWeight:900,color:"#fff"}}>{onH}</span>}
-		                  </div>
-		                </div>
-		                <span className="bc" style={{fontSize:10,color:T.t3,fontWeight:600}}>Tirs</span>
-		                <span className="bc" style={{fontSize:18,fontWeight:900,color:T.red}}>{totalH}</span>
-		              </div>
-		              {/* Centre label */}
-		              <div style={{display:"flex",flexDirection:"column",alignItems:"center",gap:8,paddingBottom:28}}>
-		                <div style={{display:"flex",flexDirection:"column",alignItems:"center",gap:3}}>
-		                  <div style={{width:8,height:8,borderRadius:"50%",background:T.red}}/>
-		                  <span className="bc" style={{fontSize:9,color:T.t4,letterSpacing:.5}}>CADRÉS</span>
-		                  <div style={{width:8,height:8,borderRadius:2,background:"rgba(229,53,53,.3)"}}/>
-		                  <span className="bc" style={{fontSize:9,color:T.t4,letterSpacing:.5}}>NON CAD.</span>
-		                </div>
-		              </div>
-		              {/* Équipe extérieur */}
-		              <div style={{display:"flex",flexDirection:"column",alignItems:"center",gap:4,flex:1}}>
-		                <div style={{width:"100%",display:"flex",flexDirection:"column",gap:2,justifyContent:"flex-end",height:70}}>
-		                  <div style={{width:"100%",height:`${Math.round((offA/maxT)*70)}px`,background:"rgba(41,121,255,.3)",borderRadius:"4px 4px 0 0",minHeight:offA?4:0,display:"flex",alignItems:"center",justifyContent:"center"}}>
-		                    {offA>0&&<span className="bc" style={{fontSize:10,fontWeight:700,color:T.blueB}}>{offA}</span>}
-		                  </div>
-		                  <div style={{width:"100%",height:`${Math.round((onA/maxT)*70)}px`,background:T.blueB,borderRadius:2,minHeight:onA?4:0,display:"flex",alignItems:"center",justifyContent:"center"}}>
-		                    {onA>0&&<span className="bc" style={{fontSize:11,fontWeight:900,color:"#fff"}}>{onA}</span>}
-		                  </div>
-		                </div>
-		                <span className="bc" style={{fontSize:10,color:T.t3,fontWeight:600}}>Tirs</span>
-		                <span className="bc" style={{fontSize:18,fontWeight:900,color:T.blueB}}>{totalA}</span>
-		              </div>
-		            </div>
-		          </div>;
-		        })()}
-		        {/* Stats par catégorie */}
-		        {SK_CATS.map(({cat,icon,keys})=>{
-		          const rows=keys.filter(k=>{const hv=gv(hSt,k),av=gv(aSt,k);return hv||av;});
-		          if(!rows.length)return null;
-		          const isXGCat=cat==="⚡ xG";
-		          return<div key={cat} style={{marginBottom:18}}>
-		            <div style={{display:"flex",alignItems:"center",gap:6,marginBottom:10,paddingBottom:6,borderBottom:`1px solid ${T.line}`}}>
-		              <span style={{fontSize:14}}>{icon}</span>
-		              <span className="bc" style={{fontSize:11,fontWeight:800,color:isXGCat?"#82b1ff":T.t2,letterSpacing:1,textTransform:"uppercase"}}>{isXGCat?"xG — Buts Attendus":cat}</span>
-		            </div>
-		            {rows.map(k=><StatBar key={k} label={STAT_LABELS[k]||k} hv={gv(hSt,k)} av={gv(aSt,k)}/>)}
-		          </div>;
-		        })}
+		      {tab==="stats"&&<div style={{background:"#fff",animation:"fadeIn .2s ease"}}>
+		        {isPartial&&hSt.length===0&&<div style={{textAlign:"center",padding:"32px",color:"#888",display:"flex",flexDirection:"column",alignItems:"center",gap:10}}><Spin s={22}/><span style={{fontSize:13}}>Chargement...</span></div>}
+		        {(hSt.length>0||aSt.length>0)&&(()=>{const hPN=parseInt(hSt.find(x=>x.type==="Ball Possession")?.value)||50,aPN=100-hPN;const tH=num(gv(hSt,"Total Shots")),tA=num(gv(aSt,"Total Shots")),onH=num(gv(hSt,"Shots on Goal")),onA=num(gv(aSt,"Shots on Goal")),offH=num(gv(hSt,"Shots off Goal")),offA=num(gv(aSt,"Shots off Goal"));return<div><div style={{padding:"14px",borderBottom:"1px solid #f0f1f5"}}><div style={{textAlign:"center",fontSize:13,fontWeight:700,color:"#333",marginBottom:10}}>Pourcentage de possession</div><div style={{display:"flex",borderRadius:8,overflow:"hidden",height:36}}><div style={{width:`${hPN}%`,background:"#1a1aff",display:"flex",alignItems:"center",paddingLeft:10}}><span style={{fontSize:14,fontWeight:900,color:"#fff"}}>{hPN}%</span></div><div style={{flex:1,background:"#00c060",display:"flex",alignItems:"center",justifyContent:"flex-end",paddingRight:10}}><span style={{fontSize:14,fontWeight:900,color:"#fff"}}>{aPN}%</span></div></div></div>{(tH+tA>0)&&<div style={{padding:"14px",borderBottom:"1px solid #f0f1f5"}}><div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:8}}><span style={{fontSize:16,fontWeight:800,color:"#222"}}>{tH}</span><span style={{fontSize:13,fontWeight:700,color:"#555"}}>Total tirs</span><span style={{fontSize:16,fontWeight:800,color:"#222"}}>{tA}</span></div><div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:8}}><div style={{background:offH>offA?"#1a1aff":"#eee",borderRadius:6,padding:"3px 10px"}}><span style={{fontSize:13,fontWeight:800,color:offH>offA?"#fff":"#333"}}>{offH}</span></div><span style={{fontSize:12,color:"#777"}}>Tir non cadré</span><div style={{background:offA>offH?"#00c060":"#eee",borderRadius:6,padding:"3px 10px"}}><span style={{fontSize:13,fontWeight:800,color:offA>offH?"#fff":"#333"}}>{offA}</span></div></div><div style={{background:"#e8f5e9",borderRadius:10,padding:"10px"}}><div style={{width:"65%",margin:"0 auto",height:50,border:"2px solid #aaa",borderBottom:"none",borderRadius:"8px 8px 0 0",background:"rgba(255,255,255,.8)",display:"flex",alignItems:"center",justifyContent:"space-around",padding:"0 10px"}}><div style={{background:onH>onA?"#1a1aff":"#ccc",borderRadius:6,padding:"3px 12px"}}><span style={{fontSize:14,fontWeight:900,color:onH>onA?"#fff":"#555"}}>{onH}</span></div><span style={{fontSize:11,color:"#888",fontWeight:600}}>Tir cadré</span><div style={{background:onA>onH?"#00c060":"#ccc",borderRadius:6,padding:"3px 12px"}}><span style={{fontSize:14,fontWeight:900,color:onA>onH?"#fff":"#555"}}>{onA}</span></div></div><div style={{width:"65%",margin:"0 auto",height:18,background:"rgba(255,255,255,.4)",border:"2px solid #aaa",borderTop:"none",borderRadius:"0 0 4px 4px"}}/></div></div>}<div style={{padding:"0 14px"}}>{[["Tirs contrés","Blocked Shots"],["xG","expected_goals"],["Corner","Corner Kicks"],["Hors-jeux","Offsides"],["Cartons jaunes","Yellow Cards"],["Cartons rouges","Red Cards"],["Fautes","Fouls"],["Passes totales","Total passes"],["Arrêts gardien","Goalkeeper Saves"]].map(([label,key])=>{const hv=gv(hSt,key),av=gv(aSt,key);if(!num(hv)&&!num(av))return null;return<StatBar key={key} label={label} hv={hv} av={av}/>;})}</div></div>;})()}
 		      </div>}
-
 		      {}
-		      {tab==="compos"&&<ComposPanel lineups={lineups} players={players} homeTeam={fix.teams.home} awayTeam={fix.teams.away} isPartial={isPartial}/>}
+		      {tab==="compos"&&<div style={{background:"#f5f6f9"}}>
+		        <ComposPanel lineups={lineups} players={players} homeTeam={fix.teams.home} awayTeam={fix.teams.away} isPartial={isPartial}/>
+		        {lineups.length>0&&<div style={{margin:"8px 12px",background:"#fff",borderRadius:14,padding:"14px",boxShadow:"0 1px 4px rgba(0,0,0,.06)"}}><div style={{fontSize:15,fontWeight:800,color:"#111",marginBottom:10}}>Remplacants</div><div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:"0 10px"}}>{lineups.flatMap((lu,li)=>(lu.substitutes||[]).map((sub,si)=>{const p=sub.player,tc=li===0?"#1a1aff":"#00c060";const ev=events.find(e=>e.type==="subst"&&(e.assist?.id===p?.id||e.player?.id===p?.id));return<div key={`${li}-${si}`} style={{display:"flex",alignItems:"center",gap:6,padding:"7px 0",borderBottom:"1px solid #f5f5f5"}}><Avatar src={p?.photo} size={34}/><div style={{flex:1,minWidth:0}}><div style={{fontSize:12,fontWeight:600,color:"#222",overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap"}}><span style={{color:tc,fontWeight:800,marginRight:3}}>#{p?.number}</span>{p?.name}</div><div style={{fontSize:10,color:"#888"}}>{p?.pos==="G"?"Gardien":p?.pos==="D"?"Defenseur":p?.pos==="M"?"Milieu":"Attaquant"}</div></div>{ev&&<span style={{fontSize:10,color:"#00c060",fontWeight:700,flexShrink:0}}>{ev.time?.elapsed}chr(39)}</span>}</div>;}))}</div></div>}
+		        {injuries.length>0&&<div style={{margin:"8px 12px",background:"#fff",borderRadius:14,padding:"14px",boxShadow:"0 1px 4px rgba(0,0,0,.06)"}}><div style={{fontSize:15,fontWeight:800,color:"#111",marginBottom:10}}>Blessures</div>{[fix.teams.home,fix.teams.away].map(team=>{const ti=injuries.filter(j=>j.team?.id===team.id);if(!ti.length)return null;return<div key={team.id} style={{marginBottom:10}}><div style={{display:"flex",alignItems:"center",gap:6,marginBottom:6}}><Logo src={team.logo} size={16}/><span style={{fontSize:12,fontWeight:700,color:"#333"}}>{team.name}</span></div>{ti.map((inj,ii)=><div key={ii} style={{display:"flex",alignItems:"center",gap:8,padding:"8px 0",borderBottom:"1px solid #f8f8f8"}}><Avatar src={inj.player?.photo} size={36}/><div style={{flex:1}}><div style={{fontSize:13,fontWeight:600,color:"#222"}}>{inj.player?.name}</div><div style={{fontSize:11,color:"#e53535",marginTop:2}}>+ {inj.player?.reason||"Blesse"}</div></div></div>)}</div>;})}</div>}
+		        <div style={{margin:"8px 12px 16px",background:"#fff",borderRadius:14,padding:"12px 14px",boxShadow:"0 1px 4px rgba(0,0,0,.06)"}}><div style={{display:"flex",flexWrap:"wrap",gap:"8px 16px"}}>{[{i:"chr(9917)",l:"But"},{i:"chr(129000)",l:"Carton jaune"},{i:"chr(128997)",l:"Carton rouge"},{i:"chr(128260)",l:"Remplacement"},{i:"VAR",l:"VAR"},{i:"C",l:"Capitaine"}].map(({i,l})=><div key={l} style={{display:"flex",alignItems:"center",gap:5}}><span style={{fontSize:12}}>{i}</span><span style={{fontSize:11,color:"#777"}}>{l}</span></div>)}</div></div>
+		      </div>}}
 
 		      {}
 		      {tab==="joueurs"&&<PlayersStatsPanel players={players} homeTeam={fix.teams.home} awayTeam={fix.teams.away}/>}
@@ -2214,25 +1843,12 @@
 		      {}
 		      {tab==="absents"&&<InjuriesPanel injuries={injuries} homeTeam={fix.teams.home} awayTeam={fix.teams.away}/>}
 
-		      {tab==="h2h"&&<div>
-		        {h2h.length===0&&isPartial&&<div style={{textAlign:"center",padding:"32px",display:"flex",flexDirection:"column",alignItems:"center",gap:10,color:T.t3}}><Spin s={22}/><span style={{fontSize:13}}>Chargement historique...</span></div>}
-		        <div style={{padding:"11px 16px",fontSize:11,fontWeight:700,color:T.t3,letterSpacing:1,textTransform:"uppercase",borderBottom:`1px solid ${T.line}`}}>Confrontations directes</div>
-		        {h2h.slice(0,10).map((m,i)=>{
-		          const hid=fix.teams.home.id,hh=m.teams.home.id===hid,mh=m.goals.home??0,ma=m.goals.away??0;
-		          const hw2=(hh&&mh>ma)||(!hh&&ma>mh),aw2=(hh&&ma>mh)||(!hh&&mh>ma);
-		          return<div key={i} style={{display:"flex",alignItems:"center",padding:"10px 16px",borderBottom:`1px solid ${T.line}11`,gap:10}}>
-		            <span style={{fontSize:10,color:T.t3,width:44,flexShrink:0}}>{m.fixture.date?.slice(0,7)}</span>
-		            <div style={{flex:1,minWidth:0}}>
-		              <div style={{fontSize:12,color:T.t2,overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap"}}>{m.teams.home.name} – {m.teams.away.name}</div>
-		              <div style={{fontSize:10,color:T.t3,marginTop:2}}>{m.league?.name}</div>
-		            </div>
-		            <span style={{fontSize:15,fontWeight:800,color:T.t1,flexShrink:0}}>{mh} – {ma}</span>
-		            <div style={{width:7,height:7,borderRadius:"50%",background:hw2?T.greenB:aw2?T.red:T.gold,flexShrink:0}}/>
-		          </div>;
-		        })}
+		      {tab==="h2h"&&<div style={{background:"#f5f6f9"}}>
+		        {h2h.length===0&&isPartial&&<div style={{textAlign:"center",padding:"32px",color:"#888",display:"flex",flexDirection:"column",alignItems:"center",gap:10}}><Spin s={22}/><span style={{fontSize:13}}>Chargement...</span></div>}
+		        {h2h.length>0&&(()=>{const hid=fix.teams.home.id;const calcS=(ms,tid)=>{let w=0,d=0,l=0,gf=0,gc=0;ms.forEach(m=>{const ih=m.teams.home.id===tid;const tg=ih?(m.goals.home??0):(m.goals.away??0),og=ih?(m.goals.away??0):(m.goals.home??0);gf+=tg;gc+=og;if(tg>og)w++;else if(tg===og)d++;else l++;});return{w,d,l,gf,gc};};const last=h2h.slice(0,10);const hS=calcS(last,hid),aS=calcS(last,fix.teams.away.id);const o25=last.filter(m=>(m.goals.home??0)+(m.goals.away??0)>2.5).length;const bts=last.filter(m=>(m.goals.home??0)>0&&(m.goals.away??0)>0).length;const Dot=({ok})=><span style={{width:9,height:9,borderRadius:"50%",display:"inline-block",background:ok?"#00c060":"#ddd",marginRight:2}}/>;return<div><div style={{margin:"12px 12px 8px",background:"#fff",borderRadius:14,padding:"14px",boxShadow:"0 1px 4px rgba(0,0,0,.06)"}}><div style={{display:"flex",justifyContent:"space-between",marginBottom:10}}><span style={{fontSize:15,fontWeight:800,color:"#111"}}>Tendances</span><span style={{fontSize:11,color:"#888"}}>10 derniers matchs</span></div>{[[`${hS.w}-${hS.d}-${hS.l}`,"V-N-D",`${aS.w}-${aS.d}-${aS.l}`,false],[hS.gf,"Buts marqués",aS.gf,true],[hS.gc,"Buts concédés",aS.gc,false]].map(([hv,lbl,av,hl])=>{const hW=typeof hv==="number"&&hv>av,aW=typeof av==="number"&&av>hv;return<div key={lbl} style={{display:"grid",gridTemplateColumns:"1fr auto 1fr",alignItems:"center",padding:"10px 0",borderBottom:"1px solid #f0f1f5"}}><span style={{fontSize:14,fontWeight:700,color:hW&&hl?"#fff":"#222",background:hW&&hl?"#1a1aff":"transparent",borderRadius:6,padding:hW&&hl?"3px 10px":"0"}}>{hv}</span><span style={{fontSize:12,color:"#777",textAlign:"center",padding:"0 8px"}}>{lbl}</span><span style={{fontSize:14,fontWeight:700,color:aW&&hl?"#fff":"#222",background:aW&&hl?"#00c060":"transparent",borderRadius:6,padding:aW&&hl?"3px 10px":"0",textAlign:"right"}}>{av}</span></div>;})} {[["Plus de 2,5 buts",o25,o25],["Les 2 equipes marquent",bts,bts]].map(([lbl,hv,av])=><div key={lbl} style={{display:"grid",gridTemplateColumns:"1fr auto 1fr",alignItems:"center",padding:"10px 0",borderBottom:"1px solid #f0f1f5"}}><div style={{display:"flex",alignItems:"center",gap:3}}><span style={{fontSize:13,fontWeight:700,color:"#222"}}>{hv}/10</span>{[0,1,2].map(i=><Dot key={i} ok={i<hv}/>)}</div><span style={{fontSize:11,color:"#777",textAlign:"center",padding:"0 6px"}}>{lbl}</span><div style={{display:"flex",alignItems:"center",gap:3,justifyContent:"flex-end"}}>{[0,1,2].map(i=><Dot key={i} ok={i<av}/>)}<span style={{fontSize:13,fontWeight:700,color:"#222"}}>{av}/10</span></div></div>)}</div><div style={{margin:"8px 12px 12px",background:"#fff",borderRadius:14,padding:"14px",boxShadow:"0 1px 4px rgba(0,0,0,.06)"}}><div style={{fontSize:15,fontWeight:800,color:"#111",marginBottom:12}}>Tete a tete</div>{h2h.slice(0,8).map((m,i)=>{const ih=m.teams.home.id===hid;const mh=m.goals.home??0,ma=m.goals.away??0;const hW=(ih&&mh>ma)||(!ih&&ma>mh),aW=(ih&&ma>mh)||(!ih&&mh>ma);const rc=hW?"#1a1aff":aW?"#00c060":"#f59e0b";return<div key={i} style={{display:"flex",alignItems:"center",padding:"10px 0",borderBottom:"1px solid #f5f5f5",gap:8}}><span style={{fontSize:10,color:"#999",width:42,flexShrink:0}}>{m.fixture.date?.slice(0,7)}</span><div style={{flex:1,minWidth:0}}><div style={{fontSize:12,color:"#333",overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap",fontWeight:500}}>{m.teams.home.name} - {m.teams.away.name}</div><div style={{fontSize:10,color:"#999",marginTop:1}}>{m.league?.name}</div></div><span style={{fontSize:15,fontWeight:900,color:"#111",flexShrink:0}}>{mh}-{ma}</span><div style={{width:22,height:22,borderRadius:6,background:rc,display:"flex",alignItems:"center",justifyContent:"center",flexShrink:0}}><span style={{fontSize:10,fontWeight:900,color:"#fff"}}>{hW?"V":aW?"D":"N"}</span></div></div>;})}</div></div>;})} 
 		      </div>}
 
-		      {tab==="analyse"&&<AnalysePanel h2h={h2h} homeTeam={fix.teams.home} awayTeam={fix.teams.away} hSt={hSt} aSt={aSt}/>}
+		      {tab==="analyse"&&h2h.length>0&&<AnalysePanel h2h={h2h} homeTeam={fix.teams.home} awayTeam={fix.teams.away} hSt={hSt} aSt={aSt}/>}
 		    </div>
 		  </Sheet>;
 		}
@@ -2254,7 +1870,7 @@
 		  const load=useCallback(async(silent=false)=>{
 		    if(!silent){setSt("load");setErr("");}else setSpin(true);
 		    try{
-		      const d=await api(`/fixtures?date=${date}&timezone=Europe/Paris`,TTL.SCORES);
+		      const d=await api(`/fixtures?date=${date}&timezone=Europe/Paris`,15000);
 		      setData(d);
 		      if(!silent)setSt("ok");
 		    }
@@ -2304,8 +1920,8 @@
 		      const sh=cachedFix?.fixture?.status?.short??"NS";
 		      const isLive=LIVE_ST.has(sh);
 		      const isDone=DONE_ST.has(sh);
-		      const matchTTL=isLive?TTL.LIVE:isDone?TTL.DONE:TTL.UPCOMING;
-		      const detailTTL=isLive?TTL.LIVE:isDone?TTL.DONE:TTL.PLAYERS;
+		      const matchTTL=isLive?15000:isDone?10800000:21600000;
+		      const detailTTL=isLive?15000:isDone?10800000:3600000;
 
 		      const fx=await api(`/fixtures?id=${id}`,matchTTL,sig);
 		      const fix=fx[0];if(!fix)throw new Error("Match introuvable");
@@ -2323,8 +1939,8 @@
 		      const[lineups,plrs,h2h,injuries]=await Promise.all([
 		        api(`/fixtures/lineups?fixture=${fid}`,detailTTL,sig).catch(()=>[]),
 		        started?api(`/fixtures/players?fixture=${fid}`,detailTTL,sig).catch(()=>[]):Promise.resolve([]),
-		        api(`/fixtures/headtohead?h2h=${hid}-${aid}&last=50`,TTL.H2H,sig).catch(()=>[]),
-		        api(`/injuries?fixture=${fid}`,isDone?TTL.DONE:TTL.INJURIES,sig).catch(()=>[]),
+		        api(`/fixtures/headtohead?h2h=${hid}-${aid}&last=50`,86400000,sig).catch(()=>[]),
+		        api(`/injuries?fixture=${fid}`,isDone?10800000:3600000,sig).catch(()=>[]),
 		      ]);
 		      setDet({data:{fixture:fix,stats,events:evts,lineups,players:plrs,h2h,injuries}});
 		    }catch(e){if(e.name!=="AbortError")setDet({error:e.message});}
@@ -2550,7 +2166,7 @@
 		    let c=false;setSt("load");setErr("");setAllGroups([]);setRounds([]);setRoundMatches([]);setSelRound("");
 		    if(isCup&&hasGroups){
 		      // R cup rer tous les groupes A/B/C/D
-		      api(`/standings?league=${lid}&season=${s}`,TTL.STANDING)
+		      api(`/standings?league=${lid}&season=${s}`,3600000)
 		        .then(d=>{
 		          if(c)return;
 		          const st2=d[0]?.league?.standings??[];
@@ -2565,7 +2181,7 @@
 		        })
 		        .catch(e=>{if(!c){setErr(e.message);setSt("err");}});
 		    } else {
-		      api(`/standings?league=${lid}&season=${s}`,TTL.STANDING)
+		      api(`/standings?league=${lid}&season=${s}`,3600000)
 		        .then(d=>{
 		          if(c)return;
 		          const r=d[0]?.league?.standings?.[0]??[];
@@ -2576,7 +2192,7 @@
 		    }
 		    // Charger les tours  liminatoires si coupe
 		    if(isCup&&hasKnockout){
-		      api(`/fixtures/rounds?league=${lid}&season=${s}&current=false`,TTL.UPCOMING)
+		      api(`/fixtures/rounds?league=${lid}&season=${s}&current=false`,21600000)
 		        .then(d=>{if(!c){setRounds(d??[]);}})
 		        .catch(()=>{});
 		    }
@@ -2587,7 +2203,7 @@
 		  useEffect(()=>{
 		    if(!selRound)return;
 		    let c=false;setRoundMatches([]);
-		    api(`/fixtures?league=${lid}&season=${s}&round=${encodeURIComponent(selRound)}`,TTL.PLAYERS)
+		    api(`/fixtures?league=${lid}&season=${s}&round=${encodeURIComponent(selRound)}`,3600000)
 		      .then(d=>{if(!c)setRoundMatches(d??[]);})
 		      .catch(()=>{});
 		    return()=>{c=true;};
@@ -2841,8 +2457,8 @@
 		      const sh=cachedFix?.fixture?.status?.short??"NS";
 		      const isLive=LIVE_ST.has(sh);
 		      const isDone=DONE_ST.has(sh);
-		      const matchTTL=isLive?TTL.LIVE:isDone?TTL.DONE:TTL.UPCOMING;
-		      const detailTTL=isLive?TTL.LIVE:isDone?TTL.DONE:TTL.PLAYERS;
+		      const matchTTL=isLive?15000:isDone?10800000:21600000;
+		      const detailTTL=isLive?15000:isDone?10800000:3600000;
 
 		      const fx=await api(`/fixtures?id=${id}`,matchTTL,sig);
 		      const fix=fx[0];if(!fix)throw new Error("Match introuvable");
@@ -2860,8 +2476,8 @@
 		      const[lineups,plrs,h2h,injuries]=await Promise.all([
 		        api(`/fixtures/lineups?fixture=${fid}`,detailTTL,sig).catch(()=>[]),
 		        started?api(`/fixtures/players?fixture=${fid}`,detailTTL,sig).catch(()=>[]):Promise.resolve([]),
-		        api(`/fixtures/headtohead?h2h=${hid}-${aid}&last=50`,TTL.H2H,sig).catch(()=>[]),
-		        api(`/injuries?fixture=${fid}`,isDone?TTL.DONE:TTL.INJURIES,sig).catch(()=>[]),
+		        api(`/fixtures/headtohead?h2h=${hid}-${aid}&last=50`,86400000,sig).catch(()=>[]),
+		        api(`/injuries?fixture=${fid}`,isDone?10800000:3600000,sig).catch(()=>[]),
 		      ]);
 		      setDt({data:{fixture:fix,stats,events:evts,lineups,players:plrs,h2h,injuries}});
 		    }catch(e){if(e.name!=="AbortError")setDt({error:e.message});}
@@ -2966,7 +2582,7 @@
 		      }
 		    }).then(r=>r.json()).then(d=>{
 		      if(!Array.isArray(d))throw new Error();
-		      cacheSet("competition_une",d,CACHE_TTL_UNE);
+		      cacheSet("competition_une",d);
 		      setUnes(d);setUneSt(d.length?"ok":"empty");
 		    }).catch(()=>{if(force)setUneSt("err");});
 		  };
@@ -3231,28 +2847,30 @@
 		  {id:307,name:"Ligat ha'Al",     flag:"🇮🇱"},
 		  {id:107,name:"Premier League",  flag:"🇮🇪"},
 		  {id:322,name:"Veikkausliiga",   flag:"🇫🇮"},
+		  // ── Algerie ──
+		  {id:197, name:"Ligue Pro 1",      flag:"🇩🇿"},
+		  {id:198, name:"Ligue Pro 2",      flag:"🇩🇿"},
+		  {id:199, name:"Coupe Algerie",    flag:"🇩🇿"},
+		  // ── Afrique du Nord ──
+		  {id:200, name:"Botola Pro",       flag:"🇲🇦"},
+		  {id:233, name:"Premier Lge EGY",  flag:"🇪🇬"},
+		  {id:211, name:"Ligue 1 TUN",      flag:"🇹🇳"},
 		  // ── Afrique ──
-		  {id:168,name:"Ligue Pro 1",     flag:"🇩🇿"},
-		  {id:199,name:"Botola Pro",      flag:"🇲🇦"},
-		  {id:233,name:"Premier League",  flag:"🇪🇬"},
-		  {id:211,name:"Ligue 1 Pro",     flag:"🇹🇳"},
-		  {id:272,name:"NPFL",            flag:"🇳🇬"},
-		  {id:363,name:"PSL",             flag:"🇿🇦"},
-		  {id:392,name:"Premier League",  flag:"🇬🇭"},
-		  {id:384,name:"Ligue 1",         flag:"🇸🇳"},
-		  {id:385,name:"Ligue 1",         flag:"🇨🇮"},
-		  {id:401,name:"KPL",             flag:"🇰🇪"},
-		  {id:409,name:"Premier League",  flag:"🇷🇼"},
+		  {id:272, name:"NPFL",             flag:"🇳🇬"},
+		  {id:363, name:"PSL",              flag:"🇿🇦"},
+		  {id:279, name:"Premier Lge GHA",  flag:"🇬🇭"},
+		  {id:384, name:"Ligue 1 SEN",      flag:"🇸🇳"},
+		  {id:480, name:"MTN Ligue 1 CIV",  flag:"🇨🇮"},
 		  // ── Amériques ──
-		  {id:71, name:"Brasileirao",     flag:"🇧🇷"},
-		  {id:128,name:"Liga Profesional",flag:"🇦🇷"},
-		  {id:253,name:"MLS",             flag:"🇺🇸"},
-		  {id:262,name:"Liga MX",         flag:"🇲🇽"},
+		  {id:71,  name:"Brasileirao",      flag:"🇧🇷"},
+		  {id:128, name:"Liga Profesional", flag:"🇦🇷"},
+		  {id:253, name:"MLS",              flag:"🇺🇸"},
+		  {id:262, name:"Liga MX",          flag:"🇲🇽"},
 		  // ── Asie/MO ──
-		  {id:202,name:"Saudi Pro League",flag:"🇸🇦"},
-		  {id:98, name:"J-League",        flag:"🇯🇵"},
-		  {id:292,name:"K League 1",      flag:"🇰🇷"},
-		  {id:301,name:"Chinese Super",   flag:"🇨🇳"},
+		  {id:307, name:"Saudi Pro League", flag:"🇸🇦"},
+		  {id:98,  name:"J-League",         flag:"🇯🇵"},
+		  {id:292, name:"K League 1",       flag:"🇰🇷"},
+		  {id:169, name:"Chinese Super",    flag:"🇨🇳"},
 		];
 
 		const POS_COLORS={"ATT":"#e53535","MIL":"#00b86b","DEF":"#1976d2","GAR":"#7c4dff"};
@@ -3550,7 +3168,7 @@
 		  useEffect(()=>{
 		    let cancelled=false;
 		    setSt("load");setData([]);
-		    api(`/transfers?league=${lid}&season=${season}`,TTL.TRANSFERS)
+		    api(`/transfers?league=${lid}&season=${season}`,3600000)
 		      .then(d=>{
 		        if(cancelled)return;
 		        const filtered=d.filter(t=>{
@@ -3792,7 +3410,7 @@
 		  useEffect(()=>{
 		    let cancelled=false;
 		    setSt("load");setData([]);
-		    api(`/transfers?league=${lid}&season=${season}`,TTL.TRANSFERS)
+		    api(`/transfers?league=${lid}&season=${season}`,3600000)
 		      .then(d=>{
 		        if(cancelled)return;
 		        // Grouper par club d'arrivée
@@ -3943,7 +3561,7 @@
 		  useEffect(()=>{
 		    let c=false;
 		    setStRounds("load");setRounds([]);setSelRound("");setMatches([]);setAllMatches([]);
-		    api(`/fixtures/rounds?league=${lid}&season=${season}&current=false`,TTL.UPCOMING)
+		    api(`/fixtures/rounds?league=${lid}&season=${season}&current=false`,21600000)
 		      .then(d=>{
 		        if(c)return;
 		        const all=d??[];
@@ -3972,7 +3590,7 @@
 		    if(!selRound)return;
 		    let c=false;
 		    setStMatches("load");setMatches([]);
-		    api(`/fixtures?league=${lid}&season=${season}&round=${encodeURIComponent(selRound)}`,TTL.PLAYERS)
+		    api(`/fixtures?league=${lid}&season=${season}&round=${encodeURIComponent(selRound)}`,3600000)
 		      .then(d=>{
 		        if(c)return;
 		        const sorted=(d??[]).sort((a,b)=>new Date(a.fixture.date)-new Date(b.fixture.date));
@@ -4728,15 +4346,11 @@
 		            <div className="live-dot"/>
 		            <span className="bc" style={{fontSize:11,fontWeight:800,color:"#fff",letterSpacing:1}}>LIVE</span>
 		          </div>
-		          {/* Quota API avec couleur selon usage */}
-		          <div title={`Appels API aujourd'hui: ${_apiCallsToday}/7500 (cache persistant actif)`} style={{
-		            background:_apiCallsToday>6000?"rgba(229,53,53,.3)":_apiCallsToday>4000?"rgba(245,158,11,.25)":"rgba(0,0,0,.15)",
-		            borderRadius:10,padding:"3px 8px",cursor:"default",
-		            border:_apiCallsToday>6000?"1px solid rgba(229,53,53,.4)":"1px solid transparent",
+		          {/* Quota API discret */}
+		          <div title={`API: ${_apiCallsToday}/7500`} style={{
+		            background:"rgba(0,0,0,.15)",borderRadius:10,padding:"3px 7px",cursor:"default",
 		          }}>
-		            <span style={{fontSize:9,color:_apiCallsToday>6000?"#ff6b6b":_apiCallsToday>4000?"#fbbf24":"rgba(255,255,255,.6)",fontWeight:700}}>
-		              {_apiCallsToday}<span style={{opacity:.6,fontSize:8}}>/7.5k</span>
-		            </span>
+		            <span style={{fontSize:8,color:"rgba(255,255,255,.55)",fontWeight:700}}>{_apiCallsToday}<span style={{opacity:.6}}>/7.5k</span></span>
 		          </div>
 		          {/* Déconnexion */}
 		          <button title="Déconnexion" onClick={()=>{localStorage.removeItem("wf_auth");window.location.href="login.html";}} style={{
