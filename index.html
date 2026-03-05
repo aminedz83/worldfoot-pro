@@ -867,7 +867,7 @@
 		      boxShadow:"0 -8px 40px rgba(0,0,0,.15)",
 		      overflow:"hidden",
 		    }}>
-		      {/* Handle + bouton fermer — FIXE */}
+		      {/* Handle + bouton fermer sticky en haut */}
 		      <div style={{
 		        display:"flex",alignItems:"center",justifyContent:"center",
 		        padding:"12px 16px 8px",
@@ -897,147 +897,40 @@
 		}
 
 		//
-		// ── TERRAIN PREMIUM avec photos joueurs (style Sofascore) ──
-		function PitchPlayer({player,photoSrc,color}){
-		  const[imgErr,setImgErr]=useState(false);
-		  const nm=(player?.name||"").split(" ").slice(-1)[0].slice(0,11);
-		  const num=player?.number;
-		  return<div style={{display:"flex",flexDirection:"column",alignItems:"center",gap:3,width:58}}>
-		    <div style={{position:"relative",flexShrink:0}}>
-		      <div style={{
-		        width:48,height:48,borderRadius:"50%",
-		        border:`2.5px solid ${color}`,
-		        overflow:"hidden",
-		        background:"#1a2e1a",
-		        display:"flex",alignItems:"center",justifyContent:"center",
-		        boxShadow:`0 3px 10px rgba(0,0,0,.5),0 0 0 1px rgba(0,0,0,.3)`,
-		      }}>
-		        {photoSrc&&!imgErr
-		          ?<img src={photoSrc} alt="" style={{width:"100%",height:"100%",objectFit:"cover",display:"block"}} onError={()=>setImgErr(true)}/>
-		          :<div style={{width:"100%",height:"100%",background:`${color}22`,display:"flex",alignItems:"center",justifyContent:"center"}}>
-		            <span style={{fontSize:16,fontWeight:900,color,lineHeight:1}}>{num}</span>
-		          </div>
-		        }
-		      </div>
-		      {/* Numéro badge */}
-		      <div style={{
-		        position:"absolute",bottom:-4,left:"50%",transform:"translateX(-50%)",
-		        background:color,borderRadius:5,padding:"1px 5px",
-		        border:"1.5px solid rgba(0,0,0,.4)",minWidth:18,textAlign:"center",
-		        boxShadow:"0 1px 4px rgba(0,0,0,.4)",
-		      }}>
-		        <span style={{fontSize:9,fontWeight:900,color:"#fff",lineHeight:1.2}}>{num}</span>
-		      </div>
-		    </div>
-		    <span style={{
-		      fontSize:10,fontWeight:700,color:"#fff",
-		      textShadow:"0 1px 4px rgba(0,0,0,1)",
-		      textAlign:"center",lineHeight:1.2,
-		      overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap",
-		      width:"100%",display:"block",marginTop:2,
-		    }}>{nm}</span>
-		  </div>;
+		function Pitch({lineup,isHome}){
+		  if(!lineup?.startXI?.length)return null;
+		  const pts=lineup.startXI.map(p=>p.player).filter(Boolean);
+		  const form=(lineup.formation||"4-4-2").split("-").map(Number);
+		  const rows=[1,...form];let idx=0;
+		  const grid=rows.map(n=>{const r=[];for(let i=0;i<n&&idx<pts.length;i++)r.push(pts[idx++]);return r;});
+		  const W=260,H=178,rc=grid.length,tc=isHome?T.red:T.blueB;
+		  return<svg width="100%" viewBox={`0 0 ${W} ${H}`} style={{display:"block"}}>
+		    <defs><linearGradient id={`pg${isHome?0:1}`} x1="0" y1="0" x2="0" y2="1">
+		      <stop offset="0%" stopColor={isHome?"#1b3c20":T.bg1}/>
+		      <stop offset="100%" stopColor={isHome?T.bg0:T.bg0}/>
+		    </linearGradient></defs>
+		    <rect width={W} height={H} fill={`url(#pg${isHome?0:1})`} rx={6}/>
+		    <rect x={7} y={5} width={W-14} height={H-10} fill="none" stroke="rgba(255,255,255,.11)" strokeWidth={1} rx={3}/>
+		    <line x1={W/2} y1={5} x2={W/2} y2={H-5} stroke="rgba(255,255,255,.07)" strokeWidth={1}/>
+		    <circle cx={W/2} cy={H/2} r={22} fill="none" stroke="rgba(255,255,255,.07)" strokeWidth={1}/>
+		    <circle cx={W/2} cy={H/2} r={2} fill="rgba(255,255,255,.14)"/>
+		    {isHome
+		      ?<><rect x={7} y={H/2-27} width={38} height={54} fill="none" stroke="rgba(26,29,35,.08)" strokeWidth={1}/><rect x={7} y={H/2-13} width={16} height={26} fill="none" stroke="rgba(255,255,255,.07)" strokeWidth={1}/></>
+		      :<><rect x={W-45} y={H/2-27} width={38} height={54} fill="none" stroke="rgba(26,29,35,.08)" strokeWidth={1}/><rect x={W-23} y={H/2-13} width={16} height={26} fill="none" stroke="rgba(255,255,255,.07)" strokeWidth={1}/></>}
+		    {grid.map((row,ri)=>{
+		      const x=isHome?16+(ri/(rc-1||1))*(W-32):W-16-(ri/(rc-1||1))*(W-32);
+		      return row.map((p,pi)=>{
+		        const y=H/(row.length+1)*(pi+1),nm=(p.name||"").split(" ").pop().slice(0,7);
+		        return<g key={p.id??`${ri}-${pi}`}>
+		          <circle cx={x} cy={y} r={9} fill={tc} opacity={.9}/>
+		          <circle cx={x} cy={y} r={9} fill="none" stroke="rgba(255,255,255,.28)" strokeWidth={.7}/>
+		          <text x={x} y={y+1} textAnchor="middle" dominantBaseline="middle" fill="#fff" fontSize={7} fontWeight="bold">{p.number}</text>
+		          <text x={x} y={y+17} textAnchor="middle" fill="rgba(26,29,35,.6)" fontSize={6.5}>{nm}</text>
+		        </g>;
+		      });
+		    })}
+		  </svg>;
 		}
-
-		function PitchFull({hLineup,aLineup,hPlayers,aPlayers,homeTeam,awayTeam}){
-		  const ph=(tp,pid)=>tp?.find(p=>p.player?.id===pid)?.player?.photo;
-
-		  const buildGrid=(lineup)=>{
-		    if(!lineup?.startXI?.length)return[];
-		    const pts=lineup.startXI.map(p=>p.player).filter(Boolean);
-		    const form=(lineup.formation||"4-4-2").split("-").map(Number);
-		    const rows=[1,...form];let idx=0;
-		    return rows.map(n=>{const r=[];for(let i=0;i<n&&idx<pts.length;i++)r.push(pts[idx++]);return r;});
-		  };
-
-		  const hGrid=buildGrid(hLineup);
-		  const aGrid=buildGrid(aLineup);
-		  const hColor="#00c170";
-		  const aColor="#42a5f5";
-
-		  const TeamSection=({grid,lineup,team,color,reverse,players})=>(
-		    <div style={{position:"relative",zIndex:1,padding:"10px 6px 6px"}}>
-		      {/* Header équipe */}
-		      <div style={{
-		        display:"flex",alignItems:"center",gap:6,
-		        justifyContent:reverse?"flex-end":"flex-start",
-		        marginBottom:10,
-		      }}>
-		        {!reverse&&<>
-		          <div style={{background:"rgba(0,0,0,.55)",borderRadius:7,padding:"3px 9px",border:`1px solid ${color}44`}}>
-		            <span style={{fontSize:11,fontWeight:900,color,letterSpacing:.5}}>{lineup?.formation}</span>
-		          </div>
-		          <img src={team?.logo} alt="" style={{width:20,height:20,objectFit:"contain"}} onError={e=>e.target.style.display="none"}/>
-		          <span style={{fontSize:11,fontWeight:700,color:"rgba(255,255,255,.8)",overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap",maxWidth:120}}>{team?.name}</span>
-		        </>}
-		        {reverse&&<>
-		          <span style={{fontSize:11,fontWeight:700,color:"rgba(255,255,255,.8)",overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap",maxWidth:120}}>{team?.name}</span>
-		          <img src={team?.logo} alt="" style={{width:20,height:20,objectFit:"contain"}} onError={e=>e.target.style.display="none"}/>
-		          <div style={{background:"rgba(0,0,0,.55)",borderRadius:7,padding:"3px 9px",border:`1px solid ${color}44`}}>
-		            <span style={{fontSize:11,fontWeight:900,color,letterSpacing:.5}}>{lineup?.formation}</span>
-		          </div>
-		        </>}
-		      </div>
-		      {/* Lignes de joueurs */}
-		      {(reverse?[...grid].reverse():grid).map((row,ri)=>(
-		        <div key={ri} style={{
-		          display:"flex",justifyContent:"space-evenly",
-		          alignItems:"center",marginBottom:12,
-		        }}>
-		          {row.map((p,pi)=>(
-		            <PitchPlayer
-		              key={p.id??`${ri}-${pi}`}
-		              player={p}
-		              photoSrc={ph(players,p.id)}
-		              color={color}
-		            />
-		          ))}
-		        </div>
-		      ))}
-		    </div>
-		  );
-
-		  return<div style={{
-		    background:"linear-gradient(180deg,#1c5220 0%,#236127 18%,#276b2b 35%,#236127 52%,#1c5220 68%,#174718 84%,#1c5220 100%)",
-		    borderRadius:16,overflow:"hidden",
-		    position:"relative",
-		    boxShadow:"0 6px 32px rgba(0,0,0,.5)",
-		    border:"1px solid rgba(255,255,255,.06)",
-		    width:"100%",
-		  }}>
-		    {/* Bandes de gazon */}
-		    <div style={{position:"absolute",inset:0,pointerEvents:"none",borderRadius:16,
-		      backgroundImage:"repeating-linear-gradient(180deg,rgba(0,0,0,.06) 0px,rgba(0,0,0,.06) 28px,transparent 28px,transparent 56px)"
-		    }}/>
-		    {/* Lignes terrain SVG */}
-		    <svg style={{position:"absolute",inset:0,width:"100%",height:"100%",pointerEvents:"none"}} viewBox="0 0 100 100" preserveAspectRatio="none">
-		      <rect x={1.5} y={.8} width={97} height={98.4} fill="none" stroke="rgba(255,255,255,.15)" strokeWidth={.4}/>
-		      <line x1={1.5} y1={50} x2={98.5} y2={50} stroke="rgba(255,255,255,.15)" strokeWidth={.4}/>
-		      <circle cx={50} cy={50} r={13} fill="none" stroke="rgba(255,255,255,.12)" strokeWidth={.4}/>
-		      <circle cx={50} cy={50} r={.7} fill="rgba(255,255,255,.25)"/>
-		      {/* Surface haut */}
-		      <rect x={27} y={.8} width={46} height={17} fill="none" stroke="rgba(255,255,255,.12)" strokeWidth={.35}/>
-		      <rect x={37} y={.8} width={26} height={7} fill="none" stroke="rgba(255,255,255,.1)" strokeWidth={.3}/>
-		      {/* Surface bas */}
-		      <rect x={27} y={82.2} width={46} height={17} fill="none" stroke="rgba(255,255,255,.12)" strokeWidth={.35}/>
-		      <rect x={37} y={93} width={26} height={7} fill="none" stroke="rgba(255,255,255,.1)" strokeWidth={.3}/>
-		      {/* Points penalty */}
-		      <circle cx={50} cy={10} r={.5} fill="rgba(255,255,255,.25)"/>
-		      <circle cx={50} cy={90} r={.5} fill="rgba(255,255,255,.25)"/>
-		    </svg>
-
-		    {/* Équipe domicile */}
-		    {hGrid.length>0&&<TeamSection grid={hGrid} lineup={hLineup} team={homeTeam} color={hColor} reverse={false} players={hPlayers}/>}
-
-		    {/* Ligne médiane visible */}
-		    <div style={{height:1,background:"rgba(255,255,255,.15)",margin:"0 12px",position:"relative",zIndex:2}}/>
-
-		    {/* Équipe visiteur (inversée) */}
-		    {aGrid.length>0&&<TeamSection grid={aGrid} lineup={aLineup} team={awayTeam} color={aColor} reverse={true} players={aPlayers}/>}
-		  </div>;
-		}
-
-		function Pitch({lineup,isHome}){return null;}
 
 		//
 		// MATCH ROW   hooks AVANT early return (r gle React)
@@ -1138,7 +1031,61 @@
 		// COMPOSANT ANALYSE   Statistiques avanc es H2H
 		//
 		function AnalysePanel({h2h,homeTeam,awayTeam,hSt=[],aSt=[],homeHistory=[],awayHistory=[]}){
-		  if(!h2h||h2h.length===0)return<div style={{textAlign:"center",padding:"44px 20px",color:T.t3,fontSize:13}}>Pas assez de données H2H</div>;
+		  if(!h2h||h2h.length===0){
+		    if(hSt.length>0||aSt.length>0){
+		      const getStat=(arr,name)=>parseInt(arr?.find(s=>s.type===name)?.value)||0;
+		      const hPoss=getStat(hSt,"Ball Possession")||50,aPoss=100-getStat(hSt,"Ball Possession")||50;
+		      const hShots=getStat(hSt,"Total Shots"),aShots=getStat(aSt,"Total Shots");
+		      const hOT=getStat(hSt,"Shots on Goal"),aOT=getStat(aSt,"Shots on Goal");
+		      const hCorn=getStat(hSt,"Corner Kicks"),aCorn=getStat(aSt,"Corner Kicks");
+		      const hFoul=getStat(hSt,"Fouls"),aFoul=getStat(aSt,"Fouls");
+		      const hYel=getStat(hSt,"Yellow Cards"),aYel=getStat(aSt,"Yellow Cards");
+		      const Bar=({label,hv,av,c1=T.red,c2=T.blueB})=>{
+		        const tot=hv+av||1;
+		        return<div style={{marginBottom:14}}>
+		          <div style={{display:"flex",justifyContent:"space-between",marginBottom:5}}>
+		            <span style={{fontSize:13,fontWeight:800,color:c1}}>{hv}</span>
+		            <span style={{fontSize:11,color:T.t3,fontWeight:600}}>{label}</span>
+		            <span style={{fontSize:13,fontWeight:800,color:c2}}>{av}</span>
+		          </div>
+		          <div style={{display:"flex",borderRadius:6,overflow:"hidden",height:8,background:T.bg3}}>
+		            <div style={{width:`${Math.round(hv/tot*100)}%`,background:c1,transition:"width .5s"}}/>
+		            <div style={{flex:1,background:c2,opacity:.7}}/>
+		          </div>
+		        </div>;
+		      };
+		      return<div style={{padding:"16px 16px 24px"}}>
+		        <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:18,padding:"12px 14px",background:T.bg2,borderRadius:14,border:`1px solid ${T.line}`}}>
+		          <div style={{display:"flex",alignItems:"center",gap:8}}><img src={homeTeam?.logo} style={{width:28,height:28,objectFit:"contain"}} onError={e=>e.target.style.display="none"}/><span style={{fontSize:12,fontWeight:800,color:T.t1}}>{homeTeam?.name}</span></div>
+		          <span style={{fontSize:11,color:T.t4}}>vs</span>
+		          <div style={{display:"flex",alignItems:"center",gap:8}}><span style={{fontSize:12,fontWeight:800,color:T.t1}}>{awayTeam?.name}</span><img src={awayTeam?.logo} style={{width:28,height:28,objectFit:"contain"}} onError={e=>e.target.style.display="none"}/></div>
+		        </div>
+		        <div style={{marginBottom:18}}>
+		          <div style={{fontSize:11,fontWeight:800,color:T.t3,letterSpacing:1,textTransform:"uppercase",marginBottom:10}}>⚽ Possession</div>
+		          <div style={{display:"flex",borderRadius:10,overflow:"hidden",height:32}}>
+		            <div style={{width:`${hPoss}%`,background:`linear-gradient(90deg,${T.red},${T.red}cc)`,display:"flex",alignItems:"center",justifyContent:"center"}}><span style={{fontSize:13,fontWeight:900,color:"#fff"}}>{hPoss}%</span></div>
+		            <div style={{flex:1,background:`linear-gradient(90deg,${T.blueB}cc,${T.blueB})`,display:"flex",alignItems:"center",justifyContent:"center"}}><span style={{fontSize:13,fontWeight:900,color:"#fff"}}>{aPoss}%</span></div>
+		          </div>
+		        </div>
+		        <div style={{marginBottom:16}}>
+		          <div style={{fontSize:11,fontWeight:800,color:T.t3,letterSpacing:1,textTransform:"uppercase",marginBottom:12}}>📊 Statistiques</div>
+		          <Bar label="Tirs" hv={hShots} av={aShots}/>
+		          <Bar label="Tirs cadres" hv={hOT} av={aOT}/>
+		          <Bar label="Corners" hv={hCorn} av={aCorn}/>
+		          <Bar label="Fautes" hv={hFoul} av={aFoul}/>
+		          <Bar label="Cartons jaunes" hv={hYel} av={aYel} c1="#f0b429" c2="#f0b429"/>
+		        </div>
+		        <div style={{padding:"10px 14px",background:"rgba(255,165,0,.07)",borderRadius:10,border:"1px solid rgba(255,165,0,.2)",textAlign:"center"}}>
+		          <span style={{fontSize:11,color:"#f0a030"}}>⚠️ H2H non disponible — stats du match uniquement</span>
+		        </div>
+		      </div>;
+		    }
+		    return<div style={{textAlign:"center",padding:"52px 20px",display:"flex",flexDirection:"column",alignItems:"center",gap:12}}>
+		      <div style={{fontSize:44}}>📊</div>
+		      <div style={{fontSize:15,fontWeight:700,color:T.t2}}>Analyse non disponible</div>
+		      <div style={{fontSize:12,color:T.t3}}>Pas assez de données pour ce match</div>
+		    </div>;
+		  }
 
 		  const hid=homeTeam.id;
 
@@ -1645,22 +1592,25 @@
 		      </div>
 		    </div>
 
-		    {/* Vue terrain premium pleine largeur */}
-		    {view==="pitch"&&<div style={{background:"#111318",padding:"12px 10px 20px"}}>
-		      <PitchFull
-		        hLineup={hLu} aLineup={aLu}
-		        hPlayers={hPh} aPlayers={aPh}
-		        homeTeam={homeTeam} awayTeam={awayTeam}
-		      />
-		      {/* Coaches */}
-		      <div style={{display:"flex",gap:8,marginTop:12}}>
-		        {hLu?.coach&&<div style={{flex:1,display:"flex",alignItems:"center",gap:8,padding:"8px 10px",background:"rgba(255,255,255,.05)",borderRadius:10,border:"1px solid rgba(0,193,112,.2)"}}>
-		          <Avatar src={hLu.coach.photo} size={30} ring="#00c170"/>
-		          <div><div style={{fontSize:9,color:"rgba(255,255,255,.35)"}}>Entraîneur</div><div style={{fontSize:11,fontWeight:700,color:"#fff",overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap",maxWidth:90}}>{hLu.coach.name}</div></div>
+		    {/* Vue terrain premium */}
+		    {view==="pitch"&&<div style={{padding:"12px 10px 20px",background:"#111318"}}>
+		      <PitchFull hLineup={hLu} aLineup={aLu} hPlayers={hPh} aPlayers={aPh} homeTeam={homeTeam} awayTeam={awayTeam}/>
+		      <div style={{display:"none"}}>
+		        {hLu&&<div style={{flex:1}}>
+		          <div style={{fontSize:12,color:T.red,fontWeight:700,textAlign:"center",marginBottom:7}}>{homeTeam?.name} <span style={{color:T.t3,fontWeight:400}}>({hLu.formation})</span></div>
+		          <Pitch lineup={hLu} isHome={true}/>
+		          {hLu.coach&&<div style={{display:"flex",alignItems:"center",gap:8,marginTop:8,padding:"7px 9px",background:T.bg3,borderRadius:8}}>
+		            <Avatar src={hLu.coach.photo} size={32} ring={T.red}/>
+		            <div><div style={{fontSize:10,color:T.t3}}>Entraîneur</div><div style={{fontSize:12,fontWeight:700,color:T.t1}}>{hLu.coach.name}</div></div>
+		          </div>}
 		        </div>}
-		        {aLu?.coach&&<div style={{flex:1,display:"flex",alignItems:"center",gap:8,padding:"8px 10px",background:"rgba(255,255,255,.05)",borderRadius:10,border:"1px solid rgba(66,165,245,.2)",flexDirection:"row-reverse"}}>
-		          <Avatar src={aLu.coach.photo} size={30} ring="#42a5f5"/>
-		          <div style={{textAlign:"right"}}><div style={{fontSize:9,color:"rgba(255,255,255,.35)"}}>Entraîneur</div><div style={{fontSize:11,fontWeight:700,color:"#fff",overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap",maxWidth:90}}>{aLu.coach.name}</div></div>
+		        {aLu&&<div style={{flex:1}}>
+		          <div style={{fontSize:12,color:T.blueB,fontWeight:700,textAlign:"center",marginBottom:7}}>{awayTeam?.name} <span style={{color:T.t3,fontWeight:400}}>({aLu.formation})</span></div>
+		          <Pitch lineup={aLu} isHome={false}/>
+		          {aLu.coach&&<div style={{display:"flex",alignItems:"center",gap:8,marginTop:8,padding:"7px 9px",background:T.bg3,borderRadius:8}}>
+		            <Avatar src={aLu.coach.photo} size={32} ring={T.blueB}/>
+		            <div><div style={{fontSize:10,color:T.t3}}>Entraîneur</div><div style={{fontSize:12,fontWeight:700,color:T.t1}}>{aLu.coach.name}</div></div>
+		          </div>}
 		        </div>}
 		      </div>
 		    </div>}
@@ -1743,8 +1693,8 @@
 		    (lineups.length||isPartial)           ?{id:"compos",   label:"⚽ Compos"} :null,
 		    (players.some(t=>t.players?.length)||isPartial)?{id:"joueurs",  label:"👤 Joueurs"}:null,
 		    (injuries.length||isPartial)          ?{id:"absents",  label:"🤕 Absents"} :null,
-		    (h2h.length||isPartial)               ?{id:"h2h",      label:"H2H"}       :null,
-		    (hSt.length||h2h.length||isPartial)   ?{id:"analyse",  label:"📊 Analyse"} :null,
+		    {id:"h2h",      label:"H2H"},
+		    {id:"analyse",  label:"📊 Analyse"},
 		  ].filter(Boolean);
 
 		  const SK_CATS=[
@@ -2042,7 +1992,7 @@
 		        })}
 		      </div>}
 
-		      {tab==="analyse"&&h2h.length>0&&<AnalysePanel h2h={h2h} homeTeam={fix.teams.home} awayTeam={fix.teams.away} hSt={hSt} aSt={aSt}/>}
+		      {tab==="analyse"&&<AnalysePanel h2h={h2h} homeTeam={fix.teams.home} awayTeam={fix.teams.away} hSt={hSt} aSt={aSt}/>}
 		    </div>
 		  </Sheet>;
 		}
