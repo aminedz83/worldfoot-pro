@@ -11,7 +11,7 @@
 		<meta http-equiv="Expires" content="0" />
 		<meta
 			name="viewport"
-			content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no,viewport-fit=cover"
+			content="width=device-width,initial-scale=1.0,viewport-fit=cover,shrink-to-fit=no"
 		/>
 		<meta name="theme-color" content="#00b86b" />
 		<meta name="mobile-web-app-capable" content="yes" />
@@ -111,20 +111,41 @@
 			html {
 				height: 100%;
 				-webkit-text-size-adjust: 100%;
+				text-size-adjust: 100%;
+				/* Force rendu HD sur écrans Retina */
+				-webkit-font-smoothing: antialiased;
+				-moz-osx-font-smoothing: grayscale;
+				text-rendering: optimizeLegibility;
 			}
 			body {
 				height: 100%;
-				background: #f4f5f7;
 				font-family: "Barlow", -apple-system, BlinkMacSystemFont,
-					sans-serif;
+					"SF Pro Display", sans-serif;
 				color: #1a1d23;
 				background: #eef0f5;
 				-webkit-tap-highlight-color: transparent;
 				-webkit-font-smoothing: antialiased;
 				-moz-osx-font-smoothing: grayscale;
+				text-rendering: optimizeLegibility;
 				overscroll-behavior: none;
 				overflow: hidden;
 				letter-spacing: 0.01em;
+				/* Rendu pixel parfait */
+				-webkit-backface-visibility: hidden;
+				backface-visibility: hidden;
+			}
+			/* Images nettes sur écrans Retina */
+			img {
+				image-rendering: -webkit-optimize-contrast;
+				image-rendering: crisp-edges;
+				-webkit-backface-visibility: hidden;
+				backface-visibility: hidden;
+				transform: translateZ(0);
+			}
+			/* Bordures et éléments nets */
+			* {
+				-webkit-font-smoothing: antialiased;
+				-moz-osx-font-smoothing: grayscale;
 			}
 			#root {
 				height: 100dvh;
@@ -312,6 +333,13 @@
 
 		.bc {
 			font-family: “Barlow Condensed”, sans-serif;
+			-webkit-font-smoothing: antialiased;
+		}
+		/* GPU acceleration - rendu net */
+		.row-anim, img, canvas {
+			-webkit-backface-visibility: hidden;
+			backface-visibility: hidden;
+			transform: translateZ(0);
 		}
 
 		/* Point LIVE rouge */
@@ -896,41 +924,83 @@
 		  </div>;
 		}
 
-		//
-		function Pitch({lineup,isHome}){
-		  if(!lineup?.startXI?.length)return null;
-		  const pts=lineup.startXI.map(p=>p.player).filter(Boolean);
-		  const form=(lineup.formation||"4-4-2").split("-").map(Number);
-		  const rows=[1,...form];let idx=0;
-		  const grid=rows.map(n=>{const r=[];for(let i=0;i<n&&idx<pts.length;i++)r.push(pts[idx++]);return r;});
-		  const W=260,H=178,rc=grid.length,tc=isHome?T.red:T.blueB;
-		  return<svg width="100%" viewBox={`0 0 ${W} ${H}`} style={{display:"block"}}>
-		    <defs><linearGradient id={`pg${isHome?0:1}`} x1="0" y1="0" x2="0" y2="1">
-		      <stop offset="0%" stopColor={isHome?"#1b3c20":T.bg1}/>
-		      <stop offset="100%" stopColor={isHome?T.bg0:T.bg0}/>
-		    </linearGradient></defs>
-		    <rect width={W} height={H} fill={`url(#pg${isHome?0:1})`} rx={6}/>
-		    <rect x={7} y={5} width={W-14} height={H-10} fill="none" stroke="rgba(255,255,255,.11)" strokeWidth={1} rx={3}/>
-		    <line x1={W/2} y1={5} x2={W/2} y2={H-5} stroke="rgba(255,255,255,.07)" strokeWidth={1}/>
-		    <circle cx={W/2} cy={H/2} r={22} fill="none" stroke="rgba(255,255,255,.07)" strokeWidth={1}/>
-		    <circle cx={W/2} cy={H/2} r={2} fill="rgba(255,255,255,.14)"/>
-		    {isHome
-		      ?<><rect x={7} y={H/2-27} width={38} height={54} fill="none" stroke="rgba(26,29,35,.08)" strokeWidth={1}/><rect x={7} y={H/2-13} width={16} height={26} fill="none" stroke="rgba(255,255,255,.07)" strokeWidth={1}/></>
-		      :<><rect x={W-45} y={H/2-27} width={38} height={54} fill="none" stroke="rgba(26,29,35,.08)" strokeWidth={1}/><rect x={W-23} y={H/2-13} width={16} height={26} fill="none" stroke="rgba(255,255,255,.07)" strokeWidth={1}/></>}
-		    {grid.map((row,ri)=>{
-		      const x=isHome?16+(ri/(rc-1||1))*(W-32):W-16-(ri/(rc-1||1))*(W-32);
-		      return row.map((p,pi)=>{
-		        const y=H/(row.length+1)*(pi+1),nm=(p.name||"").split(" ").pop().slice(0,7);
-		        return<g key={p.id??`${ri}-${pi}`}>
-		          <circle cx={x} cy={y} r={9} fill={tc} opacity={.9}/>
-		          <circle cx={x} cy={y} r={9} fill="none" stroke="rgba(255,255,255,.28)" strokeWidth={.7}/>
-		          <text x={x} y={y+1} textAnchor="middle" dominantBaseline="middle" fill="#fff" fontSize={7} fontWeight="bold">{p.number}</text>
-		          <text x={x} y={y+17} textAnchor="middle" fill="rgba(26,29,35,.6)" fontSize={6.5}>{nm}</text>
-		        </g>;
-		      });
-		    })}
-		  </svg>;
+		// TERRAIN PREMIUM + FILTRES AiScore
+		function PitchPlayer({player,photoSrc,color,badgeVal,badgeColor}){
+		  const[imgErr,setImgErr]=React.useState(false);
+		  const nm=(player?.name||"").split(" ").slice(-1)[0].slice(0,11);
+		  return<div style={{display:"flex",flexDirection:"column",alignItems:"center",gap:3,width:62}}>
+		    <div style={{position:"relative",flexShrink:0}}>
+		      {player?.number&&<div style={{position:"absolute",top:-14,left:"50%",transform:"translateX(-50%)",fontSize:10,color:"rgba(255,255,255,.5)",fontWeight:600,whiteSpace:"nowrap"}}>#{player.number}</div>}
+		      <div style={{width:52,height:52,borderRadius:"50%",border:`2.5px solid ${color}`,overflow:"hidden",background:"#1a2e1a",display:"flex",alignItems:"center",justifyContent:"center",boxShadow:"0 3px 10px rgba(0,0,0,.5)"}}>
+		        {photoSrc&&!imgErr
+		          ?<img src={photoSrc} alt="" style={{width:"100%",height:"100%",objectFit:"cover",display:"block"}} onError={()=>setImgErr(true)}/>
+		          :<div style={{width:"100%",height:"100%",background:`${color}22`,display:"flex",alignItems:"center",justifyContent:"center"}}><span style={{fontSize:17,fontWeight:900,color,lineHeight:1}}>{player?.number}</span></div>
+		        }
+		      </div>
+		      {badgeVal&&<div style={{position:"absolute",bottom:-8,left:"50%",transform:"translateX(-50%)",background:badgeColor||"#111",borderRadius:5,padding:"2px 6px",border:"1.5px solid rgba(255,255,255,.15)",minWidth:32,textAlign:"center",whiteSpace:"nowrap"}}>
+		        <span style={{fontSize:10,fontWeight:900,color:"#fff",lineHeight:1.2}}>{badgeVal}</span>
+		      </div>}
+		    </div>
+		    <span style={{fontSize:10,fontWeight:700,color:"#fff",textShadow:"0 1px 4px rgba(0,0,0,1)",textAlign:"center",lineHeight:1.2,overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap",width:"100%",display:"block",marginTop:8}}>{nm}</span>
+		  </div>;
 		}
+
+		function PitchFull({hLineup,aLineup,hPlayers,aPlayers,homeTeam,awayTeam,pitchFilter}){
+		  const ph=(tp,pid)=>tp?.find(p=>p.player?.id===pid)?.player?.photo;
+		  const buildGrid=lineup=>{
+		    if(!lineup?.startXI?.length)return[];
+		    const pts=lineup.startXI.map(p=>p.player).filter(Boolean);
+		    const form=(lineup.formation||"4-4-2").split("-").map(Number);
+		    const rows=[1,...form];let idx=0;
+		    return rows.map(n=>{const r=[];for(let i=0;i<n&&idx<pts.length;i++)r.push(pts[idx++]);return r;});
+		  };
+		  const hGrid=buildGrid(hLineup),aGrid=buildGrid(aLineup);
+		  const hColor="#00c170",aColor="#42a5f5";
+		  const getBadge=(p,players,filter)=>{
+		    const info=players?.find(x=>x.player?.id===p?.id);
+		    if(filter==="age") return{val:p?.age?String(p.age):null,color:"#111"};
+		    if(filter==="height") return{val:p?.height?(p.height+"").replace(" cm","").replace("cm",""):null,color:"#111"};
+		    if(filter==="value"){
+		      const v=info?.player?.value||p?.value;
+		      if(!v)return{val:"-",color:"#111"};
+		      const fmt=v>=1000000?(v/1000000).toFixed(1)+"M€":v>=1000?Math.round(v/1000)+"k€":v+"€";
+		      return{val:fmt,color:"#111"};
+		    }
+		    const st=info?.statistics?.[0];
+		    const r=parseFloat(st?.games?.rating||0);
+		    if(!r)return{val:null,color:"#111"};
+		    return{val:r.toFixed(1),color:r>=8?"#00c170":r>=7?"#f59e0b":"#e53535"};
+		  };
+		  const Section=({grid,lineup,team,color,reverse,players})=><div style={{position:"relative",zIndex:1,padding:"18px 6px 8px"}}>
+		    <div style={{display:"flex",alignItems:"center",gap:6,justifyContent:reverse?"flex-end":"flex-start",marginBottom:12}}>
+		      {!reverse&&<><div style={{background:"rgba(0,0,0,.6)",borderRadius:7,padding:"4px 10px",border:`1px solid ${color}44`}}><span style={{fontSize:12,fontWeight:900,color}}>{lineup?.formation}</span></div><img src={team?.logo} alt="" style={{width:22,height:22,objectFit:"contain"}} onError={e=>e.target.style.display="none"}/><span style={{fontSize:12,fontWeight:700,color:"rgba(255,255,255,.85)",maxWidth:130,overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap"}}>{team?.name}</span></>}
+		      {reverse&&<><span style={{fontSize:12,fontWeight:700,color:"rgba(255,255,255,.85)",maxWidth:130,overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap"}}>{team?.name}</span><img src={team?.logo} alt="" style={{width:22,height:22,objectFit:"contain"}} onError={e=>e.target.style.display="none"}/><div style={{background:"rgba(0,0,0,.6)",borderRadius:7,padding:"4px 10px",border:`1px solid ${color}44`}}><span style={{fontSize:12,fontWeight:900,color}}>{lineup?.formation}</span></div></>}
+		    </div>
+		    {(reverse?[...grid].reverse():grid).map((row,ri)=><div key={ri} style={{display:"flex",justifyContent:"space-evenly",alignItems:"flex-end",marginBottom:20}}>
+		      {row.map((p,pi)=>{
+		        const badge=getBadge(p,players,pitchFilter||"rating");
+		        return<PitchPlayer key={p.id??`${ri}-${pi}`} player={p} photoSrc={ph(players,p.id)} color={color} badgeVal={badge.val} badgeColor={badge.color}/>;
+		      })}
+		    </div>)}
+		  </div>;
+		  return<div style={{background:"linear-gradient(180deg,#1c5220 0%,#236127 18%,#276b2b 35%,#236127 52%,#1c5220 68%,#174718 84%,#1c5220 100%)",borderRadius:16,overflow:"hidden",position:"relative",boxShadow:"0 6px 32px rgba(0,0,0,.5)",width:"100%"}}>
+		    <div style={{position:"absolute",inset:0,pointerEvents:"none",backgroundImage:"repeating-linear-gradient(180deg,rgba(0,0,0,.06) 0px,rgba(0,0,0,.06) 28px,transparent 28px,transparent 56px)"}}/>
+		    <svg style={{position:"absolute",inset:0,width:"100%",height:"100%",pointerEvents:"none"}} viewBox="0 0 100 100" preserveAspectRatio="none">
+		      <rect x={1.5} y={.8} width={97} height={98.4} fill="none" stroke="rgba(255,255,255,.15)" strokeWidth={.4}/>
+		      <line x1={1.5} y1={50} x2={98.5} y2={50} stroke="rgba(255,255,255,.15)" strokeWidth={.4}/>
+		      <circle cx={50} cy={50} r={13} fill="none" stroke="rgba(255,255,255,.12)" strokeWidth={.4}/>
+		      <circle cx={50} cy={50} r={.7} fill="rgba(255,255,255,.25)"/>
+		      <rect x={27} y={.8} width={46} height={17} fill="none" stroke="rgba(255,255,255,.12)" strokeWidth={.35}/>
+		      <rect x={37} y={.8} width={26} height={7} fill="none" stroke="rgba(255,255,255,.1)" strokeWidth={.3}/>
+		      <rect x={27} y={82.2} width={46} height={17} fill="none" stroke="rgba(255,255,255,.12)" strokeWidth={.35}/>
+		      <rect x={37} y={93} width={26} height={7} fill="none" stroke="rgba(255,255,255,.1)" strokeWidth={.3}/>
+		    </svg>
+		    {hGrid.length>0&&<Section grid={hGrid} lineup={hLineup} team={homeTeam} color={hColor} reverse={false} players={hPlayers}/>}
+		    <div style={{height:1,background:"rgba(255,255,255,.15)",margin:"0 12px",position:"relative",zIndex:2}}/>
+		    {aGrid.length>0&&<Section grid={aGrid} lineup={aLineup} team={awayTeam} color={aColor} reverse={true} players={aPlayers}/>}
+		  </div>;
+		}
+		function Pitch({lineup,isHome}){return null;}
 
 		//
 		// MATCH ROW   hooks AVANT early return (r gle React)
@@ -1556,18 +1626,38 @@
 
 		//
 		function PlayersStatsPanel({players,homeTeam,awayTeam}){
-		  const[selTeam,setSelTeam]=useState("home");
+		  const[selTeam,setSelTeam]=React.useState("home");
+		  const[sort,setSort]=React.useState("rating"); // rating | age | height | value
 		  const teamData=players.find(t=>t.team?.id===(selTeam==="home"?homeTeam?.id:awayTeam?.id));
-		  const plrs=teamData?.players??[];
+		  const plrs=(teamData?.players??[]).slice();
 		  if(!plrs.length) return<div style={{textAlign:"center",padding:"44px 20px",color:T.t3,fontSize:13}}>Statistiques joueurs non disponibles</div>;
-		  return<div style={{display:"flex",flexDirection:"column",height:"100%"}}>
-		    <div style={{display:"flex",background:T.bg2,borderRadius:10,padding:3,margin:"10px 14px",gap:2}}>
+		  // Tri
+		  const sorted=plrs.slice().sort((a,b)=>{
+		    if(sort==="rating") return (parseFloat(b.statistics?.[0]?.games?.rating)||0)-(parseFloat(a.statistics?.[0]?.games?.rating)||0);
+		    if(sort==="age") return (a.player?.age||99)-(b.player?.age||99);
+		    if(sort==="height"){
+		      const h=p=>parseInt((p.player?.height||"0").replace("cm","").trim())||0;
+		      return h(b)-h(a);
+		    }
+		    if(sort==="value") return (b.player?.value||0)-(a.player?.value||0);
+		    return 0;
+		  });
+		  const FILTERS=[
+		    {id:"rating", icon:"★",       label:"Note"},
+		    {id:"age",    icon:"Age",      label:"Âge",    circle:true},
+		    {id:"height", icon:"📏",       label:"Taille"},
+		    {id:"value",  icon:"🏔️",      label:"Valeur marchande"},
+		  ];
+		  return<div style={{display:"flex",flexDirection:"column",height:"100%",background:"#f5f6f9"}}>
+		    {/* Sélection équipe */}
+		    <div style={{display:"flex",background:"#fff",padding:"10px 14px",gap:8,borderBottom:"1px solid rgba(0,0,0,.06)"}}>
 		      {[["home",homeTeam],["away",awayTeam]].map(([v,team])=>{
 		        const a=selTeam===v;
-		        return<button key={v} onClick={()=>setSelTeam(v)} className="bc" style={{
-		          flex:1,padding:"8px",border:"none",borderRadius:8,cursor:"pointer",
-		          background:a?T.green:"transparent",color:a?"#fff":T.t3,
-		          fontSize:11,fontWeight:a?800:500,transition:"all .2s",
+		        return<button key={v} onClick={()=>setSelTeam(v)} style={{
+		          flex:1,padding:"8px",border:"none",borderRadius:10,cursor:"pointer",
+		          background:a?"#1a1aff":"#f0f1f5",
+		          color:a?"#fff":"#555",
+		          fontSize:12,fontWeight:a?700:500,transition:"all .2s",
 		          display:"flex",alignItems:"center",justifyContent:"center",gap:6,
 		        }}>
 		          <Logo src={team?.logo} size={16}/>
@@ -1575,36 +1665,69 @@
 		        </button>;
 		      })}
 		    </div>
-		    <div style={{flex:1,overflowY:"auto"}}>
-		      {plrs.map(({player:pl,statistics:sts})=>{
+		    {/* Barre filtres style AiScore */}
+		    <div style={{display:"flex",alignItems:"center",gap:8,padding:"12px 14px",background:"#fff",borderBottom:"1px solid rgba(0,0,0,.06)",overflowX:"auto"}}>
+		      {FILTERS.map(f=>{
+		        const active=sort===f.id;
+		        return<button key={f.id} onClick={()=>setSort(f.id)} style={{
+		          display:"flex",alignItems:"center",gap:6,
+		          padding:active?"8px 16px":"0",
+		          width:active?undefined:40,
+		          height:40,
+		          borderRadius:20,
+		          border:"none",
+		          cursor:"pointer",
+		          background:active?"#1a1aff":"#eef0f5",
+		          color:active?"#fff":"#111",
+		          fontWeight:active?700:500,
+		          fontSize:13,
+		          flexShrink:0,
+		          transition:"all .2s",
+		          justifyContent:"center",
+		          whiteSpace:"nowrap",
+		        }}>
+		          {f.circle
+		            ?<div style={{width:24,height:24,borderRadius:"50%",background:active?"rgba(255,255,255,.25)":"#222",display:"flex",alignItems:"center",justifyContent:"center",flexShrink:0}}>
+		               <span style={{fontSize:9,fontWeight:900,color:"#fff",letterSpacing:-.5}}>{f.icon}</span>
+		             </div>
+		            :<span style={{fontSize:f.id==="rating"?16:14}}>{f.icon}</span>
+		          }
+		          {active&&<span>{f.label}</span>}
+		        </button>;
+		      })}
+		    </div>
+		    {/* Liste joueurs */}
+		    <div style={{flex:1,overflowY:"auto",background:"#fff"}}>
+		      {sorted.map(({player:pl,statistics:sts})=>{
 		        const st=sts?.[0]??{};
 		        const rating=parseFloat(st.games?.rating??0);
 		        const ratingColor=rating>=8?"#00c170":rating>=7?"#f59e0b":rating>=6?"#888":"#e53535";
+		        // Valeur affichée selon le tri actif
+		        const badge=(()=>{
+		          if(sort==="age") return{val:pl.age?""+pl.age+"ans":"—",color:"#222",bg:"#f0f1f5"};
+		          if(sort==="height") return{val:pl.height||"—",color:"#1a1aff",bg:"rgba(26,26,255,.08)"};
+		          if(sort==="value") return{val:pl.value?"€"+pl.value:"N/A",color:"#00a36c",bg:"rgba(0,163,108,.08)"};
+		          return rating>0?{val:rating.toFixed(1),color:"#fff",bg:ratingColor}:{val:null};
+		        })();
 		        return<div key={pl.id} style={{
 		          display:"flex",alignItems:"center",gap:10,
-		          padding:"10px 14px",borderBottom:`1px solid ${T.line}`,
+		          padding:"10px 14px",
+		          borderBottom:"1px solid rgba(0,0,0,.05)",
 		        }}>
-		          <Avatar src={pl.photo} size={40}/>
+		          <Avatar src={pl.photo} size={42}/>
 		          <div style={{flex:1,minWidth:0}}>
-		            <div className="bc" style={{fontSize:13,fontWeight:700,color:T.t1,overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap"}}>{pl.name}</div>
-		            <div style={{fontSize:10,color:T.t3,marginTop:2}}>
-		              {st.games?.position||""} · {st.games?.minutes??0}min
-		            </div>
-		            <div style={{display:"flex",gap:8,marginTop:4,flexWrap:"wrap"}}>
-		              {(st.goals?.total??0)>0&&<span style={{fontSize:10,color:T.green,fontWeight:700}}>⚽ {st.goals.total}</span>}
-		              {(st.goals?.assists??0)>0&&<span style={{fontSize:10,color:"#f59e0b",fontWeight:700}}>🎯 {st.goals.assists}</span>}
-		              {(st.cards?.yellow??0)>0&&<span style={{fontSize:10}}>🟨 {st.cards.yellow}</span>}
-		              {(st.cards?.red??0)>0&&<span style={{fontSize:10}}>🟥 {st.cards.red}</span>}
-		              {(st.shots?.on??0)>0&&<span style={{fontSize:10,color:T.t3}}>🎯 {st.shots.on} tirs</span>}
+		            <div style={{fontSize:14,fontWeight:700,color:"#111",overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap"}}>{pl.name}</div>
+		            <div style={{fontSize:11,color:"#888",marginTop:2,display:"flex",gap:8,flexWrap:"wrap",alignItems:"center"}}>
+		              {st.games?.position&&<span style={{background:"#eef0f5",borderRadius:5,padding:"1px 6px",fontSize:10,fontWeight:600,color:"#555"}}>{st.games.position}</span>}
+		              <span>{st.games?.minutes??0} min</span>
+		              {(st.goals?.total??0)>0&&<span style={{color:"#00c170",fontWeight:700}}>⚽ {st.goals.total}</span>}
+		              {(st.goals?.assists??0)>0&&<span style={{color:"#f59e0b",fontWeight:700}}>🎯 {st.goals.assists}</span>}
+		              {(st.cards?.yellow??0)>0&&<span>🟨 {st.cards.yellow}</span>}
+		              {(st.cards?.red??0)>0&&<span>🟥 {st.cards.red}</span>}
 		            </div>
 		          </div>
-		          {rating>0&&<div style={{
-		            width:36,height:36,borderRadius:10,
-		            background:ratingColor,
-		            display:"flex",alignItems:"center",justifyContent:"center",
-		            flexShrink:0,
-		          }}>
-		            <span className="bc" style={{fontSize:13,fontWeight:900,color:"#fff"}}>{rating.toFixed(1)}</span>
+		          {badge.val&&<div style={{minWidth:40,height:36,borderRadius:10,background:badge.bg,display:"flex",alignItems:"center",justifyContent:"center",flexShrink:0,padding:"0 8px"}}>
+		            <span style={{fontSize:12,fontWeight:800,color:badge.color,whiteSpace:"nowrap"}}>{badge.val}</span>
 		          </div>}
 		        </div>;
 		      })}
@@ -1615,7 +1738,8 @@
 		// MODULE COMPOSITIONS + SCH MAS
 		//
 		function ComposPanel({lineups,players,homeTeam,awayTeam,isPartial}){
-		  const[view,setView]=useState("pitch"); // pitch | list
+		  const[view,setView]=useState("pitch");
+		  const[pitchFilter,setPitchFilter]=useState("rating"); // rating | age | height | value
 		  const hLu=lineups.find(l=>l.team?.id===homeTeam?.id);
 		  const aLu=lineups.find(l=>l.team?.id===awayTeam?.id);
 		  const hPh=players.find(t=>t.team?.id===homeTeam?.id)?.players??[];
@@ -1639,16 +1763,55 @@
 		  </div>;
 
 		  return<div>
-		    {/* Toggle vue */}
-		    <div style={{display:"flex",gap:6,padding:"12px 16px",borderBottom:`1px solid ${T.line}`}}>
-		      <div style={{display:"flex",background:T.bg3,borderRadius:8,padding:3,gap:2,flex:1}}>
-		        {[["pitch","⚽ Schéma"],["list","📋 Listes"]].map(([v,lb])=><button key={v} onClick={()=>setView(v)} style={{flex:1,background:view===v?T.bg1:"none",border:view===v?`1px solid ${T.line}`:"1px solid transparent",color:view===v?T.t1:T.t3,borderRadius:8,padding:"7px",fontSize:12,fontWeight:view===v?700:400,cursor:"pointer",transition:"all .15s"}}>{lb}</button>)}
+		    {/* Toggle vue + Filtres */}
+		    <div style={{background:"#fff",borderBottom:"1px solid rgba(0,0,0,.07)"}}>
+		      {/* Toggle Schéma / Listes */}
+		      <div style={{display:"flex",gap:6,padding:"10px 14px 8px"}}>
+		        <div style={{display:"flex",background:"#f0f1f5",borderRadius:10,padding:3,gap:2,flex:1}}>
+		          {[["pitch","⚽ Schéma"],["list","📋 Listes"]].map(([v,lb])=><button key={v} onClick={()=>setView(v)} style={{flex:1,background:view===v?"#1a1aff":"none",border:"none",color:view===v?"#fff":"#555",borderRadius:8,padding:"8px",fontSize:12,fontWeight:view===v?700:500,cursor:"pointer",transition:"all .15s"}}>{lb}</button>)}
+		        </div>
 		      </div>
+		      {/* Filtres AiScore - visibles uniquement en mode pitch */}
+		      {view==="pitch"&&<div style={{display:"flex",alignItems:"center",gap:8,padding:"0 14px 12px",overflowX:"auto"}}>
+		        {[
+		          {id:"rating", icon:"★",  label:"Note",            circle:false},
+		          {id:"age",    icon:"Age", label:"Âge",             circle:true},
+		          {id:"height", icon:"📏", label:"Taille",          circle:false},
+		          {id:"value",  icon:"🏔️", label:"Valeur marchande", circle:false},
+		        ].map(f=>{
+		          const active=pitchFilter===f.id;
+		          return<button key={f.id} onClick={()=>setPitchFilter(f.id)} style={{
+		            display:"flex",alignItems:"center",gap:6,
+		            padding:active?"8px 16px":"0",
+		            width:active?undefined:40,
+		            height:40,
+		            borderRadius:20,
+		            border:"none",
+		            cursor:"pointer",
+		            background:active?"#1a1aff":"#eef0f5",
+		            color:active?"#fff":"#111",
+		            fontWeight:active?700:500,
+		            fontSize:13,
+		            flexShrink:0,
+		            transition:"all .2s",
+		            justifyContent:"center",
+		            whiteSpace:"nowrap",
+		          }}>
+		            {f.circle
+		              ?<div style={{width:24,height:24,borderRadius:"50%",background:active?"rgba(255,255,255,.3)":"#222",display:"flex",alignItems:"center",justifyContent:"center",flexShrink:0}}>
+		                 <span style={{fontSize:9,fontWeight:900,color:"#fff"}}>{f.icon}</span>
+		               </div>
+		              :<span style={{fontSize:f.id==="rating"?16:14}}>{f.icon}</span>
+		            }
+		            {active&&<span>{f.label}</span>}
+		          </button>;
+		        })}
+		      </div>}
 		    </div>
 
 		    {/* Vue terrain premium */}
 		    {view==="pitch"&&<div style={{padding:"12px 10px 20px",background:"#111318"}}>
-		      <PitchFull hLineup={hLu} aLineup={aLu} hPlayers={hPh} aPlayers={aPh} homeTeam={homeTeam} awayTeam={awayTeam}/>
+		      <PitchFull hLineup={hLu} aLineup={aLu} hPlayers={hPh} aPlayers={aPh} homeTeam={homeTeam} awayTeam={awayTeam} pitchFilter={pitchFilter}/>
 		      <div style={{display:"none"}}>
 		        {hLu&&<div style={{flex:1}}>
 		          <div style={{fontSize:12,color:T.red,fontWeight:700,textAlign:"center",marginBottom:7}}>{homeTeam?.name} <span style={{color:T.t3,fontWeight:400}}>({hLu.formation})</span></div>
