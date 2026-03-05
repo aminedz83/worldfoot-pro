@@ -707,19 +707,36 @@
 		//
 		// API   cache 15s
 		//
+		// CACHE INTELLIGENT PERSISTANT
 		const _cache=new Map();
-		let _apiCallsToday=parseInt(localStorage.getItem('wf_api_calls_'+new Date().toDateString())||'0');
-		let _apiCallsDate=new Date().toDateString();
+		const _CACHE_KEY="wf_cache_v3";
+		const _CALLS_KEY="wf_calls_";
+		// Charger cache depuis localStorage au demarrage
+		(()=>{ try{ const s=localStorage.getItem(_CACHE_KEY); if(s){ const now=Date.now(); JSON.parse(s).forEach(([k,v])=>{ if(now-v.t<v.ttl)_cache.set(k,v); }); } }catch(e){} })();
+		function _saveCache(){
+		  try{
+		    const now=Date.now();
+		    const valid=[..._cache.entries()].filter(([k,v])=>now-v.t<v.ttl).slice(-150);
+		    localStorage.setItem(_CACHE_KEY,JSON.stringify(valid));
+		  }catch(e){_cache.clear();}
+		}
+		// TTL par type de donnees
+		const TTL={LIVE:15000,SCORES:60000,DETAIL:60000,UPCOMING:21600000,DONE:86400000,STANDING:3600000,H2H:86400000,LINEUP:3600000,PLAYERS:3600000,INJURIES:3600000,TRANSFERS:86400000};
+		let _apiCallsToday=0,_apiCallsDate=new Date().toDateString();
+		try{_apiCallsToday=parseInt(localStorage.getItem(_CALLS_KEY+_apiCallsDate)||"0");}catch(e){}
 		function _trackApiCall(){
 		  const today=new Date().toDateString();
 		  if(today!==_apiCallsDate){_apiCallsToday=0;_apiCallsDate=today;}
 		  _apiCallsToday++;
-		  try{localStorage.setItem('wf_api_calls_'+today,_apiCallsToday);}catch(e){}
+		  try{localStorage.setItem(_CALLS_KEY+today,_apiCallsToday);}catch(e){}
 		}
 
-		async function api(path,ttl=15000,signal=null){
+		async function api(path,ttl=TTL.SCORES,signal=null){
 		  const now=Date.now();
-		  if(_cache.has(path)&&now-_cache.get(path).t<ttl) return _cache.get(path).d;
+		  if(_cache.has(path)){
+		    const e=_cache.get(path);
+		    if(now-e.t<ttl) return e.d;
+		  }
 		  _trackApiCall();
 		  const r=await fetch(BASE+path,{headers:{"x-apisports-key":API_KEY},signal});
 		  if(!r.ok) throw new Error(`Erreur HTTP ${r.status}`);
@@ -729,7 +746,8 @@
 		    throw new Error(typeof msg==="string"?msg:"Erreur API");
 		  }
 		  const d=j.response??[];
-		  _cache.set(path,{d,t:now});
+		  _cache.set(path,{d,t:now,ttl});
+		  setTimeout(_saveCache,300);
 		  return d;
 		}
 
@@ -2231,7 +2249,7 @@
 		  const load=useCallback(async(silent=false)=>{
 		    if(!silent){setSt("load");setErr("");}else setSpin(true);
 		    try{
-		      const d=await api(`/fixtures?date=${date}&timezone=Europe/Paris`,15000);
+		      const d=await api(`/fixtures?date=${date}&timezone=Europe/Paris`,TTL.SCORES);
 		      setData(d);
 		      if(!silent)setSt("ok");
 		    }
@@ -2281,8 +2299,8 @@
 		      const sh=cachedFix?.fixture?.status?.short??"NS";
 		      const isLive=LIVE_ST.has(sh);
 		      const isDone=DONE_ST.has(sh);
-		      const matchTTL=isLive?15000:isDone?10800000:21600000;
-		      const detailTTL=isLive?15000:isDone?10800000:3600000;
+		      const matchTTL=isLive?TTL.LIVE:isDone?TTL.DONE:TTL.UPCOMING;
+		      const detailTTL=isLive?TTL.LIVE:isDone?TTL.DONE:TTL.PLAYERS;
 
 		      const fx=await api(`/fixtures?id=${id}`,matchTTL,sig);
 		      const fix=fx[0];if(!fix)throw new Error("Match introuvable");
@@ -2300,8 +2318,8 @@
 		      const[lineups,plrs,h2h,injuries]=await Promise.all([
 		        api(`/fixtures/lineups?fixture=${fid}`,detailTTL,sig).catch(()=>[]),
 		        started?api(`/fixtures/players?fixture=${fid}`,detailTTL,sig).catch(()=>[]):Promise.resolve([]),
-		        api(`/fixtures/headtohead?h2h=${hid}-${aid}&last=50`,86400000,sig).catch(()=>[]),
-		        api(`/injuries?fixture=${fid}`,isDone?10800000:3600000,sig).catch(()=>[]),
+		        api(`/fixtures/headtohead?h2h=${hid}-${aid}&last=50`,TTL.H2H,sig).catch(()=>[]),
+		        api(`/injuries?fixture=${fid}`,isDone?TTL.DONE:TTL.INJURIES,sig).catch(()=>[]),
 		      ]);
 		      setDet({data:{fixture:fix,stats,events:evts,lineups,players:plrs,h2h,injuries}});
 		    }catch(e){if(e.name!=="AbortError")setDet({error:e.message});}
@@ -2527,7 +2545,7 @@
 		    let c=false;setSt("load");setErr("");setAllGroups([]);setRounds([]);setRoundMatches([]);setSelRound("");
 		    if(isCup&&hasGroups){
 		      // R cup rer tous les groupes A/B/C/D
-		      api(`/standings?league=${lid}&season=${s}`,3600000)
+		      api(`/standings?league=${lid}&season=${s}`,TTL.STANDING)
 		        .then(d=>{
 		          if(c)return;
 		          const st2=d[0]?.league?.standings??[];
@@ -2542,7 +2560,7 @@
 		        })
 		        .catch(e=>{if(!c){setErr(e.message);setSt("err");}});
 		    } else {
-		      api(`/standings?league=${lid}&season=${s}`,3600000)
+		      api(`/standings?league=${lid}&season=${s}`,TTL.STANDING)
 		        .then(d=>{
 		          if(c)return;
 		          const r=d[0]?.league?.standings?.[0]??[];
@@ -2553,7 +2571,7 @@
 		    }
 		    // Charger les tours  liminatoires si coupe
 		    if(isCup&&hasKnockout){
-		      api(`/fixtures/rounds?league=${lid}&season=${s}&current=false`,21600000)
+		      api(`/fixtures/rounds?league=${lid}&season=${s}&current=false`,TTL.UPCOMING)
 		        .then(d=>{if(!c){setRounds(d??[]);}})
 		        .catch(()=>{});
 		    }
@@ -2564,7 +2582,7 @@
 		  useEffect(()=>{
 		    if(!selRound)return;
 		    let c=false;setRoundMatches([]);
-		    api(`/fixtures?league=${lid}&season=${s}&round=${encodeURIComponent(selRound)}`,3600000)
+		    api(`/fixtures?league=${lid}&season=${s}&round=${encodeURIComponent(selRound)}`,TTL.PLAYERS)
 		      .then(d=>{if(!c)setRoundMatches(d??[]);})
 		      .catch(()=>{});
 		    return()=>{c=true;};
@@ -2818,8 +2836,8 @@
 		      const sh=cachedFix?.fixture?.status?.short??"NS";
 		      const isLive=LIVE_ST.has(sh);
 		      const isDone=DONE_ST.has(sh);
-		      const matchTTL=isLive?15000:isDone?10800000:21600000;
-		      const detailTTL=isLive?15000:isDone?10800000:3600000;
+		      const matchTTL=isLive?TTL.LIVE:isDone?TTL.DONE:TTL.UPCOMING;
+		      const detailTTL=isLive?TTL.LIVE:isDone?TTL.DONE:TTL.PLAYERS;
 
 		      const fx=await api(`/fixtures?id=${id}`,matchTTL,sig);
 		      const fix=fx[0];if(!fix)throw new Error("Match introuvable");
@@ -2837,8 +2855,8 @@
 		      const[lineups,plrs,h2h,injuries]=await Promise.all([
 		        api(`/fixtures/lineups?fixture=${fid}`,detailTTL,sig).catch(()=>[]),
 		        started?api(`/fixtures/players?fixture=${fid}`,detailTTL,sig).catch(()=>[]):Promise.resolve([]),
-		        api(`/fixtures/headtohead?h2h=${hid}-${aid}&last=50`,86400000,sig).catch(()=>[]),
-		        api(`/injuries?fixture=${fid}`,isDone?10800000:3600000,sig).catch(()=>[]),
+		        api(`/fixtures/headtohead?h2h=${hid}-${aid}&last=50`,TTL.H2H,sig).catch(()=>[]),
+		        api(`/injuries?fixture=${fid}`,isDone?TTL.DONE:TTL.INJURIES,sig).catch(()=>[]),
 		      ]);
 		      setDt({data:{fixture:fix,stats,events:evts,lineups,players:plrs,h2h,injuries}});
 		    }catch(e){if(e.name!=="AbortError")setDt({error:e.message});}
@@ -3527,7 +3545,7 @@
 		  useEffect(()=>{
 		    let cancelled=false;
 		    setSt("load");setData([]);
-		    api(`/transfers?league=${lid}&season=${season}`,3600000)
+		    api(`/transfers?league=${lid}&season=${season}`,TTL.TRANSFERS)
 		      .then(d=>{
 		        if(cancelled)return;
 		        const filtered=d.filter(t=>{
@@ -3769,7 +3787,7 @@
 		  useEffect(()=>{
 		    let cancelled=false;
 		    setSt("load");setData([]);
-		    api(`/transfers?league=${lid}&season=${season}`,3600000)
+		    api(`/transfers?league=${lid}&season=${season}`,TTL.TRANSFERS)
 		      .then(d=>{
 		        if(cancelled)return;
 		        // Grouper par club d'arrivée
@@ -3920,7 +3938,7 @@
 		  useEffect(()=>{
 		    let c=false;
 		    setStRounds("load");setRounds([]);setSelRound("");setMatches([]);setAllMatches([]);
-		    api(`/fixtures/rounds?league=${lid}&season=${season}&current=false`,21600000)
+		    api(`/fixtures/rounds?league=${lid}&season=${season}&current=false`,TTL.UPCOMING)
 		      .then(d=>{
 		        if(c)return;
 		        const all=d??[];
@@ -3949,7 +3967,7 @@
 		    if(!selRound)return;
 		    let c=false;
 		    setStMatches("load");setMatches([]);
-		    api(`/fixtures?league=${lid}&season=${season}&round=${encodeURIComponent(selRound)}`,3600000)
+		    api(`/fixtures?league=${lid}&season=${season}&round=${encodeURIComponent(selRound)}`,TTL.PLAYERS)
 		      .then(d=>{
 		        if(c)return;
 		        const sorted=(d??[]).sort((a,b)=>new Date(a.fixture.date)-new Date(b.fixture.date));
@@ -4705,11 +4723,15 @@
 		            <div className="live-dot"/>
 		            <span className="bc" style={{fontSize:11,fontWeight:800,color:"#fff",letterSpacing:1}}>LIVE</span>
 		          </div>
-		          {/* Quota API discret */}
-		          <div title={`API: ${_apiCallsToday}/7500`} style={{
-		            background:"rgba(0,0,0,.15)",borderRadius:10,padding:"3px 7px",cursor:"default",
+		          {/* Quota API avec couleur selon usage */}
+		          <div title={`Appels API aujourd'hui: ${_apiCallsToday}/7500 (cache persistant actif)`} style={{
+		            background:_apiCallsToday>6000?"rgba(229,53,53,.3)":_apiCallsToday>4000?"rgba(245,158,11,.25)":"rgba(0,0,0,.15)",
+		            borderRadius:10,padding:"3px 8px",cursor:"default",
+		            border:_apiCallsToday>6000?"1px solid rgba(229,53,53,.4)":"1px solid transparent",
 		          }}>
-		            <span style={{fontSize:8,color:"rgba(255,255,255,.55)",fontWeight:700}}>{_apiCallsToday}<span style={{opacity:.6}}>/7.5k</span></span>
+		            <span style={{fontSize:9,color:_apiCallsToday>6000?"#ff6b6b":_apiCallsToday>4000?"#fbbf24":"rgba(255,255,255,.6)",fontWeight:700}}>
+		              {_apiCallsToday}<span style={{opacity:.6,fontSize:8}}>/7.5k</span>
+		            </span>
 		          </div>
 		          {/* Déconnexion */}
 		          <button title="Déconnexion" onClick={()=>{localStorage.removeItem("wf_auth");window.location.href="login.html";}} style={{
