@@ -513,26 +513,31 @@
 
 		// ── CACHE LOCAL ──────────────────────────────────────────────
 		const CACHE_TTL = 15 * 60 * 1000; // 15 minutes
+		const CACHE_TTL_UNE = 60 * 60 * 1000; // 1h pour la Une
 
-		function cacheSet(key, data) {
-		  try { localStorage.setItem(key, JSON.stringify({data, ts: Date.now()})); } catch {}
+		function cacheSet(key, data, ttl) {
+		  try { localStorage.setItem(key, JSON.stringify({data, ts: Date.now(), ttl: ttl||CACHE_TTL})); } catch {}
 		}
 
 		function cacheGet(key) {
 		  try {
 		    const raw = localStorage.getItem(key);
 		    if (!raw) return null;
-		    const {data, ts} = JSON.parse(raw);
-		    if (Date.now() - ts > CACHE_TTL) return null;
+		    const {data, ts, ttl} = JSON.parse(raw);
+		    if (Date.now() - ts > (ttl||CACHE_TTL)) return null;
 		    return data;
 		  } catch { return null; }
 		}
 
 		function cacheGetStale(key) {
+		  // Retourne les données même périmées SAUF si > 24h (pour forcer refresh quotidien)
 		  try {
 		    const raw = localStorage.getItem(key);
 		    if (!raw) return null;
-		    return JSON.parse(raw).data;
+		    const {data, ts} = JSON.parse(raw);
+		    // Si > 24h, on force un rechargement complet
+		    if (Date.now() - ts > 86400000) return null;
+		    return data;
 		  } catch { return null; }
 		}
 
@@ -2961,13 +2966,13 @@
 		      }
 		    }).then(r=>r.json()).then(d=>{
 		      if(!Array.isArray(d))throw new Error();
-		      cacheSet("competition_une",d);
+		      cacheSet("competition_une",d,CACHE_TTL_UNE);
 		      setUnes(d);setUneSt(d.length?"ok":"empty");
 		    }).catch(()=>{if(force)setUneSt("err");});
 		  };
 
 		  useEffect(()=>{load(false);},[]);
-		  useEffect(()=>{if(view==="une")loadUne(false);},[view]);
+		  useEffect(()=>{if(view==="une")loadUne(true);},[view]);
 
 		  const openArt = (a) => {
 		    if(!a) return;
