@@ -1458,9 +1458,14 @@
 		            <div style={{display:"flex",gap:8,marginTop:4,flexWrap:"wrap"}}>
 		              {(st.goals?.total??0)>0&&<span style={{fontSize:10,color:T.green,fontWeight:700}}>⚽ {st.goals.total}</span>}
 		              {(st.goals?.assists??0)>0&&<span style={{fontSize:10,color:"#f59e0b",fontWeight:700}}>🎯 {st.goals.assists}</span>}
-		              {(st.cards?.yellow??0)>0&&<span style={{fontSize:10}}>🟨 {st.cards.yellow}</span>}
-		              {(st.cards?.red??0)>0&&<span style={{fontSize:10}}>🟥 {st.cards.red}</span>}
-		              {(st.shots?.on??0)>0&&<span style={{fontSize:10,color:T.t3}}>🎯 {st.shots.on} tirs</span>}
+		              {(st.cards?.yellow??0)>0&&<span style={{fontSize:10}}>🟨</span>}
+		              {(st.cards?.red??0)>0&&<span style={{fontSize:10}}>🟥</span>}
+		              {(st.shots?.on??0)>0&&<span style={{fontSize:10,color:T.t3}}>🎯 {st.shots.on}/{st.shots?.total??0}</span>}
+		              {(st.dribbles?.attempts??0)>0&&<span style={{fontSize:10,color:"#8b5cf6",fontWeight:600}}>🏃 {st.dribbles?.success??0}/{st.dribbles.attempts}</span>}
+		              {(st.duels?.total??0)>0&&<span style={{fontSize:10,color:"#0ea5e9",fontWeight:600}}>⚔️ {st.duels?.won??0}/{st.duels.total}</span>}
+		              {(st.passes?.key??0)>0&&<span style={{fontSize:10,color:"#10b981",fontWeight:700}}>🔑 {st.passes.key}</span>}
+		              {(st.tackles?.total??0)>0&&<span style={{fontSize:10,color:"#64748b"}}>🛡️ {st.tackles.total}</span>}
+		              {(st.fouls?.committed??0)>0&&<span style={{fontSize:10,color:"#f97316"}}>F {st.fouls.committed}</span>}
 		            </div>
 		          </div>
 		          {rating>0&&<div style={{
@@ -1577,8 +1582,13 @@
 		  const h2h     =state?.data?.h2h      ??[];
 		  const players =state?.data?.players  ??[];
 		  const injuries=state?.data?.injuries ??[];
-		  const standings=state?.data?.standings??[];
-		  const odds    =state?.data?.odds      ??[];
+		  const standings  =state?.data?.standings  ??[];
+		  const odds       =state?.data?.odds       ??[];
+		  const predictions=state?.data?.predictions??[];
+		  const venue      =state?.data?.venue       ??[];
+		  const hCoach     =state?.data?.hCoach      ??[];
+		  const aCoach     =state?.data?.aCoach      ??[];
+		  const pred       =predictions[0]??null;
 
 		  const s  =fix?.fixture?.status??{short:"NS",elapsed:null};
 		  const hg =fix?.goals?.home??0, ag=fix?.goals?.away??0;
@@ -1780,6 +1790,88 @@
 		      {tab==="evts"&&<div style={{background:"#fff",paddingBottom:20}}>
 		        {events.length===0&&isPartial&&<div style={{textAlign:"center",padding:"40px",color:"#888",display:"flex",flexDirection:"column",alignItems:"center",gap:10}}><Spin s={22}/><span style={{fontSize:13}}>Chargement...</span></div>}
 
+		        {pred&&(
+		          <div style={{background:"white",borderRadius:12,margin:"0 0 8px",padding:"16px",boxShadow:"0 1px 4px rgba(0,0,0,.06)"}}>
+		            <div style={{fontSize:15,fontWeight:700,color:"#111",marginBottom:14}}>Predictions</div>
+		            <div style={{display:"flex",gap:8,marginBottom:14}}>
+		              {[
+		                {label:fix.teams.home.name,pct:pred.predictions?.percent?.home,logo:fix.teams.home.logo},
+		                {label:"Nul",pct:pred.predictions?.percent?.draws,logo:null},
+		                {label:fix.teams.away.name,pct:pred.predictions?.percent?.away,logo:fix.teams.away.logo}
+		              ].map(function(item,i){
+		                var pct=parseInt(item.pct)||0;
+		                var isWin=i===0&&pct>50||i===2&&pct>50;
+		                return(
+		                  <div key={i} style={{flex:1,textAlign:"center",background:isWin?"#f0fff4":"#f8f8f8",borderRadius:8,padding:"10px 4px",border:isWin?"1.5px solid #22c55e":"1.5px solid transparent"}}>
+		                    {item.logo&&<img src={item.logo} alt="" style={{width:24,height:24,objectFit:"contain",marginBottom:4}}/>}
+		                    {!item.logo&&<div style={{height:28}}/>}
+		                    <div style={{fontSize:20,fontWeight:900,color:isWin?"#22c55e":"#111"}}>{item.pct||"-"}</div>
+		                    <div style={{fontSize:10,color:"#888",marginTop:2,overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap"}}>{item.label}</div>
+		                  </div>
+		                );
+		              })}
+		            </div>
+		            <div style={{height:6,borderRadius:4,overflow:"hidden",display:"flex",marginBottom:14}}>
+		              <div style={{width:(pred.predictions?.percent?.home||"0"),background:"#1a73e8",transition:"width .3s"}}/>
+		              <div style={{width:(pred.predictions?.percent?.draws||"0"),background:"#94a3b8"}}/>
+		              <div style={{width:(pred.predictions?.percent?.away||"0"),background:"#e53535"}}/>
+		            </div>
+		            {pred.predictions?.advice&&(
+		              <div style={{background:"#fffbeb",borderRadius:8,padding:"10px 12px",border:"1px solid #fcd34d",marginBottom:10}}>
+		                <div style={{fontSize:11,color:"#92400e",fontWeight:600,marginBottom:3}}>Conseil</div>
+		                <div style={{fontSize:13,color:"#78350f",fontWeight:500}}>{pred.predictions.advice}</div>
+		              </div>
+		            )}
+		            <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:8}}>
+		              {[
+		                {label:"Les 2 marquent",val:pred.predictions?.goals?.home&&pred.predictions?.goals?.away?"Probable":"Improbable"},
+		                {label:"Over 2.5",val:(parseInt(pred.predictions?.percent?.home)||0)+(parseInt(pred.predictions?.percent?.away)||0)>120?"Probable":"Improbable"},
+		                {label:"Vainqueur",val:pred.predictions?.winner?.name||"-"},
+		                {label:"Commentaire",val:pred.predictions?.winner?.comment||"-"}
+		              ].map(function(item,i){return(
+		                <div key={i} style={{background:"#f8f8f8",borderRadius:8,padding:"8px 10px"}}>
+		                  <div style={{fontSize:10,color:"#888",marginBottom:3}}>{item.label}</div>
+		                  <div style={{fontSize:12,fontWeight:600,color:"#111",overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap"}}>{item.val}</div>
+		                </div>
+		              );})}
+		            </div>
+		          </div>
+		        )}
+		        {(venue.length>0||hCoach.length>0||aCoach.length>0)&&(
+		          <div style={{background:"white",borderRadius:12,margin:"0 0 8px",padding:"16px",boxShadow:"0 1px 4px rgba(0,0,0,.06)"}}>
+		            <div style={{fontSize:15,fontWeight:700,color:"#111",marginBottom:12}}>Infos du match</div>
+		            {venue[0]&&(
+		              <div style={{marginBottom:12}}>
+		                {venue[0].image&&<img src={venue[0].image} alt="" style={{width:"100%",height:140,objectFit:"cover",borderRadius:8,marginBottom:8}}/>}
+		                <div style={{display:"flex",alignItems:"center",gap:8}}>
+		                  <span style={{fontSize:20}}>🏟️</span>
+		                  <div>
+		                    <div style={{fontSize:14,fontWeight:700,color:"#111"}}>{venue[0].name}</div>
+		                    <div style={{fontSize:12,color:"#888"}}>{venue[0].city}{venue[0].capacity?" · "+venue[0].capacity.toLocaleString()+" places":""}{venue[0].surface?" · "+venue[0].surface:""}</div>
+		                  </div>
+		                </div>
+		              </div>
+		            )}
+		            {(hCoach[0]||aCoach[0])&&(
+		              <div>
+		                <div style={{fontSize:12,fontWeight:600,color:"#888",marginBottom:8}}>Coachs</div>
+		                <div style={{display:"flex",gap:12}}>
+		                  {[{coach:hCoach[0],team:fix.teams.home},{coach:aCoach[0],team:fix.teams.away}].filter(function(x){return x.coach;}).map(function(item,i){return(
+		                    <div key={i} style={{flex:1,display:"flex",alignItems:"center",gap:8,background:"#f8f8f8",borderRadius:8,padding:"8px"}}>
+		                      {item.coach.photo&&<img src={item.coach.photo} alt="" style={{width:36,height:36,borderRadius:"50%",objectFit:"cover",flexShrink:0}}/>}
+		                      <div style={{minWidth:0}}>
+		                        <div style={{fontSize:12,fontWeight:700,color:"#111",overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap"}}>{item.coach.name}</div>
+		                        <div style={{fontSize:11,color:"#888"}}>{item.team.name}</div>
+		                        {item.coach.nationality&&<div style={{fontSize:10,color:"#999"}}>{item.coach.nationality}</div>}
+		                      </div>
+		                    </div>
+		                  );})}
+		                </div>
+		              </div>
+		            )}
+		          </div>
+		        )}
+
 		        <div style={{background:"white",borderRadius:12,margin:"0 0 8px",padding:"14px 16px",boxShadow:"0 1px 4px rgba(0,0,0,.06)"}}>
 		          <div style={{textAlign:"center",marginBottom:8}}>
 		            <span style={{fontSize:14,fontWeight:700,color:"#e53535"}}>
@@ -1797,24 +1889,74 @@
 		        </div>
 
 		        {odds.length>0&&(function(){
-		          const bk=odds[0]?.bookmakers?.[0];
-		          const mw=bk?.bets?.find(function(b){return b.name==="Match Winner";});
-		          if(!mw)return null;
-		          const h=mw.values?.find(function(v){return v.value==="Home";})?.odd;
-		          const d=mw.values?.find(function(v){return v.value==="Draw";})?.odd;
-		          const a=mw.values?.find(function(v){return v.value==="Away";})?.odd;
-		          if(!h||!d||!a)return null;
+		          var bk=odds[0]?.bookmakers?.[0];
+		          if(!bk)return null;
+		          function getBet(name){return bk.bets?.find(function(b){return b.name===name;});}
+		          function getVal(bet,val){return bet?.values?.find(function(v){return v.value===val;})?.odd;}
+		          var mw=getBet("Match Winner");
+		          var dc=getBet("Double Chance");
+		          var btts=getBet("Both Teams To Score");
+		          var ou=getBet("Goals Over/Under");
+		          if(!mw&&!dc&&!btts&&!ou)return null;
 		          return(
 		            <div style={{background:"white",borderRadius:12,margin:"0 0 8px",boxShadow:"0 1px 4px rgba(0,0,0,.06)"}}>
-		              <div style={{padding:"10px 16px 6px",fontSize:12,fontWeight:600,color:"#888"}}>Cotes</div>
-		              <div style={{display:"grid",gridTemplateColumns:"1fr 1fr 1fr",borderTop:"1px solid #f0f0f0"}}>
-		                {[["1",h],["X",d],["2",a]].map(function(item,i){return(
-		                  <div key={i} style={{padding:"10px",textAlign:"center",borderRight:i<2?"1px solid #f0f0f0":"none"}}>
-		                    <div style={{fontSize:11,color:"#999",marginBottom:3}}>{item[0]}</div>
-		                    <div style={{fontSize:16,fontWeight:800,color:"#e08c00"}}>{item[1]}</div>
+		              <div style={{padding:"12px 16px 8px",fontSize:13,fontWeight:700,color:"#111"}}>Cotes <span style={{fontSize:11,fontWeight:400,color:"#999"}}>{bk.name}</span></div>
+		              {mw&&(
+		                <div style={{borderTop:"1px solid #f0f0f0"}}>
+		                  <div style={{padding:"8px 16px 4px",fontSize:11,color:"#888",fontWeight:600}}>Vainqueur du match</div>
+		                  <div style={{display:"grid",gridTemplateColumns:"1fr 1fr 1fr"}}>
+		                    {[["1",getVal(mw,"Home")],["X",getVal(mw,"Draw")],["2",getVal(mw,"Away")]].map(function(item,i){return(
+		                      <div key={i} style={{padding:"8px",textAlign:"center",borderRight:i<2?"1px solid #f0f0f0":"none"}}>
+		                        <div style={{fontSize:11,color:"#999",marginBottom:3}}>{item[0]}</div>
+		                        <div style={{fontSize:16,fontWeight:800,color:"#e08c00"}}>{item[1]||"-"}</div>
+		                      </div>
+		                    );})}
 		                  </div>
-		                );})}
-		              </div>
+		                </div>
+		              )}
+		              {dc&&(
+		                <div style={{borderTop:"1px solid #f0f0f0"}}>
+		                  <div style={{padding:"8px 16px 4px",fontSize:11,color:"#888",fontWeight:600}}>Double chance</div>
+		                  <div style={{display:"grid",gridTemplateColumns:"1fr 1fr 1fr"}}>
+		                    {[["1X",getVal(dc,"Home/Draw")],["12",getVal(dc,"Home/Away")],["X2",getVal(dc,"Draw/Away")]].map(function(item,i){return(
+		                      <div key={i} style={{padding:"8px",textAlign:"center",borderRight:i<2?"1px solid #f0f0f0":"none"}}>
+		                        <div style={{fontSize:11,color:"#999",marginBottom:3}}>{item[0]}</div>
+		                        <div style={{fontSize:15,fontWeight:800,color:"#e08c00"}}>{item[1]||"-"}</div>
+		                      </div>
+		                    );})}
+		                  </div>
+		                </div>
+		              )}
+		              {(btts||ou)&&(
+		                <div style={{borderTop:"1px solid #f0f0f0",display:"grid",gridTemplateColumns:"1fr 1fr"}}>
+		                  {btts&&(
+		                    <div style={{padding:"8px 12px",borderRight:"1px solid #f0f0f0"}}>
+		                      <div style={{fontSize:11,color:"#888",fontWeight:600,marginBottom:6}}>Les 2 marquent</div>
+		                      <div style={{display:"flex",gap:8}}>
+		                        {[["Oui",getVal(btts,"Yes")],["Non",getVal(btts,"No")]].map(function(item,i){return(
+		                          <div key={i} style={{flex:1,textAlign:"center",background:"#f8f8f8",borderRadius:6,padding:"5px 0"}}>
+		                            <div style={{fontSize:10,color:"#999"}}>{item[0]}</div>
+		                            <div style={{fontSize:14,fontWeight:700,color:"#e08c00"}}>{item[1]||"-"}</div>
+		                          </div>
+		                        );})}
+		                      </div>
+		                    </div>
+		                  )}
+		                  {ou&&(
+		                    <div style={{padding:"8px 12px"}}>
+		                      <div style={{fontSize:11,color:"#888",fontWeight:600,marginBottom:6}}>Over/Under 2.5</div>
+		                      <div style={{display:"flex",gap:8}}>
+		                        {[["Over",getVal(ou,"Over 2.5")],["Under",getVal(ou,"Under 2.5")]].map(function(item,i){return(
+		                          <div key={i} style={{flex:1,textAlign:"center",background:"#f8f8f8",borderRadius:6,padding:"5px 0"}}>
+		                            <div style={{fontSize:10,color:"#999"}}>{item[0]}</div>
+		                            <div style={{fontSize:14,fontWeight:700,color:"#e08c00"}}>{item[1]||"-"}</div>
+		                          </div>
+		                        );})}
+		                      </div>
+		                    </div>
+		                  )}
+		                </div>
+		              )}
 		            </div>
 		          );
 		        })()}
@@ -2016,74 +2158,90 @@
 		      {tab==="absents"&&<InjuriesPanel injuries={injuries} homeTeam={fix.teams.home} awayTeam={fix.teams.away}/>}
 
 		        {standings.length>0&&(function(){
-		          const lg=standings[0]?.[0];
+		          var lg=standings[0]?.[0];
 		          if(!lg||!lg.length)return null;
-		          const hid=fix.teams.home.id,aid=fix.teams.away.id;
+		          var hid=fix.teams.home.id,aid=fix.teams.away.id;
+		          var hRow=lg.find(function(t){return t.team?.id===hid;});
+		          var aRow=lg.find(function(t){return t.team?.id===aid;});
+		          var descColors={"Champions League":"#1a73e8","Europa League":"#f97316","Conference League":"#22c55e","Relegation":"#ef4444","Promotion":"#22c55e","Playoff":"#f59e0b"};
+		          function descColor(d){
+		            if(!d)return null;
+		            for(var k in descColors){if(d.includes(k))return descColors[k];}
+		            return null;
+		          }
+		          var [viewMode,setViewMode]=React.useState("all");
+		          function getStats(t){return viewMode==="home"?t.home:viewMode==="away"?t.away:t.all;}
 		          return(
 		            <div style={{background:"white",borderRadius:12,margin:"0 0 8px",padding:"16px",boxShadow:"0 1px 4px rgba(0,0,0,.06)"}}>
-		              <div style={{fontSize:15,fontWeight:700,color:"#111",marginBottom:12}}>Classements</div>
+		              <div style={{display:"flex",alignItems:"center",justifyContent:"space-between",marginBottom:12}}>
+		                <div style={{fontSize:15,fontWeight:700,color:"#111"}}>Classement</div>
+		                <div style={{display:"flex",gap:4}}>
+		                  {[["all","Tous"],["home","Dom."],["away","Ext."]].map(function(item,i){return(
+		                    <button key={i} onClick={function(){setViewMode(item[0]);}} style={{fontSize:11,fontWeight:600,padding:"4px 8px",borderRadius:6,border:"none",cursor:"pointer",background:viewMode===item[0]?"#1a1aff":"#f0f0f0",color:viewMode===item[0]?"white":"#555"}}>{item[1]}</button>
+		                  );})}
+		                </div>
+		              </div>
 		              <table style={{width:"100%",borderCollapse:"collapse"}}>
 		                <thead><tr>
-		                  <td style={{fontSize:11,color:"#999",paddingBottom:6,width:24}}>#</td>
-		                  <td style={{fontSize:11,color:"#999",paddingBottom:6}}>Equipe</td>
-		                  <td style={{fontSize:11,color:"#999",paddingBottom:6,textAlign:"center",width:32}}>J</td>
-		                  <td style={{fontSize:11,color:"#999",paddingBottom:6,textAlign:"center",width:40}}>Diff</td>
-		                  <td style={{fontSize:11,color:"#999",paddingBottom:6,textAlign:"right",width:40}}>PTS</td>
+		                  <td style={{fontSize:10,color:"#999",paddingBottom:6,width:22}}>#</td>
+		                  <td style={{fontSize:10,color:"#999",paddingBottom:6}}>Equipe</td>
+		                  <td style={{fontSize:10,color:"#999",paddingBottom:6,textAlign:"center",width:26}}>J</td>
+		                  <td style={{fontSize:10,color:"#999",paddingBottom:6,textAlign:"center",width:26}}>V</td>
+		                  <td style={{fontSize:10,color:"#999",paddingBottom:6,textAlign:"center",width:26}}>N</td>
+		                  <td style={{fontSize:10,color:"#999",paddingBottom:6,textAlign:"center",width:26}}>D</td>
+		                  <td style={{fontSize:10,color:"#999",paddingBottom:6,textAlign:"center",width:36}}>BP-BC</td>
+		                  <td style={{fontSize:10,color:"#999",paddingBottom:6,textAlign:"right",width:32}}>Pts</td>
 		                </tr></thead>
 		                <tbody>
 		                  {lg.map(function(t,i){
 		                    var im=t.team?.id===hid||t.team?.id===aid;
+		                    var st=getStats(t);
+		                    var dc=descColor(t.description);
 		                    return(
 		                      <tr key={i} style={{background:im?"#fff5f5":"transparent"}}>
-		                        <td style={{fontSize:13,fontWeight:im?700:400,color:"#111",padding:"5px 2px"}}>{t.rank}</td>
-		                        <td style={{padding:"5px 2px"}}>
-		                          <div style={{display:"flex",alignItems:"center",gap:6}}>
-		                            <img src={t.team?.logo} alt="" style={{width:18,height:18,objectFit:"contain"}}/>
-		                            <span style={{fontSize:13,fontWeight:im?700:400,color:"#111",overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap"}}>{t.team?.name}</span>
+		                        <td style={{padding:"4px 2px",verticalAlign:"middle"}}>
+		                          <div style={{display:"flex",alignItems:"center",gap:3}}>
+		                            {dc&&<div style={{width:3,height:14,borderRadius:2,background:dc,flexShrink:0}}/>}
+		                            <span style={{fontSize:12,fontWeight:im?700:400,color:"#111"}}>{t.rank}</span>
 		                          </div>
 		                        </td>
-		                        <td style={{fontSize:13,color:"#555",textAlign:"center",padding:"5px 2px"}}>{t.all?.played}</td>
-		                        <td style={{fontSize:13,color:"#555",textAlign:"center",padding:"5px 2px"}}>{t.goalsDiff>0?"+":""}{t.goalsDiff}</td>
-		                        <td style={{fontSize:13,fontWeight:700,color:im?"#e53535":"#111",textAlign:"right",padding:"5px 2px"}}>{t.points}</td>
+		                        <td style={{padding:"4px 2px"}}>
+		                          <div style={{display:"flex",alignItems:"center",gap:5}}>
+		                            <img src={t.team?.logo} alt="" style={{width:16,height:16,objectFit:"contain",flexShrink:0}}/>
+		                            <span style={{fontSize:12,fontWeight:im?700:400,color:"#111",overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap",maxWidth:90}}>{t.team?.name}</span>
+		                          </div>
+		                        </td>
+		                        <td style={{fontSize:12,color:"#555",textAlign:"center",padding:"4px 2px"}}>{st?.played}</td>
+		                        <td style={{fontSize:12,color:"#22c55e",fontWeight:600,textAlign:"center",padding:"4px 2px"}}>{st?.win}</td>
+		                        <td style={{fontSize:12,color:"#888",textAlign:"center",padding:"4px 2px"}}>{st?.draw}</td>
+		                        <td style={{fontSize:12,color:"#ef4444",fontWeight:600,textAlign:"center",padding:"4px 2px"}}>{st?.lose}</td>
+		                        <td style={{fontSize:11,color:"#555",textAlign:"center",padding:"4px 2px"}}>{st?.goals?.for}-{st?.goals?.against}</td>
+		                        <td style={{fontSize:13,fontWeight:700,color:im?"#e53535":"#111",textAlign:"right",padding:"4px 2px"}}>{t.points}</td>
 		                      </tr>
 		                    );
 		                  })}
 		                </tbody>
 		              </table>
-		            </div>
-		          );
-		        })()}
-		        {standings.length>0&&(function(){
-		          const lg=standings[0]?.[0];
-		          if(!lg||!lg.length)return null;
-		          const hid=fix.teams.home.id,aid=fix.teams.away.id;
-		          const hRow=lg.find(function(t){return t.team?.id===hid;});
-		          const aRow=lg.find(function(t){return t.team?.id===aid;});
-		          if(!hRow&&!aRow)return null;
-		          function FormBadges({row}){
-		            if(!row?.form)return null;
-		            var letters=row.form.slice(-6).split("");
-		            return(
-		              <div style={{display:"flex",gap:3}}>
-		                {letters.map(function(l,i){
-		                  var bg=l==="W"?"#22c55e":l==="L"?"#ef4444":"#94a3b8";
-		                  return <div key={i} style={{width:22,height:22,borderRadius:4,background:bg,display:"flex",alignItems:"center",justifyContent:"center",fontSize:11,fontWeight:700,color:"white"}}>{l==="W"?"G":l==="L"?"P":"N"}</div>;
-		                })}
-		              </div>
-		            );
-		          }
-		          return(
-		            <div style={{background:"white",borderRadius:12,margin:"0 0 8px",padding:"16px",boxShadow:"0 1px 4px rgba(0,0,0,.06)"}}>
-		              <div style={{fontSize:15,fontWeight:700,color:"#111",marginBottom:12}}>Forme</div>
-		              {[hRow,aRow].filter(Boolean).map(function(row,i){
-		                return(
-		                  <div key={i} style={{display:"flex",alignItems:"center",gap:10,marginBottom:i===0?10:0}}>
-		                    <img src={row.team?.logo} alt="" style={{width:22,height:22,objectFit:"contain"}}/>
-		                    <span style={{fontSize:13,fontWeight:600,color:"#111",flex:1,overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap"}}>{row.team?.name}</span>
-		                    <FormBadges row={row}/>
-		                  </div>
-		                );
-		              })}
+		              {(hRow||aRow)&&(
+		                <div style={{marginTop:10,paddingTop:10,borderTop:"1px solid #f0f0f0"}}>
+		                  <div style={{fontSize:12,fontWeight:600,color:"#888",marginBottom:8}}>Forme recente</div>
+		                  {[hRow,aRow].filter(Boolean).map(function(row,i){
+		                    var letters=(row.form||"").slice(-6).split("");
+		                    return(
+		                      <div key={i} style={{display:"flex",alignItems:"center",gap:8,marginBottom:i===0&&aRow?8:0}}>
+		                        <img src={row.team?.logo} alt="" style={{width:18,height:18,objectFit:"contain",flexShrink:0}}/>
+		                        <span style={{fontSize:12,fontWeight:600,color:"#111",flex:1,overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap"}}>{row.team?.name}</span>
+		                        <div style={{display:"flex",gap:3}}>
+		                          {letters.map(function(l,j){
+		                            var bg=l==="W"?"#22c55e":l==="L"?"#ef4444":"#94a3b8";
+		                            return <div key={j} style={{width:20,height:20,borderRadius:3,background:bg,display:"flex",alignItems:"center",justifyContent:"center",fontSize:10,fontWeight:700,color:"white"}}>{l==="W"?"G":l==="L"?"P":"N"}</div>;
+		                          })}
+		                        </div>
+		                      </div>
+		                    );
+		                  })}
+		                </div>
+		              )}
 		            </div>
 		          );
 		        })()}
@@ -2202,11 +2360,16 @@
 		        api(`/injuries?fixture=${fid}`,isDone?10800000:3600000,sig).catch(()=>[]),
 		      ]);
 		      const lid=fix.league.id, season=fix.league.season;
-		      const[standings,odds]=await Promise.all([
+		      const vid=fix.fixture.venue?.id;
+		      const[standings,odds,predictions,venue,hCoach,aCoach]=await Promise.all([
 		        api(`/standings?league=${lid}&season=${season}`,86400000,sig).catch(()=>[]),
 		        api(`/odds/live?fixture=${fid}`,60000,sig).catch(()=>api(`/odds?fixture=${fid}`,3600000,sig).catch(()=>[])),
+		        api(`/predictions?fixture=${fid}`,3600000,sig).catch(()=>[]),
+		        vid?api(`/venues?id=${vid}`,86400000,sig).catch(()=>[]):Promise.resolve([]),
+		        api(`/coaches?team=${hid}`,86400000,sig).catch(()=>[]),
+		        api(`/coaches?team=${aid}`,86400000,sig).catch(()=>[]),
 		      ]);
-		      setDet({data:{fixture:fix,stats,events:evts,lineups,players:plrs,h2h,injuries,standings,odds}});
+		      setDet({data:{fixture:fix,stats,events:evts,lineups,players:plrs,h2h,injuries,standings,odds,predictions,venue,hCoach,aCoach}});
 		    }catch(e){if(e.name!=="AbortError")setDet({error:e.message});}
 		  },[]);
 
