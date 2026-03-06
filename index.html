@@ -894,8 +894,8 @@
 		  };
 		  const Section=({grid,lineup,team,color,reverse,players})=><div style={{position:"relative",zIndex:1,padding:"18px 6px 8px"}}>
 		    <div style={{display:"flex",alignItems:"center",gap:6,justifyContent:reverse?"flex-end":"flex-start",marginBottom:12}}>
-		      {!reverse&&<><div style={{background:"rgba(0,0,0,.6)",borderRadius:7,padding:"4px 10px"}}><span style={{fontSize:12,fontWeight:900,color}}>{lineup?.formation}</span></div><img src={team?.logo} alt="" style={{width:22,height:22,objectFit:"contain"}} onError={e=>{e.target.style.display="none"}}/><span style={{fontSize:12,fontWeight:700,color:"rgba(255,255,255,.85)",maxWidth:130,overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap"}}>{team?.name}</span></>}
-		      {reverse&&<><span style={{fontSize:12,fontWeight:700,color:"rgba(255,255,255,.85)",maxWidth:130,overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap"}}>{team?.name}</span><img src={team?.logo} alt="" style={{width:22,height:22,objectFit:"contain"}} onError={e=>{e.target.style.display="none"}}/><div style={{background:"rgba(0,0,0,.6)",borderRadius:7,padding:"4px 10px"}}><span style={{fontSize:12,fontWeight:900,color}}>{lineup?.formation}</span></div></>}
+		      {!reverse&&<><div style={{background:"rgba(0,0,0,.6)",borderRadius:7,padding:"4px 10px"}}><span style={{fontSize:12,fontWeight:900,color}}>{lineup?.formation}</span></div><img src={team?.logo} alt="" style={{width:22,height:22,objectFit:"contain"}} onError={function(e){e.target.style.display="none"}}/><span style={{fontSize:12,fontWeight:700,color:"rgba(255,255,255,.85)",maxWidth:130,overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap"}}>{team?.name}</span></>}
+		      {reverse&&<><span style={{fontSize:12,fontWeight:700,color:"rgba(255,255,255,.85)",maxWidth:130,overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap"}}>{team?.name}</span><img src={team?.logo} alt="" style={{width:22,height:22,objectFit:"contain"}} onError={function(e){e.target.style.display="none"}}/><div style={{background:"rgba(0,0,0,.6)",borderRadius:7,padding:"4px 10px"}}><span style={{fontSize:12,fontWeight:900,color}}>{lineup?.formation}</span></div></>}
 		    </div>
 		    {(reverse?[...grid].reverse():grid).map((row,ri)=><div key={ri} style={{display:"flex",justifyContent:"space-evenly",alignItems:"flex-end",marginBottom:20}}>
 		      {row.map((p,pi)=>{const badge=getBadge(p,players,pitchFilter||"rating");return<PitchPlayer key={p.id??`${ri}-${pi}`} player={p} photoSrc={ph(players,p.id)} color={color} badgeVal={badge.val} badgeColor={badge.color}/>;})}</div>)}
@@ -1778,22 +1778,6 @@
 		      {tab==="evts"&&<div style={{background:"#fff",paddingBottom:20}}>
 		        {events.length===0&&isPartial&&<div style={{textAlign:"center",padding:"40px",color:"#888",display:"flex",flexDirection:"column",alignItems:"center",gap:10}}><Spin s={22}/><span style={{fontSize:13}}>Chargement...</span></div>}
 
-		        <div style={{background:"white",borderRadius:12,margin:"0 0 8px",padding:"14px 16px",boxShadow:"0 1px 4px rgba(0,0,0,.06)"}}>
-		          <div style={{textAlign:"center",marginBottom:8}}>
-		            <span style={{fontSize:14,fontWeight:700,color:"#e53535"}}>
-		              {fix.fixture.status?.short==="HT"?"Mi-temps":fix.fixture.status?.short==="FT"?"Termine":(fix.fixture.status?.elapsed||0)+"'"}
-		            </span>
-		          </div>
-		          <div style={{position:"relative",height:4,background:"#e5e7eb",borderRadius:4,margin:"0 0 8px"}}>
-		            <div style={{position:"absolute",left:0,top:0,height:"100%",width:Math.min(fix.fixture.status?.elapsed||0,90)/90*100+"%",background:"#e53535",borderRadius:4}}/>
-		          </div>
-		          <div style={{display:"flex",justifyContent:"space-between"}}>
-		            <span style={{fontSize:11,color:"#999"}}>{fix.fixture.date?new Date(fix.fixture.date).toLocaleTimeString("fr-FR",{hour:"2-digit",minute:"2-digit"}):""}</span>
-		            <span style={{fontSize:11,color:"#999"}}>MT</span>
-		            <span style={{fontSize:11,color:"#999"}}>FM</span>
-		          </div>
-		        </div>
-
 		        {events.length>0&&(()=>{
 		          // Calculer score evolutif
 		          let hScore=0,aScore=0;
@@ -1896,7 +1880,7 @@
 
       return<div style={{background:"white",borderRadius:12,margin:"0 0 8px",overflow:"hidden",boxShadow:"0 1px 4px rgba(0,0,0,.06)"}}>
         {secondHalf.length>0&&<div>
-          <HalfSep label={`2e mi-temps ${finalH} - ${finalA}`}/>
+          <HalfSep label={"2e mi-temps "+finalH+" - "+finalA}/>
           {[...secondHalf].reverse().map((e,i)=><EvtRow key={i} e={e}/>)}
         </div>}
         {firstHalf.length>0&&secondHalf.length>0&&(
@@ -1907,7 +1891,7 @@
           </div>
         )}
         {firstHalf.length>0&&<div>
-          <HalfSep label={`1er mi-temps ${htH} - ${htA}`}/>
+          <HalfSep label={"1er mi-temps "+htH+" - "+htA}/>
           {[...firstHalf].reverse().map((e,i)=><EvtRow key={i} e={e}/>)}
         </div>}
       </div>;
@@ -1989,38 +1973,6 @@
 
 		      {}
 		      {tab==="absents"&&<InjuriesPanel injuries={injuries} homeTeam={fix.teams.home} awayTeam={fix.teams.away}/>}
-
-		        {standings[0]?.[0]?.length>0&&<div style={{background:"white",borderRadius:12,margin:"0 0 8px",padding:"16px",boxShadow:"0 1px 4px rgba(0,0,0,.06)"}}>
-		          <div style={{fontSize:15,fontWeight:700,color:"#111",marginBottom:12}}>Classements</div>
-		          <table style={{width:"100%",borderCollapse:"collapse"}}>
-		            <thead><tr>
-		              <td style={{fontSize:11,color:"#999",paddingBottom:6,width:24}}>#</td>
-		              <td style={{fontSize:11,color:"#999",paddingBottom:6}}>Equipe</td>
-		              <td style={{fontSize:11,color:"#999",paddingBottom:6,textAlign:"center",width:32}}>J</td>
-		              <td style={{fontSize:11,color:"#999",paddingBottom:6,textAlign:"center",width:40}}>Diff</td>
-		              <td style={{fontSize:11,color:"#999",paddingBottom:6,textAlign:"right",width:40}}>PTS</td>
-		            </tr></thead>
-		            <tbody>
-		              {standings[0][0].map((t,i)=>{
-		                const im=t.team?.id===fix.teams.home.id||t.team?.id===fix.teams.away.id;
-		                return(
-		                  <tr key={i} style={{background:im?"#fff5f5":"transparent"}}>
-		                    <td style={{fontSize:13,fontWeight:im?700:400,color:"#111",padding:"5px 0"}}>{t.rank}</td>
-		                    <td style={{padding:"5px 0"}}>
-		                      <div style={{display:"flex",alignItems:"center",gap:6}}>
-		                        <img src={t.team?.logo} style={{width:18,height:18,objectFit:"contain"}} onError={function(ev){ev.target.style.display="none"}}/>
-		                        <span style={{fontSize:13,fontWeight:im?700:400,color:"#111",overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap"}}>{t.team?.name}</span>
-		                      </div>
-		                    </td>
-		                    <td style={{fontSize:13,color:"#555",textAlign:"center",padding:"5px 0"}}>{t.all?.played}</td>
-		                    <td style={{fontSize:13,color:"#555",textAlign:"center",padding:"5px 0"}}>{t.goalsDiff>0?"+":""}{t.goalsDiff}</td>
-		                    <td style={{fontSize:13,fontWeight:700,color:im?"#e53535":"#111",textAlign:"right",padding:"5px 0"}}>{t.points}</td>
-		                  </tr>
-		                );
-		              })}
-		            </tbody>
-		          </table>
-		        </div>}
 
 
 		      {tab==="h2h"&&<div>
@@ -2600,7 +2552,7 @@
 		          <div className="bc" style={{width:30,textAlign:"center",flexShrink:0}}>{md?<span style={{fontSize:24,lineHeight:1}}>{md}</span>:<span className="bc" style={{fontSize:14,fontWeight:800,color:T.t4}}>{i+1}</span>}</div>
 		          <div style={{position:"relative",flexShrink:0}}>
 		            <Avatar src={pl.photo} size={44} ring={mc}/>
-		            {st2?.team?.logo&&<img src={st2.team.logo} style={{position:"absolute",bottom:-1,right:-1,width:17,height:17,borderRadius:8,objectFit:"contain",background:T.bg2,border:`1.5px solid ${T.bg0}`}} alt="" onError={e=>{e.target.style.display="none"}}/>}
+		            {st2?.team?.logo&&<img src={st2.team.logo} style={{position:"absolute",bottom:-1,right:-1,width:17,height:17,borderRadius:8,objectFit:"contain",background:T.bg2,border:`1.5px solid ${T.bg0}`}} alt="" onError={function(e){e.target.style.display="none"}}/>}
 		          </div>
 		          <div style={{flex:1,minWidth:0}}>
 		            <div className="bc" style={{fontSize:15,fontWeight:800,overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap",letterSpacing:.2}}>{pl.name}</div>
@@ -4465,7 +4417,7 @@
 		                notifSentRef.current.add(gKey);
 		                const scorer=lastGoal.player?.name?.split(" ").pop()||"";
 		                const team=lastGoal.team?.name||"";
-		                new Notification(`⚽ But ! ${team}`,{body:`${hName} ${hg} - ${ag} ${aName}\n${scorer} ${lastGoal.time?.elapsed}'`});
+		                new Notification(`⚽ But ! ${team}`,{body:`${hName} ${hg} - ${ag} ${aName}\n${scorer} ${lastGoal.time?.elapsed}`});
 		              }
 		            }
 		          }
@@ -4644,7 +4596,7 @@
                 return[
                   <span key={"r"+i} style={{fontSize:13,fontWeight:isMatch?700:400,color:"#111"}}>{t.rank}</span>,
                   <div key={"n"+i} style={{display:"flex",alignItems:"center",gap:6}}>
-                    <img src={t.team?.logo} style={{width:18,height:18,objectFit:"contain"}} onError={e=>{e.target.style.display="none"}}/>
+                    <img src={t.team?.logo} style={{width:18,height:18,objectFit:"contain"}} onError={function(e){e.target.style.display="none"}}/>
                     <span style={{fontSize:13,fontWeight:isMatch?700:400,color:"#111",overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap"}}>{t.team?.name}</span>
                   </div>,
                   <span key={"j"+i} style={{fontSize:13,color:"#555",textAlign:"center"}}>{t.all?.played}</span>,
