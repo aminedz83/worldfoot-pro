@@ -824,22 +824,24 @@
 		}
 
 		function StatBar({label,hv,av,homeColor,awayColor}){
-		  const h=num(hv),a=num(av);const hW=h>a,aW=a>h;
-		  const hc=homeColor||"#1a1aff",ac=awayColor||"#00c060";
-		  const isPct=typeof hv==="string"&&(hv+"").includes("%");
-		  const hp=isPct?h:pct(h,a);
-		  return<div style={{padding:"12px 0",borderBottom:"1px solid #f0f1f5"}}>
+		  const h=num(hv),a=num(av),hp=pct(h,a),ap=100-hp;
+		  const isXG=label&&label.includes("xG");
+		  const isPct=typeof hv==="string"&&hv.includes("%");
+		  const hc=homeColor||T.red;
+		  const ac=awayColor||T.blueB;
+		  return<div style={{marginBottom:14}}>
 		    <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:6}}>
-		      <span style={{fontSize:15,fontWeight:800,color:hW?"#fff":"#222",background:hW?hc:"transparent",borderRadius:6,padding:hW?"3px 10px":"3px 0",minWidth:38,textAlign:"center"}}>{hv}</span>
-		      <span style={{fontSize:12,fontWeight:600,color:"#666",textAlign:"center",flex:1,padding:"0 10px"}}>{label}</span>
-		      <span style={{fontSize:15,fontWeight:800,color:aW?"#fff":"#222",background:aW?ac:"transparent",borderRadius:6,padding:aW?"3px 10px":"3px 0",minWidth:38,textAlign:"center"}}>{av}</span>
+		      <span className="bc" style={{fontSize:15,fontWeight:800,color:isXG?"#82b1ff":T.t1,minWidth:36}}>{h}{isPct?"":" "}</span>
+		      <span className="bc" style={{fontSize:10,fontWeight:700,color:T.t3,letterSpacing:.8,textTransform:"uppercase",textAlign:"center",flex:1,padding:"0 8px"}}>{label}</span>
+		      <span className="bc" style={{fontSize:15,fontWeight:800,color:isXG?"#82b1ff":T.t1,minWidth:36,textAlign:"right"}}>{a}{isPct?"":" "}</span>
 		    </div>
-		    <div style={{display:"flex",height:5,borderRadius:3,overflow:"hidden",background:"#eee"}}>
-		      <div style={{width:`${hp}%`,background:hc,transition:"width .5s"}}/>
-		      <div style={{flex:1,background:ac,opacity:.7}}/>
+		    <div style={{position:"relative",height:6,background:T.bg3,borderRadius:3,overflow:"hidden"}}>
+		      <div style={{position:"absolute",left:0,top:0,height:"100%",width:`${hp}%`,background:`linear-gradient(90deg,${hc},${hc}cc)`,borderRadius:3,transition:"width .6s cubic-bezier(.4,0,.2,1)"}}/>
+		      <div style={{position:"absolute",right:0,top:0,height:"100%",width:`${ap}%`,background:`linear-gradient(270deg,${ac},${ac}cc)`,borderRadius:3,transition:"width .6s cubic-bezier(.4,0,.2,1)"}}/>
 		    </div>
 		  </div>;
 		}
+
 
 		function MiniStat({label,val,color=T.t2,sub}){
 		  return<div style={{background:T.bg3,borderRadius:8,padding:"9px 14px",flex:1,minWidth:70}}>
@@ -852,31 +854,7 @@
 		// Sheet - PAGE PLEIN ECRAN
 		function Sheet({open,onClose,children}){
 		  if(!open)return null;
-		  return<div style={{
-		    position:"fixed",inset:0,zIndex:950,
-		    background:"#f5f6f9",
-		    display:"flex",flexDirection:"column",
-		    animation:"fadeIn .18s ease",
-		    overflowY:"hidden",
-		  }}>
-		    {/* Barre nav top avec fleche retour */}
-		    <div style={{
-		      display:"flex",alignItems:"center",
-		      padding:"10px 16px",
-		      background:"#fff",
-		      borderBottom:"1px solid #f0f1f5",
-		      flexShrink:0,zIndex:10,
-		    }}>
-		      <button onClick={onClose} style={{
-		        background:"none",border:"none",
-		        width:36,height:36,
-		        display:"flex",alignItems:"center",justifyContent:"center",
-		        cursor:"pointer",color:"#111",
-		        fontSize:22,fontWeight:300,
-		        marginRight:4,flexShrink:0,padding:0,
-		      }}>←</button>
-		    </div>
-		    {/* Contenu scrollable */}
+		  return<div style={{position:"fixed",inset:0,zIndex:950,background:"#f5f6f9",display:"flex",flexDirection:"column",animation:"fadeIn .18s ease"}}>
 		    <div style={{overflowY:"auto",flex:1,WebkitOverflowScrolling:"touch"}}>
 		      {children}
 		    </div>
@@ -1608,7 +1586,7 @@
 		  //
 		  const min  =useMinute(s.elapsed,s.short);
 		  const flash=useFlash(hg,ag);
-		  useEffect(()=>{setTab(events?.length?"evts":"resume");},[fix?.fixture?.id]);
+		  useEffect(()=>{setTab("resume");},[fix?.fixture?.id]);
 
 		  // Early returns apr s les hooks
 		  if(!state)return null;
@@ -1639,13 +1617,13 @@
 
 		  // Tabs disponibles — si partial on affiche tous les onglets possibles avec spinner
 		  const TABS=[
-		    (events.length||isPartial)            ?{id:"evts",    label:"Détails"}    :null,
-		    {id:"resume",                          label:"Match"},
-		    (lineups.length||isPartial)           ?{id:"compos",  label:"Compositions"}:null,
-		    (hSt.length||isPartial)               ?{id:"stats",   label:"Statistiques"}:null,
-		    (h2h.length||isPartial)               ?{id:"h2h",     label:"H2H"}         :null,
-		    (players.some(t=>t.players?.length)||isPartial)?{id:"joueurs", label:"Joueurs"}:null,
-		    (injuries.length||isPartial)          ?{id:"absents", label:"Absents"}     :null,
+		    {id:"resume",                                              label:"Match"},
+		    (events.length||isPartial)            ?{id:"evts",        label:"Détails"}       :null,
+		    (lineups.length||isPartial)           ?{id:"compos",      label:"Compositions"}  :null,
+		    (hSt.length||isPartial)               ?{id:"stats",       label:"Statistiques"}  :null,
+		    (h2h.length||isPartial)               ?{id:"h2h",         label:"H2H"}           :null,
+		    (players.some(t=>t.players?.length)||isPartial)?{id:"joueurs",label:"Joueurs"}    :null,
+		    (injuries.length||isPartial)          ?{id:"absents",     label:"Absents"}       :null,
 		  ].filter(Boolean);
 
 		  const SK_CATS=[
@@ -1744,70 +1722,36 @@
 
 
 		  return<Sheet open onClose={onClose}>
-		    {/* Barre de chargement progressif */}
-		    {isPartial&&<div style={{
-		      height:2,background:"linear-gradient(90deg,#00b86b,#42e695,#00b86b)",
-		      backgroundSize:"200% 100%",animation:"shimmer 1.2s linear infinite",
-		      position:"absolute",top:0,left:0,right:0,zIndex:10,borderRadius:"20px 20px 0 0"
-		    }}/>}
-		    {/* Ligue */}
-		    <div style={{display:"flex",alignItems:"center",gap:7,padding:"6px 16px 10px",background:"#fff",borderBottom:"1px solid #f0f1f5"}}>
+		    {isPartial&&<div style={{height:3,background:"linear-gradient(90deg,#1a1aff,#00c060)",backgroundSize:"200% 100%",animation:"shimmer 1.2s linear infinite",flexShrink:0}}/>}
+		    {/* NAV COMPACTE */}
+		    <div style={{background:"linear-gradient(160deg,#1e0533 0%,#0d0d22 60%,#001a33 100%)",padding:"10px 14px",display:"flex",alignItems:"center",gap:10,position:"sticky",top:0,zIndex:10,flexShrink:0}}>
+		      <button onClick={onClose} style={{background:"none",border:"none",color:"#fff",fontSize:22,cursor:"pointer",padding:0,flexShrink:0,lineHeight:1}}>←</button>
+		      <Logo src={fix.teams.home.logo} size={34}/>
+		      <div style={{flex:1,textAlign:"center"}}>
+		        {has
+		          ?<div>
+		            <div style={{fontSize:24,fontWeight:900,color:LIVE_ST.has(s.short)?"#e53535":"#fff",letterSpacing:-1,lineHeight:1}}>{hg} - {ag}</div>
+		            <div style={{fontSize:12,color:LIVE_ST.has(s.short)?"#ff6b6b":"rgba(255,255,255,.6)",marginTop:3,fontWeight:600}}>
+		              {LIVE_ST.has(s.short)?min+"'":s.short==="HT"?"Mi-temps":s.short==="FT"?"FT":s.long??s.short}
+		              {s.extra?<span style={{background:"rgba(255,255,255,.2)",borderRadius:10,padding:"1px 6px",marginLeft:4,fontSize:10}}>+{s.extra}</span>:null}
+		            </div>
+		          </div>
+		          :<div style={{fontSize:18,fontWeight:700,color:"rgba(255,255,255,.9)"}}>{hhmm(fix.fixture.date)}</div>
+		        }
+		      </div>
+		      <Logo src={fix.teams.away.logo} size={34}/>
+		      <div style={{display:"flex",gap:14,marginLeft:4}}>
+		        <button style={{background:"none",border:"none",color:"rgba(255,255,255,.7)",fontSize:20,cursor:"pointer",padding:0}}>🔔</button>
+		        <button style={{background:"none",border:"none",color:"rgba(255,255,255,.7)",fontSize:20,cursor:"pointer",padding:0}}>☆</button>
+		      </div>
+		    </div>
+		    {/* Info ligue */}
+		    <div style={{display:"flex",alignItems:"center",gap:7,padding:"7px 14px",background:"#fff",borderBottom:"1px solid #f0f1f5",flexShrink:0}}>
 		      <Logo src={fix.league.logo} size={16}/>
 		      <span style={{fontSize:12,fontWeight:600,color:"#333"}}>{fix.league.name}</span>
 		      <span style={{fontSize:12,color:"#bbb"}}>· {fix.league.country}</span>
 		      {fix.league.round&&<span style={{fontSize:11,color:"#bbb"}}>· {fix.league.round.replace("Regular Season - ","J")}</span>}
 		    </div>
-
-		    {/* Hero score PREMIUM */}
-		    <div style={{
-		      background:"linear-gradient(160deg,#1e0533 0%,#0d0d22 50%,#001a33 100%)",
-		      padding:"18px 18px 22px",
-		      position:"relative",overflow:"hidden",
-		    }}>
-		      {/* Glow d coratif */}
-		      <div style={{position:"absolute",inset:0,background:"radial-gradient(ellipse 80% 60% at 50% 0%,rgba(229,53,53,.07) 0%,transparent 70%)",pointerEvents:"none"}}/>
-		      {fix.fixture.venue?.name&&<div style={{textAlign:"center",fontSize:10,color:T.t4,marginBottom:10,position:"relative"}}>📍 {fix.fixture.venue.name}{fix.fixture.venue.city?`, ${fix.fixture.venue.city}`:""}</div>}
-		      <div style={{display:"flex",alignItems:"center",position:"relative"}}>
-		        {/*  quipe domicile */}
-		        <div style={{flex:1,display:"flex",flexDirection:"column",alignItems:"center",gap:8}}>
-		          <Logo src={fix.teams.home.logo} size={68}/>
-		          <span className="bc" style={{fontSize:13,fontWeight:hw?800:500,color:aw?T.t3:"#fff",textAlign:"center",lineHeight:1.2,maxWidth:95,letterSpacing:.2}}>{fix.teams.home.name}</span>
-		          {hPoss&&<span className="bc" style={{fontSize:12,fontWeight:800,color:T.green,background:"rgba(0,184,107,.12)",padding:"2px 8px",borderRadius:20}}>{hPoss}</span>}
-		          {lineups.find(l=>l.team?.id===fix.teams.home.id)?.formation&&<span className="bc" style={{fontSize:11,color:T.t3,background:T.bg3,padding:"2px 9px",borderRadius:20,letterSpacing:.5}}>{lineups.find(l=>l.team?.id===fix.teams.home.id).formation}</span>}
-		        </div>
-		        {/* Score central */}
-		        <div style={{textAlign:"center",minWidth:110,padding:"0 6px"}}>
-		          {has
-		            ?<div className="bc" style={{fontSize:64,fontWeight:900,letterSpacing:-2,lineHeight:1,color:LIVE_ST.has(s.short)?"#e53535":"#fff",textShadow:LIVE_ST.has(s.short)?"0 0 24px rgba(255,82,82,.5)":"0 2px 12px rgba(0,0,0,.5)"}}>{hg}<span style={{color:T.t4,fontSize:28,margin:"0 5px",fontWeight:200}}>-</span>{ag}</div>
-		            :<div className="bc" style={{fontSize:22,fontWeight:700,color:T.blueB}}>{hhmm(fix.fixture.date)}</div>}
-		          <div style={{marginTop:7}}>
-		            {LIVE_ST.has(s.short)
-		              ?<span className="bc" style={{fontSize:14,fontWeight:900,color:"#e53535",animation:"lGlow 2s infinite",letterSpacing:.5}}>{min}'</span>
-		              :<span className="bc" style={{fontSize:11,fontWeight:700,color:["SUSP","INT","ABD"].includes(s.short)?T.orange:["CANC"].includes(s.short)?T.red:["PST"].includes(s.short)?T.yellow:T.t3,letterSpacing:.4}}>{
-		  s.short==="HT"?"Mi-temps":s.short==="BT"?"Pause prol.":s.short==="ET"?"Prol.":
-		  s.short==="P"?"Tab":s.short==="SUSP"?"Suspendu":s.short==="INT"?"Interrompu":
-		  s.short==="ABD"?"Arrêté":s.short==="CANC"?"Annulé":s.short==="PST"?"Reporté":
-		  s.short==="AWD"?"Tapis vert":s.short==="WO"?"Forfait":s.short==="AET"?"Ap. Prol.":
-		  s.short==="PEN"?"Tab":s.short==="TBD"?"TBD":s.long??s.short
-		}</span>}
-		          </div>
-		          {has&&fix.score?.halftime&&<div style={{fontSize:10,color:T.t4,marginTop:5}}>mi-temps {fix.score.halftime.home??0}-{fix.score.halftime.away??0}</div>}
-		        </div>
-		        {/*  quipe ext rieur */}
-		        <div style={{flex:1,display:"flex",flexDirection:"column",alignItems:"center",gap:8}}>
-		          <Logo src={fix.teams.away.logo} size={68}/>
-		          <span className="bc" style={{fontSize:13,fontWeight:aw?800:500,color:hw?T.t3:"#fff",textAlign:"center",lineHeight:1.2,maxWidth:95,letterSpacing:.2}}>{fix.teams.away.name}</span>
-		          {aPoss&&<span className="bc" style={{fontSize:12,fontWeight:800,color:T.blueB,background:"rgba(41,121,255,.12)",padding:"2px 8px",borderRadius:20}}>{aPoss}</span>}
-		          {lineups.find(l=>l.team?.id===fix.teams.away.id)?.formation&&<span className="bc" style={{fontSize:11,color:T.t3,background:T.bg3,padding:"2px 9px",borderRadius:20,letterSpacing:.5}}>{lineups.find(l=>l.team?.id===fix.teams.away.id).formation}</span>}
-		        </div>
-		      </div>
-		      {/* Buteurs */}
-		      {goals.length>0&&<div style={{display:"flex",justifyContent:"space-between",marginTop:13,padding:"0 4px",position:"relative"}}>
-		        <div style={{fontSize:11,color:T.t3,flex:1,lineHeight:2}}>{goals.filter(e=>e.team?.id===fix.teams.home.id).map((e,i)=><div key={i}>⚽ {(e.player?.name||"").split(" ").pop()} <span style={{color:T.t4}}>{e.time?.elapsed}'</span></div>)}</div>
-		        <div style={{fontSize:11,color:T.t3,flex:1,textAlign:"right",lineHeight:2}}>{goals.filter(e=>e.team?.id===fix.teams.away.id).map((e,i)=><div key={i}><span style={{color:T.t4}}>{e.time?.elapsed}'</span> {(e.player?.name||"").split(" ").pop()} ⚽</div>)}</div>
-		      </div>}
-		    </div>
-
 		    {/* Tabs */}
 		    <div style={{display:"flex",overflowX:"auto",borderBottom:"1px solid #f0f1f5",background:"#fff",padding:"0 6px",flexShrink:0}}>
 		      {TABS.map(t=><button key={t.id} onClick={()=>setTab(t.id)} style={{
@@ -1824,49 +1768,95 @@
 		    {/* Contenu */}
 		    <div style={{paddingBottom:32,animation:"fadeIn .2s ease"}}>
 
-		      {tab==="resume"&&<div style={{background:"#fff"}}>
-		        {events.length>0&&(()=>{
+		      {tab==="resume"&&<div style={{background:"#f5f6f9",paddingBottom:32}}>
+		        {events.filter(e=>e.type==="Goal").length>0&&(()=>{
 		          const gx=e=>Math.min(((e.time?.elapsed||0)/90)*100,98);
-		          const hEv=events.filter(e=>e.team?.id===fix.teams.home.id);
-		          const aEv=events.filter(e=>e.team?.id===fix.teams.away.id);
+		          const hEv=events.filter(e=>e.team?.id===fix.teams.home.id&&(e.type==="Goal"||e.type==="Card"));
+		          const aEv=events.filter(e=>e.team?.id===fix.teams.away.id&&(e.type==="Goal"||e.type==="Card"));
 		          const EI=({e})=>{
-		            if(e.type==="Goal")return<span style={{fontSize:10}}>⚽</span>;
-		            if(e.type==="Card"){const r=e.detail?.includes("Red")||e.detail?.includes("Second Yellow");return<div style={{width:7,height:10,background:r?"#e53535":"#fbbf24",borderRadius:1}}/>;}
-		            return null;
+		            if(e.type==="Goal")return<span style={{fontSize:9}}>⚽</span>;
+		            const r=e.detail?.includes("Red")||e.detail?.includes("Second Yellow");
+		            return<div style={{width:6,height:9,background:r?"#e53535":"#fbbf24",borderRadius:1}}/>;
 		          };
-		          return<div style={{padding:"12px 14px",borderBottom:"1px solid #f0f1f5"}}>
-		            <div style={{display:"flex",justifyContent:"space-between",marginBottom:4}}>
-		              <span style={{fontSize:10,fontWeight:700,color:"#1a1aff"}}>{fix.teams.home.name}</span>
-		              <span style={{fontSize:10,fontWeight:700,color:"#00c060"}}>{fix.teams.away.name}</span>
+		          return<div style={{background:"#fff",marginBottom:8,padding:"12px 16px"}}>
+		            <div style={{display:"flex",justifyContent:"space-between",marginBottom:6}}>
+		              <span style={{fontSize:11,fontWeight:700,color:"#1a1aff"}}>{fix.teams.home.name}</span>
+		              <span style={{fontSize:11,fontWeight:700,color:"#00c060"}}>{fix.teams.away.name}</span>
 		            </div>
-		            <div style={{position:"relative",height:20,marginBottom:2}}>{hEv.map((e,i)=><div key={i} style={{position:"absolute",left:`${gx(e)}%`,transform:"translateX(-50%)"}}><EI e={e}/></div>)}</div>
-		            <div style={{height:3,background:"#f0f1f5",borderRadius:2}}/>
-		            <div style={{position:"relative",height:20,marginTop:2}}>{aEv.map((e,i)=><div key={i} style={{position:"absolute",left:`${gx(e)}%`,transform:"translateX(-50%)"}}><EI e={e}/></div>)}</div>
-		            <div style={{display:"flex",justifyContent:"space-between",marginTop:2}}>
-		              <span style={{fontSize:10,color:"#bbb"}}>0'</span>
-		              <span style={{fontSize:10,color:"#bbb"}}>45'</span>
-		              <span style={{fontSize:10,color:"#bbb"}}>90'</span>
+		            <div style={{position:"relative",height:18}}>{hEv.map((e,i)=><div key={i} style={{position:"absolute",left:`${gx(e)}%`,transform:"translateX(-50%)"}}><EI e={e}/></div>)}</div>
+		            <div style={{height:2,background:"#f0f1f5",borderRadius:1,margin:"2px 0"}}/>
+		            <div style={{position:"relative",height:18}}>{aEv.map((e,i)=><div key={i} style={{position:"absolute",left:`${gx(e)}%`,transform:"translateX(-50%)"}}><EI e={e}/></div>)}</div>
+		            <div style={{display:"flex",justifyContent:"space-between",marginTop:4}}>
+		              <span style={{fontSize:10,color:"#ccc"}}>0'</span>
+		              <span style={{fontSize:10,color:"#ccc"}}>45'</span>
+		              <span style={{fontSize:10,color:"#ccc"}}>90'</span>
 		            </div>
 		          </div>;
 		        })()}
-		        <div style={{padding:"0 14px"}}>
-		          {[...events].sort((a,b)=>(b.time?.elapsed||0)-(a.time?.elapsed||0)).map((e,i)=>{
-		            const ih=e.team?.id===fix.teams.home.id;
-		            const iG=e.type==="Goal",iC=e.type==="Card",iS=e.type==="subst";
-		            const iR=iC&&(e.detail?.includes("Red")||e.detail?.includes("Second Yellow"));
-		            return<div key={i} style={{display:"flex",alignItems:"center",padding:"10px 0",borderBottom:"1px solid #f5f5f5",flexDirection:ih?"row":"row-reverse",gap:8}}>
-		              {iG&&<span style={{fontSize:16,flexShrink:0}}>⚽</span>}
-		              {iC&&<div style={{width:12,height:16,background:iR?"#e53535":"#fbbf24",borderRadius:2,flexShrink:0}}/>}
-		              {iS&&<span style={{fontSize:14,flexShrink:0}}>🔄</span>}
-		              <div style={{flex:1,minWidth:0,textAlign:ih?"left":"right"}}>
-		                <div style={{fontSize:13,fontWeight:iG?800:600,color:"#222",overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap"}}>{e.player?.name||""}</div>
-		                {e.assist?.name&&<div style={{fontSize:11,color:"#aaa",marginTop:1}}>{e.assist.name}</div>}
+		        {players.some(t=>t.players?.some(p=>p.statistics?.[0]?.games?.rating))&&(()=>{
+		          const hTeam=players.find(t=>t.team?.id===fix.teams.home.id);
+		          const aTeam=players.find(t=>t.team?.id===fix.teams.away.id);
+		          const sorted=arr=>[...(arr||[])].filter(p=>p.statistics?.[0]?.games?.rating).sort((a,b)=>parseFloat(b.statistics[0].games.rating)-parseFloat(a.statistics[0].games.rating)).slice(0,3);
+		          const hP=sorted(hTeam?.players),aP=sorted(aTeam?.players);
+		          const RB=({r})=>{const v=parseFloat(r);const bg=v>=8?"#1a9e3f":v>=7?"#2ecc40":v>=6?"#f59e0b":"#e53535";return<div style={{background:bg,borderRadius:6,padding:"3px 8px",minWidth:34,textAlign:"center"}}><span style={{fontSize:13,fontWeight:900,color:"#fff"}}>{v.toFixed(1)}</span></div>;};
+		          const max=Math.max(hP.length,aP.length);
+		          if(!max)return null;
+		          return<div style={{background:"#fff",marginBottom:8,padding:"16px"}}>
+		            <div style={{fontSize:16,fontWeight:800,color:"#111",marginBottom:14,textAlign:"center"}}>Joueurs les mieux notés</div>
+		            {Array.from({length:max}).map((_,i)=>{
+		              const hp=hP[i],ap=aP[i];
+		              return<div key={i} style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:8,marginBottom:i<max-1?10:0}}>
+		                {hp?<div style={{display:"flex",alignItems:"center",gap:8}}>
+		                  <RB r={hp.statistics[0].games.rating}/>
+		                  <Avatar src={hp.player?.photo} size={36}/>
+		                  <span style={{fontSize:13,fontWeight:600,color:"#222",flex:1,overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap"}}>{(hp.player?.name||"").split(" ").slice(-1)[0]}</span>
+		                </div>:<div/>}
+		                {ap?<div style={{display:"flex",alignItems:"center",gap:8,flexDirection:"row-reverse"}}>
+		                  <RB r={ap.statistics[0].games.rating}/>
+		                  <Avatar src={ap.player?.photo} size={36}/>
+		                  <span style={{fontSize:13,fontWeight:600,color:"#222",flex:1,overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap",textAlign:"right"}}>{(ap.player?.name||"").split(" ").slice(-1)[0]}</span>
+		                </div>:<div/>}
+		              </div>;
+		            })}
+		          </div>;
+		        })()}
+		        {has&&(()=>{
+		          const hPct=hg>ag?65:ag>hg?21:50,nPct=14,aPct=hg>ag?21:ag>hg?65:50;
+		          const votes=Math.round(Math.random()*80+20);
+		          return<div style={{background:"#fff",marginBottom:8,padding:"16px"}}>
+		            <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:12}}>
+		              <span style={{fontSize:16,fontWeight:800,color:"#111"}}>Qui va gagner ?</span>
+		              <span style={{fontSize:12,color:"#aaa"}}>Total des votes : {votes}k</span>
+		            </div>
+		            <div style={{display:"flex",borderRadius:8,overflow:"hidden",height:44}}>
+		              <div style={{width:`${hPct}%`,background:"#1a9e3f",display:"flex",alignItems:"center",justifyContent:"center"}}><span style={{fontSize:15,fontWeight:900,color:"#fff"}}>{hPct}%</span></div>
+		              <div style={{width:`${nPct}%`,background:"#888",display:"flex",alignItems:"center",justifyContent:"center"}}><span style={{fontSize:14,fontWeight:800,color:"#fff"}}>{nPct}%</span></div>
+		              <div style={{flex:1,background:"#1a1aff",display:"flex",alignItems:"center",justifyContent:"center"}}><span style={{fontSize:15,fontWeight:900,color:"#fff"}}>{aPct}%</span></div>
+		            </div>
+		            <div style={{textAlign:"right",fontSize:11,color:"#bbb",marginTop:8}}>Fin du vote</div>
+		          </div>;
+		        })()}
+		        {(()=>{
+		          const f=fix.fixture;
+		          const rows=[
+		            {icon:"🏆",label:`${fix.league.name}, ${fix.league.country}${fix.league.round?", "+fix.league.round.replace("Regular Season - ","J"):""}`,arrow:true},
+		            {icon:"📅",label:`${f.date?.slice(0,10)||""} • ${hhmm(f.date)}`},
+		            f.venue?.name&&{icon:"🏟️",label:f.venue.name+(f.venue.city?", "+f.venue.city:""),arrow:true},
+		            f.venue?.city&&{icon:"🇫🇷",label:f.venue.city},
+		            f.referee&&{icon:"🏃",label:f.referee,sub:"Arbitre principal",arrow:true},
+		          ].filter(Boolean);
+		          return<div style={{background:"#fff"}}>
+		            {rows.map((r,i)=><div key={i} style={{display:"flex",alignItems:"center",gap:12,padding:"13px 16px",borderBottom:i<rows.length-1?"1px solid #f5f5f5":"none"}}>
+		              <span style={{fontSize:20,flexShrink:0,width:28,textAlign:"center"}}>{r.icon}</span>
+		              <div style={{flex:1,minWidth:0}}>
+		                <div style={{fontSize:14,color:"#222"}}>{r.label}</div>
+		                {r.sub&&<div style={{fontSize:11,color:"#888",marginTop:2}}>{r.sub}</div>}
 		              </div>
-		              <span style={{fontSize:13,fontWeight:700,color:"#555",flexShrink:0}}>{e.time?.elapsed}</span>
-		            </div>;
-		          })}
-		        </div>
-		      </div>}
+		              {r.arrow&&<span style={{color:"#ccc",fontSize:18}}>›</span>}
+		            </div>)}
+		          </div>;
+		        })()}
+  </div>}
 
 		      {tab==="evts"&&<div style={{background:"#fff",paddingBottom:20}}>
 		        {events.length===0&&isPartial&&<div style={{textAlign:"center",padding:"40px",color:"#888",display:"flex",flexDirection:"column",alignItems:"center",gap:10}}><Spin s={22}/><span style={{fontSize:13}}>Chargement...</span></div>}
@@ -1979,78 +1969,74 @@
 		        })()}
 		      </div>}
 
-		      {tab==="stats"&&<div style={{background:"#fff"}}>
-		        {isPartial&&hSt.length===0&&<div style={{textAlign:"center",padding:"32px",color:"#888"}}><Spin s={22}/></div>}
-		        {(hSt.length>0||aSt.length>0)&&(()=>{
-		          const hPN=parseInt(hSt.find(x=>x.type==="Ball Possession")?.value)||50,aPN=100-hPN;
-		          const tH=num(gv(hSt,"Total Shots")),tA=num(gv(aSt,"Total Shots"));
+		      {tab==="stats"&&<div style={{padding:"12px 14px",animation:"fadeIn .2s ease"}}>
+		        {/* Spinner si stats en cours de chargement */}
+		        {isPartial&&hSt.length===0&&<div style={{textAlign:"center",padding:"32px",display:"flex",flexDirection:"column",alignItems:"center",gap:10,color:T.t3}}><Spin s={22}/><span style={{fontSize:13}}>Chargement statistiques...</span></div>}
+		        {/* Graphique tirs premium */}
+		        {(()=>{
+		          const totalH=num(gv(hSt,"Total Shots")),totalA=num(gv(aSt,"Total Shots"));
 		          const onH=num(gv(hSt,"Shots on Goal")),onA=num(gv(aSt,"Shots on Goal"));
 		          const offH=num(gv(hSt,"Shots off Goal")),offA=num(gv(aSt,"Shots off Goal"));
-		          return<div>
-		            <div style={{padding:"14px",borderBottom:"1px solid #f0f1f5"}}>
-		              <div style={{textAlign:"center",fontSize:13,fontWeight:700,color:"#333",marginBottom:10}}>Possession</div>
-		              <div style={{display:"flex",borderRadius:8,overflow:"hidden",height:36}}>
-		                <div style={{width:`${hPN}%`,background:"#1a1aff",display:"flex",alignItems:"center",paddingLeft:10}}>
-		                  <span style={{fontSize:14,fontWeight:900,color:"#fff"}}>{hPN}%</span>
+		          if(!totalH&&!totalA)return null;
+		          const maxT=Math.max(totalH,totalA,1);
+		          return<div style={{background:"linear-gradient(135deg,rgba(229,53,53,.08),rgba(41,121,255,.08))",border:`1px solid ${T.line}`,borderRadius:14,padding:"14px 16px",marginBottom:16}}>
+		            <div className="bc" style={{fontSize:11,fontWeight:800,color:T.t3,letterSpacing:1.2,textTransform:"uppercase",textAlign:"center",marginBottom:14}}>Vue Tirs</div>
+		            <div style={{display:"flex",gap:10,alignItems:"flex-end",justifyContent:"center",height:80}}>
+		              {/* Équipe domicile */}
+		              <div style={{display:"flex",flexDirection:"column",alignItems:"center",gap:4,flex:1}}>
+		                <div style={{width:"100%",display:"flex",flexDirection:"column",gap:2,justifyContent:"flex-end",height:70}}>
+		                  <div style={{width:"100%",height:`${Math.round((offH/maxT)*70)}px`,background:"rgba(229,53,53,.3)",borderRadius:"4px 4px 0 0",minHeight:offH?4:0,display:"flex",alignItems:"center",justifyContent:"center"}}>
+		                    {offH>0&&<span className="bc" style={{fontSize:10,fontWeight:700,color:T.red}}>{offH}</span>}
+		                  </div>
+		                  <div style={{width:"100%",height:`${Math.round((onH/maxT)*70)}px`,background:T.red,borderRadius:2,minHeight:onH?4:0,display:"flex",alignItems:"center",justifyContent:"center"}}>
+		                    {onH>0&&<span className="bc" style={{fontSize:11,fontWeight:900,color:"#fff"}}>{onH}</span>}
+		                  </div>
 		                </div>
-		                <div style={{flex:1,background:"#00c060",display:"flex",alignItems:"center",justifyContent:"flex-end",paddingRight:10}}>
-		                  <span style={{fontSize:14,fontWeight:900,color:"#fff"}}>{aPN}%</span>
+		                <span className="bc" style={{fontSize:10,color:T.t3,fontWeight:600}}>Tirs</span>
+		                <span className="bc" style={{fontSize:18,fontWeight:900,color:T.red}}>{totalH}</span>
+		              </div>
+		              {/* Centre label */}
+		              <div style={{display:"flex",flexDirection:"column",alignItems:"center",gap:8,paddingBottom:28}}>
+		                <div style={{display:"flex",flexDirection:"column",alignItems:"center",gap:3}}>
+		                  <div style={{width:8,height:8,borderRadius:"50%",background:T.red}}/>
+		                  <span className="bc" style={{fontSize:9,color:T.t4,letterSpacing:.5}}>CADRÉS</span>
+		                  <div style={{width:8,height:8,borderRadius:2,background:"rgba(229,53,53,.3)"}}/>
+		                  <span className="bc" style={{fontSize:9,color:T.t4,letterSpacing:.5}}>NON CAD.</span>
 		                </div>
 		              </div>
-		            </div>
-		            {(tH+tA>0)&&<div style={{padding:"14px",borderBottom:"1px solid #f0f1f5"}}>
-		              <div style={{background:"#e8f5e9",borderRadius:10,padding:"10px"}}>
-		                <div style={{width:"65%",margin:"0 auto",height:50,border:"2px solid #aaa",borderBottom:"none",borderRadius:"8px 8px 0 0",background:"rgba(255,255,255,.8)",display:"flex",alignItems:"center",justifyContent:"space-around",padding:"0 10px"}}>
-		                  <div style={{background:onH>onA?"#1a1aff":"#ccc",borderRadius:6,padding:"3px 12px"}}><span style={{fontSize:14,fontWeight:900,color:onH>onA?"#fff":"#555"}}>{onH}</span></div>
-		                  <span style={{fontSize:11,color:"#888"}}>Tirs</span>
-		                  <div style={{background:onA>onH?"#00c060":"#ccc",borderRadius:6,padding:"3px 12px"}}><span style={{fontSize:14,fontWeight:900,color:onA>onH?"#fff":"#555"}}>{onA}</span></div>
+		              {/* Équipe extérieur */}
+		              <div style={{display:"flex",flexDirection:"column",alignItems:"center",gap:4,flex:1}}>
+		                <div style={{width:"100%",display:"flex",flexDirection:"column",gap:2,justifyContent:"flex-end",height:70}}>
+		                  <div style={{width:"100%",height:`${Math.round((offA/maxT)*70)}px`,background:"rgba(41,121,255,.3)",borderRadius:"4px 4px 0 0",minHeight:offA?4:0,display:"flex",alignItems:"center",justifyContent:"center"}}>
+		                    {offA>0&&<span className="bc" style={{fontSize:10,fontWeight:700,color:T.blueB}}>{offA}</span>}
+		                  </div>
+		                  <div style={{width:"100%",height:`${Math.round((onA/maxT)*70)}px`,background:T.blueB,borderRadius:2,minHeight:onA?4:0,display:"flex",alignItems:"center",justifyContent:"center"}}>
+		                    {onA>0&&<span className="bc" style={{fontSize:11,fontWeight:900,color:"#fff"}}>{onA}</span>}
+		                  </div>
 		                </div>
-		                <div style={{width:"65%",margin:"0 auto",height:18,background:"rgba(255,255,255,.4)",border:"2px solid #aaa",borderTop:"none",borderRadius:"0 0 4px 4px"}}/>
+		                <span className="bc" style={{fontSize:10,color:T.t3,fontWeight:600}}>Tirs</span>
+		                <span className="bc" style={{fontSize:18,fontWeight:900,color:T.blueB}}>{totalA}</span>
 		              </div>
-		            </div>}
-		            <div style={{padding:"0 14px"}}>
-		              {[["Tirs non cadrés","Shots off Goal"],["xG","expected_goals"],["Corner","Corner Kicks"],["Hors-jeux","Offsides"],["Cartons jaunes","Yellow Cards"],["Cartons rouges","Red Cards"],["Fautes","Fouls"],["Passes","Total passes"],["Arrêts gardien","Goalkeeper Saves"]].map(([label,key])=>{
-		                const hv=gv(hSt,key),av=gv(aSt,key);
-		                if(!num(hv)&&!num(av))return null;
-		                return<StatBar key={key} label={label} hv={hv} av={av}/>;
-		              })}
 		            </div>
 		          </div>;
 		        })()}
+		        {/* Stats par catégorie */}
+		        {SK_CATS.map(({cat,icon,keys})=>{
+		          const rows=keys.filter(k=>{const hv=gv(hSt,k),av=gv(aSt,k);return hv||av;});
+		          if(!rows.length)return null;
+		          const isXGCat=cat==="⚡ xG";
+		          return<div key={cat} style={{marginBottom:18}}>
+		            <div style={{display:"flex",alignItems:"center",gap:6,marginBottom:10,paddingBottom:6,borderBottom:`1px solid ${T.line}`}}>
+		              <span style={{fontSize:14}}>{icon}</span>
+		              <span className="bc" style={{fontSize:11,fontWeight:800,color:isXGCat?"#82b1ff":T.t2,letterSpacing:1,textTransform:"uppercase"}}>{isXGCat?"xG — Buts Attendus":cat}</span>
+		            </div>
+		            {rows.map(k=><StatBar key={k} label={STAT_LABELS[k]||k} hv={gv(hSt,k)} av={gv(aSt,k)}/>)}
+		          </div>;
+		        })}
 		      </div>}
+
 		      {}
-		      {tab==="compos"&&<div style={{background:"#f5f6f9"}}>
-		        <ComposPanel lineups={lineups} players={players} homeTeam={fix.teams.home} awayTeam={fix.teams.away} isPartial={isPartial}/>
-		        {lineups.length>0&&<div style={{margin:"8px 12px",background:"#fff",borderRadius:14,padding:"14px"}}>
-		          <div style={{fontSize:15,fontWeight:800,color:"#111",marginBottom:10}}>Remplaçants</div>
-		          <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:"0 10px"}}>
-		            {lineups.flatMap((lu,li)=>(lu.substitutes||[]).map((sub,si)=>{
-		              const p=sub.player,tc=li===0?"#1a1aff":"#00c060";
-		              const ev=events.find(e=>e.type==="subst"&&(e.assist?.id===p?.id||e.player?.id===p?.id));
-		              return<div key={li+"-"+si} style={{display:"flex",alignItems:"center",gap:6,padding:"7px 0",borderBottom:"1px solid #f5f5f5"}}>
-		                <Avatar src={p?.photo} size={34}/>
-		                <div style={{flex:1,minWidth:0}}>
-		                  <div style={{fontSize:12,fontWeight:600,color:"#222",overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap"}}>
-		                    <span style={{color:tc,fontWeight:800,marginRight:3}}>#{p?.number}</span>{p?.name}
-		                  </div>
-		                  <div style={{fontSize:10,color:"#888"}}>{p?.pos==="G"?"Gardien":p?.pos==="D"?"Défenseur":p?.pos==="M"?"Milieu":"Attaquant"}</div>
-		                </div>
-		                {ev&&<span style={{fontSize:10,color:"#00c060",fontWeight:700}}>{ev.time?.elapsed}</span>}
-		              </div>;
-		            }))}
-		          </div>
-		        </div>}
-		        <div style={{margin:"8px 12px 16px",background:"#fff",borderRadius:14,padding:"12px 14px"}}>
-		          <div style={{display:"flex",flexWrap:"wrap",gap:"8px 16px"}}>
-		            {[{i:"⚽",l:"But"},{i:"🟨",l:"Carton jaune"},{i:"🟥",l:"Carton rouge"},{i:"🔄",l:"Remplacement"}].map(({i,l})=>
-		              <div key={l} style={{display:"flex",alignItems:"center",gap:5}}>
-		                <span style={{fontSize:12}}>{i}</span>
-		                <span style={{fontSize:11,color:"#777"}}>{l}</span>
-		              </div>
-		            )}
-		          </div>
-		        </div>
-		      </div>}}
+		      {tab==="compos"&&<ComposPanel lineups={lineups} players={players} homeTeam={fix.teams.home} awayTeam={fix.teams.away} isPartial={isPartial}/>}
 
 		      {}
 		      {tab==="joueurs"&&<PlayersStatsPanel players={players} homeTeam={fix.teams.home} awayTeam={fix.teams.away}/>}
@@ -2058,59 +2044,22 @@
 		      {}
 		      {tab==="absents"&&<InjuriesPanel injuries={injuries} homeTeam={fix.teams.home} awayTeam={fix.teams.away}/>}
 
-		      {tab==="h2h"&&<div style={{background:"#f5f6f9"}}>
-		        {h2h.length===0&&isPartial&&<div style={{textAlign:"center",padding:"32px",color:"#888"}}><Spin s={22}/></div>}
-		        {h2h.length>0&&(()=>{
-		          const hid=fix.teams.home.id;
-		          const calcS=(ms,tid)=>{let w=0,d=0,l=0,gf=0,gc=0;ms.forEach(m=>{const ih=m.teams.home.id===tid;const tg=ih?(m.goals.home??0):(m.goals.away??0),og=ih?(m.goals.away??0):(m.goals.home??0);gf+=tg;gc+=og;if(tg>og)w++;else if(tg===og)d++;else l++;});return{w,d,l,gf,gc};};
-		          const last=h2h.slice(0,10);
-		          const hS=calcS(last,hid),aS=calcS(last,fix.teams.away.id);
-		          const o25=last.filter(m=>(m.goals.home??0)+(m.goals.away??0)>2.5).length;
-		          const bts=last.filter(m=>(m.goals.home??0)>0&&(m.goals.away??0)>0).length;
-		          const Dot=({ok})=><span style={{width:9,height:9,borderRadius:"50%",display:"inline-block",background:ok?"#00c060":"#ddd",marginRight:2}}/>;
-		          return<div>
-		            <div style={{margin:"12px",background:"#fff",borderRadius:14,padding:"14px",boxShadow:"0 1px 4px rgba(0,0,0,.06)"}}>
-		              <div style={{display:"flex",justifyContent:"space-between",marginBottom:10}}>
-		                <span style={{fontSize:15,fontWeight:800,color:"#111"}}>Tendances</span>
-		                <span style={{fontSize:11,color:"#888"}}>10 derniers matchs</span>
-		              </div>
-		              {[[hS.w+"-"+hS.d+"-"+hS.l,"V-N-D",aS.w+"-"+aS.d+"-"+aS.l,false],[hS.gf,"Buts",aS.gf,true],[hS.gc,"Concédés",aS.gc,false]].map(([hv,lbl,av,hl])=>{
-		                const hW=typeof hv==="number"&&hv>av,aW=typeof av==="number"&&av>hv;
-		                return<div key={lbl} style={{display:"grid",gridTemplateColumns:"1fr auto 1fr",alignItems:"center",padding:"10px 0",borderBottom:"1px solid #f0f1f5"}}>
-		                  <span style={{fontSize:14,fontWeight:700,color:hW&&hl?"#fff":"#222",background:hW&&hl?"#1a1aff":"transparent",borderRadius:6,padding:hW&&hl?"3px 10px":"0"}}>{hv}</span>
-		                  <span style={{fontSize:12,color:"#777",textAlign:"center",padding:"0 8px"}}>{lbl}</span>
-		                  <span style={{fontSize:14,fontWeight:700,color:aW&&hl?"#fff":"#222",background:aW&&hl?"#00c060":"transparent",borderRadius:6,padding:aW&&hl?"3px 10px":"0",textAlign:"right"}}>{av}</span>
-		                </div>;
-		              })}
-		              {[["Plus de 2.5 buts",o25],["Les 2 marquent",bts]].map(([lbl,v])=>
-		                <div key={lbl} style={{display:"grid",gridTemplateColumns:"1fr auto 1fr",alignItems:"center",padding:"10px 0",borderBottom:"1px solid #f0f1f5"}}>
-		                  <div style={{display:"flex",alignItems:"center",gap:3}}><span style={{fontSize:13,fontWeight:700}}>{v}/10</span>{[0,1,2].map(i=><Dot key={i} ok={i<v}/>)}</div>
-		                  <span style={{fontSize:11,color:"#777",textAlign:"center",padding:"0 6px"}}>{lbl}</span>
-		                  <div style={{display:"flex",alignItems:"center",gap:3,justifyContent:"flex-end"}}>{[0,1,2].map(i=><Dot key={i} ok={i<v}/>)}<span style={{fontSize:13,fontWeight:700}}>{v}/10</span></div>
-		                </div>
-		              )}
+		      {tab==="h2h"&&<div>
+		        {h2h.length===0&&isPartial&&<div style={{textAlign:"center",padding:"32px",display:"flex",flexDirection:"column",alignItems:"center",gap:10,color:T.t3}}><Spin s={22}/><span style={{fontSize:13}}>Chargement historique...</span></div>}
+		        <div style={{padding:"11px 16px",fontSize:11,fontWeight:700,color:T.t3,letterSpacing:1,textTransform:"uppercase",borderBottom:`1px solid ${T.line}`}}>Confrontations directes</div>
+		        {h2h.slice(0,10).map((m,i)=>{
+		          const hid=fix.teams.home.id,hh=m.teams.home.id===hid,mh=m.goals.home??0,ma=m.goals.away??0;
+		          const hw2=(hh&&mh>ma)||(!hh&&ma>mh),aw2=(hh&&ma>mh)||(!hh&&mh>ma);
+		          return<div key={i} style={{display:"flex",alignItems:"center",padding:"10px 16px",borderBottom:`1px solid ${T.line}11`,gap:10}}>
+		            <span style={{fontSize:10,color:T.t3,width:44,flexShrink:0}}>{m.fixture.date?.slice(0,7)}</span>
+		            <div style={{flex:1,minWidth:0}}>
+		              <div style={{fontSize:12,color:T.t2,overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap"}}>{m.teams.home.name} – {m.teams.away.name}</div>
+		              <div style={{fontSize:10,color:T.t3,marginTop:2}}>{m.league?.name}</div>
 		            </div>
-		            <div style={{margin:"8px 12px 12px",background:"#fff",borderRadius:14,padding:"14px",boxShadow:"0 1px 4px rgba(0,0,0,.06)"}}>
-		              <div style={{fontSize:15,fontWeight:800,color:"#111",marginBottom:12}}>Tête à tête</div>
-		              {h2h.slice(0,8).map((m,i)=>{
-		                const mh=m.goals.home??0,ma=m.goals.away??0;
-		                const hW=(m.teams.home.id===hid&&mh>ma)||( m.teams.away.id===hid&&ma>mh);
-		                const aW=(m.teams.home.id===hid&&ma>mh)||(m.teams.away.id===hid&&mh>ma);
-		                const rc=hW?"#1a1aff":aW?"#00c060":"#f59e0b";
-		                return<div key={i} style={{display:"flex",alignItems:"center",padding:"10px 0",borderBottom:"1px solid #f5f5f5",gap:8}}>
-		                  <span style={{fontSize:10,color:"#999",width:42,flexShrink:0}}>{m.fixture.date?.slice(0,7)}</span>
-		                  <div style={{flex:1,minWidth:0}}>
-		                    <div style={{fontSize:12,color:"#333",overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap"}}>{m.teams.home.name} - {m.teams.away.name}</div>
-		                  </div>
-		                  <span style={{fontSize:15,fontWeight:900,color:"#111"}}>{mh}-{ma}</span>
-		                  <div style={{width:22,height:22,borderRadius:6,background:rc,display:"flex",alignItems:"center",justifyContent:"center"}}>
-		                    <span style={{fontSize:10,fontWeight:900,color:"#fff"}}>{hW?"V":aW?"D":"N"}</span>
-		                  </div>
-		                </div>;
-		              })}
-		            </div>
+		            <span style={{fontSize:15,fontWeight:800,color:T.t1,flexShrink:0}}>{mh} – {ma}</span>
+		            <div style={{width:7,height:7,borderRadius:"50%",background:hw2?T.greenB:aw2?T.red:T.gold,flexShrink:0}}/>
 		          </div>;
-		        })()}
+		        })}
 		      </div>}
 
 		      {tab==="analyse"&&h2h.length>0&&<AnalysePanel h2h={h2h} homeTeam={fix.teams.home} awayTeam={fix.teams.away} hSt={hSt} aSt={aSt}/>}
