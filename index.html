@@ -1798,133 +1798,114 @@
 		          const finalH=fix.goals?.home??0;
 		          const finalA=fix.goals?.away??0;
 
-		          const EvtRow=({e,showScore})=>{
-		            const ih=e.team?.id===fix.teams.home.id;
-		            const isGoal=e.type==="Goal";
-		            const isCard=e.type==="Card";
-		            const isSubst=e.type==="subst";
-		            const isVar=e.type==="Var";
-		            const isYellow=isCard&&!e.detail?.includes("Red")&&!e.detail?.includes("Second Yellow");
-		            const isRed=isCard&&(e.detail?.includes("Red")||e.detail?.includes("Second Yellow"));
-		            const isCsc=isGoal&&e.detail==="Own Goal";
-		            const min=`${e.time?.elapsed||""}${e.time?.extra?"+"+e.time.extra:""}`;
-		            const isPen=isGoal&&e.detail==="Penalty";
-		            const isMissedPen=isGoal&&e.detail==="Missed Penalty";
+		                    const EvtRow=({e})=>{
+        const ih=e.team?.id===fix.teams.home.id;
+        const isGoal=e.type==="Goal";
+        const isCard=e.type==="Card";
+        const isSubst=e.type==="subst";
+        const isVar=e.type==="Var";
+        const isYellow=isCard&&!e.detail?.includes("Red")&&!e.detail?.includes("Second Yellow");
+        const isRed=isCard&&(e.detail?.includes("Red")||e.detail?.includes("Second Yellow"));
+        const isCsc=isGoal&&e.detail==="Own Goal";
+        const isPen=isGoal&&e.detail==="Penalty";
+        const isMissedPen=isGoal&&e.detail==="Missed Penalty";
+        const isInj=isSubst&&e.detail==="Injury";
+        const min=`${e.time?.elapsed||""}${e.time?.extra?"+"+e.time.extra:""}`;
+        const raw=e.player?.name||(isGoal?"But":isYellow?"Carton jaune":isRed?"Carton rouge":isSubst?"Remplacement":isVar?"VAR":"");
+        const lastName=n=>{if(!n)return"";const p=n.split(" ");return p.length>1?p[0][0]+". "+p.slice(1).join(" "):n;};
 
-		            // ICON
-		            const Icon=()=>{
-		              if(isGoal&&!isCsc&&!isPen&&!isMissedPen)return(
-		                <svg width="28" height="28" viewBox="0 0 28 28" fill="none" style={{flexShrink:0}}>
-		                  <circle cx="14" cy="14" r="13" fill="#1a1a1a" stroke="#555" strokeWidth="1"/>
-		                  <polygon points="14,7 15.9,12.6 21.8,12.6 17,15.8 18.9,21.4 14,18.2 9.1,21.4 11,15.8 6.2,12.6 12.1,12.6" fill="white" opacity="0.9"/>
-		                  <circle cx="14" cy="14" r="13" fill="none" stroke="white" strokeWidth="0.5" opacity="0.15"/>
-		                </svg>);
-		              if(isGoal&&isCsc)return(
-		                <svg width="28" height="28" viewBox="0 0 28 28" fill="none" style={{flexShrink:0}}>
-		                  <circle cx="14" cy="14" r="13" fill="#1a1a1a" stroke="#ef4444" strokeWidth="2.5"/>
-		                  <polygon points="14,7 15.9,12.6 21.8,12.6 17,15.8 18.9,21.4 14,18.2 9.1,21.4 11,15.8 6.2,12.6 12.1,12.6" fill="white" opacity="0.9"/>
-		                </svg>);
-		              if(isGoal&&isPen&&!isMissedPen)return(
-		                <svg width="34" height="28" viewBox="0 0 34 28" fill="none" style={{flexShrink:0}}>
-		                  <circle cx="13" cy="14" r="13" fill="#22c55e"/>
-		                  <polygon points="13,7 14.9,12.6 20.8,12.6 16,15.8 17.9,21.4 13,18.2 8.1,21.4 10,15.8 5.2,12.6 11.1,12.6" fill="white" opacity="0.9"/>
-		                  <circle cx="27" cy="7" r="6.5" fill="#22c55e" stroke="white" strokeWidth="1.5"/>
-		                  <circle cx="27" cy="7" r="2.8" fill="white"/>
-		                </svg>);
-		              if(isMissedPen)return(
-		                <svg width="34" height="28" viewBox="0 0 34 28" fill="none" style={{flexShrink:0}}>
-		                  <circle cx="13" cy="14" r="13" fill="#22c55e"/>
-		                  <polygon points="13,7 14.9,12.6 20.8,12.6 16,15.8 17.9,21.4 13,18.2 8.1,21.4 10,15.8 5.2,12.6 11.1,12.6" fill="white" opacity="0.9"/>
-		                  <circle cx="27" cy="7" r="6.5" fill="#ef4444" stroke="white" strokeWidth="1.5"/>
-		                  <line x1="24.5" y1="4.5" x2="29.5" y2="9.5" stroke="white" strokeWidth="2" strokeLinecap="round"/>
-		                  <line x1="29.5" y1="4.5" x2="24.5" y2="9.5" stroke="white" strokeWidth="2" strokeLinecap="round"/>
-		                </svg>);
-		              if(isSubst)return(
-		                <svg width="28" height="28" viewBox="0 0 28 28" fill="none" style={{flexShrink:0}}>
-		                  <circle cx="14" cy="14" r="13" fill="white" stroke="#e5e7eb" strokeWidth="1.5"/>
-		                  <path d="M9 12L14 6L19 12" stroke="#22c55e" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"/>
-		                  <line x1="14" y1="6" x2="14" y2="16" stroke="#22c55e" strokeWidth="2.5" strokeLinecap="round"/>
-		                  <path d="M19 16L14 22L9 16" stroke="#ef4444" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"/>
-		                  <line x1="14" y1="22" x2="14" y2="12" stroke="#ef4444" strokeWidth="2.5" strokeLinecap="round"/>
-		                </svg>);
-		              if(isYellow)return <div style={{flexShrink:0,width:18,height:24,borderRadius:3,background:"#f59e0b",boxShadow:"0 2px 6px rgba(245,158,11,.4)"}}/>;
-		              if(isRed)return(
-		                <div style={{position:"relative",flexShrink:0,width:26,height:24}}>
-		                  <div style={{position:"absolute",left:0,top:4,width:16,height:20,background:"#f59e0b",borderRadius:3}}/>
-		                  <div style={{position:"absolute",right:0,top:0,width:16,height:20,background:"#ef4444",borderRadius:3,boxShadow:"0 2px 6px rgba(239,68,68,.4)"}}/>
-		                </div>);
-		              if(isVar)return(
-		                <div style={{flexShrink:0,background:"#1e293b",borderRadius:5,padding:"4px 7px",border:"2px solid #475569",display:"flex",flexDirection:"column",alignItems:"center",gap:2}}>
-		                  <span style={{fontSize:10,fontWeight:900,color:"white",letterSpacing:1,fontFamily:"Arial",lineHeight:1}}>VAR</span>
-		                  <div style={{width:18,height:2,background:"#ef4444",borderRadius:1}}/>
-		                </div>);
-		              return<div style={{width:26,height:26,borderRadius:"50%",background:"#f0f1f5",flexShrink:0}}/>;
-		            };
+        const Ic=()=>{
+          if(isGoal&&!isCsc&&!isMissedPen)return(
+            <svg width="24" height="24" viewBox="0 0 24 24" fill="none" style={{flexShrink:0}}>
+              <circle cx="12" cy="12" r="11" fill="#1a1a1a" stroke="#444" strokeWidth="1"/>
+              <polygon points="12,5.5 13.6,10.5 18.9,10.5 14.6,13.5 16.2,18.5 12,15.5 7.8,18.5 9.4,13.5 5.1,10.5 10.4,10.5" fill="white" opacity="0.9"/>
+            </svg>);
+          if(isCsc)return(
+            <svg width="24" height="24" viewBox="0 0 24 24" fill="none" style={{flexShrink:0}}>
+              <circle cx="12" cy="12" r="11" fill="#1a1a1a" stroke="#ef4444" strokeWidth="2"/>
+              <polygon points="12,5.5 13.6,10.5 18.9,10.5 14.6,13.5 16.2,18.5 12,15.5 7.8,18.5 9.4,13.5 5.1,10.5 10.4,10.5" fill="white" opacity="0.9"/>
+            </svg>);
+          if(isSubst)return(
+            <svg width="24" height="24" viewBox="0 0 24 24" fill="none" style={{flexShrink:0}}>
+              <circle cx="12" cy="12" r="11" fill="white" stroke="#e5e7eb" strokeWidth="1.5"/>
+              <path d="M8 11L12 6L16 11" stroke="#22c55e" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round"/>
+              <line x1="12" y1="6" x2="12" y2="14" stroke="#22c55e" strokeWidth="2.2" strokeLinecap="round"/>
+              <path d="M16 13L12 18L8 13" stroke="#ef4444" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round"/>
+              <line x1="12" y1="18" x2="12" y2="10" stroke="#ef4444" strokeWidth="2.2" strokeLinecap="round"/>
+            </svg>);
+          if(isYellow)return <div style={{flexShrink:0,width:16,height:20,borderRadius:2,background:"#f59e0b"}}/>;
+          if(isRed)return(
+            <div style={{position:"relative",flexShrink:0,width:22,height:20}}>
+              <div style={{position:"absolute",left:0,top:4,width:14,height:16,background:"#f59e0b",borderRadius:2}}/>
+              <div style={{position:"absolute",right:0,top:0,width:14,height:16,background:"#ef4444",borderRadius:2}}/>
+            </div>);
+          if(isVar)return(
+            <div style={{flexShrink:0,background:"#1e293b",borderRadius:4,padding:"3px 6px",border:"1.5px solid #475569"}}>
+              <span style={{fontSize:10,fontWeight:900,color:"white",letterSpacing:1,fontFamily:"Arial"}}>VAR</span>
+            </div>);
+          return <div style={{width:22,height:22,borderRadius:"50%",background:"#eee",flexShrink:0}}/>;
+        };
 
-		            if(ih){
-		              // Equipe domicile : icone + noms a gauche, minute a droite
-		              return<div style={{display:"flex",alignItems:"center",padding:"10px 14px",borderBottom:"1px solid #f5f5f5",gap:8}}>
-		                <Icon/>
-		                <div style={{flex:1,minWidth:0}}>
-		                  <div style={{fontSize:14,fontWeight:isGoal?800:500,color:"#111",overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap"}}>
-		                    {isSubst
-		                      ?<span><span style={{color:"#111"}}>{e.player?.name||"Remplacement"}</span><span style={{color:"#999",fontSize:12}}> {e.assist?.name}</span></span>
-		                      :<span>{e.player?.name||(isGoal?"But":isYellow?"Carton jaune":isRed?"Carton rouge":isVar?"VAR":"")}</span>}
-		                  </div>
-		                  {isGoal&&e.assist?.name&&<div style={{fontSize:12,color:"#888",marginTop:1}}>{e.assist.name}</div>}
-		                  {isCard&&e.detail&&<div style={{fontSize:11,color:"#999",marginTop:1}}>{e.detail.includes("Yellow")?"Avertissement":e.detail.includes("Second")?"2e jaune":"Carton rouge"}</div>}
-		                </div>
-		                {showScore&&isGoal&&<div style={{border:"2px solid #1a1aff",borderRadius:20,padding:"3px 12px",display:"flex",alignItems:"center",gap:4,marginRight:6}}>
-		                  <span style={{fontSize:13,fontWeight:900,color:"#1a1aff"}}>{e.hs}</span>
-		                  <span style={{fontSize:11,color:"#999"}}>-</span>
-		                  <span style={{fontSize:13,fontWeight:900,color:"#1a1aff"}}>{e.as}</span>
-		                </div>}
-		                <span style={{fontSize:13,fontWeight:700,color:isGoal?"#1a1aff":"#999",flexShrink:0,minWidth:38,textAlign:"right"}}>{min}'</span>
-		              </div>;
-		            } else {
-		              // Equipe exterieur : minute a gauche, noms a droite
-		              return<div style={{display:"flex",alignItems:"center",padding:"10px 14px",borderBottom:"1px solid #f5f5f5",gap:8}}>
-		                <span style={{fontSize:13,fontWeight:700,color:isGoal?"#1a1aff":"#999",flexShrink:0,minWidth:38}}>{min}'</span>
-		                {showScore&&isGoal&&<div style={{border:"2px solid #1a1aff",borderRadius:20,padding:"3px 12px",display:"flex",alignItems:"center",gap:4,marginRight:6}}>
-		                  <span style={{fontSize:13,fontWeight:900,color:"#1a1aff"}}>{e.hs}</span>
-		                  <span style={{fontSize:11,color:"#999"}}>-</span>
-		                  <span style={{fontSize:13,fontWeight:900,color:"#1a1aff"}}>{e.as}</span>
-		                </div>}
-		                <Icon/>
-		                <div style={{flex:1,minWidth:0,textAlign:"right"}}>
-		                  <div style={{fontSize:14,fontWeight:isGoal?800:500,color:"#111",overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap"}}>
-		                    {isSubst
-		                      ?<span><span style={{color:"#999",fontSize:12}}>{e.assist?.name} </span><span style={{color:"#111"}}>{e.player?.name||"Remplacement"}</span></span>
-		                      :<span>{e.player?.name||(isGoal?"But":isYellow?"Carton jaune":isRed?"Carton rouge":isVar?"VAR":"")}</span>}
-		                  </div>
-		                  {isGoal&&e.assist?.name&&<div style={{fontSize:12,color:"#888",marginTop:1}}>{e.assist.name}</div>}
-		                  {isCard&&e.detail&&<div style={{fontSize:11,color:"#999",marginTop:1}}>Faute</div>}
-		                </div>
-		              </div>;
-		            }
-		          };
+        const ScoreBadge=()=>isGoal&&!isMissedPen?(
+          <div style={{background:"#f0f0f0",borderRadius:6,padding:"3px 10px",display:"flex",alignItems:"center",gap:3,flexShrink:0}}>
+            <span style={{fontSize:14,fontWeight:900,color:"#111"}}>{e.hs}</span>
+            <span style={{fontSize:12,color:"#999"}}>-</span>
+            <span style={{fontSize:14,fontWeight:900,color:"#111"}}>{e.as}</span>
+          </div>
+        ):null;
 
-		          return<div>
-		            {/* 2e mi-temps */}
-		            {secondHalf.length>0&&<div>
-		              <div style={{display:"flex",alignItems:"center",padding:"10px 14px",gap:8}}>
-		                <div style={{flex:1,height:1,background:"#e53535",opacity:.4}}/>
-		                <span style={{fontSize:13,fontWeight:800,color:"#e53535",whiteSpace:"nowrap"}}>2e mi-temps {finalH} - {finalA}</span>
-		                <div style={{flex:1,height:1,background:"#e53535",opacity:.4}}/>
-		              </div>
-		              {[...secondHalf].reverse().map((e,i)=><EvtRow key={i} e={e} showScore={true}/>)}
-		            </div>}
-		            {/* Separateur MI-TEMPS */}
-		            {firstHalf.length>0&&secondHalf.length>0&&<div style={{display:"flex",alignItems:"center",padding:"10px 14px",gap:8,background:"#fafafa"}}>
-		              <div style={{flex:1,height:1,background:"#ccc"}}/>
-		              <span style={{fontSize:12,fontWeight:700,color:"#555",whiteSpace:"nowrap"}}>MT {htH} - {htA}</span>
-		              <div style={{flex:1,height:1,background:"#ccc"}}/>
-		            </div>}
-		            {/* 1ere mi-temps */}
-		            {firstHalf.length>0&&<div>
-		              {[...firstHalf].reverse().map((e,i)=><EvtRow key={i} e={e} showScore={true}/>)}
-		            </div>}
-		          </div>;
+        if(ih)return(
+          <div style={{display:"flex",alignItems:"center",padding:"12px 16px",gap:10,background:"white",borderBottom:"1px solid #f5f5f5"}}>
+            <Ic/>
+            <div style={{flex:1,minWidth:0}}>
+              <div style={{fontSize:14,fontWeight:isGoal?700:400,color:"#111",overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap"}}>{lastName(raw)}</div>
+              {isGoal&&e.assist?.name&&<div style={{fontSize:12,color:"#888",marginTop:1}}>{lastName(e.assist.name)}</div>}
+              {isSubst&&e.assist?.name&&<div style={{fontSize:12,color:"#999",marginTop:1}}>{lastName(e.assist.name)}</div>}
+            </div>
+            <ScoreBadge/>
+            <span style={{fontSize:13,fontWeight:600,color:"#999",flexShrink:0,minWidth:32,textAlign:"right"}}>{min}'</span>
+          </div>
+        );
+        return(
+          <div style={{display:"flex",alignItems:"center",padding:"12px 16px",gap:10,background:"white",borderBottom:"1px solid #f5f5f5"}}>
+            <span style={{fontSize:13,fontWeight:600,color:"#999",flexShrink:0,minWidth:32}}>{min}'</span>
+            <div style={{flex:1,minWidth:0,textAlign:"right"}}>
+              <div style={{fontSize:14,fontWeight:isGoal?700:400,color:"#111",overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap"}}>{lastName(raw)}</div>
+              {isGoal&&e.assist?.name&&<div style={{fontSize:12,color:"#888",marginTop:1}}>{lastName(e.assist.name)}</div>}
+              {isSubst&&e.assist?.name&&<div style={{fontSize:12,color:"#999",marginTop:1}}>{lastName(e.assist.name)}</div>}
+            </div>
+            <ScoreBadge/>
+            <Ic/>
+          </div>
+        );
+      };
+
+      const HalfSep=({label})=>(
+        <div style={{display:"flex",alignItems:"center",padding:"10px 16px",gap:8,background:"#fafafa"}}>
+          <div style={{flex:1,height:1.5,background:"#e53535",opacity:.5}}/>
+          <span style={{fontSize:13,fontWeight:700,color:"#e53535",whiteSpace:"nowrap"}}>{label}</span>
+          <div style={{flex:1,height:1.5,background:"#e53535",opacity:.5}}/>
+        </div>
+      );
+
+      return<div style={{background:"white",borderRadius:12,margin:"0 0 8px",overflow:"hidden",boxShadow:"0 1px 4px rgba(0,0,0,.06)"}}>
+        {secondHalf.length>0&&<div>
+          <HalfSep label={`2e mi-temps ${finalH} - ${finalA}`}/>
+          {[...secondHalf].reverse().map((e,i)=><EvtRow key={i} e={e}/>)}
+        </div>}
+        {firstHalf.length>0&&secondHalf.length>0&&(
+          <div style={{display:"flex",alignItems:"center",padding:"8px 16px",gap:8,background:"#f5f5f5"}}>
+            <div style={{flex:1,height:1,background:"#bbb"}}/>
+            <span style={{fontSize:12,fontWeight:600,color:"#888"}}>MT {htH} - {htA}</span>
+            <div style={{flex:1,height:1,background:"#bbb"}}/>
+          </div>
+        )}
+        {firstHalf.length>0&&<div>
+          <HalfSep label={`1er mi-temps ${htH} - ${htA}`}/>
+          {[...firstHalf].reverse().map((e,i)=><EvtRow key={i} e={e}/>)}
+        </div>}
+      </div>;
+
 		        })()}
 		      </div>}
 
