@@ -897,8 +897,8 @@
 		      {reverse&&<><span style={{fontSize:12,fontWeight:700,color:"rgba(255,255,255,.85)",maxWidth:130,overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap"}}>{team?.name}</span><img src={team?.logo} alt="" style={{width:22,height:22,objectFit:"contain"}} onError={function(e){e.target.style.display="none"}}/><div style={{background:"rgba(0,0,0,.6)",borderRadius:7,padding:"4px 10px"}}><span style={{fontSize:12,fontWeight:900,color}}>{lineup?.formation}</span></div></>}
 		    </div>
 		    {(reverse?[...grid].reverse():grid).map((row,ri)=><div key={ri} style={{display:"flex",justifyContent:"space-evenly",alignItems:"flex-end",marginBottom:20}}>
-		      {row.map((p,pi)=>{const badge=getBadge(p,players,pitchFilter||"rating");return(<PitchPlayer key={p.id??`${ri}-${pi}`} player={p} photoSrc={ph(players,p.id)} color={color} badgeVal={badge.val} badgeColor={badge.color}/>;})}</div>)}
-		  </div>);
+		      {row.map((p,pi)=>{const badge=getBadge(p,players,pitchFilter||"rating");return(<PitchPlayer key={p.id??`${ri}-${pi}`} player={p} photoSrc={ph(players,p.id)} color={color} badgeVal={badge.val} badgeColor={badge.color}/>)})}</div>)}
+		  </div>;
 		  return(<div style={{background:"linear-gradient(180deg,#1c5220 0%,#236127 35%,#1c5220 68%,#174718 100%)",borderRadius:16,overflow:"hidden",position:"relative",width:"100%"}}>
 		    <svg style={{position:"absolute",inset:0,width:"100%",height:"100%",pointerEvents:"none"}} viewBox="0 0 100 100" preserveAspectRatio="none">
 		      <rect x={1.5} y={.8} width={97} height={98.4} fill="none" stroke="rgba(255,255,255,.15)" strokeWidth={.4}/>
@@ -1003,7 +1003,7 @@
 		// COMPOSANT ANALYSE   Statistiques avanc es H2H
 		//
 		function AnalysePanel({h2h,homeTeam,awayTeam,hSt=[],aSt=[],homeHistory=[],awayHistory=[]}){
-		  if(!h2h||h2h.length===0)return(<div style={{textAlign:"center",padding:"44px 20px",color:T.t3,fontSize:13}}>Pas assez de données H2H</div>;
+		  if(!h2h||h2h.length===0)return(<div style={{textAlign:"center",padding:"44px 20px",color:T.t3,fontSize:13}}>Pas assez de données H2H</div>);
 
 		  const hid=homeTeam.id;
 
@@ -1149,7 +1149,7 @@
 		  const SectionTitle=({icon,label})=><div style={{display:"flex",alignItems:"center",gap:7,padding:"14px 16px 10px",borderTop:`1px solid ${T.line}`}}>
 		    <span style={{fontSize:14}}>{icon}</span>
 		    <span className="bc" style={{fontSize:11,fontWeight:800,color:T.t3,letterSpacing:1.2,textTransform:"uppercase"}}>{label}</span>
-		  </div>);
+		  </div>;
 
 		  const ProfilGauge=({team,profile})=>{
 		    const atkW=`${Math.round(profile.atkRating*10)}%`;
@@ -1489,7 +1489,7 @@
 		  const LABELS={"Ball Possession":"Possession","Total Shots":"Tirs totaux","Shots on Goal":"Tirs cadres","Corner Kicks":"Corners","Offsides":"Hors-jeux","Fouls":"Fautes","Yellow Cards":"Cartons jaunes","Red Cards":"Cartons rouges","Goalkeeper Saves":"Arrets gardien","Total passes":"Passes","Passes %":"Passes %","expected_goals":"xG"};
 		  const all=[...new Set([...hSt.map(x=>x.type),...aSt.map(x=>x.type)])];
 		  const shown=all.filter(k=>LABELS[k]);
-		  if(!shown.length)return(<div style={{textAlign:"center",padding:"44px 20px",color:"#888",fontSize:13}}>{isPartial?"Chargement...":"Statistiques non disponibles"}</div>;
+		  if(!shown.length)return(<div style={{textAlign:"center",padding:"44px 20px",color:"#888",fontSize:13}}>{isPartial?"Chargement...":"Statistiques non disponibles"}</div>);
 		  const gv=(arr,k)=>{
 		    const v=arr.find(x=>x.type===k)?.value;
 		    if(v===null||v===undefined)return 0;
@@ -1499,7 +1499,7 @@
 		  const fmtV=(arr,k)=>arr.find(x=>x.type===k)?.value??"-";
 		  return(<div style={{padding:"12px 16px"}}>
 		    <div style={{display:"flex",justifyContent:"space-between",marginBottom:12}}>
-		      <div style={{display:"flex",alignItems:"center",gap:6}}><img src={homeTeam?.logo} alt="" style={{width:18,height:18,objectFit:"contain"}}/><span style={{fontSize:12,fontWeight:700}}>{homeTeam?.name}</span></div>);
+		      <div style={{display:"flex",alignItems:"center",gap:6}}><img src={homeTeam?.logo} alt="" style={{width:18,height:18,objectFit:"contain"}}/><span style={{fontSize:12,fontWeight:700}}>{homeTeam?.name}</span></div>;
 		      <div style={{display:"flex",alignItems:"center",gap:6}}><span style={{fontSize:12,fontWeight:700}}>{awayTeam?.name}</span><img src={awayTeam?.logo} alt="" style={{width:18,height:18,objectFit:"contain"}}/></div>
 		    </div>
 		    {shown.map(function(k){
@@ -1523,7 +1523,7 @@
 		}
 
 		function InjuriesPanel({injuries,homeTeam,awayTeam}){
-		  if(!injuries.length)return(<div style={{textAlign:"center",padding:"44px 20px",color:"#888",fontSize:13}}>Aucun absent</div>;
+		  if(!injuries.length)return(<div style={{textAlign:"center",padding:"44px 20px",color:"#888",fontSize:13}}>Aucun absent</div>);
 		  return(<div style={{padding:"12px"}}>
 		    {injuries.map(function(inj,i){
 		      var ih=inj.team?.id===homeTeam?.id;
@@ -1532,7 +1532,7 @@
 		          <img src={inj.team?.logo} alt="" style={{width:20,height:20,objectFit:"contain",flexShrink:0}}/>
 		          {inj.player?.photo&&<img src={inj.player.photo} alt="" style={{width:32,height:32,borderRadius:"50%",objectFit:"cover",flexShrink:0}}/>}
 		          <div style={{flex:1,minWidth:0}}>
-		            <div style={{fontSize:13,fontWeight:600,color:"#111",overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap"}}>{inj.player?.name||"-"}</div>);
+		            <div style={{fontSize:13,fontWeight:600,color:"#111",overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap"}}>{inj.player?.name||"-"}</div>
 		            <div style={{fontSize:11,color:"#888",marginTop:2}}>{inj.player?.reason||inj.player?.type||""}</div>
 		          </div>
 		          <span style={{fontSize:11,fontWeight:600,padding:"3px 8px",borderRadius:10,background:inj.player?.reason==="Doubtful"?"#fef3c7":"#fee2e2",color:inj.player?.reason==="Doubtful"?"#92400e":"#991b1b"}}>{inj.player?.reason||"Out"}</span>
@@ -1780,7 +1780,7 @@ const ph=(tp,pid)=>tp.find(p=>p.player?.id===pid)?.player?.photo;
 		          {e.time?.elapsed}{e.time?.extra?"+"+e.time.extra:""}
 		        </span>
 		      </div>
-		    </div>;
+		    </div>);
 		  };
 
 		  // Grouper par catégorie
@@ -2197,7 +2197,7 @@ const ph=(tp,pid)=>tp.find(p=>p.player?.id===pid)?.player?.photo;
 		                  {(function(){
 		                    var mx=firstHalf.reduce(function(m,e){return e.time?.elapsed===45?Math.max(m,e.time?.extra||0):m;},0);
 		                    if(!mx)return null;
-		                    return <div style={{background:"#eef2f6",borderRadius:10,padding:"8px 14px",margin:"4px 0",display:"flex",alignItems:"center",gap:8,color:"#475569",fontWeight:600,fontSize:13}}><span>{"\u23f1\ufe0f"}</span>{"Temps additionnel "+mx+" min"}</div>);
+		                    return(<div style={{background:"#eef2f6",borderRadius:10,padding:"8px 14px",margin:"4px 0",display:"flex",alignItems:"center",gap:8,color:"#475569",fontWeight:600,fontSize:13}}><span>{"\u23f1\ufe0f"}</span>{"Temps additionnel "+mx+" min"}</div>);
 		                  })()}
 		                  <HalfSep label={"MT"} score={htH+"-"+htA}/>
 		                </div>
@@ -2386,7 +2386,7 @@ const ph=(tp,pid)=>tp.find(p=>p.player?.id===pid)?.player?.photo;
 		      }}>
 		        <span className="bc" style={{fontSize:9,fontWeight:700,textTransform:"uppercase",letterSpacing:.8,color:ac?"rgba(255,255,255,.8)":td?T.red:T.t4}}>{DAY[dt.getDay()]}</span>
 		        <span className="bc" style={{fontSize:18,fontWeight:900,color:ac?"#fff":td?T.red:T.t2,lineHeight:1}}>{dt.getDate()}</span>
-		      </div>;})}
+		      </div>})}
 		    </div>);
 		    {/* Filtres */}
 		    <div style={{display:"flex",gap:7,padding:"8px 14px",background:T.bg0,borderBottom:`1px solid ${T.line}`,flexShrink:0,width:"100%"}}>
@@ -2477,7 +2477,7 @@ const ph=(tp,pid)=>tp.find(p=>p.player?.id===pid)?.player?.photo;
 		    <div className="bc" style={{
 		      width:22,fontSize:12,fontWeight:900,textAlign:"center",flexShrink:0,
 		      color:r.rank===1?"#00b86b":r.rank<=3?"#555":"#999",
-		    }}>{r.rank}</div>);
+		    }}>{r.rank}</div>;
 
 		    {/* Logo + Nom + Forme */}
 		    <div style={{flex:1,display:"flex",alignItems:"center",gap:7,minWidth:0,overflow:"hidden",marginLeft:4}}>
@@ -2514,12 +2514,12 @@ const ph=(tp,pid)=>tp.find(p=>p.player?.id===pid)?.player?.photo;
 		      width:32,textAlign:"center",fontSize:16,fontWeight:900,flexShrink:0,
 		      color:isTop?"#00b86b":"#1a1d23",
 		    }}>{r.points}</div>
-		  </div>;
+		  </div>);
 		}
 
 		//
 		function KnockoutMatch({m}){
-		  if(!m) return(<div style={{height:56,background:T.bg3,borderRadius:10,opacity:.2,border:`1px solid ${T.line}`}}/>;
+		  if(!m) return(<div style={{height:56,background:T.bg3,borderRadius:10,opacity:.2,border:`1px solid ${T.line}`}}/>);
 		  const h=m.teams?.home,a=m.teams?.away,sh=m.fixture?.status?.short;
 		  const live=["1H","2H","HT","ET","P"].includes(sh);
 		  const done=["FT","AET","PEN"].includes(sh);
@@ -2534,7 +2534,7 @@ const ph=(tp,pid)=>tp.find(p=>p.player?.id===pid)?.player?.photo;
 		      <Logo src={h?.logo} size={18}/>
 		      <span className="bc" style={{flex:1,fontSize:13,fontWeight:hw?800:500,overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap",color:done&&aw?T.t3:"#fff"}}>{h?.name??"TBD"}</span>
 		      {hg!=null&&<span className="bc" style={{fontSize:15,fontWeight:hw?900:600,color:hw?"#fff":T.t3,flexShrink:0}}>{hg}</span>}
-		    </div>);
+		    </div>
 		    <div style={{display:"flex",alignItems:"center",gap:8,padding:"8px 10px",background:aw&&done?"rgba(255,255,255,.03)":"transparent"}}>
 		      <Logo src={a?.logo} size={18}/>
 		      <span className="bc" style={{flex:1,fontSize:13,fontWeight:aw?800:500,overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap",color:done&&hw?T.t3:"#fff"}}>{a?.name??"TBD"}</span>
@@ -2742,7 +2742,7 @@ const ph=(tp,pid)=>tp.find(p=>p.player?.id===pid)?.player?.photo;
 		            {knockoutRounds.map(r=>{
 		              const label=r.replace("Round of ","1/").replace("8th Finals","8 de F.").replace("Quarter-finals","Quarts").replace("Semi-finals","Demis").replace("Final","Finale").replace("3rd Place","3ème Pl.");
 		              const active=selRound===r;
-		              return(<button key={r} onClick={()=>setSelRound(r===selRound?"":r)} style={{padding:"6px 10px",background:active?T.red:T.bg3,color:active?"#fff":T.t2,border:`1px solid ${active?T.red:T.bg4}`,borderRadius:8,fontSize:11,fontWeight:active?700:400,cursor:"pointer",transition:"all .15s"}}>{label}</button>;
+		              return(<button key={r} onClick={()=>setSelRound(r===selRound?"":r)} style={{padding:"6px 10px",background:active?T.red:T.bg3,color:active?"#fff":T.t2,border:`1px solid ${active?T.red:T.bg4}`,borderRadius:8,fontSize:11,fontWeight:active?700:400,cursor:"pointer",transition:"all .15s"}}>{label}</button>);
 		            })}
 		          </div>
 		          {/* Matchs du tour s lectionn  */}
@@ -2772,7 +2772,7 @@ const ph=(tp,pid)=>tp.find(p=>p.player?.id===pid)?.player?.photo;
 		        <button onClick={()=>setCfg(false)} style={{background:"linear-gradient(135deg,#e53535,#c62828)",border:"none",color:"#fff",borderRadius:12,padding:"15px",fontSize:14,fontWeight:700,cursor:"pointer",boxShadow:"0 4px 16px rgba(229,53,53,.35)",letterSpacing:.3}}>Appliquer</button>);
 		      </div>
 		    </Sheet>
-		  </div>);
+		  </div>;
 		}
 
 		//
