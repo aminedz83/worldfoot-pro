@@ -1577,6 +1577,8 @@
 		  const h2h     =state?.data?.h2h      ??[];
 		  const players =state?.data?.players  ??[];
 		  const injuries=state?.data?.injuries ??[];
+		  const standings=state?.data?.standings??[];
+		  const odds    =state?.data?.odds      ??[];
 
 		  const s  =fix?.fixture?.status??{short:"NS",elapsed:null};
 		  const hg =fix?.goals?.home??0, ag=fix?.goals?.away??0;
@@ -1778,6 +1780,45 @@
 		      {tab==="evts"&&<div style={{background:"#fff",paddingBottom:20}}>
 		        {events.length===0&&isPartial&&<div style={{textAlign:"center",padding:"40px",color:"#888",display:"flex",flexDirection:"column",alignItems:"center",gap:10}}><Spin s={22}/><span style={{fontSize:13}}>Chargement...</span></div>}
 
+		        <div style={{background:"white",borderRadius:12,margin:"0 0 8px",padding:"14px 16px",boxShadow:"0 1px 4px rgba(0,0,0,.06)"}}>
+		          <div style={{textAlign:"center",marginBottom:8}}>
+		            <span style={{fontSize:14,fontWeight:700,color:"#e53535"}}>
+		              {s.short==="HT"?"Mi-temps":["FT","AET","PEN"].includes(s.short)?"Termine":s.elapsed?(s.elapsed+"'"):"A venir"}
+		            </span>
+		          </div>
+		          <div style={{position:"relative",height:4,background:"#e5e7eb",borderRadius:4,margin:"0 0 8px"}}>
+		            <div style={{position:"absolute",left:0,top:0,height:"100%",width:(Math.min((s.elapsed||0),90)/90*100)+"%",background:"#e53535",borderRadius:4}}/>
+		          </div>
+		          <div style={{display:"flex",justifyContent:"space-between"}}>
+		            <span style={{fontSize:11,color:"#999"}}>{fix.fixture.date?new Date(fix.fixture.date).toLocaleTimeString("fr-FR",{hour:"2-digit",minute:"2-digit"}):""}</span>
+		            <span style={{fontSize:11,color:"#999"}}>MT</span>
+		            <span style={{fontSize:11,color:"#999"}}>FM</span>
+		          </div>
+		        </div>
+
+		        {odds.length>0&&(function(){
+		          const bk=odds[0]?.bookmakers?.[0];
+		          const mw=bk?.bets?.find(function(b){return b.name==="Match Winner";});
+		          if(!mw)return null;
+		          const h=mw.values?.find(function(v){return v.value==="Home";})?.odd;
+		          const d=mw.values?.find(function(v){return v.value==="Draw";})?.odd;
+		          const a=mw.values?.find(function(v){return v.value==="Away";})?.odd;
+		          if(!h||!d||!a)return null;
+		          return(
+		            <div style={{background:"white",borderRadius:12,margin:"0 0 8px",boxShadow:"0 1px 4px rgba(0,0,0,.06)"}}>
+		              <div style={{padding:"10px 16px 6px",fontSize:12,fontWeight:600,color:"#888"}}>Cotes</div>
+		              <div style={{display:"grid",gridTemplateColumns:"1fr 1fr 1fr",borderTop:"1px solid #f0f0f0"}}>
+		                {[["1",h],["X",d],["2",a]].map(function(item,i){return(
+		                  <div key={i} style={{padding:"10px",textAlign:"center",borderRight:i<2?"1px solid #f0f0f0":"none"}}>
+		                    <div style={{fontSize:11,color:"#999",marginBottom:3}}>{item[0]}</div>
+		                    <div style={{fontSize:16,fontWeight:800,color:"#e08c00"}}>{item[1]}</div>
+		                  </div>
+		                );})}
+		              </div>
+		            </div>
+		          );
+		        })()}
+
 		        {events.length>0&&(()=>{
 		          // Calculer score evolutif
 		          let hScore=0,aScore=0;
@@ -1974,6 +2015,79 @@
 		      {}
 		      {tab==="absents"&&<InjuriesPanel injuries={injuries} homeTeam={fix.teams.home} awayTeam={fix.teams.away}/>}
 
+		        {standings.length>0&&(function(){
+		          const lg=standings[0]?.[0];
+		          if(!lg||!lg.length)return null;
+		          const hid=fix.teams.home.id,aid=fix.teams.away.id;
+		          return(
+		            <div style={{background:"white",borderRadius:12,margin:"0 0 8px",padding:"16px",boxShadow:"0 1px 4px rgba(0,0,0,.06)"}}>
+		              <div style={{fontSize:15,fontWeight:700,color:"#111",marginBottom:12}}>Classements</div>
+		              <table style={{width:"100%",borderCollapse:"collapse"}}>
+		                <thead><tr>
+		                  <td style={{fontSize:11,color:"#999",paddingBottom:6,width:24}}>#</td>
+		                  <td style={{fontSize:11,color:"#999",paddingBottom:6}}>Equipe</td>
+		                  <td style={{fontSize:11,color:"#999",paddingBottom:6,textAlign:"center",width:32}}>J</td>
+		                  <td style={{fontSize:11,color:"#999",paddingBottom:6,textAlign:"center",width:40}}>Diff</td>
+		                  <td style={{fontSize:11,color:"#999",paddingBottom:6,textAlign:"right",width:40}}>PTS</td>
+		                </tr></thead>
+		                <tbody>
+		                  {lg.map(function(t,i){
+		                    var im=t.team?.id===hid||t.team?.id===aid;
+		                    return(
+		                      <tr key={i} style={{background:im?"#fff5f5":"transparent"}}>
+		                        <td style={{fontSize:13,fontWeight:im?700:400,color:"#111",padding:"5px 2px"}}>{t.rank}</td>
+		                        <td style={{padding:"5px 2px"}}>
+		                          <div style={{display:"flex",alignItems:"center",gap:6}}>
+		                            <img src={t.team?.logo} alt="" style={{width:18,height:18,objectFit:"contain"}}/>
+		                            <span style={{fontSize:13,fontWeight:im?700:400,color:"#111",overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap"}}>{t.team?.name}</span>
+		                          </div>
+		                        </td>
+		                        <td style={{fontSize:13,color:"#555",textAlign:"center",padding:"5px 2px"}}>{t.all?.played}</td>
+		                        <td style={{fontSize:13,color:"#555",textAlign:"center",padding:"5px 2px"}}>{t.goalsDiff>0?"+":""}{t.goalsDiff}</td>
+		                        <td style={{fontSize:13,fontWeight:700,color:im?"#e53535":"#111",textAlign:"right",padding:"5px 2px"}}>{t.points}</td>
+		                      </tr>
+		                    );
+		                  })}
+		                </tbody>
+		              </table>
+		            </div>
+		          );
+		        })()}
+		        {standings.length>0&&(function(){
+		          const lg=standings[0]?.[0];
+		          if(!lg||!lg.length)return null;
+		          const hid=fix.teams.home.id,aid=fix.teams.away.id;
+		          const hRow=lg.find(function(t){return t.team?.id===hid;});
+		          const aRow=lg.find(function(t){return t.team?.id===aid;});
+		          if(!hRow&&!aRow)return null;
+		          function FormBadges({row}){
+		            if(!row?.form)return null;
+		            var letters=row.form.slice(-6).split("");
+		            return(
+		              <div style={{display:"flex",gap:3}}>
+		                {letters.map(function(l,i){
+		                  var bg=l==="W"?"#22c55e":l==="L"?"#ef4444":"#94a3b8";
+		                  return <div key={i} style={{width:22,height:22,borderRadius:4,background:bg,display:"flex",alignItems:"center",justifyContent:"center",fontSize:11,fontWeight:700,color:"white"}}>{l==="W"?"G":l==="L"?"P":"N"}</div>;
+		                })}
+		              </div>
+		            );
+		          }
+		          return(
+		            <div style={{background:"white",borderRadius:12,margin:"0 0 8px",padding:"16px",boxShadow:"0 1px 4px rgba(0,0,0,.06)"}}>
+		              <div style={{fontSize:15,fontWeight:700,color:"#111",marginBottom:12}}>Forme</div>
+		              {[hRow,aRow].filter(Boolean).map(function(row,i){
+		                return(
+		                  <div key={i} style={{display:"flex",alignItems:"center",gap:10,marginBottom:i===0?10:0}}>
+		                    <img src={row.team?.logo} alt="" style={{width:22,height:22,objectFit:"contain"}}/>
+		                    <span style={{fontSize:13,fontWeight:600,color:"#111",flex:1,overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap"}}>{row.team?.name}</span>
+		                    <FormBadges row={row}/>
+		                  </div>
+		                );
+		              })}
+		            </div>
+		          );
+		        })()}
+
 
 		      {tab==="h2h"&&<div>
 		        {h2h.length===0&&isPartial&&<div style={{textAlign:"center",padding:"32px",display:"flex",flexDirection:"column",alignItems:"center",gap:10,color:T.t3}}><Spin s={22}/><span style={{fontSize:13}}>Chargement historique...</span></div>}
@@ -2087,7 +2201,12 @@
 		        api(`/fixtures/headtohead?h2h=${hid}-${aid}&last=50`,86400000,sig).catch(()=>[]),
 		        api(`/injuries?fixture=${fid}`,isDone?10800000:3600000,sig).catch(()=>[]),
 		      ]);
-		      setDet({data:{fixture:fix,stats,events:evts,lineups,players:plrs,h2h,injuries}});
+		      const lid=fix.league.id, season=fix.league.season;
+		      const[standings,odds]=await Promise.all([
+		        api(`/standings?league=${lid}&season=${season}`,86400000,sig).catch(()=>[]),
+		        api(`/odds/live?fixture=${fid}`,60000,sig).catch(()=>api(`/odds?fixture=${fid}`,3600000,sig).catch(()=>[])),
+		      ]);
+		      setDet({data:{fixture:fix,stats,events:evts,lineups,players:plrs,h2h,injuries,standings,odds}});
 		    }catch(e){if(e.name!=="AbortError")setDet({error:e.message});}
 		  },[]);
 
