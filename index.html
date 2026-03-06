@@ -1734,52 +1734,106 @@
 		  ].filter(g=>g.evs.length>0);
 
 
-		  return<Sheet open onClose={onClose}>
+		  return<Sheet open onClose={onClose} style={{display:"flex",flexDirection:"column",overflow:"hidden"}}>
 		    {isPartial&&<div style={{height:3,background:"linear-gradient(90deg,#1a1aff,#00c060)",backgroundSize:"200% 100%",animation:"shimmer 1.2s linear infinite",flexShrink:0}}/>}
-		    {/* NAV COMPACTE */}
-		    <div style={{background:"linear-gradient(160deg,#1e0533 0%,#0d0d22 60%,#001a33 100%)",padding:"10px 14px",display:"flex",alignItems:"center",gap:10,position:"sticky",top:0,zIndex:10,flexShrink:0}}>
-		      <button onClick={onClose} style={{background:"none",border:"none",color:"#fff",fontSize:22,cursor:"pointer",padding:0,flexShrink:0,lineHeight:1}}>←</button>
-		      <Logo src={fix.teams.home.logo} size={34}/>
-		      <div style={{flex:1,textAlign:"center"}}>
-		        {has
-		          ?<div>
-		            <div style={{fontSize:24,fontWeight:900,color:LIVE_ST.has(s.short)?"#e53535":"#fff",letterSpacing:-1,lineHeight:1}}>{hg} - {ag}</div>
-		            <div style={{fontSize:12,color:LIVE_ST.has(s.short)?"#ff6b6b":"rgba(255,255,255,.6)",marginTop:3,fontWeight:600}}>
-		              {LIVE_ST.has(s.short)?min+"'":s.short==="HT"?"Mi-temps":s.short==="FT"?"FT":s.long??s.short}
-		              {s.extra?<span style={{background:"rgba(255,255,255,.2)",borderRadius:10,padding:"1px 6px",marginLeft:4,fontSize:10}}>+{s.extra}</span>:null}
-		            </div>
+
+		    {/* HEADER STICKY COMPRESSIBLE */}
+		    <div style={{position:"sticky",top:0,zIndex:20,flexShrink:0}}>
+
+		      {/* HERO GRAND - score enorme quand en haut */}
+		      <div style={{
+		        background:"linear-gradient(160deg,#1e0533 0%,#0d0d22 60%,#001a33 100%)",
+		        overflow:"hidden",
+		        maxHeight:compact?"0px":"230px",
+		        opacity:compact?0:1,
+		        transition:"max-height .4s cubic-bezier(.4,0,.2,1), opacity .3s ease, padding .4s ease",
+		        padding:compact?"0 14px":"20px 14px 20px",
+		      }}>
+		        <div style={{display:"flex",alignItems:"center",gap:10,marginBottom:18}}>
+		          <button onClick={onClose} style={{background:"rgba(255,255,255,.12)",border:"none",color:"#fff",fontSize:13,cursor:"pointer",padding:"6px 12px",borderRadius:8,fontWeight:600,flexShrink:0}}>{"< Retour"}</button>
+		          <div style={{flex:1,textAlign:"center"}}>
+		            <span style={{fontSize:11,color:"rgba(255,255,255,.55)",fontWeight:600}}>{fix.league.name+" · "+fix.league.country}</span>
 		          </div>
-		          :<div style={{fontSize:18,fontWeight:700,color:"rgba(255,255,255,.9)"}}>{hhmm(fix.fixture.date)}</div>
-		        }
+		          <button style={{background:"none",border:"none",color:"rgba(255,255,255,.65)",fontSize:19,cursor:"pointer",padding:0}}>{"☆"}</button>
+		        </div>
+		        <div style={{display:"flex",alignItems:"center",justifyContent:"space-between",gap:6}}>
+		          <div style={{flex:1,display:"flex",flexDirection:"column",alignItems:"center",gap:8}}>
+		            <Logo src={fix.teams.home.logo} size={56}/>
+		            <span style={{fontSize:12,fontWeight:700,color:"rgba(255,255,255,.9)",textAlign:"center",maxWidth:90,overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap"}}>{fix.teams.home.name}</span>
+		          </div>
+		          <div style={{textAlign:"center",minWidth:110}}>
+		            {has
+		              ?<div>
+		                <div style={{fontSize:56,fontWeight:900,color:LIVE_ST.has(s.short)?"#ff6b6b":"#fff",letterSpacing:-3,lineHeight:1}}>{hg+" - "+ag}</div>
+		                <div style={{marginTop:8,display:"inline-block",background:LIVE_ST.has(s.short)?"#e53535":"rgba(255,255,255,.15)",borderRadius:20,padding:"4px 14px"}}>
+		                  <span style={{fontSize:12,color:"#fff",fontWeight:700}}>{LIVE_ST.has(s.short)?min+"'":s.short==="HT"?"Mi-temps":s.short==="FT"?"Termine":s.long??s.short}</span>
+		                  {s.extra?<span style={{fontSize:10,color:"rgba(255,255,255,.8)",marginLeft:4}}>+{s.extra}</span>:null}
+		                </div>
+		              </div>
+		              :<div>
+		                <div style={{fontSize:40,fontWeight:900,color:"rgba(255,255,255,.9)"}}>{hhmm(fix.fixture.date)}</div>
+		                <div style={{fontSize:11,color:"rgba(255,255,255,.45)",marginTop:6}}>{fix.league.round?.replace("Regular Season - ","J")||""}</div>
+		              </div>
+		            }
+		          </div>
+		          <div style={{flex:1,display:"flex",flexDirection:"column",alignItems:"center",gap:8}}>
+		            <Logo src={fix.teams.away.logo} size={56}/>
+		            <span style={{fontSize:12,fontWeight:700,color:"rgba(255,255,255,.9)",textAlign:"center",maxWidth:90,overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap"}}>{fix.teams.away.name}</span>
+		          </div>
+		        </div>
 		      </div>
-		      <Logo src={fix.teams.away.logo} size={34}/>
-		      <div style={{display:"flex",gap:14,marginLeft:4}}>
-		        <button style={{background:"none",border:"none",color:"rgba(255,255,255,.7)",fontSize:20,cursor:"pointer",padding:0}}>🔔</button>
-		        <button style={{background:"none",border:"none",color:"rgba(255,255,255,.7)",fontSize:20,cursor:"pointer",padding:0}}>☆</button>
+
+		      {/* BARRE COMPACTE - visible quand on scrolle */}
+		      <div style={{
+		        background:"linear-gradient(160deg,#1e0533 0%,#0d0d22 60%,#001a33 100%)",
+		        display:"flex",
+		        alignItems:"center",
+		        gap:10,
+		        overflow:"hidden",
+		        maxHeight:compact?"64px":"0px",
+		        opacity:compact?1:0,
+		        padding:compact?"10px 14px":"0 14px",
+		        transition:"max-height .4s cubic-bezier(.4,0,.2,1), opacity .3s ease, padding .4s ease",
+		      }}>
+		        <button onClick={onClose} style={{background:"none",border:"none",color:"#fff",fontSize:22,cursor:"pointer",padding:0,flexShrink:0,lineHeight:1}}>{"<"}</button>
+		        <Logo src={fix.teams.home.logo} size={30}/>
+		        <div style={{flex:1,textAlign:"center"}}>
+		          {has
+		            ?<div>
+		              <div style={{fontSize:22,fontWeight:900,color:LIVE_ST.has(s.short)?"#ff6b6b":"#fff",letterSpacing:-1,lineHeight:1}}>{hg+" - "+ag}</div>
+		              <div style={{fontSize:11,color:"rgba(255,255,255,.6)",fontWeight:600}}>{LIVE_ST.has(s.short)?min+"'":s.short==="HT"?"Mi-temps":s.short==="FT"?"FT":s.long??s.short}</div>
+		            </div>
+		            :<div style={{fontSize:18,fontWeight:700,color:"rgba(255,255,255,.9)"}}>{hhmm(fix.fixture.date)}</div>
+		          }
+		        </div>
+		        <Logo src={fix.teams.away.logo} size={30}/>
 		      </div>
-		    </div>
-		    {/* Info ligue */}
-		    <div style={{display:"flex",alignItems:"center",gap:7,padding:"7px 14px",background:"#fff",borderBottom:"1px solid #f0f1f5",flexShrink:0}}>
-		      <Logo src={fix.league.logo} size={16}/>
-		      <span style={{fontSize:12,fontWeight:600,color:"#333"}}>{fix.league.name}</span>
-		      <span style={{fontSize:12,color:"#bbb"}}>· {fix.league.country}</span>
-		      {fix.league.round&&<span style={{fontSize:11,color:"#bbb"}}>· {fix.league.round.replace("Regular Season - ","J")}</span>}
-		    </div>
-		    {/* Tabs */}
-		    <div style={{display:"flex",overflowX:"auto",borderBottom:"1px solid #f0f1f5",background:"#fff",padding:"0 6px",flexShrink:0}}>
-		      {TABS.map(t=><button key={t.id} onClick={()=>setTab(t.id)} style={{
-		        flexShrink:0,padding:"13px 14px 11px",
-		        background:"none",border:"none",
-		        borderBottom:`2px solid ${tab===t.id?"#1a1aff":"transparent"}`,
-		        color:tab===t.id?"#1a1aff":"#999",
-		        fontSize:13,fontWeight:tab===t.id?700:500,
-		        cursor:"pointer",whiteSpace:"nowrap",
-		        transition:"color .15s",
-		      }}>{t.label}</button>)}
+
+		      {/* LIGUE + TABS */}
+		      <div style={{background:"#fff",borderBottom:"1px solid #f0f1f5"}}>
+		        <div style={{display:"flex",alignItems:"center",gap:7,padding:"6px 14px",borderBottom:"1px solid #f0f1f5"}}>
+		          <Logo src={fix.league.logo} size={14}/>
+		          <span style={{fontSize:11,fontWeight:600,color:"#333"}}>{fix.league.name}</span>
+		          <span style={{fontSize:11,color:"#bbb"}}>{"· "+fix.league.country}</span>
+		          {fix.league.round&&<span style={{fontSize:10,color:"#bbb"}}>{"· "+fix.league.round.replace("Regular Season - ","J")}</span>}
+		        </div>
+		        <div style={{display:"flex",overflowX:"auto",padding:"0 6px"}}>
+		          {TABS.map(function(t){return(
+		            <button key={t.id} onClick={function(){setTab(t.id);}} style={{
+		              flexShrink:0,padding:"12px 14px 10px",
+		              background:"none",border:"none",
+		              borderBottom:"2px solid "+(tab===t.id?"#1a1aff":"transparent"),
+		              color:tab===t.id?"#1a1aff":"#999",
+		              fontSize:13,fontWeight:tab===t.id?700:500,
+		              cursor:"pointer",whiteSpace:"nowrap",
+		            }}>{t.label}</button>
+		          );})}
+		        </div>
+		      </div>
 		    </div>
 
-		    {/* Contenu */}
-		    <div style={{paddingBottom:32,animation:"fadeIn .2s ease"}}>
+		    {/* Contenu scrollable */}
+		    <div onScroll={onScroll} style={{paddingBottom:32,animation:"fadeIn .2s ease",overflowY:"auto",flex:1}}>
 
 		      {tab==="resume"&&(mEvt.length===0
 		        ?<div style={{textAlign:"center",padding:"32px 20px",color:T.t3,fontSize:14,display:"flex",flexDirection:"column",alignItems:"center",gap:10}}>
