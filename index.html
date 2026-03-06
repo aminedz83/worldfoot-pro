@@ -2,7 +2,7 @@
 
 <html lang="fr">
 	<head>
-		<meta charset="UTF-8" /><!-- v1772761167 -->
+		<meta charset="UTF-8" />
 		<meta
 			http-equiv="Cache-Control"
 			content="no-cache, no-store, must-revalidate"
@@ -311,7 +311,7 @@
 		}
 
 		.bc {
-			font-family: "Barlow Condensed", sans-serif;
+			font-family: “Barlow Condensed”, sans-serif;
 		}
 
 		/* Point LIVE rouge */
@@ -391,7 +391,7 @@
 			border-radius: 14px;
 			color: #fff;
 			font-weight: 700;
-			font-family: "Barlow", -apple-system, sans-serif;
+			font-family: “Barlow”, -apple-system, sans-serif;
 			box-shadow: 0 4px 16px rgba(0, 184, 107, 0.3),
 				0 1px 0 rgba(255, 255, 255, 0.2) inset;
 			transition: all 0.2s ease;
@@ -412,7 +412,7 @@
 			color: #1a1d23;
 			outline: none;
 			transition: border-color 0.2s, box-shadow 0.2s;
-			font-family: "Barlow", -apple-system, sans-serif;
+			font-family: “Barlow”, -apple-system, sans-serif;
 		}
 		.input-premium:focus {
 			border-color: #00b86b;
@@ -1593,232 +1593,295 @@
 		  // Early returns apr s les hooks
 		  if(!state)return null;
 		  const isPartial=state.partial===true;
-		  if(state.loading)return<Sheet open onClose={onClose} onScroll={onScroll}>
-		    {isPartial&&<div style={{height:3,background:"linear-gradient(90deg,#1a1aff,#00c060)",backgroundSize:"200% 100%",animation:"shimmer 1.2s linear infinite",position:"sticky",top:0,zIndex:20}}/>}
-		    <div style={{position:"sticky",top:0,zIndex:10,background:"linear-gradient(160deg,#1e0533 0%,#0d0d22 60%,#001a33 100%)"}}>
-		      <div style={{display:"flex",alignItems:"center",gap:10,padding:"10px 14px"}}>
-		        <button onClick={onClose} style={{background:"none",border:"none",color:"#fff",fontSize:22,cursor:"pointer",padding:0,flexShrink:0}}>←</button>
-		        {compact&&<Logo src={fix.teams.home.logo} size={28}/>}
-		        <div style={{flex:1,textAlign:"center"}}>
-		          {compact
-		            ?<div style={{display:"flex",alignItems:"center",justifyContent:"center",gap:8}}>
-		               <span style={{fontSize:18,fontWeight:900,color:LIVE_ST.has(s.short)?"#e53535":"#fff"}}>{has?hg+" - "+ag:hhmm(fix.fixture.date)}</span>
-		               {LIVE_ST.has(s.short)&&<span style={{fontSize:11,color:"#e53535",fontWeight:800}}>{min}'</span>}
-		               {!LIVE_ST.has(s.short)&&has&&<span style={{fontSize:11,color:"rgba(255,255,255,.4)",background:"rgba(255,255,255,.1)",padding:"1px 7px",borderRadius:10}}>{s.short==="HT"?"MT":s.short}</span>}
-		             </div>
-		            :<span style={{fontSize:12,color:"rgba(255,255,255,.5)"}}>{fix.league.name}</span>
-		          }
-		        </div>
-		        {compact&&<Logo src={fix.teams.away.logo} size={28}/>}
-		        <div style={{display:"flex",gap:12}}>
-		          <button style={{background:"none",border:"none",color:"rgba(255,255,255,.65)",fontSize:19,cursor:"pointer",padding:0}}>🔔</button>
-		          <button style={{background:"none",border:"none",color:"rgba(255,255,255,.65)",fontSize:19,cursor:"pointer",padding:0}}>☆</button>
-		        </div>
-		      </div>
-		      {!compact&&<div style={{padding:"0 18px 18px"}}>
-		        <div style={{display:"flex",alignItems:"center"}}>
-		          <div style={{flex:1,display:"flex",flexDirection:"column",alignItems:"center",gap:6}}>
-		            <Logo src={fix.teams.home.logo} size={62}/>
-		            <span style={{fontSize:13,fontWeight:hw?800:500,color:aw?"rgba(255,255,255,.4)":"#fff",textAlign:"center",maxWidth:88,lineHeight:1.2}}>{fix.teams.home.name}</span>
-		          </div>
-		          <div style={{textAlign:"center",minWidth:110}}>
-		            {has
-		              ?<>
-		                <div style={{fontSize:54,fontWeight:900,color:LIVE_ST.has(s.short)?"#e53535":"#fff",letterSpacing:-2,lineHeight:1}}>{hg}<span style={{fontSize:26,color:"rgba(255,255,255,.25)",margin:"0 4px"}}>-</span>{ag}</div>
-		                <div style={{marginTop:7}}>{LIVE_ST.has(s.short)?<span style={{fontSize:15,fontWeight:900,color:"#e53535"}}>{min}'</span>:<span style={{fontSize:11,color:"rgba(255,255,255,.4)"}}>{s.short==="HT"?"Mi-temps":s.short==="FT"?"FT":s.long??s.short}</span>}</div>
-		                {fix.score?.halftime&&<div style={{fontSize:10,color:"rgba(255,255,255,.25)",marginTop:4}}>MT {fix.score.halftime.home??0}-{fix.score.halftime.away??0}</div>}
-		              </>
-		              :<div style={{fontSize:22,fontWeight:700,color:"rgba(255,255,255,.9)"}}>{hhmm(fix.fixture.date)}</div>
-		            }
-		          </div>
-		          <div style={{flex:1,display:"flex",flexDirection:"column",alignItems:"center",gap:6}}>
-		            <Logo src={fix.teams.away.logo} size={62}/>
-		            <span style={{fontSize:13,fontWeight:aw?800:500,color:hw?"rgba(255,255,255,.4)":"#fff",textAlign:"center",maxWidth:88,lineHeight:1.2}}>{fix.teams.away.name}</span>
-		          </div>
-		        </div>
-		        {goals.length>0&&<div style={{display:"flex",justifyContent:"space-between",marginTop:10}}>
-		          <div style={{fontSize:11,color:"rgba(255,255,255,.45)",flex:1,lineHeight:2}}>{goals.filter(e=>e.team?.id===fix.teams.home.id).map((e,i)=><div key={i}>{(e.player?.name||"").split(" ").pop()} <span style={{color:"rgba(255,255,255,.3)"}}>{e.time?.elapsed}'</span></div>)}</div>
-		          <div style={{fontSize:11,color:"rgba(255,255,255,.45)",flex:1,textAlign:"right",lineHeight:2}}>{goals.filter(e=>e.team?.id===fix.teams.away.id).map((e,i)=><div key={i}><span style={{color:"rgba(255,255,255,.3)"}}>{e.time?.elapsed}'</span> {(e.player?.name||"").split(" ").pop()}</div>)}</div>
-		        </div>}
-		        <div style={{display:"flex",alignItems:"center",gap:7,marginTop:10,paddingTop:10,borderTop:"1px solid rgba(255,255,255,.08)"}}>
-		          <Logo src={fix.league.logo} size={14}/>
-		          <span style={{fontSize:11,color:"rgba(255,255,255,.45)"}}>{fix.league.name} · {fix.league.country}</span>
-		          {fix.league.round&&<span style={{fontSize:10,color:"rgba(255,255,255,.3)"}}>· {fix.league.round.replace("Regular Season - ","J")}</span>}
-		        </div>
-		      </div>}
+		  if(state.loading)return<Sheet open onClose={onClose}>
+		    <div style={{display:"flex",flexDirection:"column",alignItems:"center",gap:14,padding:"52px 20px"}}>
+		      <Spin s={30}/><span style={{fontSize:13,color:T.t3}}>Chargement du match...</span>
 		    </div>
-```
+		  </Sheet>;
+		  if(state.error)return<Sheet open onClose={onClose}>
+		    <div style={{textAlign:"center",padding:"44px 20px"}}>
+		      <div style={{fontSize:44,marginBottom:14}}>⚠️</div>
+		      <div style={{fontSize:14,color:T.t2,marginBottom:24,lineHeight:1.5}}>{state.error}</div>
+		      <button onClick={onClose} style={{background:T.red,border:"none",color:"#fff",borderRadius:10,padding:"12px 28px",fontSize:14,fontWeight:700,cursor:"pointer"}}>Fermer</button>
+		    </div>
+		  </Sheet>;
+		  if(!fix)return null;
 
-{/* Tabs */}
-<div style={{display:“flex”,overflowX:“auto”,borderBottom:“1px solid #f0f1f5”,background:”#fff”,padding:“0 6px”,flexShrink:0}}>
-{TABS.map(t=><button key={t.id} onClick={()=>setTab(t.id)} style={{
-flexShrink:0,padding:“13px 14px 11px”,
-background:“none”,border:“none”,
-borderBottom:`2px solid ${tab===t.id?"#1a1aff":"transparent"}`,
-color:tab===t.id?”#1a1aff”:”#999”,
-fontSize:13,fontWeight:tab===t.id?700:500,
-cursor:“pointer”,whiteSpace:“nowrap”,
-transition:“color .15s”,
-}}>{t.label}</button>)}
-</div>
+		  // Donn es match
+		  const hSt=stats.find(t=>t.team?.id===fix.teams.home.id)?.statistics??[];
+		  const aSt=stats.find(t=>t.team?.id===fix.teams.away.id)?.statistics??[];
+		  const hPoss=hSt.find(x=>x.type==="Ball Possession")?.value||null;
+		  const aPoss=aSt.find(x=>x.type==="Ball Possession")?.value||null;
+		  const STAT_LABELS={"expected_goals":"xG","Ball Possession":"Possession","Total Shots":"Tirs totaux","Shots on Goal":"Tirs cadrés","Shots off Goal":"Tirs non cadrés","Blocked Shots":"Tirs bloqués","Corner Kicks":"Corners","Offsides":"Hors-jeux","Fouls":"Fautes","Yellow Cards":"Cartons jaunes","Red Cards":"Cartons rouges","Goalkeeper Saves":"Arrêts gardien","Total passes":"Passes totales","Passes accurate":"Passes réussies","Passes %":"Passes %","Ball Safe":"Ballons conservés","Tackles":"Tacles"};
+		const gv=(arr,k)=>arr.find(x=>x.type===k)?.value??0;
+		  const mEvt=events.filter(e=>e.type!=="subst");
+		  const goals=mEvt.filter(e=>e.type==="Goal");
 
-```
+		  // Tabs disponibles — si partial on affiche tous les onglets possibles avec spinner
+		  const TABS=[
+		    {id:"evts",                                                label:"Détails"},
+		    (lineups.length||isPartial)           ?{id:"compos",      label:"Compositions"}  :null,
+		    (hSt.length||isPartial)               ?{id:"stats",       label:"Statistiques"}  :null,
+		    (h2h.length||isPartial)               ?{id:"h2h",         label:"H2H"}           :null,
+		    (players.some(t=>t.players?.length)||isPartial)?{id:"joueurs", label:"Joueurs"}    :null,
+		    (injuries.length||isPartial)          ?{id:"absents",     label:"Absents"}       :null,
+		  ].filter(Boolean);
+
+		  const SK_CATS=[
+		    {cat:"⚡ xG",icon:"⚡",keys:["expected_goals"]},
+		    {cat:"Général",icon:"📊",keys:["Ball Possession","Corner Kicks","Offsides","Fouls"]},
+		    {cat:"Attaque",icon:"⚔️",keys:["Total Shots","Shots on Goal","Shots off Goal","Blocked Shots"]},
+		    {cat:"Défense",icon:"🛡️",keys:["Goalkeeper Saves","Yellow Cards","Red Cards"]},
+		    {cat:"Distribution",icon:"🎯",keys:["Total passes","Passes accurate","Passes %"]},
+		  ];
+		  const SK=SK_CATS.flatMap(c=>c.keys);
+
+		  // ── ÉVÉNEMENTS PREMIUM ──────────────────────────────
+		  const getEvtStyle=e=>{
+		    if(e.type==="Goal"){
+		      if(e.detail==="Penalty")    return{bg:"rgba(0,184,107,.08)",border:"rgba(0,184,107,.25)",icon:"⚽",iconBg:"#00b86b",sub:"Penalty"};
+		      if(e.detail==="Own Goal")   return{bg:"rgba(229,53,53,.08)",border:"rgba(229,53,53,.25)",icon:"⚽",iconBg:"#e53535",sub:"CSC"};
+		      if(e.detail?.includes("Free Kick")) return{bg:"rgba(0,184,107,.08)",border:"rgba(0,184,107,.25)",icon:"⚽",iconBg:"#00b86b",sub:"Coup franc"};
+		      return{bg:"rgba(0,184,107,.08)",border:"rgba(0,184,107,.25)",icon:"⚽",iconBg:"#00b86b",sub:e.detail||""};
+		    }
+		    if(e.type==="Card"){
+		      const isY=e.detail?.includes("Yellow");
+		      const isR=e.detail?.includes("Red")||e.detail?.includes("Second Yellow");
+		      return{bg:isR?"rgba(229,53,53,.08)":"rgba(255,193,7,.08)",border:isR?"rgba(229,53,53,.3)":"rgba(255,193,7,.3)",icon:isR?"🟥":"🟨",iconBg:isR?"#e53535":"#ffc107",sub:e.detail?.replace(" Card","")||""};
+		    }
+		    if(e.type==="subst") return{bg:"rgba(41,121,255,.06)",border:"rgba(41,121,255,.2)",icon:"🔄",iconBg:"#1976d2",sub:"Changement"};
+		    if(e.type==="Var")   return{bg:"rgba(124,77,255,.06)",border:"rgba(124,77,255,.2)",icon:"📺",iconBg:"#7c4dff",sub:"VAR"};
+		    if(e.type==="injury"||e.type==="Injury") return{bg:"rgba(229,53,53,.06)",border:"rgba(229,53,53,.2)",icon:"🏥",iconBg:"#e53535",sub:"Blessure"};
+		    return{bg:"rgba(26,29,35,.04)",border:"rgba(26,29,35,.1)",icon:"📋",iconBg:T.t3,sub:e.detail||""};
+		  };
+
+		  const EvtCard=({e})=>{
+		    const home=e.team?.id===fix.teams.home.id;
+		    const s=getEvtStyle(e);
+		    const isGoal=e.type==="Goal";
+		    const isSubst=e.type==="subst";
+		    const photo=e.player?.photo;
+		    const assistPhoto=e.assist?.photo;
+		    return<div style={{
+		      display:"flex",alignItems:"center",
+		      padding:"12px 14px",
+		      margin:"0 10px 8px",
+		      borderRadius:14,
+		      background:s.bg,
+		      border:`1px solid ${s.border}`,
+		      flexDirection:home?"row":"row-reverse",
+		      gap:10,
+		      boxShadow:isGoal?"0 2px 8px rgba(0,184,107,.15)":"none",
+		    }}>
+		      {/* Photo joueur */}
+		      <div style={{position:"relative",flexShrink:0}}>
+		        <Avatar src={photo} size={isGoal?42:36} style={{border:`2px solid ${s.border}`}}/>
+		        <div style={{
+		          position:"absolute",bottom:-4,right:home?-4:undefined,left:home?undefined:-4,
+		          width:20,height:20,borderRadius:"50%",
+		          background:s.iconBg,
+		          display:"flex",alignItems:"center",justifyContent:"center",
+		          fontSize:10,border:"2px solid #fff",
+		          boxShadow:"0 1px 4px rgba(0,0,0,.2)",
+		        }}>{s.icon}</div>
+		      </div>
+		      {/* Infos */}
+		      <div style={{flex:1,minWidth:0,textAlign:home?"left":"right"}}>
+		        <div className="bc" style={{fontSize:isGoal?15:13,fontWeight:isGoal?800:700,color:T.t1,overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap",letterSpacing:.2}}>
+		          {e.player?.name??""}
+		        </div>
+		        {isSubst&&e.assist?.name&&<div style={{display:"flex",alignItems:"center",gap:4,marginTop:3,justifyContent:home?"flex-start":"flex-end"}}>
+		          <Avatar src={assistPhoto} size={16}/>
+		          <span className="bc" style={{fontSize:10,color:T.green,fontWeight:700}}>↑ {e.assist.name}</span>
+		        </div>}
+		        {!isSubst&&e.assist?.name&&<div className="bc" style={{fontSize:11,color:T.t3,marginTop:2}}>{e.assist.name}</div>}
+		        <div className="bc" style={{fontSize:10,color:T.t3,marginTop:2,letterSpacing:.3}}>{s.sub}</div>
+		      </div>
+		      {/* Minute */}
+		      <div style={{
+		        flexShrink:0,
+		        background:isGoal?"linear-gradient(135deg,#00b86b,#009657)":"rgba(26,29,35,.08)",
+		        borderRadius:8,padding:"4px 8px",
+		        minWidth:36,textAlign:"center",
+		      }}>
+		        <span className="bc" style={{fontSize:13,fontWeight:900,color:isGoal?"#fff":T.t2,letterSpacing:.3}}>
+		          {e.time?.elapsed}{e.time?.extra?`+${e.time.extra}`:""}'
+		        </span>
+		      </div>
+		    </div>;
+		  };
+
+		  // Grouper par catégorie
+		  const evtGroups=[
+		    {label:"⚽ Buts",    color:"#00b86b", types:["Goal"],  evs:events.filter(e=>e.type==="Goal")},
+		    {label:"🟨 Cartons", color:"#ffc107", types:["Card"],  evs:events.filter(e=>e.type==="Card")},
+		    {label:"🔄 Changements",color:"#1976d2",types:["subst"],evs:events.filter(e=>e.type==="subst")},
+		    {label:"📺 VAR",     color:"#7c4dff", types:["Var"],   evs:events.filter(e=>e.type==="Var")},
+		    {label:"🏥 Blessures",color:"#e53535", types:["injury","Injury"], evs:events.filter(e=>e.type==="injury"||e.type==="Injury")},
+		    {label:"📋 Autres",   color:T.t3,      types:["other"], evs:events.filter(e=>!["Goal","Card","subst","Var","injury","Injury"].includes(e.type))},
+		  ].filter(g=>g.evs.length>0);
+
+
+		  return<Sheet open onClose={onClose}>
+		    {isPartial&&<div style={{height:3,background:"linear-gradient(90deg,#1a1aff,#00c060)",backgroundSize:"200% 100%",animation:"shimmer 1.2s linear infinite",flexShrink:0}}/>}
+		    {/* NAV COMPACTE */}
+		    <div style={{background:"linear-gradient(160deg,#1e0533 0%,#0d0d22 60%,#001a33 100%)",padding:"10px 14px",display:"flex",alignItems:"center",gap:10,position:"sticky",top:0,zIndex:10,flexShrink:0}}>
+		      <button onClick={onClose} style={{background:"none",border:"none",color:"#fff",fontSize:22,cursor:"pointer",padding:0,flexShrink:0,lineHeight:1}}>←</button>
+		      <Logo src={fix.teams.home.logo} size={34}/>
+		      <div style={{flex:1,textAlign:"center"}}>
+		        {has
+		          ?<div>
+		            <div style={{fontSize:24,fontWeight:900,color:LIVE_ST.has(s.short)?"#e53535":"#fff",letterSpacing:-1,lineHeight:1}}>{hg} - {ag}</div>
+		            <div style={{fontSize:12,color:LIVE_ST.has(s.short)?"#ff6b6b":"rgba(255,255,255,.6)",marginTop:3,fontWeight:600}}>
+		              {LIVE_ST.has(s.short)?min+"'":s.short==="HT"?"Mi-temps":s.short==="FT"?"FT":s.long??s.short}
+		              {s.extra?<span style={{background:"rgba(255,255,255,.2)",borderRadius:10,padding:"1px 6px",marginLeft:4,fontSize:10}}>+{s.extra}</span>:null}
+		            </div>
+		          </div>
+		          :<div style={{fontSize:18,fontWeight:700,color:"rgba(255,255,255,.9)"}}>{hhmm(fix.fixture.date)}</div>
+		        }
+		      </div>
+		      <Logo src={fix.teams.away.logo} size={34}/>
+		      <div style={{display:"flex",gap:14,marginLeft:4}}>
+		        <button style={{background:"none",border:"none",color:"rgba(255,255,255,.7)",fontSize:20,cursor:"pointer",padding:0}}>🔔</button>
+		        <button style={{background:"none",border:"none",color:"rgba(255,255,255,.7)",fontSize:20,cursor:"pointer",padding:0}}>☆</button>
+		      </div>
+		    </div>
+		    {/* Info ligue */}
+		    <div style={{display:"flex",alignItems:"center",gap:7,padding:"7px 14px",background:"#fff",borderBottom:"1px solid #f0f1f5",flexShrink:0}}>
+		      <Logo src={fix.league.logo} size={16}/>
+		      <span style={{fontSize:12,fontWeight:600,color:"#333"}}>{fix.league.name}</span>
+		      <span style={{fontSize:12,color:"#bbb"}}>· {fix.league.country}</span>
+		      {fix.league.round&&<span style={{fontSize:11,color:"#bbb"}}>· {fix.league.round.replace("Regular Season - ","J")}</span>}
+		    </div>
+		    {/* Tabs */}
+		    <div style={{display:"flex",overflowX:"auto",borderBottom:"1px solid #f0f1f5",background:"#fff",padding:"0 6px",flexShrink:0}}>
+		      {TABS.map(t=><button key={t.id} onClick={()=>setTab(t.id)} style={{
+		        flexShrink:0,padding:"13px 14px 11px",
+		        background:"none",border:"none",
+		        borderBottom:`2px solid ${tab===t.id?"#1a1aff":"transparent"}`,
+		        color:tab===t.id?"#1a1aff":"#999",
+		        fontSize:13,fontWeight:tab===t.id?700:500,
+		        cursor:"pointer",whiteSpace:"nowrap",
+		        transition:"color .15s",
+		      }}>{t.label}</button>)}
+		    </div>
+
 		    {/* Contenu */}
 		    <div style={{paddingBottom:32,animation:"fadeIn .2s ease"}}>
 
-		      {tab==="evts"&&<div style={{background:"#f5f6f9",paddingBottom:40}}>
+		      {tab==="resume"&&(mEvt.length===0
+		        ?<div style={{textAlign:"center",padding:"32px 20px",color:T.t3,fontSize:14,display:"flex",flexDirection:"column",alignItems:"center",gap:10}}>
+		           {isPartial?<><Spin s={20}/><span style={{fontSize:12}}>Chargement...</span></>:"Aucun événement"}
+		         </div>
+		        :mEvt.map((e,i)=><EvtCard key={i} e={e}/>))}
+
+		      {tab==="evts"&&<div style={{background:"#fff",paddingBottom:20}}>
 		        {events.length===0&&isPartial&&<div style={{textAlign:"center",padding:"40px",color:"#888",display:"flex",flexDirection:"column",alignItems:"center",gap:10}}><Spin s={22}/><span style={{fontSize:13}}>Chargement...</span></div>}
 		        {events.length>0&&(()=>{
+		          // Calculer score evolutif
 		          let hScore=0,aScore=0;
-		          const evtsW=[...events].sort((a,b)=>(a.time?.elapsed||0)-(b.time?.elapsed||0)||(a.time?.extra||0)-(b.time?.extra||0)).map(e=>{
-		            const csc=e.type==="Goal"&&e.detail==="Own Goal";
-		            if(e.type==="Goal"){if(!csc){if(e.team?.id===fix.teams.home.id)hScore++;else aScore++;}else{if(e.team?.id===fix.teams.home.id)aScore++;else hScore++;}}
+		          const evtsSorted=[...events].sort((a,b)=>(a.time?.elapsed||0)-(b.time?.elapsed||0)||(a.time?.extra||0)-(b.time?.extra||0));
+		          const evtsWithScore=evtsSorted.map(e=>{
+		            if(e.type==="Goal"&&e.detail!=="Own Goal"){
+		              if(e.team?.id===fix.teams.home.id)hScore++;else aScore++;
+		            } else if(e.type==="Goal"&&e.detail==="Own Goal"){
+		              if(e.team?.id===fix.teams.home.id)aScore++;else hScore++;
+		            }
 		            return{...e,hs:hScore,as:aScore};
 		          });
-		          const fH=evtsW.filter(e=>(e.time?.elapsed||0)<=45);
-		          const sH=evtsW.filter(e=>(e.time?.elapsed||0)>45);
-		          const htH=fix.score?.halftime?.home??0,htA=fix.score?.halftime?.away??0;
-		          const fgH=fix.goals?.home??0,fgA=fix.goals?.away??0;
-		          const ER=({e})=>{
+		          // Separer 1ere et 2e mi-temps
+		          const firstHalf=evtsWithScore.filter(e=>(e.time?.elapsed||0)<=45||(e.time?.elapsed===45&&(e.time?.extra||0)>0));
+		          const secondHalf=evtsWithScore.filter(e=>(e.time?.elapsed||0)>45);
+		          // Score a la mi-temps
+		          const htH=fix.score?.halftime?.home??0;
+		          const htA=fix.score?.halftime?.away??0;
+		          const finalH=fix.goals?.home??0;
+		          const finalA=fix.goals?.away??0;
+
+		          const EvtRow=({e,showScore})=>{
 		            const ih=e.team?.id===fix.teams.home.id;
-		            const iG=e.type==="Goal",iC=e.type==="Card",iS=e.type==="subst",iV=e.type==="Var";
-		            const isCSC=iG&&e.detail==="Own Goal";
-		            const isPen=iG&&e.detail==="Penalty";
-		            const isVARno=iV&&(e.detail?.includes("Goal cancelled")||e.detail?.includes("No Goal"));
-		            const isMiss=iG&&e.detail==="Missed Penalty";
-		            const isInj=iS&&e.detail==="Injury";
-		            const iR=iC&&(e.detail?.includes("Red")||e.detail?.includes("Second Yellow"));
-		            const iY=iC&&!iR;
-		            const mn=`${e.time?.elapsed||""}${e.time?.extra?"+"+e.time.extra:""}`;
-		            const Ic=()=>{
-		              if(iG&&!isCSC&&!isMiss&&!isPen)return(
-		                <svg width="28" height="28" viewBox="0 0 28 28" fill="none" style={{flexShrink:0}}>
-		                  <circle cx="14" cy="14" r="13" fill="#22c55e"/>
-		                  <polygon points="14,7.5 15.8,12.8 21.3,12.8 16.9,15.9 18.6,21.2 14,18.1 9.4,21.2 11.1,15.9 6.7,12.8 12.2,12.8" fill="white" opacity="0.95"/>
-		                  <ellipse cx="14" cy="14" rx="8" ry="4.5" fill="none" stroke="rgba(255,255,255,0.25)" strokeWidth="0.6"/>
-		                  <ellipse cx="14" cy="14" rx="4.5" ry="8" fill="none" stroke="rgba(255,255,255,0.25)" strokeWidth="0.6"/>
-		                </svg>);
-		              if(isCSC)return(
-		                <svg width="28" height="28" viewBox="0 0 28 28" fill="none" style={{flexShrink:0}}>
-		                  <circle cx="14" cy="14" r="13" fill="#ef4444"/>
-		                  <polygon points="14,7.5 15.8,12.8 21.3,12.8 16.9,15.9 18.6,21.2 14,18.1 9.4,21.2 11.1,15.9 6.7,12.8 12.2,12.8" fill="white" opacity="0.95"/>
-		                  <ellipse cx="14" cy="14" rx="8" ry="4.5" fill="none" stroke="rgba(255,255,255,0.25)" strokeWidth="0.6"/>
-		                  <ellipse cx="14" cy="14" rx="4.5" ry="8" fill="none" stroke="rgba(255,255,255,0.25)" strokeWidth="0.6"/>
-		                </svg>);
-		              if(isPen&&!isMiss)return(
-		                <svg width="34" height="28" viewBox="0 0 34 28" fill="none" style={{flexShrink:0}}>
-		                  <circle cx="13" cy="14" r="13" fill="#22c55e"/>
-		                  <polygon points="13,7.5 14.8,12.8 20.3,12.8 15.9,15.9 17.6,21.2 13,18.1 8.4,21.2 10.1,15.9 5.7,12.8 11.2,12.8" fill="white" opacity="0.95"/>
-		                  <circle cx="27" cy="7" r="6" fill="#22c55e" stroke="white" strokeWidth="1.5"/>
-		                  <circle cx="27" cy="7" r="2.5" fill="white"/>
-		                </svg>);
-		              if(isMiss)return(
-		                <svg width="34" height="28" viewBox="0 0 34 28" fill="none" style={{flexShrink:0}}>
-		                  <circle cx="13" cy="14" r="13" fill="#22c55e"/>
-		                  <polygon points="13,7.5 14.8,12.8 20.3,12.8 15.9,15.9 17.6,21.2 13,18.1 8.4,21.2 10.1,15.9 5.7,12.8 11.2,12.8" fill="white" opacity="0.95"/>
-		                  <circle cx="27" cy="7" r="6" fill="#ef4444" stroke="white" strokeWidth="1.5"/>
-		                  <line x1="24.5" y1="4.5" x2="29.5" y2="9.5" stroke="white" strokeWidth="2" strokeLinecap="round"/>
-		                  <line x1="29.5" y1="4.5" x2="24.5" y2="9.5" stroke="white" strokeWidth="2" strokeLinecap="round"/>
-		                </svg>);
-		              if(iS&&!isInj)return(
-		                <svg width="28" height="28" viewBox="0 0 28 28" fill="none" style={{flexShrink:0}}>
-		                  <circle cx="14" cy="14" r="13" fill="white" stroke="#e5e7eb" strokeWidth="1.5"/>
-		                  <path d="M9 12L14 6L19 12" stroke="#22c55e" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"/>
-		                  <line x1="14" y1="6" x2="14" y2="16" stroke="#22c55e" strokeWidth="2.5" strokeLinecap="round"/>
-		                  <path d="M19 16L14 22L9 16" stroke="#ef4444" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"/>
-		                  <line x1="14" y1="22" x2="14" y2="12" stroke="#ef4444" strokeWidth="2.5" strokeLinecap="round"/>
-		                </svg>);
-		              if(isInj)return(
-		                <svg width="28" height="28" viewBox="0 0 28 28" fill="none" style={{flexShrink:0}}>
-		                  <circle cx="14" cy="14" r="13" fill="white" stroke="#fecdd3" strokeWidth="1.5"/>
-		                  <path d="M9 12L14 6L19 12" stroke="#22c55e" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round"/>
-		                  <line x1="14" y1="6" x2="14" y2="16" stroke="#22c55e" strokeWidth="2.2" strokeLinecap="round"/>
-		                  <path d="M19 16L14 22L9 16" stroke="#ef4444" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round"/>
-		                  <line x1="14" y1="22" x2="14" y2="12" stroke="#ef4444" strokeWidth="2.2" strokeLinecap="round"/>
-		                  <path d="M24 8c0-1.7-1.3-3-3-3s-3 1.3-3 3c0 2.8 3 5 3 5s3-2.2 3-5z" fill="#ef4444"/>
-		                </svg>);
-		              if(iV&&!isVARno)return(
-		                <div style={{flexShrink:0,background:"#1e293b",borderRadius:6,padding:"4px 8px",border:"2px solid #475569",display:"flex",alignItems:"center"}}>
-		                  <span style={{fontSize:11,fontWeight:900,color:"white",letterSpacing:1.5,fontFamily:"Arial"}}>VAR</span>
-		                </div>);
-		              if(isVARno)return(
-		                <div style={{flexShrink:0,background:"#1e293b",borderRadius:6,padding:"4px 8px 5px",border:"2px solid #475569",display:"flex",flexDirection:"column",alignItems:"center",gap:2}}>
-		                  <span style={{fontSize:11,fontWeight:900,color:"white",letterSpacing:1.5,fontFamily:"Arial",lineHeight:1}}>VAR</span>
-		                  <div style={{width:22,height:3,background:"#ef4444",borderRadius:2}}/>
-		                </div>);
-		              if(iY)return <div style={{flexShrink:0,width:18,height:24,borderRadius:3,background:"#f59e0b",boxShadow:"0 2px 8px rgba(245,158,11,.4)"}}/>;
-		              if(iR)return(
-		                <div style={{position:"relative",flexShrink:0,width:26,height:24}}>
-		                  <div style={{position:"absolute",left:0,top:4,width:16,height:20,background:"#f59e0b",borderRadius:3}}/>
-		                  <div style={{position:"absolute",right:0,top:0,width:16,height:20,background:"#ef4444",borderRadius:3,boxShadow:"0 2px 8px rgba(239,68,68,.4)"}}/>
-		                </div>);
-		              return <div style={{width:28,height:28,borderRadius:"50%",background:"#f0f1f5",flexShrink:0}}/>;
+		            const isGoal=e.type==="Goal";
+		            const isCard=e.type==="Card";
+		            const isSubst=e.type==="subst";
+		            const isVar=e.type==="Var";
+		            const isYellow=isCard&&!e.detail?.includes("Red")&&!e.detail?.includes("Second Yellow");
+		            const isRed=isCard&&(e.detail?.includes("Red")||e.detail?.includes("Second Yellow"));
+		            const isCsc=isGoal&&e.detail==="Own Goal";
+		            const min=`${e.time?.elapsed||""}${e.time?.extra?"+"+e.time.extra:""}`;
+
+		            // ICON
+		            const Icon=()=>{
+		              if(isGoal)return<div style={{width:22,height:22,borderRadius:"50%",background:isCsc?"#e53535":"#1a1aff",display:"flex",alignItems:"center",justifyContent:"center",fontSize:11,flexShrink:0}}>⚽</div>;
+		              if(isYellow)return<div style={{width:14,height:18,background:"#f59e0b",borderRadius:3,flexShrink:0}}/>;
+		              if(isRed)return<div style={{width:14,height:18,background:"#e53535",borderRadius:3,flexShrink:0}}/>;
+		              if(isSubst)return<div style={{width:22,height:22,borderRadius:"50%",background:"#f0f1f5",display:"flex",alignItems:"center",justifyContent:"center",flexShrink:0}}><span style={{fontSize:13,color:"#e53535"}}>⇆</span></div>;
+		              if(isVar)return<div style={{width:22,height:22,borderRadius:"50%",background:"#7c4dff22",display:"flex",alignItems:"center",justifyContent:"center",fontSize:10,flexShrink:0}}>VAR</div>;
+		              return<div style={{width:22,height:22,borderRadius:"50%",background:"#f0f1f5",flexShrink:0}}/>;
 		            };
-		            const Sc=iG&&!isMiss?<div style={{border:`2px solid ${isCSC?"#ef4444":isPen?"#7c3aed":"#1a1aff"}`,borderRadius:20,padding:"3px 11px",flexShrink:0}}><span style={{fontSize:13,fontWeight:900,color:isCSC?"#ef4444":isPen?"#7c3aed":"#1a1aff"}}>{e.hs} - {e.as}</span></div>:null;
-		            const Badge=()=>{
-		              if(isPen)return<span style={{fontSize:10,background:"#7c3aed",color:"#fff",borderRadius:4,padding:"1px 5px",marginLeft:4}}>Pen.</span>;
-		              if(isCSC)return<span style={{fontSize:10,background:"#ef4444",color:"#fff",borderRadius:4,padding:"1px 5px",marginLeft:4}}>CSC</span>;
-		              return null;
-		            };
-		            if(ih)return<div style={{display:"flex",alignItems:"center",padding:"11px 14px",borderBottom:"1px solid #f0f0f0",gap:8,background:"#fff"}}>
-		              <Ic/><div style={{flex:1,minWidth:0}}>
-		                <div style={{fontSize:14,fontWeight:iG?800:500,color:"#111",overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap",display:"flex",alignItems:"center",gap:4}}>{iS?<span><span style={{fontWeight:700}}>{e.player?.name}</span><span style={{color:"#bbb",fontSize:13}}> {e.assist?.name}</span></span>:<span>{e.player?.name}</span>}<Badge/></div>
-		                {iG&&e.assist?.name&&!iS&&<div style={{fontSize:12,color:"#888",marginTop:1}}>{e.assist.name}</div>}
-		              </div>{Sc}<span style={{fontSize:13,fontWeight:700,color:iG?"#1a1aff":"#bbb",flexShrink:0,minWidth:38,textAlign:"right"}}>{mn}'</span>
-		            </div>;
-		            return<div style={{display:"flex",alignItems:"center",padding:"11px 14px",borderBottom:"1px solid #f0f0f0",gap:8,background:"#fff"}}>
-		              <span style={{fontSize:13,fontWeight:700,color:iG?"#1a1aff":"#bbb",flexShrink:0,minWidth:38}}>{mn}'</span>
-		              {Sc}<Ic/><div style={{flex:1,minWidth:0,textAlign:"right"}}>
-		                <div style={{fontSize:14,fontWeight:iG?800:500,color:"#111",overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap",display:"flex",alignItems:"center",justifyContent:"flex-end",gap:4}}><Badge/>{iS?<span><span style={{color:"#bbb",fontSize:13}}>{e.assist?.name} </span><span style={{fontWeight:700}}>{e.player?.name}</span></span>:<span>{e.player?.name}</span>}</div>
-		                {iG&&e.assist?.name&&!iS&&<div style={{fontSize:12,color:"#888",marginTop:1,textAlign:"right"}}>{e.assist.name}</div>}
-		              </div>
-		            </div>;
-		          };
-		          const TSep=({label,color})=><div style={{display:"flex",alignItems:"center",padding:"8px 14px",gap:8,background:"#fafafa"}}><div style={{flex:1,height:1,background:color,opacity:.4}}/><span style={{fontSize:12,fontWeight:800,color:color}}>{label}</span><div style={{flex:1,height:1,background:color,opacity:.4}}/></div>;
-		          const ATxt=({min})=>min?<div style={{textAlign:"center",padding:"6px"}}><span style={{fontSize:12,color:"#888",background:"#eee",borderRadius:20,padding:"3px 14px"}}>Temps additionnel {min} min</span></div>:null;
-		          return<div style={{background:"#fff",marginBottom:8}}>
-		            {sH.length>0&&<div><TSep label={"2e mi-temps "+fgH+" - "+fgA} color="#e53535"/>{[...sH].reverse().map((e,i)=><ER key={i} e={e}/>)}</div>}
-		            {fH.length>0&&sH.length>0&&<TSep label={"MT "+htH+" - "+htA} color="#888"/>}
-		            {fH.length>0&&<div>{[...fH].reverse().map((e,i)=><ER key={i} e={e}/>)}</div>}
-		          </div>;
-		        })()}
-		        {players.some(t=>t.players?.some(p=>p.statistics?.[0]?.games?.rating))&&(()=>{
-		          const hT=players.find(t=>t.team?.id===fix.teams.home.id);
-		          const aT=players.find(t=>t.team?.id===fix.teams.away.id);
-		          const srt=arr=>[...(arr||[])].filter(p=>p.statistics?.[0]?.games?.rating).sort((a,b)=>parseFloat(b.statistics[0].games.rating)-parseFloat(a.statistics[0].games.rating)).slice(0,3);
-		          const hP=srt(hT?.players),aP=srt(aT?.players);
-		          const RB=({r})=>{const v=parseFloat(r);const bg=v>=8?"#1a9e3f":v>=7?"#2ecc40":v>=6?"#f59e0b":"#e53535";return<div style={{background:bg,borderRadius:6,padding:"3px 8px",minWidth:36,textAlign:"center"}}><span style={{fontSize:13,fontWeight:900,color:"#fff"}}>{v.toFixed(1)}</span></div>;};
-		          const mx=Math.max(hP.length,aP.length);
-		          if(!mx)return null;
-		          return<div style={{background:"#fff",marginBottom:8,padding:"16px"}}>
-		            <div style={{fontSize:16,fontWeight:800,color:"#111",marginBottom:14,textAlign:"center"}}>Joueurs les mieux notés</div>
-		            {Array.from({length:mx}).map((_,i)=>{
-		              const hp=hP[i],ap=aP[i];
-		              return<div key={i} style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:8,marginBottom:i<mx-1?10:0}}>
-		                {hp?<div style={{display:"flex",alignItems:"center",gap:8}}><RB r={hp.statistics[0].games.rating}/><Avatar src={hp.player?.photo} size={36}/><span style={{fontSize:13,fontWeight:600,color:"#222",flex:1,overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap"}}>{(hp.player?.name||"").split(" ").slice(-1)[0]}</span></div>:<div/>}
-		                {ap?<div style={{display:"flex",alignItems:"center",gap:8,flexDirection:"row-reverse"}}><RB r={ap.statistics[0].games.rating}/><Avatar src={ap.player?.photo} size={36}/><span style={{fontSize:13,fontWeight:600,color:"#222",flex:1,overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap",textAlign:"right"}}>{(ap.player?.name||"").split(" ").slice(-1)[0]}</span></div>:<div/>}
+
+		            if(ih){
+		              // Equipe domicile : icone + noms a gauche, minute a droite
+		              return<div style={{display:"flex",alignItems:"center",padding:"10px 14px",borderBottom:"1px solid #f5f5f5",gap:8}}>
+		                <Icon/>
+		                <div style={{flex:1,minWidth:0}}>
+		                  <div style={{fontSize:14,fontWeight:isGoal?800:500,color:"#111",overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap"}}>
+		                    {isSubst
+		                      ?<span><span style={{color:"#111"}}>{e.player?.name}</span><span style={{color:"#999",fontSize:12}}> {e.assist?.name}</span></span>
+		                      :e.player?.name}
+		                  </div>
+		                  {isGoal&&e.assist?.name&&<div style={{fontSize:12,color:"#888",marginTop:1}}>{e.assist.name}</div>}
+		                  {isCard&&e.detail&&<div style={{fontSize:11,color:"#999",marginTop:1}}>{e.detail.includes("Yellow")?"Avertissement":e.detail.includes("Second")?"2e jaune":"Carton rouge"}</div>}
+		                </div>
+		                {showScore&&isGoal&&<div style={{border:"2px solid #1a1aff",borderRadius:20,padding:"3px 12px",display:"flex",alignItems:"center",gap:4,marginRight:6}}>
+		                  <span style={{fontSize:13,fontWeight:900,color:"#1a1aff"}}>{e.hs}</span>
+		                  <span style={{fontSize:11,color:"#999"}}>-</span>
+		                  <span style={{fontSize:13,fontWeight:900,color:"#1a1aff"}}>{e.as}</span>
+		                </div>}
+		                <span style={{fontSize:13,fontWeight:700,color:isGoal?"#1a1aff":"#999",flexShrink:0,minWidth:38,textAlign:"right"}}>{min}'</span>
 		              </div>;
-		            })}
-		          </div>;
-		        })()}
-		        {(()=>{
-		          const f=fix.fixture;
-		          const cc=(fix.league.country||"").toLowerCase();
-		          const flags={"france":"🇫🇷","spain":"🇪🇸","england":"🏴󠀧󠀢󠀥󠀮󠀳󠀿","germany":"🇩🇪","italy":"🇮🇹","portugal":"🇵🇹","netherlands":"🇳🇱","belgium":"🇧🇪","brazil":"🇧🇷","argentina":"🇦🇷","colombia":"🇨🇴","mexico":"🇲🇽","usa":"🇺🇸","turkey":"🇹🇷","russia":"🇷🇺","algeria":"🇩🇿","morocco":"🇲🇦","tunisia":"🇹🇳","egypt":"🇪🇬","senegal":"🇸🇳","nigeria":"🇳🇬","ghana":"🇬🇭","cameroon":"🇨🇲","saudi arabia":"🇸🇦","chile":"🇨🇱","peru":"🇵🇪","ecuador":"🇪🇨","venezuela":"🇻🇪","uruguay":"🇺🇾","world":"🌍","europe":"🇪🇺"};
-		          const flagIcon=flags[cc]||"🌍";
-		          const rows=[
-		            {icon:"🏆",label:`${fix.league.name}, ${fix.league.country}${fix.league.round?", "+fix.league.round.replace("Regular Season - ","J"):""}`,arrow:true},
-		            {icon:"📅",label:`${f.date?.slice(0,10)||""} • ${hhmm(f.date)}`},
-		            f.venue?.name?{icon:"🏟️",label:f.venue.name+(f.venue.city?", "+f.venue.city:""),arrow:true}:null,
-		            f.venue?.city?{icon:flagIcon,label:f.venue.city}:null,
-		            f.referee?{icon:"🏃",label:f.referee,arrow:true}:null,
-		          ].filter(Boolean);
-		          return<div style={{background:"#fff"}}>
-		            {rows.map((r,i)=><div key={i} style={{display:"flex",alignItems:"center",gap:12,padding:"13px 16px",borderBottom:i<rows.length-1?"1px solid #f5f5f5":"none"}}>
-		              <span style={{fontSize:20,flexShrink:0,width:28,textAlign:"center"}}>{r.icon}</span>
-		              <div style={{flex:1}}><div style={{fontSize:14,color:"#222"}}>{r.label}</div></div>
-		              {r.arrow&&<span style={{color:"#ccc",fontSize:18}}>›</span>}
-		            </div>)}
+		            } else {
+		              // Equipe exterieur : minute a gauche, noms a droite
+		              return<div style={{display:"flex",alignItems:"center",padding:"10px 14px",borderBottom:"1px solid #f5f5f5",gap:8}}>
+		                <span style={{fontSize:13,fontWeight:700,color:isGoal?"#1a1aff":"#999",flexShrink:0,minWidth:38}}>{min}'</span>
+		                {showScore&&isGoal&&<div style={{border:"2px solid #1a1aff",borderRadius:20,padding:"3px 12px",display:"flex",alignItems:"center",gap:4,marginRight:6}}>
+		                  <span style={{fontSize:13,fontWeight:900,color:"#1a1aff"}}>{e.hs}</span>
+		                  <span style={{fontSize:11,color:"#999"}}>-</span>
+		                  <span style={{fontSize:13,fontWeight:900,color:"#1a1aff"}}>{e.as}</span>
+		                </div>}
+		                <Icon/>
+		                <div style={{flex:1,minWidth:0,textAlign:"right"}}>
+		                  <div style={{fontSize:14,fontWeight:isGoal?800:500,color:"#111",overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap"}}>
+		                    {isSubst
+		                      ?<span><span style={{color:"#999",fontSize:12}}>{e.assist?.name} </span><span style={{color:"#111"}}>{e.player?.name}</span></span>
+		                      :e.player?.name}
+		                  </div>
+		                  {isGoal&&e.assist?.name&&<div style={{fontSize:12,color:"#888",marginTop:1}}>{e.assist.name}</div>}
+		                  {isCard&&e.detail&&<div style={{fontSize:11,color:"#999",marginTop:1}}>Faute</div>}
+		                </div>
+		              </div>;
+		            }
+		          };
+
+		          return<div>
+		            {/* 2e mi-temps */}
+		            {secondHalf.length>0&&<div>
+		              <div style={{display:"flex",alignItems:"center",padding:"10px 14px",gap:8}}>
+		                <div style={{flex:1,height:1,background:"#e53535",opacity:.4}}/>
+		                <span style={{fontSize:13,fontWeight:800,color:"#e53535",whiteSpace:"nowrap"}}>2e mi-temps {finalH} - {finalA}</span>
+		                <div style={{flex:1,height:1,background:"#e53535",opacity:.4}}/>
+		              </div>
+		              {[...secondHalf].reverse().map((e,i)=><EvtRow key={i} e={e} showScore={true}/>)}
+		            </div>}
+		            {/* Separateur MI-TEMPS */}
+		            {firstHalf.length>0&&secondHalf.length>0&&<div style={{display:"flex",alignItems:"center",padding:"10px 14px",gap:8,background:"#fafafa"}}>
+		              <div style={{flex:1,height:1,background:"#ccc"}}/>
+		              <span style={{fontSize:12,fontWeight:700,color:"#555",whiteSpace:"nowrap"}}>MT {htH} - {htA}</span>
+		              <div style={{flex:1,height:1,background:"#ccc"}}/>
+		            </div>}
+		            {/* 1ere mi-temps */}
+		            {firstHalf.length>0&&<div>
+		              {[...firstHalf].reverse().map((e,i)=><EvtRow key={i} e={e} showScore={true}/>)}
+		            </div>}
 		          </div>;
 		        })()}
 		      </div>}
