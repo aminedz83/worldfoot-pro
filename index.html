@@ -780,7 +780,7 @@
 		function Sk({w,h=8,r=5}){return<div className="sk" style={{width:w,height:h,borderRadius:r,flexShrink:0}}/>;}
 
 		function SkRows(){
-		  return<div>{[["64%","52%"],["72%","58%"],["60%","47%"],["68%","54%"]].map(([a,b],i)=>(
+		  return(<div>{[["64%","52%"],["72%","58%"],["60%","47%"],["68%","54%"]].map(([a,b],i)=>(
 		    <div key={i} style={{borderBottom:`1px solid ${T.line}`}}>
 		      <div style={{height:36,background:T.bg1,display:"flex",alignItems:"center",padding:"0 14px",gap:9,borderBottom:`1px solid ${T.line}`}}><Sk w={16} h={16} r={4}/><Sk w={132}/></div>
 		      {[0,1,2].map(j=>(
@@ -794,7 +794,8 @@
 		        </div>
 		      ))}
 		    </div>
-		  ))}</div>;
+		  ))}
+		  </div>);
 		}
 
 		function Logo({src,size=16}){
@@ -802,25 +803,25 @@
 		  // Wrapper fixe = l'espace est TOUJOURS r serv  m me pendant le chargement
 		  const wrapper={width:size,height:size,flexShrink:0,display:"flex",alignItems:"center",justifyContent:"center"};
 		  if(!src||e)return <div style={{...wrapper,borderRadius:size/2,background:T.bg3}}/>;
-		  return<div style={wrapper}>
+		  return(<div style={wrapper}>
 		    <img src={src} width={size} height={size} style={{objectFit:"contain",display:"block",width:"100%",height:"100%"}} alt="" onError={()=>setE(true)}/>
-		  </div>;
+		  </div>);
 		}
 
 		function Avatar({src,size=40,ring=T.bg4}){
 		  const[e,setE]=useState(false);
 		  // Style fixe identique placeholder et image = z ro layout shift
 		  const S={width:size,height:size,borderRadius:size/2,background:T.bg3,border:`2px solid ${ring}`,flexShrink:0,display:"flex",alignItems:"center",justifyContent:"center",overflow:"hidden"};
-		  if(!src||e)return<div style={S}>
+		  if(!src||e)return(<div style={S}>
 		    <svg width={size*.46} height={size*.46} viewBox="0 0 24 24" fill={T.t4}><path d="M12 12c2.76 0 5-2.24 5-5s-2.24-5-5-5-5 2.24-5 5 2.24 5 5 5zm0 2c-3.33 0-10 1.67-10 5v2h20v-2c0-3.33-6.67-5-10-5z"/></svg>
-		  </div>;
-		  return<div style={S}><img src={src} style={{width:"100%",height:"100%",objectFit:"cover",display:"block"}} alt="" onError={()=>setE(true)}/></div>;
+		  </div>);
+		  return(<div style={S}><img src={src} style={{width:"100%",height:"100%",objectFit:"cover",display:"block"}} alt="" onError={()=>setE(true)}/></div>);
 		}
 
 		function FormDot({c}){
-		  return<span style={{fontSize:9,fontWeight:800,padding:"2px 4px",borderRadius:4,lineHeight:1.3,
+		  return(<span style={{fontSize:9,fontWeight:800,padding:"2px 4px",borderRadius:4,lineHeight:1.3,
 		    background:c==="W"?T.greenL:c==="D"?T.bg3:T.redL,
-		    color:c==="W"?T.greenB:c==="D"?T.t3:T.red}}>{c}</span>;
+		    color:c==="W"?T.greenB:c==="D"?T.t3:T.red}}>{c}</span>);
 		}
 
 		function StatBar({label,hv,av,homeColor,awayColor}){
@@ -829,7 +830,7 @@
 		  const isPct=typeof hv==="string"&&hv.includes("%");
 		  const hc=homeColor||T.red;
 		  const ac=awayColor||T.blueB;
-		  return<div style={{marginBottom:14}}>
+		  return(<div style={{marginBottom:14}}>
 		    <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:6}}>
 		      <span className="bc" style={{fontSize:15,fontWeight:800,color:isXG?"#82b1ff":T.t1,minWidth:36}}>{h}{isPct?"":" "}</span>
 		      <span className="bc" style={{fontSize:10,fontWeight:700,color:T.t3,letterSpacing:.8,textTransform:"uppercase",textAlign:"center",flex:1,padding:"0 8px"}}>{label}</span>
@@ -839,31 +840,31 @@
 		      <div style={{position:"absolute",left:0,top:0,height:"100%",width:`${hp}%`,background:`linear-gradient(90deg,${hc},${hc}cc)`,borderRadius:3,transition:"width .6s cubic-bezier(.4,0,.2,1)"}}/>
 		      <div style={{position:"absolute",right:0,top:0,height:"100%",width:`${ap}%`,background:`linear-gradient(270deg,${ac},${ac}cc)`,borderRadius:3,transition:"width .6s cubic-bezier(.4,0,.2,1)"}}/>
 		    </div>
-		  </div>;
+		  </div>);
 		}
 
 
 		function MiniStat({label,val,color=T.t2,sub}){
-		  return<div style={{background:T.bg3,borderRadius:8,padding:"9px 14px",flex:1,minWidth:70}}>
+		  return(<div style={{background:T.bg3,borderRadius:8,padding:"9px 14px",flex:1,minWidth:70}}>
 		    <div style={{fontSize:20,fontWeight:900,color,lineHeight:1}}>{fmt(val)}</div>
 		    <div style={{fontSize:10,color:T.t3,marginTop:3,lineHeight:1.2}}>{label}</div>
 		    {sub&&<div style={{fontSize:9,color:T.t4,marginTop:2}}>{sub}</div>}
-		  </div>;
+		  </div>);
 		}
 
 		// Sheet - PAGE PLEIN ECRAN
 		function Sheet({open,onClose,children,style}){
 		  if(!open)return null;
-		  return<div style={{position:"fixed",inset:0,zIndex:950,background:"#f5f6f9",display:"flex",flexDirection:"column",animation:"fadeIn .18s ease",...(style||{})}}>
+		  return(<div style={{position:"fixed",inset:0,zIndex:950,background:"#f5f6f9",display:"flex",flexDirection:"column",animation:"fadeIn .18s ease",...(style||{})}}>
 		    {children}
-		  </div>;
+		  </div>);
 		}
 
 		// TERRAIN PREMIUM + FILTRES
 		function PitchPlayer({player,photoSrc,color,badgeVal,badgeColor}){
 		  const[imgErr,setImgErr]=React.useState(false);
 		  const nm=(player?.name||"").split(" ").slice(-1)[0].slice(0,11);
-		  return<div style={{display:"flex",flexDirection:"column",alignItems:"center",gap:3,width:62}}>
+		  return(<div style={{display:"flex",flexDirection:"column",alignItems:"center",gap:3,width:62}}>
 		    <div style={{position:"relative",flexShrink:0}}>
 		      {player?.number&&<div style={{position:"absolute",top:-14,left:"50%",transform:"translateX(-50%)",fontSize:10,color:"rgba(255,255,255,.5)",fontWeight:600,whiteSpace:"nowrap"}}>#{player.number}</div>}
 		      <div style={{width:52,height:52,borderRadius:"50%",border:`2.5px solid ${color}`,overflow:"hidden",background:"#1a2e1a",display:"flex",alignItems:"center",justifyContent:"center",boxShadow:"0 3px 10px rgba(0,0,0,.5)"}}>
@@ -875,7 +876,7 @@
 		      </div>}
 		    </div>
 		    <span style={{fontSize:10,fontWeight:700,color:"#fff",textShadow:"0 1px 4px rgba(0,0,0,1)",textAlign:"center",lineHeight:1.2,overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap",width:"100%",display:"block",marginTop:8}}>{nm}</span>
-		  </div>;
+		  </div>);
 		}
 		function PitchFull({hLineup,aLineup,hPlayers,aPlayers,homeTeam,awayTeam,pitchFilter}){
 		  const ph=(tp,pid)=>tp?.find(p=>p.player?.id===pid)?.player?.photo;
@@ -896,9 +897,9 @@
 		      {reverse&&<><span style={{fontSize:12,fontWeight:700,color:"rgba(255,255,255,.85)",maxWidth:130,overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap"}}>{team?.name}</span><img src={team?.logo} alt="" style={{width:22,height:22,objectFit:"contain"}} onError={function(e){e.target.style.display="none"}}/><div style={{background:"rgba(0,0,0,.6)",borderRadius:7,padding:"4px 10px"}}><span style={{fontSize:12,fontWeight:900,color}}>{lineup?.formation}</span></div></>}
 		    </div>
 		    {(reverse?[...grid].reverse():grid).map((row,ri)=><div key={ri} style={{display:"flex",justifyContent:"space-evenly",alignItems:"flex-end",marginBottom:20}}>
-		      {row.map((p,pi)=>{const badge=getBadge(p,players,pitchFilter||"rating");return<PitchPlayer key={p.id??`${ri}-${pi}`} player={p} photoSrc={ph(players,p.id)} color={color} badgeVal={badge.val} badgeColor={badge.color}/>;})}</div>)}
-		  </div>;
-		  return<div style={{background:"linear-gradient(180deg,#1c5220 0%,#236127 35%,#1c5220 68%,#174718 100%)",borderRadius:16,overflow:"hidden",position:"relative",width:"100%"}}>
+		      {row.map((p,pi)=>{const badge=getBadge(p,players,pitchFilter||"rating");return(<PitchPlayer key={p.id??`${ri}-${pi}`} player={p} photoSrc={ph(players,p.id)} color={color} badgeVal={badge.val} badgeColor={badge.color}/>;})}</div>)}
+		  </div>);
+		  return(<div style={{background:"linear-gradient(180deg,#1c5220 0%,#236127 35%,#1c5220 68%,#174718 100%)",borderRadius:16,overflow:"hidden",position:"relative",width:"100%"}}>
 		    <svg style={{position:"absolute",inset:0,width:"100%",height:"100%",pointerEvents:"none"}} viewBox="0 0 100 100" preserveAspectRatio="none">
 		      <rect x={1.5} y={.8} width={97} height={98.4} fill="none" stroke="rgba(255,255,255,.15)" strokeWidth={.4}/>
 		      <line x1={1.5} y1={50} x2={98.5} y2={50} stroke="rgba(255,255,255,.15)" strokeWidth={.4}/>
@@ -909,7 +910,7 @@
 		    {hGrid.length>0&&<Section grid={hGrid} lineup={hLineup} team={homeTeam} color={hColor} reverse={false} players={hPlayers}/>}
 		    <div style={{height:1,background:"rgba(255,255,255,.15)",margin:"0 12px"}}/>
 		    {aGrid.length>0&&<Section grid={aGrid} lineup={aLineup} team={awayTeam} color={aColor} reverse={true} players={aPlayers}/>}
-		  </div>;
+		  </div>);
 		}
 		function Pitch({lineup,isHome}){return null;}
 
@@ -929,7 +930,7 @@
 		  const stLabel=sh==="HT"?"MT":sh==="BT"?"Pause":sh==="P"?"Tab":sh==="SUSP"?"Susp.":sh==="INT"?"Inter.":sh==="ABD"?"Arr.":sh==="CANC"?"Ann.":sh==="PST"?"Rep.":sh==="TBD"?"TBD":sh==="AET"?"Ap.Pr.":sh==="PEN"?"Tab":"FT";
 		  const hn=m.teams.home.name,an=m.teams.away.name;
 		  const hRank=m.teams.home.rank,aRank=m.teams.away.rank;
-		  return<div onClick={onOpen} style={{
+		  return(<div onClick={onOpen} style={{
 		    display:"flex",alignItems:"center",minHeight:58,cursor:"pointer",
 		    borderBottom:"1px solid #f0f1f5",
 		    background:flash?"rgba(229,53,53,.05)":"#fff",
@@ -969,12 +970,12 @@
 		    <button onClick={e=>{e.stopPropagation();onFav();}} style={{background:"none",border:"none",color:isFav?"#f59e0b":"#ddd",fontSize:18,padding:"0 14px 0 6px",flexShrink:0,cursor:"pointer"}}>
 		      {isFav?"★":"☆"}
 		    </button>
-		  </div>;
+		  </div>);
 		}
 		function LeagueBlock({group,onOpen,favs,onFav}){
 		  const[open,setOpen]=useState(true);
 		  const lv=group.matches.filter(m=>LIVE_ST.has(m.fixture.status.short)).length;
-		  return<div style={{background:"#fff"}}>
+		  return(<div style={{background:"#fff"}}>
 		    <div onClick={()=>setOpen(v=>!v)} style={{
 		      display:"flex",alignItems:"center",gap:10,padding:"9px 14px",
 		      background:"#fff",borderBottom:"1px solid #f0f1f5",
@@ -992,7 +993,7 @@
 		      <span style={{fontSize:10,color:"#ccc",flexShrink:0}}>{open?"▾":"▸"}</span>
 		    </div>
 		    {open&&group.matches.map(m=><Row key={m.fixture.id} match={m} onOpen={()=>onOpen(m.fixture.id)} isFav={favs.has(m.fixture.id)} onFav={()=>onFav(m.fixture.id)}/>)}
-		  </div>;
+		  </div>);
 		}
 
 		//
@@ -1002,7 +1003,7 @@
 		// COMPOSANT ANALYSE   Statistiques avanc es H2H
 		//
 		function AnalysePanel({h2h,homeTeam,awayTeam,hSt=[],aSt=[],homeHistory=[],awayHistory=[]}){
-		  if(!h2h||h2h.length===0)return<div style={{textAlign:"center",padding:"44px 20px",color:T.t3,fontSize:13}}>Pas assez de données H2H</div>;
+		  if(!h2h||h2h.length===0)return(<div style={{textAlign:"center",padding:"44px 20px",color:T.t3,fontSize:13}}>Pas assez de données H2H</div>;
 
 		  const hid=homeTeam.id;
 
@@ -1148,12 +1149,12 @@
 		  const SectionTitle=({icon,label})=><div style={{display:"flex",alignItems:"center",gap:7,padding:"14px 16px 10px",borderTop:`1px solid ${T.line}`}}>
 		    <span style={{fontSize:14}}>{icon}</span>
 		    <span className="bc" style={{fontSize:11,fontWeight:800,color:T.t3,letterSpacing:1.2,textTransform:"uppercase"}}>{label}</span>
-		  </div>;
+		  </div>);
 
 		  const ProfilGauge=({team,profile})=>{
 		    const atkW=`${Math.round(profile.atkRating*10)}%`;
 		    const defW=`${Math.round(profile.defRating*10)}%`;
-		    return<div style={{flex:1,background:T.bg2,border:`1px solid ${T.line}`,borderRadius:14,padding:"12px 10px"}}>
+		    return(<div style={{flex:1,background:T.bg2,border:`1px solid ${T.line}`,borderRadius:14,padding:"12px 10px"}}>
 		      <div style={{display:"flex",alignItems:"center",gap:6,marginBottom:10}}>
 		        <Logo src={team.logo} size={20}/>
 		        <span style={{fontSize:11,fontWeight:700,color:T.t1,overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap"}}>{team.name}</span>
@@ -1182,10 +1183,10 @@
 		      <div style={{textAlign:"center",marginTop:10,padding:"5px 0",background:T.bg3,borderRadius:8}}>
 		        <span style={{fontSize:11,fontWeight:800,color:T.gold}}>{profile.atk} buts marqués | {profile.def} enc.</span>
 		      </div>
-		    </div>;
+		    </div>);
 		  };
 
-		  return<div style={{paddingBottom:40,animation:"fadeIn .2s ease"}}>
+		  return(<div style={{paddingBottom:40,animation:"fadeIn .2s ease"}}>
 
 		    {/* ── HEADER ÉQUIPES ── */}
 		    <div style={{display:"flex",alignItems:"center",padding:"14px 16px",borderBottom:`1px solid ${T.line}`,gap:12}}>
@@ -1293,10 +1294,10 @@
 		          const aG=isHome?m.goals.away??0:m.goals.home??0;
 		          const res=hG>aG?"W":aG>hG?"L":"D";
 		          const bg=res==="W"?"#2979ff":res==="L"?"#e53535":T.bg4;
-		          return<div key={i} style={{flex:1,background:bg,borderRadius:8,padding:"6px 2px",textAlign:"center",minWidth:0}}>
+		          return(<div key={i} style={{flex:1,background:bg,borderRadius:8,padding:"6px 2px",textAlign:"center",minWidth:0}}>
 		            <div className="bc" style={{fontSize:12,fontWeight:900,color:"#fff"}}>{res}</div>
 		            <div style={{fontSize:9,color:"rgba(255,255,255,.7)",marginTop:1}}>{hG}-{aG}</div>
-		          </div>;
+		          </div>);
 		        })}
 		      </div>
 		      <div style={{fontSize:9,color:T.t4,textAlign:"center",marginBottom:4}}>5 dernières confrontations (domicile = {homeTeam.name})</div>
@@ -1413,7 +1414,7 @@
 		      </div>
 		    </div>
 
-		  </div>;
+		  </div>);
 		}
 
 
@@ -1422,12 +1423,12 @@
 		  const[selTeam,setSelTeam]=useState("home");
 		  const teamData=players.find(t=>t.team?.id===(selTeam==="home"?homeTeam?.id:awayTeam?.id));
 		  const plrs=teamData?.players??[];
-		  if(!plrs.length) return<div style={{textAlign:"center",padding:"44px 20px",color:T.t3,fontSize:13}}>Statistiques joueurs non disponibles</div>;
-		  return<div style={{display:"flex",flexDirection:"column",height:"100%"}}>
+		  if(!plrs.length) return(<div style={{textAlign:"center",padding:"44px 20px",color:T.t3,fontSize:13}}>Statistiques joueurs non disponibles</div>);
+		  return(<div style={{display:"flex",flexDirection:"column",height:"100%"}}>
 		    <div style={{display:"flex",background:T.bg2,borderRadius:10,padding:3,margin:"10px 14px",gap:2}}>
 		      {[["home",homeTeam],["away",awayTeam]].map(([v,team])=>{
 		        const a=selTeam===v;
-		        return<button key={v} onClick={()=>setSelTeam(v)} className="bc" style={{
+		        return(<button key={v} onClick={()=>setSelTeam(v)} className="bc" style={{
 		          flex:1,padding:"8px",border:"none",borderRadius:8,cursor:"pointer",
 		          background:a?T.green:"transparent",color:a?"#fff":T.t3,
 		          fontSize:11,fontWeight:a?800:500,transition:"all .2s",
@@ -1435,7 +1436,7 @@
 		        }}>
 		          <Logo src={team?.logo} size={16}/>
 		          <span>{team?.name}</span>
-		        </button>;
+		        </button>);
 		      })}
 		    </div>
 		    <div style={{flex:1,overflowY:"auto"}}>
@@ -1443,7 +1444,7 @@
 		        const st=sts?.[0]??{};
 		        const rating=parseFloat(st.games?.rating??0);
 		        const ratingColor=rating>=8?"#00c170":rating>=7?"#f59e0b":rating>=6?"#888":"#e53535";
-		        return<div key={pl.id} style={{
+		        return(<div key={pl.id} style={{
 		          display:"flex",alignItems:"center",gap:10,
 		          padding:"10px 14px",borderBottom:`1px solid ${T.line}`,
 		        }}>
@@ -1474,10 +1475,10 @@
 		          }}>
 		            <span className="bc" style={{fontSize:13,fontWeight:900,color:"#fff"}}>{rating.toFixed(1)}</span>
 		          </div>}
-		        </div>;
+		        </div>);
 		      })}
 		    </div>
-		  </div>;
+		  </div>);
 		}
 
 		// MODULE COMPOSITIONS + SCH MAS
@@ -1488,7 +1489,7 @@
 		  const LABELS={"Ball Possession":"Possession","Total Shots":"Tirs totaux","Shots on Goal":"Tirs cadres","Corner Kicks":"Corners","Offsides":"Hors-jeux","Fouls":"Fautes","Yellow Cards":"Cartons jaunes","Red Cards":"Cartons rouges","Goalkeeper Saves":"Arrets gardien","Total passes":"Passes","Passes %":"Passes %","expected_goals":"xG"};
 		  const all=[...new Set([...hSt.map(x=>x.type),...aSt.map(x=>x.type)])];
 		  const shown=all.filter(k=>LABELS[k]);
-		  if(!shown.length)return<div style={{textAlign:"center",padding:"44px 20px",color:"#888",fontSize:13}}>{isPartial?"Chargement...":"Statistiques non disponibles"}</div>;
+		  if(!shown.length)return(<div style={{textAlign:"center",padding:"44px 20px",color:"#888",fontSize:13}}>{isPartial?"Chargement...":"Statistiques non disponibles"}</div>;
 		  const gv=(arr,k)=>{
 		    const v=arr.find(x=>x.type===k)?.value;
 		    if(v===null||v===undefined)return 0;
@@ -1496,9 +1497,9 @@
 		    return parseFloat(v)||0;
 		  };
 		  const fmtV=(arr,k)=>arr.find(x=>x.type===k)?.value??"-";
-		  return<div style={{padding:"12px 16px"}}>
+		  return(<div style={{padding:"12px 16px"}}>
 		    <div style={{display:"flex",justifyContent:"space-between",marginBottom:12}}>
-		      <div style={{display:"flex",alignItems:"center",gap:6}}><img src={homeTeam?.logo} alt="" style={{width:18,height:18,objectFit:"contain"}}/><span style={{fontSize:12,fontWeight:700}}>{homeTeam?.name}</span></div>
+		      <div style={{display:"flex",alignItems:"center",gap:6}}><img src={homeTeam?.logo} alt="" style={{width:18,height:18,objectFit:"contain"}}/><span style={{fontSize:12,fontWeight:700}}>{homeTeam?.name}</span></div>);
 		      <div style={{display:"flex",alignItems:"center",gap:6}}><span style={{fontSize:12,fontWeight:700}}>{awayTeam?.name}</span><img src={awayTeam?.logo} alt="" style={{width:18,height:18,objectFit:"contain"}}/></div>
 		    </div>
 		    {shown.map(function(k){
@@ -1518,12 +1519,12 @@
 		        </div>
 		      );
 		    })}
-		  </div>;
+		  </div>);
 		}
 
 		function InjuriesPanel({injuries,homeTeam,awayTeam}){
-		  if(!injuries.length)return<div style={{textAlign:"center",padding:"44px 20px",color:"#888",fontSize:13}}>Aucun absent</div>;
-		  return<div style={{padding:"12px"}}>
+		  if(!injuries.length)return(<div style={{textAlign:"center",padding:"44px 20px",color:"#888",fontSize:13}}>Aucun absent</div>;
+		  return(<div style={{padding:"12px"}}>
 		    {injuries.map(function(inj,i){
 		      var ih=inj.team?.id===homeTeam?.id;
 		      return(
@@ -1531,14 +1532,14 @@
 		          <img src={inj.team?.logo} alt="" style={{width:20,height:20,objectFit:"contain",flexShrink:0}}/>
 		          {inj.player?.photo&&<img src={inj.player.photo} alt="" style={{width:32,height:32,borderRadius:"50%",objectFit:"cover",flexShrink:0}}/>}
 		          <div style={{flex:1,minWidth:0}}>
-		            <div style={{fontSize:13,fontWeight:600,color:"#111",overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap"}}>{inj.player?.name||"-"}</div>
+		            <div style={{fontSize:13,fontWeight:600,color:"#111",overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap"}}>{inj.player?.name||"-"}</div>);
 		            <div style={{fontSize:11,color:"#888",marginTop:2}}>{inj.player?.reason||inj.player?.type||""}</div>
 		          </div>
 		          <span style={{fontSize:11,fontWeight:600,padding:"3px 8px",borderRadius:10,background:inj.player?.reason==="Doubtful"?"#fef3c7":"#fee2e2",color:inj.player?.reason==="Doubtful"?"#92400e":"#991b1b"}}>{inj.player?.reason||"Out"}</span>
 		        </div>
 		      );
 		    })}
-		  </div>;
+		  </div>);
 		}
 ```
 
@@ -1568,7 +1569,7 @@ const ph=(tp,pid)=>tp.find(p=>p.player?.id===pid)?.player?.photo;
 		    {p.player?.pos&&<span style={{fontSize:9,fontWeight:800,color:tc,background:tc+"22",padding:"2px 7px",borderRadius:4,flexShrink:0}}>{p.player.pos}</span>}
 		  </div>;
 
-		  return<div>
+		  return(<div>
 		    {/* Toggle vue + Filtres */}
 		    <div style={{background:"#fff",borderBottom:"1px solid rgba(0,0,0,.07)"}}>
 		      <div style={{display:"flex",gap:6,padding:"10px 14px 8px"}}>
@@ -1579,10 +1580,10 @@ const ph=(tp,pid)=>tp.find(p=>p.player?.id===pid)?.player?.photo;
 		      {view==="pitch"&&<div style={{display:"flex",alignItems:"center",gap:8,padding:"0 14px 12px",overflowX:"auto"}}>
 		        {[{id:"rating",icon:"★",label:"Note"},{id:"age",icon:"Age",label:"Âge",circle:true},{id:"height",icon:"📏",label:"Taille"},{id:"value",icon:"🏔️",label:"Valeur marchande"}].map(f=>{
 		          const active=pitchFilter===f.id;
-		          return<button key={f.id} onClick={()=>setPitchFilter(f.id)} style={{display:"flex",alignItems:"center",gap:6,padding:active?"8px 16px":"0",width:active?undefined:40,height:40,borderRadius:20,border:"none",cursor:"pointer",background:active?"#1a1aff":"#eef0f5",color:active?"#fff":"#111",fontWeight:active?700:500,fontSize:13,flexShrink:0,transition:"all .2s",justifyContent:"center",whiteSpace:"nowrap"}}>
+		          return(<button key={f.id} onClick={()=>setPitchFilter(f.id)} style={{display:"flex",alignItems:"center",gap:6,padding:active?"8px 16px":"0",width:active?undefined:40,height:40,borderRadius:20,border:"none",cursor:"pointer",background:active?"#1a1aff":"#eef0f5",color:active?"#fff":"#111",fontWeight:active?700:500,fontSize:13,flexShrink:0,transition:"all .2s",justifyContent:"center",whiteSpace:"nowrap"}}>
 		            {f.circle?<div style={{width:24,height:24,borderRadius:"50%",background:active?"rgba(255,255,255,.3)":"#222",display:"flex",alignItems:"center",justifyContent:"center"}}><span style={{fontSize:9,fontWeight:900,color:"#fff"}}>{f.icon}</span></div>:<span>{f.icon}</span>}
 		            {active&&<span>{f.label}</span>}
-		          </button>;
+		          </button>);
 		        })}
 		      </div>}
 		    </div>
@@ -1624,7 +1625,7 @@ const ph=(tp,pid)=>tp.find(p=>p.player?.id===pid)?.player?.photo;
 		        </>}
 		      </div>:null)}
 		    </div>}
-		  </div>;
+		  </div>);
 		}
 
 		//
@@ -1733,7 +1734,7 @@ const ph=(tp,pid)=>tp.find(p=>p.player?.id===pid)?.player?.photo;
 		    const isSubst=e.type==="subst";
 		    const photo=e.player?.photo;
 		    const assistPhoto=e.assist?.photo;
-		    return<div style={{
+		    return(<div style={{
 		      display:"flex",alignItems:"center",
 		      padding:"12px 14px",
 		      margin:"0 10px 8px",
@@ -2196,7 +2197,7 @@ const ph=(tp,pid)=>tp.find(p=>p.player?.id===pid)?.player?.photo;
 		                  {(function(){
 		                    var mx=firstHalf.reduce(function(m,e){return e.time?.elapsed===45?Math.max(m,e.time?.extra||0):m;},0);
 		                    if(!mx)return null;
-		                    return <div style={{background:"#eef2f6",borderRadius:10,padding:"8px 14px",margin:"4px 0",display:"flex",alignItems:"center",gap:8,color:"#475569",fontWeight:600,fontSize:13}}><span>{"\u23f1\ufe0f"}</span>{"Temps additionnel "+mx+" min"}</div>;
+		                    return <div style={{background:"#eef2f6",borderRadius:10,padding:"8px 14px",margin:"4px 0",display:"flex",alignItems:"center",gap:8,color:"#475569",fontWeight:600,fontSize:13}}><span>{"\u23f1\ufe0f"}</span>{"Temps additionnel "+mx+" min"}</div>);
 		                  })()}
 		                  <HalfSep label={"MT"} score={htH+"-"+htA}/>
 		                </div>
@@ -2216,7 +2217,7 @@ const ph=(tp,pid)=>tp.find(p=>p.player?.id===pid)?.player?.photo;
 		        {h2h.slice(0,10).map((m,i)=>{
 		          const hid=fix.teams.home.id,hh=m.teams.home.id===hid,mh=m.goals.home??0,ma=m.goals.away??0;
 		          const hw2=(hh&&mh>ma)||(!hh&&ma>mh),aw2=(hh&&ma>mh)||(!hh&&mh>ma);
-		          return<div key={i} style={{display:"flex",alignItems:"center",padding:"10px 16px",borderBottom:`1px solid ${T.line}11`,gap:10}}>
+		          return(<div key={i} style={{display:"flex",alignItems:"center",padding:"10px 16px",borderBottom:`1px solid ${T.line}11`,gap:10}}>
 		            <span style={{fontSize:10,color:T.t3,width:44,flexShrink:0}}>{m.fixture.date?.slice(0,7)}</span>
 		            <div style={{flex:1,minWidth:0}}>
 		              <div style={{fontSize:12,color:T.t2,overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap"}}>{m.teams.home.name} – {m.teams.away.name}</div>
@@ -2224,7 +2225,7 @@ const ph=(tp,pid)=>tp.find(p=>p.player?.id===pid)?.player?.photo;
 		            </div>
 		            <span style={{fontSize:15,fontWeight:800,color:T.t1,flexShrink:0}}>{mh} – {ma}</span>
 		            <div style={{width:7,height:7,borderRadius:"50%",background:hw2?T.greenB:aw2?T.red:T.gold,flexShrink:0}}/>
-		          </div>;
+		          </div>);
 		        })}
 		      </div>}
 
@@ -2361,7 +2362,7 @@ const ph=(tp,pid)=>tp.find(p=>p.player?.id===pid)?.player?.photo;
 		  const dates=useMemo(()=>Array.from({length:15},(_,i)=>{const d=new Date();d.setDate(d.getDate()+i-7);return d.toISOString().slice(0,10);}),[]);
 		  const DAY=["D","L","M","M","J","V","S"];
 
-		  return<div style={{display:"flex",flexDirection:"column",height:"100%",width:"100%",overflow:"hidden"}}>
+		  return(<div style={{display:"flex",flexDirection:"column",height:"100%",width:"100%",overflow:"hidden"}}>
 		    {/* Status bar */}
 		    <div style={{display:"flex",alignItems:"center",gap:8,padding:"6px 14px",background:T.bg1,borderBottom:`1px solid ${T.line}`,flexShrink:0,minHeight:44,width:"100%",boxShadow:"inset 0 -1px 0 rgba(255,255,255,.04)"}}>
 		      {lv>0?<><div style={{width:8,height:8,borderRadius:"50%",background:T.red,animation:"pulseR 2s infinite",flexShrink:0}}/><span style={{fontSize:11,fontWeight:800,color:T.red}}>{lv} en direct</span></>:st==="ok"?<span style={{fontSize:11,color:T.t3}}>{data.length} matchs</span>:null}
@@ -2375,7 +2376,7 @@ const ph=(tp,pid)=>tp.find(p=>p.player?.id===pid)?.player?.photo;
 		    </div>
 		    {/* Bande dates */}
 		    <div ref={stripRef} style={{display:"flex",gap:5,overflowX:"auto",padding:"10px 14px 10px",background:T.bg0,borderBottom:`1px solid ${T.line}`,flexShrink:0,width:"100%"}}>
-		      {dates.map(d=>{const td=d===today(),ac=d===date,dt=new Date(d+"T12:00:00");return<div key={d} data-td={td?"1":"0"} onClick={()=>setDate(d)} style={{
+		      {dates.map(d=>{const td=d===today(),ac=d===date,dt=new Date(d+"T12:00:00");return(<div key={d} data-td={td?"1":"0"} onClick={()=>setDate(d)} style={{
 		        display:"flex",flexDirection:"column",alignItems:"center",gap:3,
 		        flexShrink:0,cursor:"pointer",width:42,padding:"7px 0",
 		        borderRadius:11,transition:"all .15s",
@@ -2386,7 +2387,7 @@ const ph=(tp,pid)=>tp.find(p=>p.player?.id===pid)?.player?.photo;
 		        <span className="bc" style={{fontSize:9,fontWeight:700,textTransform:"uppercase",letterSpacing:.8,color:ac?"rgba(255,255,255,.8)":td?T.red:T.t4}}>{DAY[dt.getDay()]}</span>
 		        <span className="bc" style={{fontSize:18,fontWeight:900,color:ac?"#fff":td?T.red:T.t2,lineHeight:1}}>{dt.getDate()}</span>
 		      </div>;})}
-		    </div>
+		    </div>);
 		    {/* Filtres */}
 		    <div style={{display:"flex",gap:7,padding:"8px 14px",background:T.bg0,borderBottom:`1px solid ${T.line}`,flexShrink:0,width:"100%"}}>
 		      <div style={{position:"relative",flex:1}}>
@@ -2441,7 +2442,7 @@ const ph=(tp,pid)=>tp.find(p=>p.player?.id===pid)?.player?.photo;
 		      </div>
 		    </Sheet>
 		    <MatchDetail state={detail} onClose={()=>setDet(null)}/>
-		  </div>;
+		  </div>);
 		}
 
 		//
@@ -2450,11 +2451,11 @@ const ph=(tp,pid)=>tp.find(p=>p.player?.id===pid)?.player?.photo;
 		//
 		function FormBadge({c}){
 		  const bg=c==="W"?"#00b86b":c==="L"?"#e53535":"#888";
-		  return<div className="bc" style={{
+		  return(<div className="bc" style={{
 		    width:16,height:16,borderRadius:4,background:bg,
 		    display:"flex",alignItems:"center",justifyContent:"center",
 		    fontSize:9,fontWeight:900,color:"#fff",flexShrink:0,
-		  }}>{c==="W"?"V":c==="L"?"D":"N"}</div>;
+		  }}>{c==="W"?"V":c==="L"?"D":"N"}</div>);
 		}
 
 		function StRow({r,zc,viewMode}){
@@ -2464,7 +2465,7 @@ const ph=(tp,pid)=>tp.find(p=>p.player?.id===pid)?.player?.photo;
 		  const bp=src?.goals?.for??r.all?.goals?.for??0;
 		  const bc=src?.goals?.against??r.all?.goals?.against??0;
 		  const gd=r.goalsDiff;
-		  return<div style={{
+		  return(<div style={{
 		    display:"flex",alignItems:"center",
 		    padding:"9px 10px",
 		    borderBottom:"1px solid rgba(0,0,0,.07)",
@@ -2476,7 +2477,7 @@ const ph=(tp,pid)=>tp.find(p=>p.player?.id===pid)?.player?.photo;
 		    <div className="bc" style={{
 		      width:22,fontSize:12,fontWeight:900,textAlign:"center",flexShrink:0,
 		      color:r.rank===1?"#00b86b":r.rank<=3?"#555":"#999",
-		    }}>{r.rank}</div>
+		    }}>{r.rank}</div>);
 
 		    {/* Logo + Nom + Forme */}
 		    <div style={{flex:1,display:"flex",alignItems:"center",gap:7,minWidth:0,overflow:"hidden",marginLeft:4}}>
@@ -2518,13 +2519,13 @@ const ph=(tp,pid)=>tp.find(p=>p.player?.id===pid)?.player?.photo;
 
 		//
 		function KnockoutMatch({m}){
-		  if(!m) return<div style={{height:56,background:T.bg3,borderRadius:10,opacity:.2,border:`1px solid ${T.line}`}}/>;
+		  if(!m) return(<div style={{height:56,background:T.bg3,borderRadius:10,opacity:.2,border:`1px solid ${T.line}`}}/>;
 		  const h=m.teams?.home,a=m.teams?.away,sh=m.fixture?.status?.short;
 		  const live=["1H","2H","HT","ET","P"].includes(sh);
 		  const done=["FT","AET","PEN"].includes(sh);
 		  const hg=m.goals?.home,ag=m.goals?.away;
 		  const hw=hg!=null&&ag!=null&&hg>ag,aw=hg!=null&&ag!=null&&ag>hg;
-		  return<div style={{
+		  return(<div style={{
 		    background:T.bg2,borderRadius:10,overflow:"hidden",
 		    border:`1px solid ${live?"rgba(229,53,53,.3)":T.line}`,
 		    boxShadow:live?`0 0 12px rgba(229,53,53,.15)`:"none",
@@ -2533,7 +2534,7 @@ const ph=(tp,pid)=>tp.find(p=>p.player?.id===pid)?.player?.photo;
 		      <Logo src={h?.logo} size={18}/>
 		      <span className="bc" style={{flex:1,fontSize:13,fontWeight:hw?800:500,overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap",color:done&&aw?T.t3:"#fff"}}>{h?.name??"TBD"}</span>
 		      {hg!=null&&<span className="bc" style={{fontSize:15,fontWeight:hw?900:600,color:hw?"#fff":T.t3,flexShrink:0}}>{hg}</span>}
-		    </div>
+		    </div>);
 		    <div style={{display:"flex",alignItems:"center",gap:8,padding:"8px 10px",background:aw&&done?"rgba(255,255,255,.03)":"transparent"}}>
 		      <Logo src={a?.logo} size={18}/>
 		      <span className="bc" style={{flex:1,fontSize:13,fontWeight:aw?800:500,overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap",color:done&&hw?T.t3:"#fff"}}>{a?.name??"TBD"}</span>
@@ -2542,7 +2543,7 @@ const ph=(tp,pid)=>tp.find(p=>p.player?.id===pid)?.player?.photo;
 		    {live&&<div style={{padding:"3px 10px",background:"rgba(229,53,53,.1)",borderTop:`1px solid rgba(229,53,53,.2)`}}>
 		      <span className="bc" style={{fontSize:9,fontWeight:800,color:T.red,letterSpacing:1}}>● LIVE</span>
 		    </div>}
-		  </div>;
+		  </div>);
 		}
 
 		function StandingsTab(){
@@ -2612,7 +2613,7 @@ const ph=(tp,pid)=>tp.find(p=>p.player?.id===pid)?.player?.photo;
 		  const knockoutRounds=rounds.filter(r=>{const rl=r.toLowerCase();return !rl.includes("group")&&!rl.includes("league phase")&&!rl.includes("qualifying");});
 		  const groupRounds=rounds.filter(r=>{const rl=r.toLowerCase();return rl.includes("group")||rl.includes("league phase");});
 
-		  return<div style={{display:"flex",flexDirection:"column",height:"100%",width:"100%",overflow:"hidden"}}>
+		  return(<div style={{display:"flex",flexDirection:"column",height:"100%",width:"100%",overflow:"hidden"}}>
 		    {/* Header bouton config */}
 		    <div style={{padding:"9px 14px",borderBottom:`1px solid ${T.line}`,flexShrink:0,background:T.bg1,minHeight:74,width:"100%"}}>
 		      <div onClick={()=>setCfg(true)} style={{
@@ -2650,7 +2651,7 @@ const ph=(tp,pid)=>tp.find(p=>p.player?.id===pid)?.player?.photo;
 		    }}>
 		      {[["all","Overall"],["home","Home"],["away","Away"]].map(([v,lb])=>{
 		        const a=viewMode===v;
-		        return<button key={v} onClick={()=>setViewMode(v)} className="bc" style={{
+		        return(<button key={v} onClick={()=>setViewMode(v)} className="bc" style={{
 		          flex:1,padding:"11px 4px",border:"none",
 		          background:a?"#fff":"#f7f7f7",
 		          color:a?"#00b86b":"#888",
@@ -2658,7 +2659,7 @@ const ph=(tp,pid)=>tp.find(p=>p.player?.id===pid)?.player?.photo;
 		          cursor:"pointer",letterSpacing:.3,
 		          borderBottom:a?"2px solid #00b86b":"2px solid transparent",
 		          transition:"all .2s",
-		        }}>{lb}</button>;
+		        }}>{lb}</button>);
 		      })}
 		    </div>}
 
@@ -2670,7 +2671,7 @@ const ph=(tp,pid)=>tp.find(p=>p.player?.id===pid)?.player?.photo;
 		        {st==="empty"&&<div style={{textAlign:"center",padding:"52px 24px"}}><div style={{fontSize:44,marginBottom:14}}>📋</div><div style={{fontSize:14,color:T.t2}}>Classement non disponible</div></div>}
 		        {(st==="ok"||st==="groups")&&allGroups.map((grp,gi)=>{
 		          const grpName=grp[0]?.group;
-		          return<div key={gi}>
+		          return(<div key={gi}>
 		            {grpName&&<div style={{
 		              padding:"8px 14px",
 		              background:"rgba(230,92,0,.06)",
@@ -2697,7 +2698,7 @@ const ph=(tp,pid)=>tp.find(p=>p.player?.id===pid)?.player?.photo;
 		              <div className="bc" style={{width:32,fontSize:9,fontWeight:800,color:"#1a1d23",textAlign:"center",flexShrink:0}}>Pts</div>
 		            </div>
 		            {grp.map(r=><StRow key={r.rank+"-"+gi} r={r} zc={zc} viewMode={viewMode}/>)}
-		          </div>;
+		          </div>);
 		        })}
 		        {/* Légende dynamique */}
 		        {(st==="ok"||st==="groups")&&<div style={{padding:"16px 14px 32px",background:"#f7f8fa"}}>
@@ -2741,7 +2742,7 @@ const ph=(tp,pid)=>tp.find(p=>p.player?.id===pid)?.player?.photo;
 		            {knockoutRounds.map(r=>{
 		              const label=r.replace("Round of ","1/").replace("8th Finals","8 de F.").replace("Quarter-finals","Quarts").replace("Semi-finals","Demis").replace("Final","Finale").replace("3rd Place","3ème Pl.");
 		              const active=selRound===r;
-		              return<button key={r} onClick={()=>setSelRound(r===selRound?"":r)} style={{padding:"6px 10px",background:active?T.red:T.bg3,color:active?"#fff":T.t2,border:`1px solid ${active?T.red:T.bg4}`,borderRadius:8,fontSize:11,fontWeight:active?700:400,cursor:"pointer",transition:"all .15s"}}>{label}</button>;
+		              return(<button key={r} onClick={()=>setSelRound(r===selRound?"":r)} style={{padding:"6px 10px",background:active?T.red:T.bg3,color:active?"#fff":T.t2,border:`1px solid ${active?T.red:T.bg4}`,borderRadius:8,fontSize:11,fontWeight:active?700:400,cursor:"pointer",transition:"all .15s"}}>{label}</button>;
 		            })}
 		          </div>
 		          {/* Matchs du tour s lectionn  */}
@@ -2768,10 +2769,10 @@ const ph=(tp,pid)=>tp.find(p=>p.player?.id===pid)?.player?.photo;
 		          </select>
 		        </div>
 		        <div><div style={{fontSize:10,fontWeight:700,color:T.t3,letterSpacing:1.3,textTransform:"uppercase",marginBottom:9}}>SAISON</div><select value={s} onChange={e=>setS(+e.target.value)} style={SEL}>{SEASONS.map(x=><option key={x} value={x}>{x}/{x+1}</option>)}</select></div>
-		        <button onClick={()=>setCfg(false)} style={{background:"linear-gradient(135deg,#e53535,#c62828)",border:"none",color:"#fff",borderRadius:12,padding:"15px",fontSize:14,fontWeight:700,cursor:"pointer",boxShadow:"0 4px 16px rgba(229,53,53,.35)",letterSpacing:.3}}>Appliquer</button>
+		        <button onClick={()=>setCfg(false)} style={{background:"linear-gradient(135deg,#e53535,#c62828)",border:"none",color:"#fff",borderRadius:12,padding:"15px",fontSize:14,fontWeight:700,cursor:"pointer",boxShadow:"0 4px 16px rgba(229,53,53,.35)",letterSpacing:.3}}>Appliquer</button>);
 		      </div>
 		    </Sheet>
-		  </div>;
+		  </div>);
 		}
 
 		//
@@ -2781,7 +2782,7 @@ const ph=(tp,pid)=>tp.find(p=>p.player?.id===pid)?.player?.photo;
 		  const[lid,setLid]=useState(39),[s,setS]=useState(CUR_SEASON),[type,setTy]=useState("scorers"),[list,setList]=useState([]),[st,setSt]=useState("load");
 		  useEffect(()=>{let c=false;setSt("load");setList([]);const path=type==="assists"?`/players/topassists?league=${lid}&season=${s}`:`/players/topscorers?league=${lid}&season=${s}`;api(path,3600000).then(d=>{if(!c){setList(d);setSt("ok");}}).catch(()=>{if(!c)setSt("err");});return()=>{c=true;};},[lid,s,type]);
 		  const SEL={width:"100%",background:T.bg2,border:`1px solid ${T.bg4}`,color:T.t1,borderRadius:8,padding:"8px 11px",fontSize:12,fontWeight:600,outline:"none",cursor:"pointer"};
-		  return<div style={{display:"flex",flexDirection:"column",height:"100%",width:"100%",overflow:"hidden"}}>
+		  return(<div style={{display:"flex",flexDirection:"column",height:"100%",width:"100%",overflow:"hidden"}}>
 		    <div style={{padding:"9px 14px",borderBottom:`1px solid ${T.line}`,display:"flex",gap:9,flexShrink:0,background:T.bg1,flexWrap:"wrap",minHeight:52,width:"100%"}}>
 		      <div style={{display:"flex",background:T.bg3,borderRadius:10,padding:3,gap:2}}>
 		        {[["scorers","⚽ Buts"],["assists","🎯 Passes D"]].map(([v,lb])=><button key={v} onClick={()=>setTy(v)} className="bc" style={{background:type===v?"linear-gradient(135deg,#e53535,#c62828)":"none",border:"none",color:type===v?"#fff":T.t3,borderRadius:8,padding:"6px 14px",fontSize:12,fontWeight:800,cursor:"pointer",transition:"all .15s",letterSpacing:.4,boxShadow:type===v?"0 2px 8px rgba(229,53,53,.3)":"none"}}>{lb}</button>)}
@@ -2797,7 +2798,7 @@ const ph=(tp,pid)=>tp.find(p=>p.player?.id===pid)?.player?.photo;
 		        const md=i===0?"🥇":i===1?"🥈":i===2?"🥉":null,mc=i===0?T.gold:i===1?"#c0c0c0":i===2?"#cd7f32":T.bg4;
 		        const isTop3=i<3;
 		        const maxVal=type==="assists"?(list[0]?.statistics?.[0]?.goals?.assists??1):(list[0]?.statistics?.[0]?.goals?.total??1);
-		        const pct2=Math.round((val/(maxVal||1))*100);return<div key={pl.id} style={{display:"flex",alignItems:"center",gap:12,padding:"11px 14px",borderBottom:`1px solid ${T.line}`,transition:"background .15s",width:"100%",borderLeft:isTop3?`3px solid ${i===0?T.gold:i===1?"#c0c0c0":"#cd7f32"}`:"3px solid transparent",position:"relative",overflow:"hidden"}} onMouseEnter={e=>e.currentTarget.style.background=T.bg3} onMouseLeave={e=>e.currentTarget.style.background="transparent"}>
+		        const pct2=Math.round((val/(maxVal||1))*100);return(<div key={pl.id} style={{display:"flex",alignItems:"center",gap:12,padding:"11px 14px",borderBottom:`1px solid ${T.line}`,transition:"background .15s",width:"100%",borderLeft:isTop3?`3px solid ${i===0?T.gold:i===1?"#c0c0c0":"#cd7f32"}`:"3px solid transparent",position:"relative",overflow:"hidden"}} onMouseEnter={e=>e.currentTarget.style.background=T.bg3} onMouseLeave={e=>e.currentTarget.style.background="transparent"}>
 		          <div style={{position:"absolute",bottom:0,left:0,height:2,width:`${pct2}%`,background:i===0?"linear-gradient(90deg,#f0a500,transparent)":i===1?"linear-gradient(90deg,#c0c0c0,transparent)":i===2?"linear-gradient(90deg,#cd7f32,transparent)":"linear-gradient(90deg,rgba(229,53,53,.5),transparent)",transition:"width .5s ease",borderRadius:1}}/>
 		          <div className="bc" style={{width:30,textAlign:"center",flexShrink:0}}>{md?<span style={{fontSize:24,lineHeight:1}}>{md}</span>:<span className="bc" style={{fontSize:14,fontWeight:800,color:T.t4}}>{i+1}</span>}</div>
 		          <div style={{position:"relative",flexShrink:0}}>
@@ -2814,10 +2815,10 @@ const ph=(tp,pid)=>tp.find(p=>p.player?.id===pid)?.player?.photo;
 		            <div className="bc" style={{fontSize:9,color:T.t3,fontWeight:800,letterSpacing:1,textTransform:"uppercase",marginTop:3}}>{type==="assists"?"PASSES":"BUTS"}</div>
 		            {type==="scorers"&&(st2?.goals?.assists??0)>0&&<div className="bc" style={{fontSize:11,color:T.greenB,fontWeight:700,marginTop:4}}>+{st2.goals.assists} PD</div>}
 		          </div>
-		        </div>;
+		        </div>);
 		      })}
 		    </div>
-		  </div>;
+		  </div>);
 		}
 
 		//
@@ -2878,7 +2879,7 @@ const ph=(tp,pid)=>tp.find(p=>p.player?.id===pid)?.player?.photo;
 		    }catch(e){if(e.name!=="AbortError")setDt({error:e.message});}
 		  },[]);
 		  const SEL={width:"100%",background:T.bg2,border:`1px solid ${T.bg4}`,color:T.t1,borderRadius:8,padding:"8px 11px",fontSize:12,fontWeight:600,outline:"none",cursor:"pointer"};
-		  return<div style={{display:"flex",flexDirection:"column",height:"100%",width:"100%",overflow:"hidden"}}>
+		  return(<div style={{display:"flex",flexDirection:"column",height:"100%",width:"100%",overflow:"hidden"}}>
 		    <div style={{padding:"9px 14px",borderBottom:`1px solid ${T.line}`,display:"flex",gap:9,flexShrink:0,background:T.bg1,minHeight:52,width:"100%"}}>
 		      <div style={{flex:2}}><select value={lid} onChange={e=>setLid(+e.target.value)} style={SEL}>{REGIONS.map(r=><optgroup key={r} label={r}>{LEAGUES.filter(l=>l.region===r).map(l=><option key={l.id} value={l.id}>{l.flag} {l.name}</option>)}</optgroup>)}</select></div>
 		      <div style={{flex:1}}><select value={s} onChange={e=>setS(+e.target.value)} style={SEL}>{SEASONS.map(x=><option key={x} value={x}>{x}/{x+1}</option>)}</select></div>
@@ -2889,7 +2890,7 @@ const ph=(tp,pid)=>tp.find(p=>p.player?.id===pid)?.player?.photo;
 		      :Object.keys(byD).length===0?<div style={{textAlign:"center",padding:"56px 24px"}}><div style={{fontSize:44,marginBottom:14}}>📭</div><div style={{fontSize:15,color:T.t2}}>Aucun match à venir</div></div>
 		      :Object.entries(byD).sort(([a],[b])=>a.localeCompare(b)).map(([d,matches])=><div key={d}>
 		        <div style={{padding:"10px 14px 5px",fontSize:11,fontWeight:700,color:T.t3,letterSpacing:1,textTransform:"uppercase",background:T.bg1,borderBottom:`1px solid ${T.line}`,borderTop:`1px solid ${T.line}`}}>{DL(d)}</div>
-		        {matches.map(m=>{const isFav=favs.has(m.fixture.id);return<div key={m.fixture.id} onClick={()=>openMatch(m.fixture.id)} style={{display:"flex",alignItems:"center",padding:"11px 14px",borderBottom:`1px solid ${T.line}`,cursor:"pointer",transition:"background .12s"}} onMouseEnter={e=>e.currentTarget.style.background=T.bg2} onMouseLeave={e=>e.currentTarget.style.background="transparent"}>
+		        {matches.map(m=>{const isFav=favs.has(m.fixture.id);return(<div key={m.fixture.id} onClick={()=>openMatch(m.fixture.id)} style={{display:"flex",alignItems:"center",padding:"11px 14px",borderBottom:`1px solid ${T.line}`,cursor:"pointer",transition:"background .12s"}} onMouseEnter={e=>e.currentTarget.style.background=T.bg2} onMouseLeave={e=>e.currentTarget.style.background="transparent"}>
 		          <span className="bc" style={{fontSize:13,fontWeight:700,color:T.blueB,width:46,flexShrink:0}}>{hhmm(m.fixture.date)}</span>
 		          <div style={{flex:1,minWidth:0}}>
 		            <div style={{display:"flex",alignItems:"center",gap:7,marginBottom:5}}><Logo src={m.teams.home.logo} size={16}/><span className="bc" style={{fontSize:14,fontWeight:700,overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap",letterSpacing:.2}}>{m.teams.home.name}</span></div>
@@ -2897,11 +2898,11 @@ const ph=(tp,pid)=>tp.find(p=>p.player?.id===pid)?.player?.photo;
 		          </div>
 		          {m.fixture.venue?.city&&<span className="bc" style={{fontSize:10,color:T.t3,maxWidth:72,textAlign:"right",lineHeight:1.4,flexShrink:0,marginRight:5}}>{m.fixture.venue.city}</span>}
 		          <button onClick={e=>{e.stopPropagation();onFav(m.fixture.id);}} style={{background:"none",border:"none",color:isFav?T.gold:T.t4,fontSize:15,padding:"0 5px",flexShrink:0,cursor:"pointer"}}>{isFav?"★":"☆"}</button>
-		        </div>;})}
+		        </div>);})}
 		      </div>)}
 		    </div>
 		    <MatchDetail state={detail} onClose={()=>setDt(null)}/>
-		  </div>;
+		  </div>);
 		}
 
 		//
@@ -2919,7 +2920,7 @@ const ph=(tp,pid)=>tp.find(p=>p.player?.id===pid)?.player?.photo;
 		function JSKCard({a,onOpen}){
 		  const SC={"DZFoot":"#00883a","Competition.dz":"#c8002d","Google News":"#1a73e8"};
 		  const c=SC[a.source]||JSK_GREEN;
-		  return<div onClick={()=>onOpen(a)} style={{display:"flex",margin:"0 12px 10px",background:"#fff",borderRadius:14,overflow:"hidden",boxShadow:"0 2px 8px rgba(0,0,0,.07)",cursor:"pointer"}}>
+		  return(<div onClick={()=>onOpen(a)} style={{display:"flex",margin:"0 12px 10px",background:"#fff",borderRadius:14,overflow:"hidden",boxShadow:"0 2px 8px rgba(0,0,0,.07)",cursor:"pointer"}}>
 		    <div style={{width:88,height:88,flexShrink:0,background:"linear-gradient(135deg,"+JSK_GREEN+",#003d20)",display:"flex",alignItems:"center",justifyContent:"center",overflow:"hidden"}}>
 		      <img src={a.image||JSK_LOGO} alt="" style={{width:"100%",height:"100%",objectFit:"cover"}}
 		        onError={e=>{e.target.src=JSK_LOGO;e.target.style.objectFit="contain";e.target.style.padding="8px";}}/>
@@ -2933,7 +2934,7 @@ const ph=(tp,pid)=>tp.find(p=>p.player?.id===pid)?.player?.photo;
 		        <span style={{fontSize:10,color:"#bbb"}}>{a.date}</span>
 		      </div>
 		    </div>
-		  </div>;
+		  </div>);
 		}
 
 		const COMPETITION_UNE_URL = "https://iqeqlsxjiklygywjirqs.supabase.co/rest/v1/competition_une?order=published_at.desc&limit=10";
@@ -2994,7 +2995,7 @@ const ph=(tp,pid)=>tp.find(p=>p.player?.id===pid)?.player?.photo;
 		    setSelected(a);
 		  };
 
-		  if(selected) return<div style={{display:"flex",flexDirection:"column",height:"100%",background:T.bg0}}>
+		  if(selected) return(<div style={{display:"flex",flexDirection:"column",height:"100%",background:T.bg0}}>
 		    {/* Header premium */}
 		    <div style={{
 		      background:"linear-gradient(160deg,"+JSK_GREEN+" 0%,#004d2a 100%)",
@@ -3045,9 +3046,9 @@ const ph=(tp,pid)=>tp.find(p=>p.player?.id===pid)?.player?.photo;
 		        </div>
 		      </div>
 		    </div>
-		  </div>;
+		  </div>);
 
-		  return<div style={{display:"flex",flexDirection:"column",height:"100%",background:T.bg0,overflow:"hidden"}}>
+		  return(<div style={{display:"flex",flexDirection:"column",height:"100%",background:T.bg0,overflow:"hidden"}}>
 
 		    {/* ── HEADER JSK PREMIUM ── */}
 		    <div style={{
@@ -3089,7 +3090,7 @@ const ph=(tp,pid)=>tp.find(p=>p.player?.id===pid)?.player?.photo;
 		        }}>
 		          {[["actualites","📱","Actualités"],["une","📰","La Une"]].map(([v,ic,lb])=>{
 		            const a=view===v;
-		            return<button key={v} onClick={()=>setView(v)} className="bc" style={{
+		            return(<button key={v} onClick={()=>setView(v)} className="bc" style={{
 		              flex:1,padding:"9px 0",border:"none",cursor:"pointer",
 		              borderRadius:11,
 		              background:a?"rgba(255,255,255,.18)":"transparent",
@@ -3103,7 +3104,7 @@ const ph=(tp,pid)=>tp.find(p=>p.player?.id===pid)?.player?.photo;
 		              <span style={{fontSize:13}}>{ic}</span>
 		              <span>{lb}</span>
 		              {a&&<div style={{width:4,height:4,borderRadius:"50%",background:JSK_YELLOW,marginLeft:2}}/>}
-		            </button>;
+		            </button>);
 		          })}
 		        </div>
 		      </div>
@@ -3177,7 +3178,7 @@ const ph=(tp,pid)=>tp.find(p=>p.player?.id===pid)?.player?.photo;
 
 		      <div style={{height:20}}/>
 		    </div>
-		  </div>;
+		  </div>);
 		}
 
 
@@ -3309,7 +3310,7 @@ const ph=(tp,pid)=>tp.find(p=>p.player?.id===pid)?.player?.photo;
 		    }
 		  };
 
-		  return<div onClick={openArticle} style={{textDecoration:"none",display:"block",margin:"0 10px 10px",cursor:"pointer"}}>
+		  return(<div onClick={openArticle} style={{textDecoration:"none",display:"block",margin:"0 10px 10px",cursor:"pointer"}}>
 		    <div style={{background:"#fff",borderRadius:14,boxShadow:"0 1px 6px rgba(0,0,0,.08)",borderLeft:`4px solid ${srcColor}`,overflow:"hidden"}}>
 		      {/* Source + date + pays */}
 		      <div style={{display:"flex",alignItems:"center",gap:8,padding:"10px 14px 8px"}}>
@@ -3328,7 +3329,7 @@ const ph=(tp,pid)=>tp.find(p=>p.player?.id===pid)?.player?.photo;
 		        </div>
 		      </div>
 		    </div>
-		  </div>;
+		  </div>);
 		}
 
 		function AfricaTransfers({data,st,onRefresh}){
@@ -3337,27 +3338,27 @@ const ph=(tp,pid)=>tp.find(p=>p.player?.id===pid)?.player?.photo;
 		  const countries=["all","Algérie","Maroc","Tunisie","Égypte"];
 		  const filtered=filter==="all"?data:data.filter(t=>t.country===filter);
 
-		  if(articleUrl) return<div style={{display:"flex",flexDirection:"column",height:"100%",background:"#fff"}}>
+		  if(articleUrl) return(<div style={{display:"flex",flexDirection:"column",height:"100%",background:"#fff"}}>
 		    <div style={{display:"flex",alignItems:"center",gap:10,padding:"12px 14px",background:"#00b86b",flexShrink:0}}>
 		      <button onClick={()=>setArticleUrl(null)} style={{background:"rgba(255,255,255,.25)",border:"none",borderRadius:10,padding:"7px 14px",color:"#fff",fontSize:13,fontWeight:800,cursor:"pointer"}}>← Retour</button>
 		      <span style={{fontSize:13,fontWeight:700,color:"#fff",flex:1,overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap"}}>Article</span>
 		    </div>
 		    <iframe src={articleUrl} style={{flex:1,border:"none",width:"100%"}} title="article" sandbox="allow-scripts allow-same-origin allow-popups allow-forms"/>
-		  </div>;
+		  </div>);
 
-		  return<div style={{display:"flex",flexDirection:"column",height:"100%",overflow:"hidden"}}>
+		  return(<div style={{display:"flex",flexDirection:"column",height:"100%",overflow:"hidden"}}>
 		    {/* Filtre pays */}
 		    <div style={{background:"#fff",borderBottom:"1px solid rgba(0,0,0,.08)",padding:"8px 12px",flexShrink:0}}>
 		      <div style={{overflowX:"auto",display:"flex",gap:6,paddingBottom:2}}>
 		        {countries.map(c=>{
 		          const a=filter===c;
 		          const flags={"all":"🌍","Algérie":"🇩🇿","Maroc":"🇲🇦","Tunisie":"🇹🇳","Égypte":"🇪🇬"};
-		          return<button key={c} onClick={()=>setFilter(c)} className="bc" style={{
+		          return(<button key={c} onClick={()=>setFilter(c)} className="bc" style={{
 		            flexShrink:0,padding:"6px 12px",borderRadius:20,border:"none",
 		            background:a?"linear-gradient(135deg,#00b86b,#009657)":"rgba(0,0,0,.07)",
 		            color:a?"#fff":"#555",fontSize:11,fontWeight:a?800:600,cursor:"pointer",
 		            whiteSpace:"nowrap",
-		          }}>{flags[c]||"🌍"} {c==="all"?"Tous":c}</button>;
+		          }}>{flags[c]||"🌍"} {c==="all"?"Tous":c}</button>);
 		        })}
 		        <button onClick={onRefresh} className="bc" style={{
 		          flexShrink:0,padding:"6px 12px",borderRadius:20,border:"none",
@@ -3391,7 +3392,7 @@ const ph=(tp,pid)=>tp.find(p=>p.player?.id===pid)?.player?.photo;
 		        }
 		      </>}
 		    </div>
-		  </div>;
+		  </div>);
 		}
 
 		function TransferCard({t}){
@@ -3420,7 +3421,7 @@ const ph=(tp,pid)=>tp.find(p=>p.player?.id===pid)?.player?.photo;
 		    ?{label:"Transfert",   bg:"rgba(100,100,100,.1)", color:"#888"}
 		    :{label:transfer.type, bg:"rgba(25,118,210,.1)", color:"#1976d2"};
 
-		  return<div style={{
+		  return(<div style={{
 		    background:"#fff",
 		    margin:"0 10px 10px",padding:"14px 14px 12px",
 		    boxShadow:"0 1px 5px rgba(0,0,0,.07)",
@@ -3435,7 +3436,7 @@ const ph=(tp,pid)=>tp.find(p=>p.player?.id===pid)?.player?.photo;
 		        {pos&&<div style={{position:"absolute",bottom:-3,left:"50%",transform:"translateX(-50%)",
 		          background:posColor,borderRadius:5,padding:"1px 4px",border:"1.5px solid #fff"}}>
 		          <span className="bc" style={{fontSize:9,fontWeight:900,color:"#fff"}}>{pos}</span>
-		        </div>}
+		        </div>);}
 		      </div>
 		      <div style={{flex:1,minWidth:0}}>
 		        <div className="bc" style={{fontSize:15,fontWeight:800,color:"#1a1d23",
@@ -3490,7 +3491,7 @@ const ph=(tp,pid)=>tp.find(p=>p.player?.id===pid)?.player?.photo;
 		  const bgColor = accent==="green" ? "rgba(0,193,112,.1)" : accent==="blue" ? "rgba(24,119,242,.1)" : T.redL;
 		  const textColor = accent==="green" ? T.green : accent==="blue" ? "#1877f2" : T.red;
 		  const borderColor = accent==="green" ? T.green : accent==="blue" ? "#1877f2" : T.red;
-		  return<div onClick={()=>onOpen(item)} className="card-hover" style={{
+		  return(<div onClick={()=>onOpen(item)} className="card-hover" style={{
 		    background:"#fff",borderRadius:14,overflow:"hidden",
 		    marginBottom:10,border:`1px solid ${T.line}`,
 		    boxShadow:T.shadowSm,cursor:"pointer",
@@ -3500,7 +3501,7 @@ const ph=(tp,pid)=>tp.find(p=>p.player?.id===pid)?.player?.photo;
 		    {item.image&&<div style={{width:"100%",height:160,overflow:"hidden",background:"#f0f2f5"}}>
 		      <img src={item.image} alt="" style={{width:"100%",height:"100%",objectFit:"cover"}}
 		        onError={e=>{e.target.parentNode.style.display="none";}}/>
-		    </div>}
+		    </div>);}
 		    <div style={{padding:"12px 14px"}}>
 		      <div style={{display:"flex",alignItems:"center",gap:6,marginBottom:6}}>
 		        <div style={{background:bgColor,borderRadius:6,padding:"2px 8px"}}>
@@ -3584,7 +3585,7 @@ const ph=(tp,pid)=>tp.find(p=>p.player?.id===pid)?.player?.photo;
 		    return acc;
 		  },{});
 
-		  if(selectedFeed) return<div style={{display:"flex",flexDirection:"column",height:"100%",background:T.bg0}}>
+		  if(selectedFeed) return(<div style={{display:"flex",flexDirection:"column",height:"100%",background:T.bg0}}>
 		    <div style={{background:T.red,flexShrink:0,padding:"13px 16px",display:"flex",alignItems:"center",gap:10,boxShadow:T.shadowRed}}>
 		      <button onClick={()=>setSelectedFeed(null)} style={{background:"rgba(255,255,255,.2)",border:"1px solid rgba(255,255,255,.25)",borderRadius:10,padding:"7px 13px",color:"#fff",fontSize:13,fontWeight:800,cursor:"pointer"}}>← Retour</button>
 		      <span className="bc" style={{fontSize:15,fontWeight:800,color:"#fff",flex:1}}>{selectedFeed.source}</span>
@@ -3610,9 +3611,9 @@ const ph=(tp,pid)=>tp.find(p=>p.player?.id===pid)?.player?.photo;
 		        </div>
 		      </div>
 		    </div>
-		  </div>;
+		  </div>);
 
-		  return<div style={{display:"flex",flexDirection:"column",height:"100%",background:T.bg0,overflow:"hidden"}}>
+		  return(<div style={{display:"flex",flexDirection:"column",height:"100%",background:T.bg0,overflow:"hidden"}}>
 		    {/* Toggle AFRIQUE / EUROPE / COMPÉTITIONS — premium */}
 		    <div style={{
 		      background:"#fff",
@@ -3630,7 +3631,7 @@ const ph=(tp,pid)=>tp.find(p=>p.player?.id===pid)?.player?.photo;
 		      }}>
 		        {[["competition","🏆","Compét."]].map(([v,ic,lb])=>{
 		          const a=view===v;
-		          return<button key={v} onClick={()=>setView(v)} className="bc" style={{
+		          return(<button key={v} onClick={()=>setView(v)} className="bc" style={{
 		            flex:1,padding:"9px 4px",border:"none",cursor:"pointer",
 		            borderRadius:11,
 		            background:a?T.green:"transparent",
@@ -3642,7 +3643,7 @@ const ph=(tp,pid)=>tp.find(p=>p.player?.id===pid)?.player?.photo;
 		          }}>
 		            <span style={{fontSize:14}}>{ic}</span>
 		            <span style={{letterSpacing:.2}}>{lb}</span>
-		          </button>;
+		          </button>);
 		        })}
 		      </div>
 		    </div>
@@ -3655,12 +3656,12 @@ const ph=(tp,pid)=>tp.find(p=>p.player?.id===pid)?.player?.photo;
 		      <div style={{overflowX:"auto",display:"flex",gap:6,marginBottom:10,paddingBottom:2}}>
 		        {TOP_LEAGUES.map(l=>{
 		          const a=l.id===lid;
-		          return<button key={l.id} onClick={()=>setLid(l.id)} className="bc" style={{
+		          return(<button key={l.id} onClick={()=>setLid(l.id)} className="bc" style={{
 		            flexShrink:0,padding:"6px 12px",borderRadius:20,border:"none",
 		            background:a?"linear-gradient(135deg,#00b86b,#009657)":"rgba(0,0,0,.07)",
 		            color:a?"#fff":"#555",fontSize:11,fontWeight:a?800:600,cursor:"pointer",
 		            transition:"all .2s",whiteSpace:"nowrap",
-		          }}>{l.flag} {l.name}</button>;
+		          }}>{l.flag} {l.name}</button>);
 		        })}
 		      </div>
 		      <div style={{display:"flex",gap:8,alignItems:"center"}}>
@@ -3704,7 +3705,7 @@ const ph=(tp,pid)=>tp.find(p=>p.player?.id===pid)?.player?.photo;
 		          <div style={{overflowY:"auto",flex:1}}>
 		            {["Transfert","Loan","Free Transfer","Loan Return"].map(type=>{
 		              const active=typeFilters.includes(type);
-		              return<div key={type} onClick={()=>setTypeFilters(f=>active?f.filter(x=>x!==type):[...f,type])} style={{
+		              return(<div key={type} onClick={()=>setTypeFilters(f=>active?f.filter(x=>x!==type):[...f,type])} style={{
 		                display:"flex",alignItems:"center",justifyContent:"space-between",
 		                padding:"16px 20px",cursor:"pointer",
 		                borderBottom:"1px solid rgba(0,0,0,.05)",
@@ -3719,7 +3720,7 @@ const ph=(tp,pid)=>tp.find(p=>p.player?.id===pid)?.player?.photo;
 		                  display:"flex",alignItems:"center",justifyContent:"center",
 		                  transition:"all .15s",flexShrink:0,
 		                }}>{active&&<span style={{color:"#fff",fontSize:13,fontWeight:900,lineHeight:1}}>✓</span>}</div>
-		              </div>;
+		              </div>);
 		            })}
 		          </div>
 		          {/* Footer */}
@@ -3789,7 +3790,7 @@ const ph=(tp,pid)=>tp.find(p=>p.player?.id===pid)?.player?.photo;
 		      {feedSt==="err"&&<div style={{padding:"40px 20px",textAlign:"center",color:T.t3,fontSize:14}}>Erreur de chargement</div>}
 		    </div>}
 		    {view==="competition"&&<CompetitionTransfers/>}
-		  </div>;
+		  </div>);
 		}
 
 		function CompetitionTransfers(){
@@ -3823,7 +3824,7 @@ const ph=(tp,pid)=>tp.find(p=>p.player?.id===pid)?.player?.photo;
 		    return()=>{cancelled=true;};
 		  },[lid,season]);
 
-		  return<div style={{display:"flex",flexDirection:"column",height:"100%",overflow:"hidden"}}>
+		  return(<div style={{display:"flex",flexDirection:"column",height:"100%",overflow:"hidden"}}>
 		    {/* Sélecteur ligue */}
 		    <div style={{background:"#fff",borderBottom:"1px solid rgba(0,0,0,.08)",padding:"10px 12px",flexShrink:0}}>
 		      {/* Badge officiel */}
@@ -3836,12 +3837,12 @@ const ph=(tp,pid)=>tp.find(p=>p.player?.id===pid)?.player?.photo;
 		      <div style={{overflowX:"auto",display:"flex",gap:6,paddingBottom:2}}>
 		        {TOP_LEAGUES.map(l=>{
 		          const a=l.id===lid;
-		          return<button key={l.id} onClick={()=>setLid(l.id)} className="bc" style={{
+		          return(<button key={l.id} onClick={()=>setLid(l.id)} className="bc" style={{
 		            flexShrink:0,padding:"6px 12px",borderRadius:20,border:"none",
 		            background:a?"linear-gradient(135deg,#00b86b,#009657)":"rgba(0,0,0,.07)",
 		            color:a?"#fff":"#555",fontSize:11,fontWeight:a?800:600,cursor:"pointer",
 		            transition:"all .2s",whiteSpace:"nowrap",
-		          }}>{l.flag} {l.name}</button>;
+		          }}>{l.flag} {l.name}</button>);
 		        })}
 		      </div>
 		    </div>
@@ -3870,7 +3871,7 @@ const ph=(tp,pid)=>tp.find(p=>p.player?.id===pid)?.player?.photo;
 		            const isLoan=(transfer?.type||"").toLowerCase().includes("loan");
 		            const pos=POS_MAP[player?.position]||"";
 		            const posColor=POS_COLORS[pos]||"#888";
-		            return<div key={i} style={{display:"flex",alignItems:"center",gap:10,padding:"10px 14px",borderBottom:"1px solid rgba(0,0,0,.04)"}}>
+		            return(<div key={i} style={{display:"flex",alignItems:"center",gap:10,padding:"10px 14px",borderBottom:"1px solid rgba(0,0,0,.04)"}}>
 		              <div style={{position:"relative",flexShrink:0}}>
 		                <Avatar src={player?.photo} size={38}/>
 		                {pos&&<div style={{position:"absolute",bottom:-3,left:"50%",transform:"translateX(-50%)",background:posColor,borderRadius:4,padding:"1px 4px",border:"1px solid #fff"}}>
@@ -3889,12 +3890,12 @@ const ph=(tp,pid)=>tp.find(p=>p.player?.id===pid)?.player?.photo;
 		                {isLoan&&!isFree&&<span className="bc" style={{fontSize:10,color:"#ff9800",fontWeight:700}}>Prêt</span>}
 		                {transfer?.date&&<span className="bc" style={{fontSize:9,color:"#bbb",display:"block",marginTop:2}}>{new Date(transfer.date).toLocaleDateString("fr-FR",{day:"2-digit",month:"short"})}</span>}
 		              </div>
-		            </div>;
+		            </div>);
 		          })}
 		        </div>)}
 		      </div>}
 		    </div>
-		  </div>;
+		  </div>);
 		}
 
 		//
@@ -4024,7 +4025,7 @@ const ph=(tp,pid)=>tp.find(p=>p.player?.id===pid)?.player?.photo;
 
 		  const SEL={width:"100%",background:T.bg2,border:`1px solid ${T.bg4}`,color:T.t1,borderRadius:8,padding:"10px 13px",fontSize:13,outline:"none",cursor:"pointer"};
 
-		  return<div style={{display:"flex",flexDirection:"column",height:"100%",background:T.bg0,overflow:"hidden"}}>
+		  return(<div style={{display:"flex",flexDirection:"column",height:"100%",background:T.bg0,overflow:"hidden"}}>
 
 		    {/* Header — Ligue + Saison + Journée */}
 		    <div style={{background:"#fff",borderBottom:`1px solid rgba(0,0,0,.08)`,flexShrink:0,boxShadow:"0 2px 8px rgba(0,0,0,.06)"}}>
@@ -4049,13 +4050,13 @@ const ph=(tp,pid)=>tp.find(p=>p.player?.id===pid)?.player?.photo;
 		      <div style={{display:"flex",borderBottom:"1px solid rgba(0,0,0,.06)"}}>
 		        {[["results","📋 RÉSULTATS"],["standings","🏆 CLASSEMENT"]].map(([v,lb])=>{
 		          const a=tabView===v;
-		          return<button key={v} onClick={()=>setTabView(v)} className="bc" style={{
+		          return(<button key={v} onClick={()=>setTabView(v)} className="bc" style={{
 		            flex:1,padding:"10px 4px",border:"none",background:"transparent",
 		            color:a?"#00b86b":"#999",fontSize:11,fontWeight:a?900:600,
 		            cursor:"pointer",letterSpacing:.5,
 		            borderBottom:a?"2px solid #00b86b":"2px solid transparent",
 		            transition:"all .2s",marginBottom:-1,
-		          }}>{lb}</button>;
+		          }}>{lb}</button>);
 		        })}
 		      </div>
 
@@ -4121,7 +4122,7 @@ const ph=(tp,pid)=>tp.find(p=>p.player?.id===pid)?.player?.photo;
 		          {computedStandings.map((r,i)=>{
 		            const isTop=i<3;
 		            const gd=r.gd;
-		            return<div key={r.team.id} style={{
+		            return(<div key={r.team.id} style={{
 		              display:"grid",gridTemplateColumns:"28px 1fr 28px 28px 28px 28px 32px 36px",
 		              padding:"10px 12px",
 		              borderBottom:"1px solid rgba(0,0,0,.05)",
@@ -4137,9 +4138,9 @@ const ph=(tp,pid)=>tp.find(p=>p.player?.id===pid)?.player?.photo;
 		                  <div style={{display:"flex",gap:2,marginTop:2}}>
 		                    {r.form.slice(-5).map((f,j)=>{
 		                      const bg=f==="W"?"#00b86b":f==="L"?"#e53535":"#888";
-		                      return<div key={j} className="bc" style={{width:13,height:13,borderRadius:3,background:bg,fontSize:9,fontWeight:900,color:"#fff",display:"flex",alignItems:"center",justifyContent:"center"}}>
+		                      return(<div key={j} className="bc" style={{width:13,height:13,borderRadius:3,background:bg,fontSize:9,fontWeight:900,color:"#fff",display:"flex",alignItems:"center",justifyContent:"center"}}>
 		                        {f==="W"?"V":f==="L"?"D":"N"}
-		                      </div>;
+		                      </div>);
 		                    })}
 		                  </div>
 		                </div>
@@ -4190,7 +4191,7 @@ const ph=(tp,pid)=>tp.find(p=>p.player?.id===pid)?.player?.photo;
 		            const aw=done&&hg!=null&&ag!=null&&ag>hg;
 		            const draw=done&&hg!=null&&ag!=null&&hg===ag;
 
-		            return<div key={m.fixture.id} style={{
+		            return(<div key={m.fixture.id} style={{
 		              display:"flex",alignItems:"center",
 		              padding:"12px 14px",
 		              borderBottom:"1px solid rgba(0,0,0,.05)",
@@ -4209,7 +4210,7 @@ const ph=(tp,pid)=>tp.find(p=>p.player?.id===pid)?.player?.photo;
 		                  textAlign:"right",overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap",
 		                }}>{h.name}</span>
 		                <Logo src={h.logo} size={26}/>
-		              </div>
+		              </div>);
 
 		              {/* Score */}
 		              <div style={{
@@ -4246,7 +4247,7 @@ const ph=(tp,pid)=>tp.find(p=>p.player?.id===pid)?.player?.photo;
 		                  overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap",
 		                }}>{a.name}</span>
 		              </div>
-		            </div>;
+		            </div>);
 		          })}
 		        </div>)}
 		      </div>}
@@ -4284,7 +4285,7 @@ const ph=(tp,pid)=>tp.find(p=>p.player?.id===pid)?.player?.photo;
 		        }}>✅ Appliquer</button>
 		      </div>
 		    </Sheet>
-		  </div>;
+		  </div>);
 		}
 
 		const ACTU_VIEWS=[
@@ -4294,7 +4295,7 @@ const ph=(tp,pid)=>tp.find(p=>p.player?.id===pid)?.player?.photo;
 
 		function PremiumFeedCard({item,onOpen,viewId}){
 		  const vd=ACTU_VIEWS.find(v=>v.id===viewId)||ACTU_VIEWS[0];
-		  return<div onClick={()=>onOpen(item)} style={{
+		  return(<div onClick={()=>onOpen(item)} style={{
 		    background:"#fff",borderRadius:18,overflow:"hidden",
 		    marginBottom:14,
 		    boxShadow:"0 2px 16px rgba(0,0,0,.07)",
@@ -4363,7 +4364,7 @@ const ph=(tp,pid)=>tp.find(p=>p.player?.id===pid)?.player?.photo;
 		        </div>
 		      </div>
 		    </div>
-		  </div>;
+		  </div>);
 		}
 
 		function ActuTab(){
@@ -4397,7 +4398,7 @@ const ph=(tp,pid)=>tp.find(p=>p.player?.id===pid)?.player?.photo;
 
 		  const vd=ACTU_VIEWS.find(v=>v.id===view)||ACTU_VIEWS[0];
 
-		  if(selected) return<div style={{display:"flex",flexDirection:"column",height:"100%",background:T.bg0}}>
+		  if(selected) return(<div style={{display:"flex",flexDirection:"column",height:"100%",background:T.bg0}}>
 		    {/* Header article */}
 		    <div style={{
 		      background:`linear-gradient(135deg,${vd.color},${vd.color}cc)`,
@@ -4442,9 +4443,9 @@ const ph=(tp,pid)=>tp.find(p=>p.player?.id===pid)?.player?.photo;
 		        </div>
 		      </div>
 		    </div>
-		  </div>;
+		  </div>);
 
-		  return<div style={{display:"flex",flexDirection:"column",height:"100%",background:T.bg0,overflow:"hidden"}}>
+		  return(<div style={{display:"flex",flexDirection:"column",height:"100%",background:T.bg0,overflow:"hidden"}}>
 
 		    {/* ── HEADER PREMIUM ── */}
 		    <div style={{
@@ -4492,7 +4493,7 @@ const ph=(tp,pid)=>tp.find(p=>p.player?.id===pid)?.player?.photo;
 		        }}>
 		          {ACTU_VIEWS.map(({id,icon,label,color})=>{
 		            const a=view===id;
-		            return<button key={id} onClick={()=>setView(id)} className="bc" style={{
+		            return(<button key={id} onClick={()=>setView(id)} className="bc" style={{
 		              flex:1,padding:"10px 4px",border:"none",cursor:"pointer",
 		              borderRadius:13,
 		              background:a?`linear-gradient(135deg,${color}33,${color}22)`:"transparent",
@@ -4506,7 +4507,7 @@ const ph=(tp,pid)=>tp.find(p=>p.player?.id===pid)?.player?.photo;
 		              <span style={{fontSize:16,filter:a?"none":"grayscale(1)",transition:"filter .3s"}}>{icon}</span>
 		              <span style={{letterSpacing:.3}}>{label}</span>
 		              {a&&<div style={{width:16,height:2,borderRadius:2,background:color,boxShadow:`0 0 6px ${color}`}}/>}
-		            </button>;
+		            </button>);
 		          })}
 		        </div>
 		      </div>
@@ -4532,7 +4533,7 @@ const ph=(tp,pid)=>tp.find(p=>p.player?.id===pid)?.player?.photo;
 		        <PremiumFeedCard key={i} item={item} onOpen={setSelected} viewId={view}/>
 		      ))}
 		    </div>
-		  </div>;
+		  </div>);
 		}
 
 		function App(){
@@ -4680,7 +4681,7 @@ const ph=(tp,pid)=>tp.find(p=>p.player?.id===pid)?.player?.photo;
 		  },[favs,notifPerm]);
 		  useEffect(()=>{const h=e=>{e.preventDefault();setIE(e);};window.addEventListener('beforeinstallprompt',h);return()=>window.removeEventListener('beforeinstallprompt',h);},[]);
 
-		  return<div style={{background:T.bg0,height:"100svh",width:"100%",maxWidth:430,margin:"0 auto",display:"flex",flexDirection:"column",overflow:"hidden"}}>
+		  return(<div style={{background:T.bg0,height:"100svh",width:"100%",maxWidth:430,margin:"0 auto",display:"flex",flexDirection:"column",overflow:"hidden"}}>
 
 		    {/* ── HEADER ULTRA PREMIUM ── */}
 		    <div style={{
@@ -4766,7 +4767,7 @@ const ph=(tp,pid)=>tp.find(p=>p.player?.id===pid)?.player?.photo;
 		          const a=scr===tab.id;
 		          const showBadge=(tab.id==="jsk"&&jskBadge>0)||(tab.id==="transfers"&&transferBadge>0);
 		          const badgeCount=tab.id==="jsk"?jskBadge:transferBadge;
-		          return<button key={tab.id} onClick={()=>setScr(tab.id)} style={{
+		          return(<button key={tab.id} onClick={()=>setScr(tab.id)} style={{
 		            flexShrink:0,
 		            display:"flex",flexDirection:"column",alignItems:"center",gap:4,
 		            padding:"8px 14px 12px",background:"none",border:"none",
@@ -4802,7 +4803,7 @@ const ph=(tp,pid)=>tp.find(p=>p.player?.id===pid)?.player?.photo;
 		              background:"#fff",
 		              borderRadius:"2px 2px 0 0",
 		            }}/>}
-		          </button>;
+		          </button>);
 		        })}
 		      </div>
 		    </div>
@@ -4819,7 +4820,7 @@ const ph=(tp,pid)=>tp.find(p=>p.player?.id===pid)?.player?.photo;
 		      {scr==="jsk"       &&<JSKTab/>}
 		    </div>
 		    <div style={{height:"env(safe-area-inset-bottom)",background:T.bg0,flexShrink:0}}/>
-		  </div>;
+		  </div>);
 		}
 
 		// Vérifier auth avant d'afficher l'app
