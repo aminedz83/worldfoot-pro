@@ -1586,6 +1586,8 @@
 		  //
 		  const min  =useMinute(s.elapsed,s.short);
 		  const flash=useFlash(hg,ag);
+		  const[compact,setCompact]=React.useState(false);
+		  const onScroll=React.useCallback(e=>{setCompact(e.target.scrollTop>110);},[]);
 		  useEffect(()=>{setTab("evts");},[fix?.fixture?.id]);
 
 		  // Early returns apr s les hooks
@@ -1719,9 +1721,6 @@
 		    {label:"📋 Autres",   color:T.t3,      types:["other"], evs:events.filter(e=>!["Goal","Card","subst","Var","injury","Injury"].includes(e.type))},
 		  ].filter(g=>g.evs.length>0);
 
-
-		  const[compact,setCompact]=React.useState(false);
-		  const onScroll=React.useCallback(e=>{setCompact(e.target.scrollTop>110);},[]);
 
 		  return<Sheet open onClose={onClose} onScroll={onScroll}>
 		    {isPartial&&<div style={{height:3,background:"linear-gradient(90deg,#1a1aff,#00c060)",backgroundSize:"200% 100%",animation:"shimmer 1.2s linear infinite",position:"sticky",top:0,zIndex:20}}/>}
