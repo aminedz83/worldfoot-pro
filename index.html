@@ -1868,8 +1868,8 @@
 		                <div style={{flex:1,minWidth:0}}>
 		                  <div style={{fontSize:14,fontWeight:isGoal?800:500,color:"#111",overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap"}}>
 		                    {isSubst
-		                      ?<span><span style={{color:"#111"}}>{e.player?.name}</span><span style={{color:"#999",fontSize:12}}> {e.assist?.name}</span></span>
-		                      :e.player?.name}
+		                      ?<span><span style={{color:"#111"}}>{e.player?.name||"Remplacement"}</span><span style={{color:"#999",fontSize:12}}> {e.assist?.name}</span></span>
+		                      :<span>{e.player?.name||(isGoal?"But":isYellow?"Carton jaune":isRed?"Carton rouge":isVar?"VAR":"")}</span>}
 		                  </div>
 		                  {isGoal&&e.assist?.name&&<div style={{fontSize:12,color:"#888",marginTop:1}}>{e.assist.name}</div>}
 		                  {isCard&&e.detail&&<div style={{fontSize:11,color:"#999",marginTop:1}}>{e.detail.includes("Yellow")?"Avertissement":e.detail.includes("Second")?"2e jaune":"Carton rouge"}</div>}
@@ -1894,8 +1894,8 @@
 		                <div style={{flex:1,minWidth:0,textAlign:"right"}}>
 		                  <div style={{fontSize:14,fontWeight:isGoal?800:500,color:"#111",overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap"}}>
 		                    {isSubst
-		                      ?<span><span style={{color:"#999",fontSize:12}}>{e.assist?.name} </span><span style={{color:"#111"}}>{e.player?.name}</span></span>
-		                      :e.player?.name}
+		                      ?<span><span style={{color:"#999",fontSize:12}}>{e.assist?.name} </span><span style={{color:"#111"}}>{e.player?.name||"Remplacement"}</span></span>
+		                      :<span>{e.player?.name||(isGoal?"But":isYellow?"Carton jaune":isRed?"Carton rouge":isVar?"VAR":"")}</span>}
 		                  </div>
 		                  {isGoal&&e.assist?.name&&<div style={{fontSize:12,color:"#888",marginTop:1}}>{e.assist.name}</div>}
 		                  {isCard&&e.detail&&<div style={{fontSize:11,color:"#999",marginTop:1}}>Faute</div>}
