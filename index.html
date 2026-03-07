@@ -2654,79 +2654,85 @@
 					  useEffect(()=>{const t=setTimeout(()=>stripRef.current?.querySelector("[data-td='1']")?.scrollIntoView({inline:"center",block:"nearest"}),80);return()=>clearTimeout(t);},[]);
 
 					  const openMatch=useCallback(async id=>{
-					    if(openMatch._ctrl) openMatch._ctrl.abort();
-					    openMatch._ctrl=new AbortController();
-					    const sig=openMatch._ctrl.signal;
+				    if(openMatch._ctrl)openMatch._ctrl.abort();
+				    openMatch._ctrl=new AbortController();
+				    const sig=openMatch._ctrl.signal;
 
-					    // Phase 1 — Affichage IMMÉDIAT depuis cache si dispo
-					    const cached=_cache.get(`/fixtures?id=${id}`);
-					    const cachedFix=cached?.d?.[0]??null;
-					    if(cachedFix){
-					      setDet({partial:true,data:{fixture:cachedFix,stats:[],events:[],lineups:[],players:[],h2h:[],injuries:[]}});
-					    } else {
-					      setDet({loading:true});
-					    }
+				    // Affichage IMMÉDIAT depuis cache
+				    const cached=_cache.get(`/fixtures?id=${id}`);
+				    const cachedFix=cached?.d?.[0]??null;
+				    if(cachedFix){
+				      setDet({partial:true,data:{fixture:cachedFix,stats:[],events:[],lineups:[],players:[],h2h:[],injuries:[]}});
+				    } else {
+				      setDet({loading:true});
+				    }
 
-					    try{
-					      // Cache adaptatif selon statut match
-					      const sh=cachedFix?.fixture?.status?.short??"NS";
-					      const isLive=LIVE_ST.has(sh);
-					      const isDone=DONE_ST.has(sh);
-					      const matchTTL=isLive?15000:isDone?10800000:21600000;
-					      const detailTTL=isLive?15000:isDone?10800000:3600000;
+				    try{
+				      const sh=cachedFix?.fixture?.status?.short??"NS";
+				      const isLiveNow=LIVE_ST.has(sh);
+				      const isDoneNow=DONE_ST.has(sh);
+				      const matchTTL=isLiveNow?15000:isDoneNow?10800000:21600000;
+				      const detailTTL=isLiveNow?15000:isDoneNow?10800000:3600000;
 
-					      const fx=await api(`/fixtures?id=${id}`,matchTTL,sig);
-					      const fix=fx[0];if(!fix)throw new Error("Match introuvable");
-					      const started=!NS_ST.has(fix.fixture.status.short);
-					      const hid=fix.teams.home.id,aid=fix.teams.away.id,fid=fix.fixture.id;
+				      // ── Fixture d'abord (bloquant — on a besoin de hid/aid/fid) ──
+				      const fx=await api(`/fixtures?id=${id}`,matchTTL,sig);
+				      const fix=fx[0];if(!fix)throw new Error("Match introuvable");
+				      const started=!NS_ST.has(fix.fixture.status.short);
+				      const isLive=LIVE_ST.has(fix.fixture.status.short);
+				      const isDone=DONE_ST.has(fix.fixture.status.short);
+				      const hid=fix.teams.home.id,aid=fix.teams.away.id,fid=fix.fixture.id;
 
-					      // Phase 2 — Events + Stats en premier (plus utiles visuellement)
-					      const[evts,stats]=await Promise.all([
-					        started?api(`/fixtures/events?fixture=${fid}`,detailTTL,sig).catch(()=>[]):Promise.resolve([]),
-					        started?api(`/fixtures/statistics?fixture=${fid}`,detailTTL,sig).catch(()=>[]):Promise.resolve([]),
-					      ]);
-					      setDet(prev=>({...prev,partial:true,data:{...prev?.data,fixture:fix,stats,events:evts}}));
+				      // Afficher le header immédiatement avec fix
+				      setDet(prev=>({partial:true,data:{fixture:fix,stats:[],events:[],lineups:[],players:[],h2h:[],injuries:[],...prev?.data}}));
 
-					      // Phase 3 — Lineups + Players + H2H + Injuries (secondaire)
-					      const[lineups,plrs,h2h,injuries]=await Promise.all([
-					        api(`/fixtures/lineups?fixture=${fid}`,detailTTL,sig).catch(()=>[]),
-					        started?api(`/fixtures/players?fixture=${fid}`,detailTTL,sig).catch(()=>[]):Promise.resolve([]),
-					        api(`/fixtures/headtohead?h2h=${hid}-${aid}&last=50`,86400000,sig).catch(()=>[]),
-					        api(`/injuries?fixture=${fid}`,isDone?10800000:3600000,sig).catch(()=>[]),
-					      ]);
-					      setDet({data:{fixture:fix,stats,events:evts,lineups,players:plrs,h2h,injuries}});
+				      // ── TOUT en parallèle — chaque appel met à jour l'UI dès qu'il répond ──
+				      const update=patch=>setDet(prev=>prev?.data?{...prev,partial:true,data:{...prev.data,...patch}}:prev);
 
-				      // ── FALLBACK: si lineups vides mais players dispo → construire pseudo-lineups ──
-				      if(!lineups.length&&plrs.length){
+				      const p_events  =started?api(`/fixtures/events?fixture=${fid}`,detailTTL,sig).then(d=>update({events:d})).catch(()=>{}):Promise.resolve();
+				      const p_stats   =started?api(`/fixtures/statistics?fixture=${fid}`,detailTTL,sig).then(d=>update({stats:d})).catch(()=>{}):Promise.resolve();
+				      const p_lineups =api(`/fixtures/lineups?fixture=${fid}`,detailTTL,sig).then(d=>update({lineups:d})).catch(()=>{});
+				      const p_players =started?api(`/fixtures/players?fixture=${fid}`,detailTTL,sig).then(d=>update({players:d})).catch(()=>{}):Promise.resolve();
+				      const p_h2h     =api(`/fixtures/headtohead?h2h=${hid}-${aid}&last=50`,86400000,sig).then(d=>update({h2h:d})).catch(()=>{});
+				      const p_inj     =api(`/injuries?fixture=${fid}`,isDone?10800000:3600000,sig).then(d=>update({injuries:d})).catch(()=>{});
+
+				      // Attendre tous puis enlever le spinner "partial"
+				      await Promise.allSettled([p_events,p_stats,p_lineups,p_players,p_h2h,p_inj]);
+				      setDet(prev=>prev?.data?{...prev,partial:false}:prev);
+
+				      // ── FALLBACK lineups: si vides mais players dispo ──
+				      setDet(prev=>{
+				        if(!prev?.data)return prev;
+				        const{lineups,players:plrs}=prev.data;
+				        if(lineups?.length||!plrs?.length)return prev;
 				        const pseudo=plrs.map(team=>{
 				          const starters=(team.players||[])
 				            .filter(p=>p.statistics?.[0]?.games?.minutes>0||p.statistics?.[0]?.games?.number!=null)
 				            .sort((a,b)=>(b.statistics?.[0]?.games?.minutes||0)-(a.statistics?.[0]?.games?.minutes||0));
 				          const subs=(team.players||[]).filter(p=>!starters.includes(p));
 				          return{
-				            team:team.team,
-				            formation:null,
-				            coach:{name:null},
+				            team:team.team,formation:null,coach:{name:null},
 				            startXI:starters.slice(0,11).map(p=>({player:{id:p.player?.id,name:p.player?.name,number:p.statistics?.[0]?.games?.number||p.player?.id,pos:p.statistics?.[0]?.games?.position||null,photo:p.player?.photo||null}})),
 				            substitutes:subs.slice(0,9).map(p=>({player:{id:p.player?.id,name:p.player?.name,number:p.statistics?.[0]?.games?.number||null,pos:null,photo:p.player?.photo||null}})),
 				          };
 				        });
-				        setDet(prev=>({...prev,data:{...prev.data,lineups:pseudo,_fallbackLineups:true}}));
-				      }
+				        return{...prev,data:{...prev.data,lineups:pseudo,_fallbackLineups:true}};
+				      });
 
-				      // ── FALLBACK stats: si vides → retry après 3s (matchs algériens etc.) ──
-				      if(!stats.length&&started&&!isLive){
-				        setTimeout(async()=>{
-				          try{
-				            const statsRetry=await api(`/fixtures/statistics?fixture=${fid}`,5000,sig).catch(()=>[]);
-				            if(statsRetry.length){
-				              setDet(prev=>prev?.data?{...prev,data:{...prev.data,stats:statsRetry}}:prev);
-				            }
-				          }catch(e){}
-				        },3000);
-				      }
+				      // ── FALLBACK stats: retry 3s si vides ──
+				      setDet(prev=>{
+				        if(!prev?.data?.stats?.length&&started&&!isLive){
+				          setTimeout(async()=>{
+				            try{
+				              const r=await api(`/fixtures/statistics?fixture=${fid}`,5000,sig).catch(()=>[]);
+				              if(r.length)setDet(p=>p?.data?{...p,data:{...p.data,stats:r}}:p);
+				            }catch(e){}
+				          },3000);
+				        }
+				        return prev;
+				      });
+
 				    }catch(e){if(e.name!=="AbortError")setDet({error:e.message});}
-					  },[]);
+				  },[]);
 
 					  const groups=useMemo(()=>{
 					    let list=data;
