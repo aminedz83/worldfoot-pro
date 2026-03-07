@@ -67,7 +67,7 @@
 			// Service Worker avec support notifications
 			if ("serviceWorker" in navigator) {
 				const sw = `
-    const C='wf-pro-v13';
+    const C='wf-pro-v15';
     self.addEventListener('install',e=>{e.waitUntil(caches.open(C).then(c=>c.addAll(['./'])).then(()=>self.skipWaiting()));});
     self.addEventListener('activate',e=>{e.waitUntil(caches.keys().then(ks=>Promise.all(ks.filter(k=>k!==C).map(k=>caches.delete(k)))).then(()=>self.clients.claim()));});
     self.addEventListener('push',e=>{
@@ -2849,8 +2849,10 @@
 
 				      const p_events  =started?api(`/fixtures/events?fixture=${fid}`,detailTTL,sig).then(d=>update({events:d})).catch(()=>{}):Promise.resolve();
 				      const p_stats   =started?api(`/fixtures/statistics?fixture=${fid}`,detailTTL,sig).then(d=>update({stats:d})).catch(()=>{}):Promise.resolve();
-				      const p_lineups =api(`/fixtures/lineups?fixture=${fid}`,detailTTL,sig).then(d=>update({lineups:d})).catch(()=>{});
-				      const p_players =api(`/fixtures/players?fixture=${fid}`,detailTTL,sig).then(d=>update({players:d})).catch(()=>{});
+				      // Lineups/players pré-match : TTL court (publiés ~1h avant KO)
+				      const lineupsTTL=isLive?detailTTL:isDone?detailTTL:300000;
+				      const p_lineups =api(`/fixtures/lineups?fixture=${fid}`,lineupsTTL,sig).then(d=>update({lineups:d})).catch(()=>{});
+				      const p_players =api(`/fixtures/players?fixture=${fid}`,lineupsTTL,sig).then(d=>update({players:d})).catch(()=>{});
 				      const p_h2h     =api(`/fixtures/headtohead?h2h=${hid}-${aid}&last=50`,86400000,sig).then(d=>update({h2h:d})).catch(()=>{});
 				      const p_inj     =api(`/injuries?fixture=${fid}`,isDone?10800000:3600000,sig).then(d=>update({injuries:d})).catch(()=>{});
 
