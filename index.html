@@ -67,7 +67,7 @@
 			// Service Worker avec support notifications
 			if ("serviceWorker" in navigator) {
 				const sw = `
-    const C='wf-pro-v12';
+    const C='wf-pro-v13';
     self.addEventListener('install',e=>{e.waitUntil(caches.open(C).then(c=>c.addAll(['./'])).then(()=>self.skipWaiting()));});
     self.addEventListener('activate',e=>{e.waitUntil(caches.keys().then(ks=>Promise.all(ks.filter(k=>k!==C).map(k=>caches.delete(k)))).then(()=>self.clients.claim()));});
     self.addEventListener('push',e=>{
@@ -1689,10 +1689,15 @@
 					    if(!fix)return;
 					    const lid=fix.league?.id,season=fix.league?.season;
 					    if(!lid||!season)return;
-					    api(`/standings?league=${lid}&season=${season}`,3600000)
-					      .then(d=>setStandings(d))
+					    const stTTL=isLive?60000:isDone?10800000:3600000;
+					    let stCancelled=false;
+					    const fetchSt=()=>api(`/standings?league=${lid}&season=${season}`,stTTL)
+					      .then(d=>{if(!stCancelled)setStandings(d);})
 					      .catch(()=>{});
-					  },[fix?.fixture?.id]);
+					    fetchSt();
+					    const stIv=isLive?setInterval(fetchSt,60000):null;
+					    return()=>{stCancelled=true;if(stIv)clearInterval(stIv);};
+					  },[fix?.fixture?.id,isLive]);
 					
 					  // Reset tab on new fixture
 					  React.useEffect(()=>{
@@ -2256,86 +2261,86 @@
 					
 					  // ── RENDER STANDINGS ──
 					  const renderStandings=()=>{
-					    if(!standings.length){
-					      return React.createElement("div",{className:"md-empty"},"📊 Classement non disponible");
-					    }
-					    const st=standings[0]?.league?.standings?.[0]||[];
-					    if(!st.length)return React.createElement("div",{className:"md-empty"},"📊 Classement non disponible");
-					    return React.createElement(React.Fragment,null,
-					      React.createElement("div",{style:{overflowX:"auto"}},
-					        React.createElement("table",{style:{width:"100%",borderCollapse:"collapse"}},
-					          React.createElement("thead",null,
-					            React.createElement("tr",null,
-					              [{w:28,label:"#"},{w:null,label:"Équipe",cls:"team-col"},{w:null,label:"MJ"},{w:null,label:"B"},{w:null,label:"PTS"},{w:null,label:"Évol"}].map((h,i)=>
-					                React.createElement("th",{key:i,style:{background:"#fff",fontFamily:"'Barlow Condensed',sans-serif",fontSize:9,fontWeight:700,color:"rgba(15,17,23,.38)",letterSpacing:1,textTransform:"uppercase",padding:"8px 4px",textAlign:h.cls?"left":"center",paddingLeft:h.cls?10:4,borderBottom:"1px solid rgba(255,255,255,0.12)",width:h.w||undefined}},[h.label])
-					              )
-					            )
-					          ),
-					          React.createElement("tbody",null,
-					            st.map(r=>{
-					              const isHm=r.team?.id===hid,isAw=r.team?.id===aid;
-					              const isTop=r.rank<=3;
-					              const gd=r.goalsDiff;
-					              const bFor=r.all?.goals?.for??0,bAga=r.all?.goals?.against??0;
-					              const rowBg=isHm?"rgba(255,107,74,0.07)":isAw?"rgba(66,165,245,0.06)":"transparent";
-					              return React.createElement("tr",{key:r.team?.id,style:{borderBottom:"1px solid rgba(255,255,255,0.04)",background:rowBg}},
-					                React.createElement("td",{style:{padding:"9px 4px",textAlign:"center"}},
-					                  React.createElement("span",{style:{fontFamily:"'Barlow Condensed',sans-serif",fontSize:13,fontWeight:800,color:isTop?"#FF6B4A":"#6B7280"}},[r.rank])
-					                ),
-					                React.createElement("td",{style:{padding:"9px 4px",textAlign:"left",paddingLeft:10}},
-					                  React.createElement("div",{style:{display:"flex",alignItems:"center",gap:7}},
-					                    React.createElement("img",{src:r.team?.logo,style:{width:18,height:18,objectFit:"contain",flexShrink:0},onError:e=>{e.target.style.display="none"}}),
-					                    React.createElement("span",{style:{fontSize:12,fontWeight:600,color:"#0f1117",whiteSpace:"nowrap",overflow:"hidden",textOverflow:"ellipsis",maxWidth:110}},[r.team?.name])
-					                  )
-					                ),
-					                React.createElement("td",{style:{padding:"9px 4px",textAlign:"center",fontSize:12,color:"rgba(15,17,23,.5)"}},[r.all?.played??"-"]),
-					                React.createElement("td",{style:{padding:"9px 4px",textAlign:"center",fontSize:11,color:"rgba(15,17,23,.5)"}},[`${bFor}:${bAga}`]),
-					                React.createElement("td",{style:{padding:"9px 4px",textAlign:"center"}},
-					                  React.createElement("span",{style:{fontFamily:"'Barlow Condensed',sans-serif",fontSize:14,fontWeight:800,color:isTop?"#FF6B4A":"#fff"}},[r.points])
-					                ),
-					                React.createElement("td",{style:{padding:"9px 4px",textAlign:"center"}},
-					                  React.createElement("span",{style:{fontSize:11,fontWeight:700,color:gd>0?"#4CAF50":gd<0?"#F44336":"#6B7280"}},[gd>0?`▲ +${gd}`:gd<0?`▼ ${gd}`:"—"])
-					                )
-					              );
-					            })
-					          )
-					        )
-					      ),
-					      React.createElement("div",{style:{marginTop:14,display:"flex",flexDirection:"column",gap:5}},
-					        [{bg:"rgba(255,107,74,0.5)",label:"Équipe domicile"},{bg:"rgba(66,165,245,0.5)",label:"Équipe extérieur"},{bg:"#4CAF50",label:"Qualification C1"},{bg:"#F44336",label:"Relégation"}].map(({bg,label})=>
-					          React.createElement("div",{key:label,style:{display:"flex",alignItems:"center",gap:7,fontSize:11,color:"rgba(15,17,23,.38)"}},
-					            React.createElement("div",{style:{width:10,height:10,borderRadius:"50%",background:bg,flexShrink:0}}),
-					            label
-					          )
-					        )
-					      )
-					    );
-					  };
-					
-					  // ── MATCH INFO SECTION (inside resume) ──
-					  const renderMatchInfo=()=>{
-					    const f=fix.fixture;
-					    const cc=(fix.league.country||"").toLowerCase();
-					    const flags={"france":"🇫🇷","spain":"🇪🇸","england":"🏴󠁧󠁢󠁥󠁮󠁧󠁿","germany":"🇩🇪","italy":"🇮🇹","portugal":"🇵🇹","algeria":"🇩🇿","morocco":"🇲🇦","egypt":"🇪🇬","brazil":"🇧🇷","argentina":"🇦🇷"};
-					    const flagIcon=flags[cc]||"🌍";
-					    const infos=[
-					      {icon:"🏆",label:`${fix.league.country} · ${fix.league.name}${fix.league.round?" · "+fix.league.round.replace("Regular Season - ","J"):""}`},
-					      {icon:"📅",label:`${f.date?.slice(0,10)||""} • ${hhmm2(f.date)}`},
-					      f.venue?.name?{icon:"🏟️",label:f.venue.name+(f.venue.city?", "+f.venue.city:"")}:null,
-					      f.referee?{icon:"👨‍⚖️",label:"Arbitre : "+f.referee}:null,
-					    ].filter(Boolean);
-					    return React.createElement("div",{style:{marginTop:20}},
-					      React.createElement("div",{className:"md-info-section-title"},"Informations match"),
-					      React.createElement("div",{style:{background:"#fff",border:"1px solid rgba(255,255,255,0.07)",borderRadius:14,overflow:"hidden"}},
-					        infos.map((r,i)=>React.createElement("div",{key:i,style:{display:"flex",alignItems:"center",gap:12,padding:"12px 14px",borderBottom:i<infos.length-1?"1px solid rgba(255,255,255,0.04)":"none"}},
-					          React.createElement("span",{style:{fontSize:17,flexShrink:0,width:24,textAlign:"center"}},[r.icon]),
-					          React.createElement("div",{style:{flex:1,fontSize:13,color:"rgba(15,17,23,.5)",lineHeight:1.4}},[r.label])
-					        ))
-					      )
-					    );
-					  };
-					
-					  // ── MAIN RENDER ──
+				    if(!standings.length)return React.createElement("div",{className:"md-empty"},"📊 Classement non disponible");
+				    const st=standings[0]?.league?.standings?.[0]||[];
+				    if(!st.length)return React.createElement("div",{className:"md-empty"},"📊 Classement non disponible");
+
+				    // Scores actuels du match
+				    const curHg=fix?.goals?.home??null;
+				    const curAg=fix?.goals?.away??null;
+				    const hasScore=curHg!==null&&curAg!==null;
+
+				    // Points projetés si live
+				    const projH=(r)=>{
+				      if(!isLive||!hasScore||r.team?.id!==hid&&r.team?.id!==aid)return null;
+				      const isHome=r.team?.id===hid;
+				      const myG=isHome?curHg:curAg, oppG=isHome?curAg:curHg;
+				      if(myG>oppG)return r.points+3;
+				      if(myG===oppG)return r.points+1;
+				      return r.points;
+				    };
+
+				    return React.createElement(React.Fragment,null,
+				      // Badge live
+				      isLive?React.createElement("div",{style:{display:"flex",alignItems:"center",gap:6,padding:"7px 12px",background:"rgba(229,57,53,.06)",borderRadius:8,marginBottom:8,border:"1px solid rgba(229,57,53,.15)"}},
+				        React.createElement("div",{style:{width:7,height:7,borderRadius:"50%",background:"#e53935",animation:"pulse 1.2s infinite",flexShrink:0}}),
+				        React.createElement("span",{style:{fontSize:11,fontWeight:700,color:"#e53935",letterSpacing:.5}},"CLASSEMENT MIS À JOUR EN LIVE"),
+				        React.createElement("span",{style:{fontSize:10,color:"rgba(229,57,53,.6)",marginLeft:"auto"}},"↻ 60s")
+				      ):null,
+				      React.createElement("div",{style:{overflowX:"auto"}},
+				        React.createElement("table",{style:{width:"100%",borderCollapse:"collapse"}},
+				          React.createElement("thead",null,
+				            React.createElement("tr",null,
+				              [{w:28,label:"#"},{w:null,label:"Équipe",cls:"team-col"},{w:null,label:"MJ"},{w:null,label:"G/N/P"},{w:null,label:"Buts"},{w:null,label:"PTS"}].map((h,i)=>
+				                React.createElement("th",{key:i,style:{background:"#fff",fontFamily:"'Barlow Condensed',sans-serif",fontSize:9,fontWeight:700,color:"rgba(15,17,23,.38)",letterSpacing:1,textTransform:"uppercase",padding:"8px 4px",textAlign:h.cls?"left":"center",paddingLeft:h.cls?10:4,borderBottom:"1px solid rgba(0,0,0,.07)",width:h.w||undefined}},[h.label])
+				              )
+				            )
+				          ),
+				          React.createElement("tbody",null,
+				            st.map(r=>{
+				              const isHm=r.team?.id===hid,isAw=r.team?.id===aid;
+				              const isTop4=r.rank<=4;
+				              const proj=projH(r);
+				              const gd=r.goalsDiff;
+				              const bFor=r.all?.goals?.for??0,bAga=r.all?.goals?.against??0;
+				              // Surbrillance: home=vert clair, away=bleu clair
+				              const rowBg=isHm?"rgba(0,193,112,.08)":isAw?"rgba(37,99,235,.06)":"#fff";
+				              const borderLeft=isHm?"3px solid #00c170":isAw?"3px solid #2563eb":"3px solid transparent";
+				              return React.createElement("tr",{key:r.team?.id,style:{borderBottom:"1px solid rgba(0,0,0,.05)",background:rowBg}},
+				                // Rang
+				                React.createElement("td",{style:{padding:"9px 4px",textAlign:"center",borderLeft}},
+				                  React.createElement("span",{style:{fontFamily:"'Barlow Condensed',sans-serif",fontSize:13,fontWeight:800,color:isTop4?"#e53935":"rgba(15,17,23,.4)"}},[r.rank])
+				                ),
+				                // Équipe + score live si concernée
+				                React.createElement("td",{style:{padding:"9px 4px 9px 10px"}},
+				                  React.createElement("div",{style:{display:"flex",alignItems:"center",gap:7}},
+				                    React.createElement("img",{src:r.team?.logo,style:{width:18,height:18,objectFit:"contain",flexShrink:0},onError:e=>{e.target.style.display="none"}}),
+				                    React.createElement("span",{style:{fontSize:12,fontWeight:isHm||isAw?700:500,color:"#0f1117",whiteSpace:"nowrap",overflow:"hidden",textOverflow:"ellipsis",maxWidth:95}},[r.team?.name]),
+				                    isLive&&hasScore&&(isHm||isAw)?React.createElement("span",{style:{fontSize:10,fontWeight:800,color:"#e53935",background:"rgba(229,57,53,.1)",borderRadius:4,padding:"1px 5px",flexShrink:0,animation:"pulse 1.4s infinite"}},[isHm?`${curHg}-${curAg}`:`${curAg}-${curHg}`]):null
+				                  )
+				                ),
+				                // MJ
+				                React.createElement("td",{style:{padding:"9px 4px",textAlign:"center",fontSize:12,color:"rgba(15,17,23,.5)"}},[r.all?.played??"-"]),
+				                // G/N/P
+				                React.createElement("td",{style:{padding:"9px 4px",textAlign:"center",fontSize:11,color:"rgba(15,17,23,.45)",whiteSpace:"nowrap"}},[`${r.all?.win??0}/${r.all?.draw??0}/${r.all?.lose??0}`]),
+				                // Buts
+				                React.createElement("td",{style:{padding:"9px 4px",textAlign:"center",fontSize:11,color:"rgba(15,17,23,.45)",whiteSpace:"nowrap"}},[`${bFor}:${bAga}`]),
+				                // Points (+ projection live)
+				                React.createElement("td",{style:{padding:"9px 4px",textAlign:"center"}},
+				                  React.createElement("div",{style:{display:"flex",flexDirection:"column",alignItems:"center",gap:1}},
+				                    React.createElement("span",{style:{fontFamily:"'Barlow Condensed',sans-serif",fontSize:14,fontWeight:900,color:isHm||isAw?"#0f1117":"rgba(15,17,23,.7)"}},[r.points]),
+				                    proj!==null&&proj!==r.points?React.createElement("span",{style:{fontSize:9,fontWeight:700,color:proj>r.points?"#00c170":"rgba(15,17,23,.3)",background:proj>r.points?"rgba(0,193,112,.1)":"rgba(0,0,0,.04)",borderRadius:3,padding:"0 4px",lineHeight:1.6}},[`→${proj}`]):null
+				                  )
+				                )
+				              );
+				            })
+				          )
+				        )
+				      )
+				    );
+				  };
+
+			// ── MAIN RENDER ──
 					  return React.createElement("div",{className:"md-overlay"},
 					    // Loading bar
 					    isPartial?React.createElement("div",{style:{position:"absolute",top:0,left:0,width:"70%",height:2,background:"linear-gradient(90deg,#00c170,#34d399)",zIndex:999,borderRadius:"0 2px 2px 0",animation:"shimmer 1.2s linear infinite"}}):null,
