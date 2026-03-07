@@ -678,9 +678,9 @@ function updateHeader() {
   if (awayEl) awayEl.textContent = fix.teams.away.name;
 
   var homeLogoEl = document.getElementById('wfmd-mh-home-logo');
-  if (homeLogoEl) { homeLogoEl.style.display = ''; homeLogoEl.src = logoUrl(fix.teams.home.logo); }
+  if (homeLogoEl) { homeLogoEl.style.opacity = ''; homeLogoEl.src = fix.teams.home.logo || ''; }
   var awayLogoEl = document.getElementById('wfmd-mh-away-logo');
-  if (awayLogoEl) { awayLogoEl.style.display = ''; awayLogoEl.src = logoUrl(fix.teams.away.logo); }
+  if (awayLogoEl) { awayLogoEl.style.opacity = ''; awayLogoEl.src = fix.teams.away.logo || ''; }
 
   var dtEl = document.getElementById('wfmd-mh-datetime');
   if (dtEl) dtEl.textContent = ddmm(fix.fixture.date) + ' ' + hhmm(fix.fixture.date);
@@ -927,7 +927,7 @@ function renderCompos() {
 
     let html = '<div class="wfmd-team-block">'
       + '<div class="wfmd-team-header ' + side + '">'
-      + '<img src="' + esc(logoUrl(team&&team.logo)) + '" class="wfmd-team-logo" onerror="this.style.display=\'none\'"/>'
+      + '<img src="' + esc(team&&team.logo||'') + '" class="wfmd-team-logo" onerror="this.style.display=\'none\'"/>'
       + '<div><div class="wfmd-formation">' + esc(lu.formation||'—') + '</div>'
       + '<div class="wfmd-coach">' + esc(lu.coach&&lu.coach.name||'') + '</div></div>'
       + '</div>';
@@ -1059,7 +1059,7 @@ function renderStandings() {
     const bAga = r.all&&r.all.goals&&r.all.goals.against||0;
     html += '<tr class="wfmd-tr' + cls + '">'
       + '<td><span class="wfmd-rank' + (isTop?' top':'') + '">' + r.rank + '</span></td>'
-      + '<td class="left"><div class="wfmd-team-cell"><img src="' + esc(logoUrl(r.team&&r.team.logo)) + '" class="wfmd-team-logo-sm" onerror="this.style.display=\'none\'"/><span class="wfmd-team-nm">' + esc(r.team&&r.team.name||'') + '</span></div></td>'
+      + '<td class="left"><div class="wfmd-team-cell"><img src="' + esc(r.team&&r.team.logo||'') + '" class="wfmd-team-logo-sm" onerror="this.style.display=\'none\'"/><span class="wfmd-team-nm">' + esc(r.team&&r.team.name||'') + '</span></div></td>'
       + '<td>' + (r.all&&r.all.played||'-') + '</td>'
       + '<td class="small">' + bFor + ':' + bAga + '</td>'
       + '<td><span class="wfmd-pts' + (isTop?' top':'') + '">' + (r.points||0) + '</span></td>'
@@ -2723,7 +2723,7 @@ document.head.appendChild(_a);
 // ═══════════════════════════════════════════════════════
 // MatchDetailNew — React component wrapping match-detail
 // ═══════════════════════════════════════════════════════
-function MatchDetailNew({fixtureId,onClose}){
+function MatchDetailNew({fixtureId,onClose,homeLogo,awayLogo,homeName,awayName}){
   React.useEffect(function(){
     // Arrêter tout refresh précédent
     window.wfmd_refreshInterval_ctrl.clear();
@@ -2734,6 +2734,11 @@ function MatchDetailNew({fixtureId,onClose}){
     var S = window.WFMD_STATE;
     S.fixture=null;S.events=[];S.stats=[];S.lineups=[];
     S.h2h=[];S.standings=[];S.players=[];S.activeTab='resume';
+    // Injecter logos/noms immédiatement depuis les props (sans attendre l'API)
+    if(homeLogo){var hle=document.getElementById('wfmd-mh-home-logo');if(hle){hle.style.opacity='';hle.src=homeLogo;}}
+    if(awayLogo){var ale=document.getElementById('wfmd-mh-away-logo');if(ale){ale.style.opacity='';ale.src=awayLogo;}}
+    if(homeName){var hne=document.getElementById('wfmd-mh-home-name');if(hne)hne.textContent=homeName;}
+    if(awayName){var ane=document.getElementById('wfmd-mh-away-name');if(ane)ane.textContent=awayName;}
     // Reset DOM tabs to initial state
     var allTabs = document.querySelectorAll('#wfmd-tabs .tab-btn');
     var allPanels = document.querySelectorAll('#wfmd-content .tab-panel');
@@ -2992,7 +2997,7 @@ function MatchDetailNew({fixtureId,onClose}){
 						        </div>)}
 						      </div>
 						    </Sheet>
-						    {detail&&<MatchDetailNew fixtureId={detail.id} onClose={()=>setDet(null)}/>}
+						    {detail&&<MatchDetailNew fixtureId={detail.id} onClose={()=>setDet(null)} homeLogo={detail.data?.fixture?.teams?.home?.logo} awayLogo={detail.data?.fixture?.teams?.away?.logo} homeName={detail.data?.fixture?.teams?.home?.name} awayName={detail.data?.fixture?.teams?.away?.name}/>}
 						  </div>;
 						}
 
@@ -3452,7 +3457,7 @@ function MatchDetailNew({fixtureId,onClose}){
 						        </div>;})}
 						      </div>)}
 						    </div>
-						    {detail&&<MatchDetailNew fixtureId={detail.id} onClose={()=>setDt(null)}/>}
+						    {detail&&<MatchDetailNew fixtureId={detail.id} onClose={()=>setDt(null)} homeLogo={detail.data?.fixture?.teams?.home?.logo} awayLogo={detail.data?.fixture?.teams?.away?.logo} homeName={detail.data?.fixture?.teams?.home?.name} awayName={detail.data?.fixture?.teams?.away?.name}/>}
 						  </div>;
 						}
 
