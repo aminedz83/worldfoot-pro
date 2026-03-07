@@ -2141,11 +2141,14 @@
 					    React.createElement("div",{className:"md-header"},
 					      React.createElement("div",{className:"md-header-glow"}),
 					      React.createElement("div",{className:"md-league-row"},
-					        React.createElement("div",{className:"md-league-dot"}),
-					        React.createElement("span",[`${fix.league.country.toUpperCase()}: ${fix.league.name.toUpperCase()} · ${round.toUpperCase()}`])
+					        fix.league.flag
+					          ?React.createElement("img",{src:fix.league.flag,style:{width:18,height:13,objectFit:"cover",borderRadius:2,flexShrink:0,boxShadow:"0 1px 3px rgba(0,0,0,.15)"}})
+					          :React.createElement("div",{className:"md-league-dot"}),
+					        React.createElement("span",[`${fix.league.country.toUpperCase()}: ${fix.league.name.toUpperCase()}${round?" · "+round.toUpperCase():""}`])
 					      ),
 					      React.createElement("div",{className:"md-scoreline"},
-					        React.createElement("div",{style:{flex:1,minWidth:0}},
+					        React.createElement("div",{className:"md-team-col"},
+					          React.createElement(Logo,{src:fix.teams.home.logo,size:44}),
 					          React.createElement("div",{className:"md-team-name"},[fix.teams.home.name])
 					        ),
 					        React.createElement("div",{className:"md-score-center"},
@@ -2154,8 +2157,9 @@
 					          ),
 					          React.createElement("div",{className:"md-datetime"},[`${ddmm2(fix.fixture.date)} ${hhmm2(fix.fixture.date)}`])
 					        ),
-					        React.createElement("div",{style:{flex:1,minWidth:0,textAlign:"right"}},
-					          React.createElement("div",{className:"md-team-name away"},[fix.teams.away.name])
+					        React.createElement("div",{className:"md-team-col away"},
+					          React.createElement(Logo,{src:fix.teams.away.logo,size:44}),
+					          React.createElement("div",{className:"md-team-name"},[fix.teams.away.name])
 					        )
 					      ),
 					      React.createElement("div",{className:"md-status-row"},
