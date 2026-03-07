@@ -1926,176 +1926,222 @@
 					
 					  // ── RENDER COMPOS ──
 					  const renderCompos=()=>{
-				    if(!lineups.length)return React.createElement("div",{className:"md-empty"},"📋 Compositions non disponibles");
+			    if(!lineups.length)return React.createElement("div",{className:"md-empty"},"📋 Compositions non disponibles");
 
-				    const photoOf=(pid)=>players.flatMap(t=>t.players||[]).find(p=>p.player?.id===pid)?.player?.photo||null;
-				    const ratingOf=(pid)=>{
-				      const pl=players.flatMap(t=>t.players||[]).find(p=>p.player?.id===pid);
-				      const r=parseFloat(pl?.statistics?.[0]?.games?.rating||0);
-				      return r||null;
-				    };
-				    const ratingColor=(r)=>r>=8?"#2e7d32":r>=7?"#e65100":r>=6?"#f59e0b":"#c62828";
-				    const evtIconOf=(pid)=>{
-				      const evs=events.filter(e=>e.player?.id===pid||e.assist?.id===pid);
-				      return evs.map(e=>{
-				        if(e.type==="Goal"&&e.detail!=="Missed Penalty"&&e.detail!=="Own Goal")return "⚽";
-				        if(e.type==="Goal"&&e.detail==="Own Goal")return "🔴";
-				        if(e.type==="Card"&&e.detail?.includes("Yellow"))return "🟨";
-				        if(e.type==="Card")return "🟥";
-				        if(e.type==="subst"&&e.player?.id===pid)return "🔄";
-				        return null;
-				      }).filter(Boolean);
-				    };
+			    const photoOf=(pid)=>players.flatMap(t=>t.players||[]).find(p=>p.player?.id===pid)?.player?.photo||null;
+			    const ratingOf=(pid)=>{
+			      const pl=players.flatMap(t=>t.players||[]).find(p=>p.player?.id===pid);
+			      const r=parseFloat(pl?.statistics?.[0]?.games?.rating||0);
+			      return r>0?r:null;
+			    };
+			    const ratingBg=(r)=>r>=8?"#2e7d32":r>=7?"#558b2f":r>=6?"#e65100":"#c62828";
+			    const evtIconsOf=(pid)=>{
+			      const out=[];
+			      events.forEach(e=>{
+			        if(e.player?.id===pid||e.assist?.id===pid){
+			          if(e.type==="Goal"&&e.detail!=="Missed Penalty"&&e.detail!=="Own Goal")out.push({t:"goal",n:(out.filter(x=>x.t==="goal").length||0)+1});
+			          else if(e.type==="Goal"&&e.detail==="Own Goal")out.push({t:"csc"});
+			          else if(e.type==="Card"&&e.detail?.includes("Yellow"))out.push({t:"yellow"});
+			          else if(e.type==="Card")out.push({t:"red"});
+			          else if(e.type==="subst"&&e.player?.id===pid)out.push({t:"out",min:e.time?.elapsed});
+			          else if(e.type==="subst"&&e.assist?.id===pid)out.push({t:"in",min:e.time?.elapsed});
+			        }
+			      });
+			      return out;
+			    };
 
-				    // Subtabs: Terrain | Liste
-									    // ── Vue TERRAIN (image 2) ──
-				    const renderTerrain=()=>{
-				      const hLu=lineups.find(l=>l.team?.id===hid);
-				      const aLu=lineups.find(l=>l.team?.id===aid);
-				      if(!hLu&&!aLu)return React.createElement("div",{className:"md-empty"},"Formations non disponibles");
+			    const hLu=lineups.find(l=>l.team?.id===hid);
+			    const aLu=lineups.find(l=>l.team?.id===aid);
 
-				      const buildRows=(lu)=>{
-				        if(!lu?.startXI?.length)return[];
-				        const pts=lu.startXI.map(p=>p.player).filter(Boolean);
-				        const form=(lu.formation||"4-4-2").split("-").map(Number);
-				        const rows=[1,...form];
-				        let idx=0;
-				        return rows.map(n=>{
-				          const r=[];
-				          for(let i=0;i<n&&idx<pts.length;i++)r.push(pts[idx++]);
-				          return r;
-				        });
-				      };
+			    // Construire les rangées depuis la formation
+			    const buildRows=(lu)=>{
+			      if(!lu?.startXI?.length)return[];
+			      const pts=lu.startXI.map(p=>p.player).filter(Boolean);
+			      const form=(lu.formation||"4-4-2").split("-").map(Number);
+			      const rows=[1,...form]; // GK + lignes
+			      let idx=0;
+			      return rows.map(n=>{
+			        const r=[];
+			        for(let i=0;i<n&&idx<pts.length;i++)r.push(pts[idx++]);
+			        return r;
+			      });
+			    };
 
-				      const PlayerPin=({p,teamColor})=>{
-				        const photo=photoOf(p.id);
-				        const rating=ratingOf(p.id);
-				        const icons=evtIconOf(p.id);
-				        const shortName=(p.name||"").split(" ").slice(-1)[0].slice(0,10);
-				        return React.createElement("div",{style:{display:"flex",flexDirection:"column",alignItems:"center",gap:3,width:58}},
-				          React.createElement("div",{style:{position:"relative",flexShrink:0}},
-				            // Photo
-				            React.createElement("div",{style:{width:48,height:48,borderRadius:"50%",overflow:"hidden",border:`2.5px solid ${teamColor}`,background:"#dde0e8",boxShadow:"0 2px 8px rgba(0,0,0,.18)",flexShrink:0}},
-				              photo?React.createElement("img",{src:photo,style:{width:"100%",height:"100%",objectFit:"cover"},onError:e=>{e.target.style.display="none"}}):
-				              React.createElement("div",{style:{width:"100%",height:"100%",display:"flex",alignItems:"center",justifyContent:"center",fontSize:18,color:"rgba(15,17,23,.3)"}},p.number||"?")
-				            ),
-				            // Icônes événements (carton/but) en haut à gauche
-				            icons.length>0?React.createElement("div",{style:{position:"absolute",top:-4,left:-4,display:"flex",flexDirection:"column",gap:1}},
-				              icons.slice(0,2).map((ic,i)=>React.createElement("span",{key:i,style:{fontSize:11,lineHeight:1}},ic))
-				            ):null,
-				            // Note en bas à droite
-				            rating?React.createElement("div",{style:{position:"absolute",bottom:-6,right:-4,background:ratingColor(rating),borderRadius:4,padding:"1px 5px",fontSize:10,fontWeight:900,color:"#fff",boxShadow:"0 1px 3px rgba(0,0,0,.25)",whiteSpace:"nowrap"}},rating.toFixed(1)):null
-				          ),
-				          // Numéro + nom
-				          React.createElement("span",{style:{fontSize:10,fontWeight:700,color:"#0f1117",textShadow:"none",textAlign:"center",lineHeight:1.2,overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap",width:"100%",padding:"0 2px"}},
-				            p.number?`${p.number} ${shortName}`:shortName
-				          )
-				        );
-				      };
+			    // ── PlayerPin identique FlashScore ──
+			    const PlayerPin=({p,isHome})=>{
+			      const photo=photoOf(p.id);
+			      const rating=ratingOf(p.id);
+			      const icons=evtIconsOf(p.id);
+			      const shortName=(p.name||"").split(" ").slice(-1)[0];
+			      const goals=icons.filter(x=>x.t==="goal");
+			      const hasYellow=icons.some(x=>x.t==="yellow");
+			      const hasRed=icons.some(x=>x.t==="red");
+			      const hasSub=icons.some(x=>x.t==="out"||x.t==="in");
+			      const isOut=icons.some(x=>x.t==="out");
+			      const isIn=icons.some(x=>x.t==="in");
+			      return React.createElement("div",{style:{display:"flex",flexDirection:"column",alignItems:"center",gap:4,width:64,cursor:"pointer"},onClick:()=>{
+			        const plrStats=players.flatMap(t=>t.players||[]).find(pl=>pl.player?.id===p.id);
+			        setPlayerSheet({...p,photo,stats:plrStats?.statistics?.[0]||null});
+			      }},
+			        // Conteneur photo + badges
+			        React.createElement("div",{style:{position:"relative",width:52,height:52}},
+			          // Photo principale
+			          React.createElement("div",{style:{width:52,height:52,borderRadius:"50%",overflow:"hidden",background:"#d0d4dc",border:"2px solid rgba(255,255,255,.85)",boxShadow:"0 2px 6px rgba(0,0,0,.2)"}},
+			            photo
+			              ?React.createElement("img",{src:photo,style:{width:"100%",height:"100%",objectFit:"cover"},onError:e=>{e.target.style.display="none"}})
+			              :React.createElement("div",{style:{width:"100%",height:"100%",display:"flex",alignItems:"center",justifyContent:"center",fontFamily:"'Barlow Condensed',sans-serif",fontSize:14,fontWeight:700,color:"rgba(15,17,23,.35)"}},p.number||"?")
+			          ),
+			          // Icônes événements — en haut à gauche (empilés)
+			          React.createElement("div",{style:{position:"absolute",top:-3,left:-3,display:"flex",flexDirection:"column",gap:1}},
+			            goals.map((g,gi)=>React.createElement("div",{key:"g"+gi,style:{background:"rgba(255,255,255,.92)",borderRadius:3,padding:"1px 3px",display:"flex",alignItems:"center",gap:2,boxShadow:"0 1px 2px rgba(0,0,0,.15)"}},
+			              React.createElement("span",{style:{fontSize:10}},goals.length>1&&gi===0?`${goals.length} `:goals.length>1?"":""),
+			              React.createElement("div",{style:{width:12,height:12,borderRadius:"50%",background:"rgba(0,0,0,.08)",display:"flex",alignItems:"center",justifyContent:"center",fontSize:9}},"⚽")
+			            )),
+			            hasYellow?React.createElement("div",{key:"y",style:{width:10,height:13,borderRadius:2,background:"#f59e0b",boxShadow:"0 1px 2px rgba(0,0,0,.2)"}}):null,
+			            hasRed?React.createElement("div",{key:"r",style:{width:10,height:13,borderRadius:2,background:"#e53935",boxShadow:"0 1px 2px rgba(0,0,0,.2)"}}):null,
+			            hasSub?React.createElement("div",{key:"s",style:{width:14,height:14,borderRadius:"50%",background:"rgba(255,255,255,.92)",display:"flex",alignItems:"center",justifyContent:"center",fontSize:9,boxShadow:"0 1px 2px rgba(0,0,0,.15)"}},isIn?"↑":"↓"):null
+			          ),
+			          // Note — en bas à droite
+			          rating?React.createElement("div",{style:{position:"absolute",bottom:-5,right:-5,background:ratingBg(rating),borderRadius:4,padding:"1px 5px",fontSize:10,fontWeight:900,color:"#fff",boxShadow:"0 1px 3px rgba(0,0,0,.3)",whiteSpace:"nowrap",lineHeight:1.4}},rating.toFixed(1)):null
+			        ),
+			        // Numéro + Nom
+			        React.createElement("div",{style:{textAlign:"center",lineHeight:1.3}},
+			          React.createElement("span",{style:{fontSize:11,color:"rgba(15,17,23,.5)",fontWeight:400,marginRight:3}},p.number),
+			          React.createElement("span",{style:{fontSize:11,fontWeight:700,color:"#0f1117"}},shortName)
+			        )
+			      );
+			    };
 
-				      const TeamSection=({lu,teamColor,reverse})=>{
-				        const rows=buildRows(lu);
-				        const orderedRows=reverse?[...rows].reverse():rows;
-				        return React.createElement("div",{style:{padding:"8px 4px 4px"}},
-				          // Header équipe
-				          React.createElement("div",{style:{display:"flex",alignItems:"center",gap:8,justifyContent:reverse?"flex-end":"flex-start",marginBottom:10,padding:"0 4px"}},
-				            !reverse&&React.createElement("div",{style:{background:"rgba(0,0,0,.6)",borderRadius:6,padding:"3px 9px"}},
-				              React.createElement("span",{style:{fontFamily:"'Barlow Condensed',sans-serif",fontSize:13,fontWeight:900,color:teamColor}},lu?.formation)
-				            ),
-				            React.createElement("img",{src:lu?.team?.logo,style:{width:20,height:20,objectFit:"contain"},onError:e=>e.target.style.display="none"}),
-				            React.createElement("span",{style:{fontSize:12,fontWeight:700,color:"rgba(15,17,23,.85)",maxWidth:120,overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap"}},lu?.team?.name),
-				            reverse&&React.createElement("div",{style:{background:"rgba(0,0,0,.6)",borderRadius:6,padding:"3px 9px"}},
-				              React.createElement("span",{style:{fontFamily:"'Barlow Condensed',sans-serif",fontSize:13,fontWeight:900,color:teamColor}},lu?.formation)
-				            )
-				          ),
-				          orderedRows.map((row,ri)=>
-				            React.createElement("div",{key:ri,style:{display:"flex",justifyContent:"space-evenly",alignItems:"flex-end",marginBottom:16}},
-				              row.map((p,pi)=>React.createElement(PlayerPin,{key:p.id||`${ri}-${pi}`,p,teamColor}))
-				            )
-				          )
-				        );
-				      };
+			    // ── Vue TERRAIN ──
+			    const renderTerrain=()=>{
+			      const hRows=buildRows(hLu);
+			      const aRows=buildRows(aLu);
+			      // Away: inverser l'ordre (GK en bas du terrain = bas de l'écran)
+			      const aRowsRev=[...(aRows||[])].reverse();
 
-				      return React.createElement("div",{style:{background:"linear-gradient(180deg,#c8e6c9 0%,#a5d6a7 30%,#c8e6c9 60%,#81c784 100%)",borderRadius:12,overflow:"hidden",position:"relative",margin:"0 -2px"}},
-				        React.createElement("svg",{style:{position:"absolute",inset:0,width:"100%",height:"100%",pointerEvents:"none"},viewBox:"0 0 100 100",preserveAspectRatio:"none"},
-				          React.createElement("rect",{x:1.5,y:.8,width:97,height:98.4,fill:"none",stroke:"rgba(255,255,255,.5)",strokeWidth:.4}),
-				          React.createElement("line",{x1:1.5,y1:50,x2:98.5,y2:50,stroke:"rgba(255,255,255,.5)",strokeWidth:.3}),
-				          React.createElement("circle",{cx:50,cy:50,r:12,fill:"none",stroke:"rgba(255,255,255,.5)",strokeWidth:.3}),
-				          React.createElement("circle",{cx:50,cy:50,r:1.5,fill:"rgba(255,255,255,.6)"}),
-				          React.createElement("rect",{x:1.5,y:20,width:16,height:60,fill:"none",stroke:"rgba(255,255,255,.5)",strokeWidth:.3}),
-				          React.createElement("rect",{x:82.5,y:20,width:16,height:60,fill:"none",stroke:"rgba(255,255,255,.5)",strokeWidth:.3}),
-				          React.createElement("rect",{x:1.5,y:32,width:7,height:36,fill:"none",stroke:"rgba(255,255,255,.4)",strokeWidth:.25}),
-				          React.createElement("rect",{x:91.5,y:32,width:7,height:36,fill:"none",stroke:"rgba(255,255,255,.4)",strokeWidth:.25})
-				        ),
-				        React.createElement(TeamSection,{lu:hLu,teamColor:"#00c170",reverse:false}),
-				        React.createElement("div",{style:{height:1,background:"rgba(255,255,255,.3)",margin:"0 16px"}}),
-				        React.createElement(TeamSection,{lu:aLu,teamColor:"#2563eb",reverse:true})
-				      );
-				    };
+			      return React.createElement("div",{style:{
+			        background:"#e8ecf0",
+			        borderRadius:10,
+			        overflow:"hidden",
+			        position:"relative",
+			        border:"1px solid rgba(0,0,0,.08)",
+			        margin:"0 0 8px"
+			      }},
+			        // ── SVG terrain ──
+			        React.createElement("svg",{
+			          style:{position:"absolute",inset:0,width:"100%",height:"100%",pointerEvents:"none"},
+			          viewBox:"0 0 320 580",preserveAspectRatio:"none"
+			        },
+			          // Fond vert clair identique FlashScore
+			          React.createElement("rect",{x:0,y:0,width:320,height:580,fill:"#e8ecf0"}),
+			          // Bordure terrain
+			          React.createElement("rect",{x:16,y:12,width:288,height:556,fill:"none",stroke:"rgba(255,255,255,.9)",strokeWidth:1.2}),
+			          // Ligne médiane
+			          React.createElement("line",{x1:16,y1:290,x2:304,y2:290,stroke:"rgba(255,255,255,.9)",strokeWidth:1.2}),
+			          // Cercle central
+			          React.createElement("circle",{cx:160,cy:290,r:42,fill:"none",stroke:"rgba(255,255,255,.9)",strokeWidth:1.2}),
+			          React.createElement("circle",{cx:160,cy:290,r:3,fill:"rgba(255,255,255,.7)"}),
+			          // Surface home (haut)
+			          React.createElement("rect",{x:72,y:12,width:176,height:68,fill:"none",stroke:"rgba(255,255,255,.9)",strokeWidth:1.2}),
+			          React.createElement("rect",{x:112,y:12,width:96,height:32,fill:"none",stroke:"rgba(255,255,255,.9)",strokeWidth:1.2}),
+			          // Surface away (bas)
+			          React.createElement("rect",{x:72,y:500,width:176,height:68,fill:"none",stroke:"rgba(255,255,255,.9)",strokeWidth:1.2}),
+			          React.createElement("rect",{x:112,y:536,width:96,height:32,fill:"none",stroke:"rgba(255,255,255,.9)",strokeWidth:1.2}),
+			          // Arc surface home
+			          React.createElement("path",{d:"M 120 80 A 42 42 0 0 0 200 80",fill:"none",stroke:"rgba(255,255,255,.9)",strokeWidth:1.2}),
+			          // Arc surface away
+			          React.createElement("path",{d:"M 120 500 A 42 42 0 0 1 200 500",fill:"none",stroke:"rgba(255,255,255,.9)",strokeWidth:1.2}),
+			          // Point penalty home
+			          React.createElement("circle",{cx:160,cy:100,r:2.5,fill:"rgba(255,255,255,.7)"}),
+			          // Point penalty away
+			          React.createElement("circle",{cx:160,cy:480,r:2.5,fill:"rgba(255,255,255,.7)"})
+			        ),
 
-				    // ── Vue LISTE ──
-				    const renderListe=()=>{
-				      const hLu=lineups.find(l=>l.team?.id===hid);
-				      const aLu=lineups.find(l=>l.team?.id===aid);
-				      const renderTeamBlock=(lu,isHm)=>{
-				        if(!lu)return null;
-				        const team=lu.team;
-				        const accentColor=isHm?"#00c170":"#2563eb";
-				        const renderPl=(p,isSub)=>{
-				          if(!p)return null;
-				          const photo=photoOf(p.id);
-				          const rating=ratingOf(p.id);
-				          const icons=evtIconOf(p.id);
-				          const minOut=events.find(e=>e.type==="subst"&&e.player?.id===p.id);
-				          const minIn=events.find(e=>e.type==="subst"&&e.assist?.id===p.id);
-				          const minShow=isSub?minIn:minOut;
-				          return React.createElement("div",{key:p.id,className:"md-player-row",onClick:()=>{
-				            const plrStats=players.flatMap(t=>t.players||[]).find(pl=>pl.player?.id===p.id);
-				            setPlayerSheet({...p,photo,stats:plrStats?.statistics?.[0]||null});
-				          }},
-				            React.createElement("div",{style:{fontFamily:"'Barlow Condensed',sans-serif",fontSize:12,fontWeight:700,color:accentColor,minWidth:24,textAlign:"center",opacity:isSub?.55:1}},p.number||"—"),
-				            React.createElement("div",{style:{width:34,height:34,borderRadius:"50%",overflow:"hidden",background:"#eef0f5",flexShrink:0,opacity:isSub?.65:1}},
-				              photo?React.createElement("img",{src:photo,style:{width:"100%",height:"100%",objectFit:"cover"},onError:e=>{e.target.parentNode.innerHTML="👤"}}):
-				              React.createElement("div",{style:{width:"100%",height:"100%",display:"flex",alignItems:"center",justifyContent:"center",fontSize:11,color:"rgba(15,17,23,.3)"}},p.number||"?")
-				            ),
-				            React.createElement("div",{style:{flex:1,minWidth:0,opacity:isSub?.7:1}},
-				              React.createElement("div",{style:{fontSize:13,fontWeight:500,color:"#0f1117",overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap"}},p.name),
-				              p.pos?React.createElement("div",{style:{fontSize:10,color:"rgba(15,17,23,.35)",marginTop:1}},p.pos):null
-				            ),
-				            icons.length>0?React.createElement("div",{style:{display:"flex",gap:2,flexShrink:0}},icons.map((ic,i)=>React.createElement("span",{key:i,style:{fontSize:13}},ic))):null,
-				            rating?React.createElement("div",{style:{background:ratingColor(rating),borderRadius:5,padding:"2px 7px",fontSize:11,fontWeight:900,color:"#fff",flexShrink:0}},rating.toFixed(1)):null,
-				            minShow?React.createElement("div",{style:{fontSize:10,fontWeight:700,color:"rgba(15,17,23,.4)",flexShrink:0}},`${isSub?"↑":"↓"}${minShow.time?.elapsed}'`):null
-				          );
-				        };
-				        return React.createElement("div",{key:team?.id,style:{background:"#fff",borderRadius:12,overflow:"hidden",marginBottom:8,boxShadow:"0 1px 4px rgba(0,0,0,.06)"}},
-				          React.createElement("div",{style:{display:"flex",alignItems:"center",gap:10,padding:"11px 14px",borderBottom:"1px solid rgba(0,0,0,.06)",background:isHm?"linear-gradient(90deg,rgba(0,193,112,.05),transparent)":"linear-gradient(90deg,rgba(37,99,235,.05),transparent)"}},
-				            React.createElement("img",{src:team?.logo,style:{width:30,height:30,objectFit:"contain"},onError:e=>{e.target.style.display="none"}}),
-				            React.createElement("div",{style:{fontFamily:"'Barlow Condensed',sans-serif",fontSize:22,fontWeight:900,color:accentColor,letterSpacing:-.5}},lu.formation||"—"),
-				            lu.coach?.name?React.createElement("div",{style:{fontSize:11,color:"rgba(15,17,23,.38)",marginLeft:4}},lu.coach.name):null
-				          ),
-				          (lu.startXI||[]).map(({player:p})=>renderPl(p,false)),
-				          (lu.substitutes||[]).length?React.createElement(React.Fragment,null,
-				            React.createElement("div",{style:{fontSize:9,fontWeight:800,letterSpacing:1.5,color:"rgba(15,17,23,.35)",textTransform:"uppercase",padding:"7px 14px",background:"rgba(0,0,0,.02)"}},"Remplaçants"),
-				            (lu.substitutes||[]).map(({player:p})=>renderPl(p,true))
-				          ):null
-				        );
-				      };
-				      return React.createElement(React.Fragment,null,
-				        renderTeamBlock(lineups.find(l=>l.team?.id===hid),true),
-				        renderTeamBlock(lineups.find(l=>l.team?.id===aid),false)
-				      );
-				    };
+			        // ── Home (haut) ──
+			        React.createElement("div",{style:{position:"relative",zIndex:1,paddingTop:10}},
+			          hRows.map((row,ri)=>
+			            React.createElement("div",{key:"h"+ri,style:{display:"flex",justifyContent:"space-evenly",alignItems:"flex-end",marginBottom:ri===0?22:18,padding:"0 8px"}},
+			              row.map((p,pi)=>React.createElement(PlayerPin,{key:p?.id||`h${ri}-${pi}`,p,isHome:true}))
+			            )
+			          )
+			        ),
 
-				    return React.createElement(React.Fragment,null,
-				      React.createElement("div",{style:{display:"flex",gap:6,marginBottom:10}},
-				        React.createElement("button",{className:`md-subtab${compoView==="terrain"?" active":""}`,onClick:()=>setCompoView("terrain")},"⚽ Terrain"),
-				        React.createElement("button",{className:`md-subtab${compoView==="liste"?" active":""}`,onClick:()=>setCompoView("liste")},"📋 Liste")
-				      ),
-				      compoView==="terrain"?renderTerrain():renderListe()
-				    );
-				  };
+			        // ── Séparateur mi-terrain ──
+			        React.createElement("div",{style:{height:44,position:"relative",zIndex:1}}),
 
-			// ── RENDER H2H ──
+			        // ── Away (bas, ordre inversé) ──
+			        React.createElement("div",{style:{position:"relative",zIndex:1,paddingBottom:10}},
+			          aRowsRev.map((row,ri)=>
+			            React.createElement("div",{key:"a"+ri,style:{display:"flex",justifyContent:"space-evenly",alignItems:"flex-start",marginTop:ri===0?22:18,padding:"0 8px"}},
+			              row.map((p,pi)=>React.createElement(PlayerPin,{key:p?.id||`a${ri}-${pi}`,p,isHome:false}))
+			            )
+			          )
+			        )
+			      );
+			    };
+
+			    // ── Vue LISTE ──
+			    const renderListe=()=>{
+			      const renderTeamBlock=(lu,isHm)=>{
+			        if(!lu)return null;
+			        const accentColor=isHm?"#00c170":"#2563eb";
+			        const renderPl=(p,isSub)=>{
+			          if(!p)return null;
+			          const photo=photoOf(p.id);
+			          const rating=ratingOf(p.id);
+			          const icons=evtIconsOf(p.id);
+			          const minOut=events.find(e=>e.type==="subst"&&e.player?.id===p.id);
+			          const minIn=events.find(e=>e.type==="subst"&&e.assist?.id===p.id);
+			          const minShow=isSub?minIn:minOut;
+			          return React.createElement("div",{key:p.id,className:"md-player-row",onClick:()=>{
+			            const plrStats=players.flatMap(t=>t.players||[]).find(pl=>pl.player?.id===p.id);
+			            setPlayerSheet({...p,photo,stats:plrStats?.statistics?.[0]||null});
+			          }},
+			            React.createElement("div",{style:{fontFamily:"'Barlow Condensed',sans-serif",fontSize:12,fontWeight:700,color:accentColor,minWidth:24,textAlign:"center",opacity:isSub?.55:1}},p.number||"—"),
+			            React.createElement("div",{style:{width:34,height:34,borderRadius:"50%",overflow:"hidden",background:"#eef0f5",flexShrink:0,opacity:isSub?.65:1}},
+			              photo?React.createElement("img",{src:photo,style:{width:"100%",height:"100%",objectFit:"cover"},onError:e=>{e.target.parentNode.innerHTML="👤"}}):
+			              React.createElement("div",{style:{width:"100%",height:"100%",display:"flex",alignItems:"center",justifyContent:"center",fontSize:11,color:"rgba(15,17,23,.3)"}},p.number||"?")
+			            ),
+			            React.createElement("div",{style:{flex:1,minWidth:0,opacity:isSub?.7:1}},
+			              React.createElement("div",{style:{fontSize:13,fontWeight:500,color:"#0f1117",overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap"}},p.name),
+			              p.pos?React.createElement("div",{style:{fontSize:10,color:"rgba(15,17,23,.35)",marginTop:1}},p.pos):null
+			            ),
+			            icons.some(x=>x.t==="goal")?React.createElement("span",{style:{fontSize:13,marginRight:2}},"⚽"):null,
+			            icons.some(x=>x.t==="yellow")?React.createElement("div",{style:{width:9,height:12,borderRadius:2,background:"#f59e0b",marginRight:2,flexShrink:0}}):null,
+			            icons.some(x=>x.t==="red")?React.createElement("div",{style:{width:9,height:12,borderRadius:2,background:"#e53935",marginRight:2,flexShrink:0}}):null,
+			            rating?React.createElement("div",{style:{background:ratingBg(rating),borderRadius:5,padding:"2px 7px",fontSize:11,fontWeight:900,color:"#fff",flexShrink:0}},rating.toFixed(1)):null,
+			            minShow?React.createElement("div",{style:{fontSize:10,fontWeight:700,color:"rgba(15,17,23,.4)",flexShrink:0,marginLeft:4}},`${isSub?"↑":"↓"}${minShow.time?.elapsed}'`):null
+			          );
+			        };
+			        return React.createElement("div",{key:lu.team?.id,style:{background:"#fff",borderRadius:12,overflow:"hidden",marginBottom:8,boxShadow:"0 1px 4px rgba(0,0,0,.06)"}},
+			          React.createElement("div",{style:{display:"flex",alignItems:"center",gap:10,padding:"11px 14px",borderBottom:"1px solid rgba(0,0,0,.06)"}},
+			            React.createElement("img",{src:lu.team?.logo,style:{width:28,height:28,objectFit:"contain"},onError:e=>{e.target.style.display="none"}}),
+			            React.createElement("span",{style:{fontFamily:"'Barlow Condensed',sans-serif",fontSize:20,fontWeight:900,color:accentColor,letterSpacing:-.5}},lu.formation||"—"),
+			            lu.coach?.name?React.createElement("span",{style:{fontSize:11,color:"rgba(15,17,23,.38)",marginLeft:4}},lu.coach.name):null
+			          ),
+			          (lu.startXI||[]).map(({player:p})=>renderPl(p,false)),
+			          (lu.substitutes||[]).length?React.createElement(React.Fragment,null,
+			            React.createElement("div",{style:{fontSize:9,fontWeight:800,letterSpacing:1.5,color:"rgba(15,17,23,.35)",textTransform:"uppercase",padding:"7px 14px",background:"rgba(0,0,0,.02)"}},"Remplaçants"),
+			            (lu.substitutes||[]).map(({player:p})=>renderPl(p,true))
+			          ):null
+			        );
+			      };
+			      return React.createElement(React.Fragment,null,
+			        renderTeamBlock(hLu,true),
+			        renderTeamBlock(aLu,false)
+			      );
+			    };
+
+			    return React.createElement(React.Fragment,null,
+			      React.createElement("div",{style:{display:"flex",gap:6,marginBottom:10}},
+			        React.createElement("button",{className:`md-subtab${compoView==="terrain"?" active":""}`,onClick:()=>setCompoView("terrain")},"⚽ Terrain"),
+			        React.createElement("button",{className:`md-subtab${compoView==="liste"?" active":""}`,onClick:()=>setCompoView("liste")},"📋 Liste")
+			      ),
+			      compoView==="terrain"?renderTerrain():renderListe()
+			    );
+			  };
+
+		// ── RENDER H2H ──
 					  const renderH2H=()=>{
 					    if(!h2h.length){
 					      return React.createElement("div",{className:"md-empty"},"⚔️ Aucune confrontation disponible");
