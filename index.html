@@ -695,15 +695,9 @@ function updateHeader() {
     }
   }
 
+  // mh-diff supprimé (inutile)
   var diffEl = document.getElementById('wfmd-mh-diff');
-  if (diffEl) {
-    if (has && Math.abs(hg - ag) > 0) {
-      diffEl.textContent = '+' + Math.abs(hg-ag);
-      diffEl.style.display = '';
-    } else {
-      diffEl.style.display = 'none';
-    }
-  }
+  if (diffEl) diffEl.style.display = 'none';
 
   const goals = (WFMD_STATE.events || []).filter(function(e){ return e.type === 'Goal' && e.detail !== 'Missed Penalty'; });
   const homeGoals = goals.filter(function(e){ return e.team && e.team.id === fix.teams.home.id; })
@@ -1235,6 +1229,13 @@ if (!document.getElementById('wfmd-styles')) {
 }
 @keyframes wfmdSlideIn { from{transform:translateX(100%);opacity:0} to{transform:translateX(0);opacity:1} }
 
+/* ══ APP WRAPPER ══ */
+#wfmd-app {
+flex:1; display:flex; flex-direction:column;
+min-height:0; overflow:hidden;
+height:100%;
+}
+
 /* ══ TOP BAR ══ */
 #wfmd-topbar {
   flex-shrink:0;
@@ -1370,6 +1371,7 @@ if (!document.getElementById('wfmd-styles')) {
   -webkit-overflow-scrolling:touch;
   scrollbar-width:none;
   background:var(--bg0);
+  min-height:0;
 }
 #wfmd-content::-webkit-scrollbar { display:none; }
 .wf-match-detail .tab-panel { display:none; padding:16px; animation:fadeIn .18s ease; }
