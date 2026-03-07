@@ -2581,9 +2581,9 @@ function MatchDetailNew({fixtureId,onClose}){
 						    const cached=_cache.get("/fixtures?id=" + (id));
 						    const cachedFix=cached?.d?.[0]||null;
 						    if(cachedFix){
-						      setDet({partial:true,data:{fixture:cachedFix,stats:[],events:[],lineups:[],players:[],h2h:[],injuries:[]}});
+						      setDet({id,partial:true,data:{fixture:cachedFix,stats:[],events:[],lineups:[],players:[],h2h:[],injuries:[]}});
 						    } else {
-						      setDet({loading:true});
+						      setDet({id,loading:true});
 						    }
 
 						    try{
@@ -2604,7 +2604,7 @@ function MatchDetailNew({fixtureId,onClose}){
 						        started?api("/fixtures/events?fixture=" + (fid),detailTTL,sig).catch(()=>[]):Promise.resolve([]),
 						        started?api("/fixtures/statistics?fixture=" + (fid),detailTTL,sig).catch(()=>[]):Promise.resolve([]),
 						      ]);
-						      setDet(prev=>({...prev,partial:true,data:{...prev?.data,fixture:fix,stats,events:evts}}));
+						      setDet(prev=>({...prev,id:fix.fixture.id,partial:true,data:{...prev?.data,fixture:fix,stats,events:evts}}));
 
 						      // Phase 3 — Lineups + Players + H2H + Injuries (secondaire)
 						      const[lineups,plrs,h2h,injuries]=await Promise.all([
@@ -2613,8 +2613,8 @@ function MatchDetailNew({fixtureId,onClose}){
 						        api("/fixtures/headtohead?h2h="+hid+"-"+aid+"&last=50",86400000,sig).catch(()=>[]),
 						        api("/injuries?fixture=" + (fid),isDone?10800000:3600000,sig).catch(()=>[]),
 						      ]);
-						      setDet({data:{fixture:fix,stats,events:evts,lineups,players:plrs,h2h,injuries}});
-						    }catch(e){if(e.name!=="AbortError")setDet({error:e.message});}
+						      setDet({id:fix.fixture.id,data:{fixture:fix,stats,events:evts,lineups,players:plrs,h2h,injuries}});
+						    }catch(e){if(e.name!=="AbortError")setDet(prev=>({...prev,error:e.message}));}
 						  },[]);
 
 						  const groups=useMemo(()=>{
@@ -3118,9 +3118,9 @@ function MatchDetailNew({fixtureId,onClose}){
 						    const cached=_cache.get("/fixtures?id=" + (id));
 						    const cachedFix=cached?.d?.[0]||null;
 						    if(cachedFix){
-						      setDt({partial:true,data:{fixture:cachedFix,stats:[],events:[],lineups:[],players:[],h2h:[],injuries:[]}});
+						      setDt({id,partial:true,data:{fixture:cachedFix,stats:[],events:[],lineups:[],players:[],h2h:[],injuries:[]}});
 						    } else {
-						      setDt({loading:true});
+						      setDt({id,loading:true});
 						    }
 
 						    try{
@@ -3141,7 +3141,7 @@ function MatchDetailNew({fixtureId,onClose}){
 						        started?api("/fixtures/events?fixture=" + (fid),detailTTL,sig).catch(()=>[]):Promise.resolve([]),
 						        started?api("/fixtures/statistics?fixture=" + (fid),detailTTL,sig).catch(()=>[]):Promise.resolve([]),
 						      ]);
-						      setDt(prev=>({...prev,partial:true,data:{...prev?.data,fixture:fix,stats,events:evts}}));
+						      setDt(prev=>({...prev,id:fix.fixture.id,partial:true,data:{...prev?.data,fixture:fix,stats,events:evts}}));
 
 						      // Phase 3 — Lineups + Players + H2H + Injuries (arrière-plan)
 						      const[lineups,plrs,h2h,injuries]=await Promise.all([
@@ -3150,8 +3150,8 @@ function MatchDetailNew({fixtureId,onClose}){
 						        api("/fixtures/headtohead?h2h="+hid+"-"+aid+"&last=50",86400000,sig).catch(()=>[]),
 						        api("/injuries?fixture=" + (fid),isDone?10800000:3600000,sig).catch(()=>[]),
 						      ]);
-						      setDt({data:{fixture:fix,stats,events:evts,lineups,players:plrs,h2h,injuries}});
-						    }catch(e){if(e.name!=="AbortError")setDt({error:e.message});}
+						      setDt({id:fix.fixture.id,data:{fixture:fix,stats,events:evts,lineups,players:plrs,h2h,injuries}});
+						    }catch(e){if(e.name!=="AbortError")setDt(prev=>({...prev,error:e.message}));}
 						  },[]);
 						  const SEL={width:"100%",background:T.bg2,border:"1px solid " + (T.bg4),color:T.t1,borderRadius:8,padding:"8px 11px",fontSize:12,fontWeight:600,outline:"none",cursor:"pointer"};
 						  return<div style={{display:"flex",flexDirection:"column",height:"100%",width:"100%",overflow:"hidden"}}>
