@@ -657,6 +657,43 @@ async function wfmd_loadFixture() {
 // ═══════════════════════════════════════════════
 // UPDATE HEADER
 // ═══════════════════════════════════════════════
+// Convertit un nom de pays en emoji drapeau
+var COUNTRY_CODES = {
+  "Afghanistan":"AF","Albania":"AL","Algeria":"DZ","Angola":"AO","Argentina":"AR",
+  "Armenia":"AM","Australia":"AU","Austria":"AT","Azerbaijan":"AZ","Bahrain":"BH",
+  "Bangladesh":"BD","Belarus":"BY","Belgium":"BE","Bolivia":"BO","Bosnia":"BA",
+  "Brazil":"BR","Bulgaria":"BG","Burkina Faso":"BF","Cameroon":"CM","Canada":"CA",
+  "Chile":"CL","China":"CN","Colombia":"CO","Costa Rica":"CR","Croatia":"HR",
+  "Czech Republic":"CZ","Denmark":"DK","Ecuador":"EC","Egypt":"EG","England":"GB",
+  "Ethiopia":"ET","Finland":"FI","France":"FR","Georgia":"GE","Germany":"DE",
+  "Ghana":"GH","Greece":"GR","Guatemala":"GT","Honduras":"HN","Hungary":"HU",
+  "India":"IN","Indonesia":"ID","Iran":"IR","Iraq":"IQ","Israel":"IL",
+  "Italy":"IT","Ivory Coast":"CI","Jamaica":"JM","Japan":"JP","Jordan":"JO",
+  "Kazakhstan":"KZ","Kenya":"KE","Kosovo":"XK","Kuwait":"KW","Kyrgyzstan":"KG",
+  "Lebanon":"LB","Libya":"LY","Lithuania":"LT","Luxembourg":"LU","Malaysia":"MY",
+  "Mali":"ML","Malta":"MT","Mauritania":"MR","Mexico":"MX","Moldova":"MD",
+  "Mongolia":"MN","Montenegro":"ME","Morocco":"MA","Mozambique":"MZ","Myanmar":"MM",
+  "Netherlands":"NL","New Zealand":"NZ","Nicaragua":"NI","Nigeria":"NG","Norway":"NO",
+  "Oman":"OM","Pakistan":"PK","Palestine":"PS","Panama":"PA","Paraguay":"PY",
+  "Peru":"PE","Philippines":"PH","Poland":"PL","Portugal":"PT","Qatar":"QA",
+  "Romania":"RO","Russia":"RU","Saudi Arabia":"SA","Scotland":"GB","Senegal":"SN",
+  "Serbia":"RS","Slovakia":"SK","Slovenia":"SI","South Africa":"ZA","South Korea":"KR",
+  "Spain":"ES","Sudan":"SD","Sweden":"SE","Switzerland":"CH","Syria":"SY",
+  "Tajikistan":"TJ","Tanzania":"TZ","Thailand":"TH","Tunisia":"TN","Turkey":"TR",
+  "Turkmenistan":"TM","UAE":"AE","Uganda":"UG","Ukraine":"UA","United States":"US",
+  "Uruguay":"UY","Uzbekistan":"UZ","Venezuela":"VE","Vietnam":"VN","Wales":"GB",
+  "World":"🌍","Zambia":"ZM","Zimbabwe":"ZW","Algeria":"DZ","Congo DR":"CD",
+  "Congo":"CG","Guatemala":"GT","Dominican Republic":"DO","El Salvador":"SV",
+  "Trinidad and Tobago":"TT","Northern Ireland":"GB","Bolivia":"BO"
+};
+function countryFlag(country) {
+  if (!country) return '';
+  var code = COUNTRY_CODES[country] || null;
+  if (!code || code.length !== 2) return '';
+  var c1 = String.fromCodePoint(0x1F1E6 + code.charCodeAt(0) - 65);
+  var c2 = String.fromCodePoint(0x1F1E6 + code.charCodeAt(1) - 65);
+  return c1 + c2 + ' ';
+}
 function updateHeader() {
   const fix = WFMD_STATE.fixture;
   if (!fix) return;
@@ -667,7 +704,7 @@ function updateHeader() {
 
   const round = (fix.league.round || '').replace('Regular Season - ','J').replace('League Phase - ','J');
   var lgEl = document.getElementById('wfmd-mh-league-text');
-  if (lgEl) lgEl.textContent = fix.league.country.toUpperCase() + ': ' + fix.league.name.toUpperCase() + (round ? ' · ' + round.toUpperCase() : '');
+  if (lgEl) { var flag = countryFlag(fix.league.country); lgEl.innerHTML = (flag ? '<span style="font-size:14px;vertical-align:middle;margin-right:5px;">' + flag + '</span>' : '') + '<span>' + esc(fix.league.country.toUpperCase() + ': ' + fix.league.name.toUpperCase() + (round ? ' · ' + round.toUpperCase() : '')) + '</span>'; }
 
   var titleEl = document.getElementById('wfmd-topbar-title');
   if (titleEl) titleEl.textContent = fix.league.name;
@@ -1292,9 +1329,10 @@ height:100%;
 .mh-league {
   display:flex; align-items:center; gap:6px;
   font-size:10px; font-weight:700; color:var(--t3);
-  letter-spacing:1.2px; text-transform:uppercase;
+  letter-spacing:1.2px;
   margin-bottom:10px;
 }
+.mh-league span:last-child { text-transform:uppercase; }
 .mh-league-dot { width:5px; height:5px; border-radius:50%; background:var(--accent); flex-shrink:0; }
 
 /* Score central FlashScore-style */
