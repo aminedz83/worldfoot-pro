@@ -2197,70 +2197,172 @@
 
 		// ── RENDER H2H ──
 					  const renderH2H=()=>{
-					    if(!h2h.length){
-					      return React.createElement("div",{className:"md-empty"},"⚔️ Aucune confrontation disponible");
-					    }
-					    let hW=0,aW=0,draws=0,hGoals=0,aGoals=0;
-					    h2h.forEach(m=>{
-					      const isHm=m.teams.home.id===hid;
-					      const mg=m.goals.home??0,ag2=m.goals.away??0;
-					      const hg2=isHm?mg:ag2,ag3=isHm?ag2:mg;
-					      hGoals+=hg2;aGoals+=ag3;
-					      if(hg2>ag3)hW++;else if(ag3>hg2)aW++;else draws++;
-					    });
-					    const hn=fix.teams.home.name,an=fix.teams.away.name;
-					    const byYear={};
-					    h2h.forEach(m=>{
-					      const y=m.fixture.date?.slice(0,4)||"?";
-					      if(!byYear[y])byYear[y]=[];
-					      byYear[y].push(m);
-					    });
-					    const years=Object.keys(byYear).sort((a,b)=>b-a);
-					
-					    return React.createElement(React.Fragment,null,
-					      React.createElement("div",{style:{display:"grid",gridTemplateColumns:"1fr 1fr 1fr",gap:8,marginBottom:16}},
-					        [{val:hW,label:`${hn.split(" ")[0]}\nVictoires`,color:"#00c170"},
-					         {val:draws,label:"Matchs\nNuls",color:"rgba(15,17,23,.5)"},
-					         {val:aW,label:`${an.split(" ")[0]}\nVictoires`,color:"#2563eb"}
-					        ].map(({val,label,color})=>
-					          React.createElement("div",{key:label,style:{background:"#fff",border:"1px solid rgba(255,255,255,0.07)",borderRadius:12,padding:"12px 8px",textAlign:"center"}},
-					            React.createElement("div",{style:{fontFamily:"'Barlow Condensed',sans-serif",fontSize:24,fontWeight:800,color,lineHeight:1}},[val]),
-					            React.createElement("div",{style:{fontSize:10,color:"rgba(15,17,23,.38)",marginTop:4,lineHeight:1.3,whiteSpace:"pre-line"}},[label])
-					          )
-					        )
-					      ),
-					      React.createElement("div",{style:{display:"grid",gridTemplateColumns:"1fr 1fr",gap:8,marginBottom:16}},
-					        React.createElement("div",{style:{background:"#fff",border:"1px solid rgba(255,255,255,0.07)",borderRadius:10,padding:10,display:"flex",alignItems:"center",gap:8}},
-					          React.createElement("div",{style:{fontFamily:"'Barlow Condensed',sans-serif",fontSize:18,fontWeight:800,color:"#00c170"}},[h2h.length]),
-					          React.createElement("div",{style:{fontSize:11,color:"rgba(15,17,23,.38)",lineHeight:1.3}},"Total matchs")
-					        ),
-					        React.createElement("div",{style:{background:"#fff",border:"1px solid rgba(255,255,255,0.07)",borderRadius:10,padding:10,display:"flex",alignItems:"center",gap:8}},
-					          React.createElement("div",{style:{fontFamily:"'Barlow Condensed',sans-serif",fontSize:18,fontWeight:800,color:"#00c170"}},[`${hGoals}-${aGoals}`]),
-					          React.createElement("div",{style:{fontSize:11,color:"rgba(15,17,23,.38)",lineHeight:1.3}},"Buts Dom./Ext.")
-					        )
-					      ),
-					      years.map(year=>React.createElement("div",{key:year},
-					        React.createElement("div",{style:{fontFamily:"'Barlow Condensed',sans-serif",fontSize:14,fontWeight:800,color:"#00c170",margin:"16px 0 8px",paddingBottom:6,borderBottom:"1px solid rgba(255,107,74,0.2)"}},[year]),
-					        byYear[year].map((m,i)=>{
-					          const mg=m.goals.home??0,ag2=m.goals.away??0;
-					          const isHm=m.teams.home.id===hid;
-					          const hw=mg>ag2,aw=ag2>mg;
-					          const resultColor=isHm?(hw?"#4CAF50":aw?"#F44336":"#FFC107"):(aw?"#4CAF50":hw?"#F44336":"#FFC107");
-					          return React.createElement("div",{key:i,style:{display:"flex",alignItems:"center",gap:8,padding:"9px 0",borderBottom:"1px solid rgba(255,255,255,0.04)"}},
-					            React.createElement("div",{style:{width:7,height:7,borderRadius:"50%",background:resultColor,flexShrink:0}}),
-					            React.createElement("div",{style:{flex:1,minWidth:0}},
-					              React.createElement("div",{style:{fontSize:12,fontWeight:600,color:"#0f1117",whiteSpace:"nowrap",overflow:"hidden",textOverflow:"ellipsis"}},[m.teams.home.name]),
-					              React.createElement("div",{style:{fontSize:11,color:"rgba(15,17,23,.38)",whiteSpace:"nowrap",overflow:"hidden",textOverflow:"ellipsis"}},[m.teams.away.name])
-					            ),
-					            React.createElement("div",{style:{fontFamily:"'Barlow Condensed',sans-serif",fontSize:14,fontWeight:800,color:"#0f1117",minWidth:44,textAlign:"center"}},[`${mg}–${ag2}`])
-					          );
-					        })
-					      ))
-					    );
-					  };
-					
-					  // ── RENDER STANDINGS ──
-					  const renderStandings=()=>{
+			    if(!h2h.length)return React.createElement("div",{className:"md-empty"},"⚔️ Aucune confrontation disponible");
+
+			    // Ramener les résultats du POV de home (hid)
+			    const matches=[...h2h]
+			      .sort((a,b)=>new Date(b.fixture.date)-new Date(a.fixture.date))
+			      .slice(0,20);
+
+			    let hW=0,aW=0,draws=0,hGoals=0,aGoals=0;
+			    matches.forEach(m=>{
+			      const isPOVHome=m.teams.home.id===hid;
+			      const gH=m.goals.home??0,gA=m.goals.away??0;
+			      const myG=isPOVHome?gH:gA, opG=isPOVHome?gA:gH;
+			      hGoals+=myG; aGoals+=opG;
+			      if(myG>opG)hW++; else if(opG>myG)aW++; else draws++;
+			    });
+			    const total=matches.length||1;
+			    const hPct=Math.round(hW/total*100);
+			    const dPct=Math.round(draws/total*100);
+			    const aPct=100-hPct-dPct;
+
+			    const hn=fix.teams.home.name, an=fix.teams.away.name;
+			    const hShort=hn.length>12?hn.split(" ")[0]:hn;
+			    const aShort=an.length>12?an.split(" ").slice(-1)[0]:an;
+
+			    const ddmmyy=s=>{
+			      const d=new Date(s);
+			      return String(d.getDate()).padStart(2,"0")+"."+String(d.getMonth()+1).padStart(2,"0")+"."+String(d.getFullYear()).slice(2);
+			    };
+
+			    return React.createElement(React.Fragment,null,
+
+			      // ── Résumé bilan ──
+			      React.createElement("div",{style:{background:"#fff",borderRadius:12,padding:"14px 16px",marginBottom:8,boxShadow:"0 1px 4px rgba(0,0,0,.06)"}},
+
+			        // Logos + noms
+			        React.createElement("div",{style:{display:"flex",alignItems:"center",justifyContent:"space-between",marginBottom:14}},
+			          React.createElement("div",{style:{display:"flex",alignItems:"center",gap:7,flex:1,minWidth:0}},
+			            React.createElement(Logo,{src:fix.teams.home.logo,size:28}),
+			            React.createElement("span",{style:{fontSize:12,fontWeight:700,color:"#0f1117",overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap"}},[hShort])
+			          ),
+			          React.createElement("span",{style:{fontFamily:"'Barlow Condensed',sans-serif",fontSize:11,fontWeight:700,color:"rgba(15,17,23,.3)",padding:"0 8px",flexShrink:0}},"HISTORIQUE"),
+			          React.createElement("div",{style:{display:"flex",alignItems:"center",gap:7,flex:1,minWidth:0,justifyContent:"flex-end"}},
+			            React.createElement("span",{style:{fontSize:12,fontWeight:700,color:"#0f1117",overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap",textAlign:"right"}},[aShort]),
+			            React.createElement(Logo,{src:fix.teams.away.logo,size:28})
+			          )
+			        ),
+
+			        // Chiffres V / N / D
+			        React.createElement("div",{style:{display:"flex",alignItems:"center",justifyContent:"space-between",marginBottom:8}},
+			          React.createElement("span",{style:{fontFamily:"'Barlow Condensed',sans-serif",fontSize:26,fontWeight:900,color:"#00c170",minWidth:32}},[hW]),
+			          React.createElement("div",{style:{display:"flex",flexDirection:"column",alignItems:"center",gap:2}},
+			            React.createElement("span",{style:{fontFamily:"'Barlow Condensed',sans-serif",fontSize:20,fontWeight:800,color:"rgba(15,17,23,.4)"}},[draws]),
+			            React.createElement("span",{style:{fontSize:9,fontWeight:600,color:"rgba(15,17,23,.3)",letterSpacing:1,textTransform:"uppercase"}},["Nuls"])
+			          ),
+			          React.createElement("span",{style:{fontFamily:"'Barlow Condensed',sans-serif",fontSize:26,fontWeight:900,color:"#e53935",minWidth:32,textAlign:"right"}},[aW])
+			        ),
+
+			        // Labels V / D
+			        React.createElement("div",{style:{display:"flex",justifyContent:"space-between",marginBottom:10}},
+			          React.createElement("span",{style:{fontSize:9,color:"#00c170",fontWeight:700,textTransform:"uppercase",letterSpacing:.5}},"Victoires"),
+			          React.createElement("span",{style:{fontSize:9,color:"#e53935",fontWeight:700,textTransform:"uppercase",letterSpacing:.5}},"Victoires")
+			        ),
+
+			        // Barre de progression tricolore
+			        React.createElement("div",{style:{height:6,borderRadius:3,overflow:"hidden",display:"flex",gap:1}},
+			          React.createElement("div",{style:{flex:hPct,background:"#00c170",transition:"flex .5s",minWidth:hW?4:0}}),
+			          React.createElement("div",{style:{flex:dPct,background:"rgba(15,17,23,.15)",transition:"flex .5s",minWidth:draws?4:0}}),
+			          React.createElement("div",{style:{flex:aPct,background:"#e53935",transition:"flex .5s",minWidth:aW?4:0}})
+			        ),
+
+			        // Pourcentages
+			        React.createElement("div",{style:{display:"flex",justifyContent:"space-between",marginTop:5}},
+			          React.createElement("span",{style:{fontSize:10,color:"#00c170",fontWeight:700}},[`${hPct}%`]),
+			          React.createElement("span",{style:{fontSize:10,color:"rgba(15,17,23,.3)",fontWeight:600}},[`${dPct}%`]),
+			          React.createElement("span",{style:{fontSize:10,color:"#e53935",fontWeight:700}},[`${aPct}%`])
+			        ),
+
+			        // Buts
+			        React.createElement("div",{style:{display:"flex",justifyContent:"space-between",marginTop:12,paddingTop:10,borderTop:"1px solid rgba(0,0,0,.06)"}},
+			          React.createElement("div",{style:{textAlign:"center"}},
+			            React.createElement("div",{style:{fontFamily:"'Barlow Condensed',sans-serif",fontSize:18,fontWeight:900,color:"#0f1117"}},[hGoals]),
+			            React.createElement("div",{style:{fontSize:9,color:"rgba(15,17,23,.38)",marginTop:1,textTransform:"uppercase",letterSpacing:.5}},"Buts")
+			          ),
+			          React.createElement("div",{style:{textAlign:"center"}},
+			            React.createElement("div",{style:{fontSize:11,color:"rgba(15,17,23,.35)",fontWeight:500}},[`${matches.length} matchs`])
+			          ),
+			          React.createElement("div",{style:{textAlign:"center"}},
+			            React.createElement("div",{style:{fontFamily:"'Barlow Condensed',sans-serif",fontSize:18,fontWeight:900,color:"#0f1117"}},[aGoals]),
+			            React.createElement("div",{style:{fontSize:9,color:"rgba(15,17,23,.38)",marginTop:1,textTransform:"uppercase",letterSpacing:.5}},"Buts")
+			          )
+			        )
+			      ),
+
+			      // ── Liste des matchs ──
+			      React.createElement("div",{style:{background:"#fff",borderRadius:12,overflow:"hidden",boxShadow:"0 1px 4px rgba(0,0,0,.06)"}},
+			        // Header colonnes
+			        React.createElement("div",{style:{display:"flex",alignItems:"center",padding:"7px 12px",borderBottom:"1px solid rgba(0,0,0,.06)",background:"rgba(0,0,0,.02)"}},
+			          React.createElement("span",{style:{fontSize:9,fontWeight:700,color:"rgba(15,17,23,.35)",textTransform:"uppercase",letterSpacing:.8,width:40,flexShrink:0}},"Date"),
+			          React.createElement("span",{style:{fontSize:9,fontWeight:700,color:"rgba(15,17,23,.35)",textTransform:"uppercase",letterSpacing:.8,flex:1}},"Match"),
+			          React.createElement("span",{style:{fontSize:9,fontWeight:700,color:"rgba(15,17,23,.35)",textTransform:"uppercase",letterSpacing:.8,width:42,textAlign:"center",flexShrink:0}},"Score"),
+			          React.createElement("span",{style:{fontSize:9,fontWeight:700,color:"rgba(15,17,23,.35)",textTransform:"uppercase",letterSpacing:.8,width:22,textAlign:"center",flexShrink:0}},"/")
+			        ),
+
+			        matches.map((m,i)=>{
+			          const isPOVHome=m.teams.home.id===hid;
+			          const gH=m.goals.home??0,gA=m.goals.away??0;
+			          const myG=isPOVHome?gH:gA, opG=isPOVHome?gA:gH;
+			          const isW=myG>opG,isL=opG>myG,isD=myG===opG;
+			          // Résultat du POV home
+			          const resLabel=isW?"V":isD?"N":"D";
+			          const resBg=isW?"#00c170":isD?"#f59e0b":"#e53935";
+			          // Nom court
+			          const hmName=m.teams.home.name;
+			          const awName=m.teams.away.name;
+			          const isHomeTeamOurHome=m.teams.home.id===hid;
+			          // Score: toujours home-away original
+			          const scoreStr=`${gH} - ${gA}`;
+			          // Gras sur le gagnant
+			          const hmBold=gH>gA, awBold=gA>gH;
+			          const date=ddmmyy(m.fixture.date);
+			          const league=m.league?.name||"";
+
+			          return React.createElement("div",{key:m.fixture.id||i,style:{
+			            display:"flex",alignItems:"center",
+			            padding:"10px 12px",
+			            borderBottom:i<matches.length-1?"1px solid rgba(0,0,0,.05)":"none",
+			            background:i%2===0?"#fff":"rgba(0,0,0,.012)"
+			          }},
+			            // Date
+			            React.createElement("div",{style:{width:40,flexShrink:0}},
+			              React.createElement("div",{style:{fontSize:10,fontWeight:600,color:"rgba(15,17,23,.5)",lineHeight:1.3}},[date]),
+			              React.createElement("div",{style:{fontSize:9,color:"rgba(15,17,23,.25)",marginTop:1,overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap",maxWidth:38}},[m.league?.country||""])
+			            ),
+			            // Match: home vs away avec logos
+			            React.createElement("div",{style:{flex:1,minWidth:0,padding:"0 8px"}},
+			              React.createElement("div",{style:{display:"flex",alignItems:"center",gap:5,marginBottom:3}},
+			                React.createElement("img",{src:m.teams.home.logo,style:{width:14,height:14,objectFit:"contain",flexShrink:0},onError:e=>e.target.style.display="none"}),
+			                React.createElement("span",{style:{fontSize:12,fontWeight:hmBold?700:400,color:hmBold?"#0f1117":"rgba(15,17,23,.7)",overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap"}},[hmName])
+			              ),
+			              React.createElement("div",{style:{display:"flex",alignItems:"center",gap:5}},
+			                React.createElement("img",{src:m.teams.away.logo,style:{width:14,height:14,objectFit:"contain",flexShrink:0},onError:e=>e.target.style.display="none"}),
+			                React.createElement("span",{style:{fontSize:12,fontWeight:awBold?700:400,color:awBold?"#0f1117":"rgba(15,17,23,.7)",overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap"}},[awName])
+			              ),
+			              league?React.createElement("div",{style:{fontSize:9,color:"rgba(15,17,23,.25)",marginTop:3,overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap"}},[league]):null
+			            ),
+			            // Score centré
+			            React.createElement("div",{style:{width:42,textAlign:"center",flexShrink:0}},
+			              React.createElement("span",{style:{fontFamily:"'Barlow Condensed',sans-serif",fontSize:14,fontWeight:900,color:"#0f1117",letterSpacing:.5}},[scoreStr])
+			            ),
+			            // Badge V/N/D
+			            React.createElement("div",{style:{width:22,flexShrink:0,display:"flex",justifyContent:"center"}},
+			              React.createElement("div",{style:{
+			                width:18,height:18,borderRadius:3,
+			                background:resBg,
+			                display:"flex",alignItems:"center",justifyContent:"center",
+			                fontFamily:"'Barlow Condensed',sans-serif",
+			                fontSize:10,fontWeight:900,color:"#fff"
+			              }},[resLabel])
+			            )
+			          );
+			        })
+			      )
+			    );
+			  };
+
+		const renderStandings=()=>{
 				    if(!standings.length)return React.createElement("div",{className:"md-empty"},"📊 Classement non disponible");
 				    const st=standings[0]?.league?.standings?.[0]||[];
 				    if(!st.length)return React.createElement("div",{className:"md-empty"},"📊 Classement non disponible");
