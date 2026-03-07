@@ -1663,6 +1663,7 @@
 					  const[compoView,setCompoView]=React.useState("terrain");
 					  const[playerSheet,setPlayerSheet]=React.useState(null);
 					  const[standings,setStandings]=React.useState([]);
+					  const[venueInfo,setVenueInfo]=React.useState(null);
 					  const contentRef=React.useRef(null);
 					
 					  // Extract data
@@ -1699,6 +1700,16 @@
 					    return()=>{stCancelled=true;if(stIv)clearInterval(stIv);};
 					  },[fix?.fixture?.id,isLive]);
 					
+					  // Fetch venue capacity
+					  React.useEffect(()=>{
+					    if(!fix?.fixture?.venue?.id)return;
+					    let cancelled=false;
+					    api(`/venues?id=${fix.fixture.venue.id}`,86400000)
+					      .then(d=>{if(!cancelled&&d[0])setVenueInfo(d[0]);})
+					      .catch(()=>{});
+					    return()=>{cancelled=true;};
+					  },[fix?.fixture?.venue?.id]);
+
 					  // Reset tab on new fixture
 					  React.useEffect(()=>{
 					    setTab("resume");
@@ -2518,7 +2529,7 @@
 					          [
 					            fix.fixture?.referee?{icon:"🟡",label:"Arbitre",value:fix.fixture.referee}:null,
 					            fix.fixture?.venue?.name?{icon:"🏟️",label:"Stade",value:`${fix.fixture.venue.name}${fix.fixture.venue.city?` (${fix.fixture.venue.city})`:""}` }:null,
-					            fix.fixture?.venue?.capacity?{icon:"👥",label:"Capacité",value:fix.fixture.venue.capacity.toLocaleString("fr-FR")}:null,
+					            venueInfo?.capacity?{icon:"👥",label:"Capacité",value:Number(venueInfo.capacity).toLocaleString("fr-FR")}:null,
 					            fix.fixture?.attendance?{icon:"🎟️",label:"Spectateurs",value:Number(fix.fixture.attendance).toLocaleString("fr-FR")}:null,
 					          ].filter(Boolean).map(({icon,label,value},i,arr)=>
 					            React.createElement("div",{key:label,style:{
