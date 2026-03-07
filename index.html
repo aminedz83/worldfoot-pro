@@ -435,197 +435,209 @@
 		}
 	
 	/* ══════════════════════════════════════════
-	   MATCH DETAIL OVERLAY — dark theme
-	   ══════════════════════════════════════════ */
-	.md-overlay{
-	  position:fixed;inset:0;z-index:950;
-	  background:#0A0F1E;
-	  display:flex;flex-direction:column;
-	  max-width:430px;margin:0 auto;
-	  overflow:hidden;
-	  animation:fadeIn .18s ease;
-	}
-	.md-topbar{
-	  flex-shrink:0;
-	  display:flex;align-items:center;gap:10px;
-	  padding:10px 14px;
-	  background:#0A0F1E;
-	  border-bottom:1px solid rgba(255,255,255,0.07);
-	}
-	.md-back-btn{
-	  background:none;border:none;
-	  color:rgba(255,255,255,0.6);
-	  font-size:22px;cursor:pointer;
-	  padding:0;line-height:1;width:36px;
-	}
-	.md-topbar-title{
-	  flex:1;text-align:center;
-	  font-family:'Barlow Condensed',sans-serif;
-	  font-size:12px;font-weight:700;
-	  color:#6B7280;letter-spacing:1.5px;text-transform:uppercase;
-	}
-	.md-header{
-	  flex-shrink:0;
-	  background:linear-gradient(180deg,#0d1424 0%,#141B2B 100%);
-	  border-bottom:1px solid rgba(255,255,255,0.07);
-	  padding:14px 16px 12px;
-	  position:relative;overflow:hidden;
-	}
-	.md-header-glow{
-	  content:'';position:absolute;inset:0;
-	  background:radial-gradient(ellipse 60% 80% at 50% -10%,rgba(255,107,74,0.08),transparent);
-	  pointer-events:none;
-	}
-	.md-league-row{
-	  font-family:'Barlow Condensed',sans-serif;font-size:11px;font-weight:600;
-	  color:#6B7280;letter-spacing:1.2px;text-transform:uppercase;
-	  margin-bottom:6px;display:flex;align-items:center;gap:6px;
-	}
-	.md-league-dot{width:5px;height:5px;border-radius:50%;background:#FF6B4A;flex-shrink:0;}
-	.md-scoreline{
-	  display:flex;align-items:center;justify-content:space-between;gap:8px;
-	  margin-bottom:6px;
-	}
-	.md-team-name{
-	  font-family:'Barlow Condensed',sans-serif;font-size:18px;font-weight:800;color:#fff;
-	  line-height:1.1;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;
-	}
-	.md-team-name.away{text-align:right;}
-	.md-score-center{flex-shrink:0;text-align:center;min-width:80px;display:flex;flex-direction:column;align-items:center;gap:3px;}
-	.md-score-nums{
-	  font-family:'Barlow Condensed',sans-serif;font-size:34px;font-weight:800;color:#fff;
-	  letter-spacing:-1px;line-height:1;
-	}
-	.md-score-nums.live{color:#FF6B4A;}
-	.md-datetime{font-size:11px;font-weight:500;color:#6B7280;text-align:center;margin-top:1px;}
-	.md-status-row{
-	  display:flex;align-items:center;justify-content:center;gap:8px;margin-bottom:6px;
-	}
-	.md-status-badge{
-	  display:inline-flex;align-items:center;gap:5px;
-	  padding:3px 10px;border-radius:20px;
-	  font-family:'Barlow Condensed',sans-serif;font-size:11px;font-weight:700;letter-spacing:0.5px;
-	}
-	.md-status-badge.live{background:rgba(244,67,54,0.15);color:#F44336;border:1px solid rgba(244,67,54,0.3);}
-	.md-status-badge.ht{background:rgba(255,193,7,0.12);color:#FFC107;border:1px solid rgba(255,193,7,0.25);}
-	.md-status-badge.ft{background:rgba(176,183,195,0.1);color:#B0B7C3;border:1px solid rgba(255,255,255,0.07);}
-	.md-status-badge.ns{background:rgba(66,165,245,0.1);color:#42A5F5;border:1px solid rgba(66,165,245,0.25);}
-	.live-dot{width:6px;height:6px;border-radius:50%;background:#F44336;animation:pulseDot 1.2s ease-in-out infinite;flex-shrink:0;}
-	@keyframes pulseDot{0%,100%{opacity:1;transform:scale(1);}50%{opacity:0.5;transform:scale(1.4);}}
-	.md-minute{font-family:'Barlow Condensed',sans-serif;font-size:13px;font-weight:700;color:#FF6B4A;}
-	.md-goals-row{
-	  display:flex;justify-content:space-between;margin-top:4px;
-	  font-size:11px;color:rgba(255,255,255,0.35);line-height:1.7;
-	}
-	.md-goal-scorer{white-space:nowrap;overflow:hidden;text-overflow:ellipsis;max-width:42%;}
-	.md-tabs{
-	  flex-shrink:0;display:flex;
-	  background:#141B2B;
-	  border-bottom:1px solid rgba(255,255,255,0.07);
-	  overflow-x:auto;scrollbar-width:none;
-	}
-	.md-tabs::-webkit-scrollbar{display:none;}
-	.md-tab-btn{
-	  flex:1;min-width:72px;height:48px;
-	  display:flex;align-items:center;justify-content:center;
-	  font-family:'Barlow Condensed',sans-serif;font-size:11px;font-weight:700;
-	  letter-spacing:0.8px;text-transform:uppercase;
-	  color:#6B7280;border:none;background:none;cursor:pointer;
-	  border-bottom:2px solid transparent;
-	  transition:all .2s;white-space:nowrap;padding:0 10px;
-	}
-	.md-tab-btn.active{color:#FF6B4A;border-bottom-color:#FF6B4A;}
-	.md-content{
-	  flex:1;overflow-y:auto;-webkit-overflow-scrolling:touch;
-	  scrollbar-width:none;background:#0A0F1E;
-	}
-	.md-content::-webkit-scrollbar{display:none;}
-	.md-panel{padding:16px;padding-bottom:40px;}
-	.md-period-label{
-	  font-family:'Barlow Condensed',sans-serif;font-size:10px;font-weight:700;
-	  letter-spacing:2px;color:#6B7280;text-transform:uppercase;
-	  display:flex;align-items:center;gap:8px;margin:16px 0 10px;
-	}
-	.md-period-label::before,.md-period-label::after{content:'';flex:1;height:1px;background:rgba(255,255,255,0.07);}
-	.md-evt-row{
-	  display:flex;align-items:flex-start;gap:10px;
-	  padding:7px 0;border-bottom:1px solid rgba(255,255,255,0.04);
-	}
-	.md-evt-row.away-evt{flex-direction:row-reverse;text-align:right;}
-	.md-evt-row.away-evt .md-evt-content{text-align:right;}
-	.md-var-row{
-	  display:flex;align-items:center;gap:8px;
-	  padding:6px 10px;margin:4px 0;
-	  background:rgba(66,165,245,0.06);border:1px solid rgba(66,165,245,0.15);border-radius:8px;
-	}
-	.md-evt-min{
-	  font-family:'Barlow Condensed',sans-serif;font-size:12px;font-weight:700;
-	  color:#6B7280;min-width:38px;flex-shrink:0;padding-top:1px;
-	}
-	.md-evt-min.goal{color:#FF6B4A;}
-	.md-evt-icon{font-size:16px;flex-shrink:0;width:22px;text-align:center;padding-top:1px;}
-	.md-evt-content{flex:1;min-width:0;}
-	.md-evt-player{font-size:13px;font-weight:600;color:#fff;line-height:1.3;}
-	.md-evt-sub{font-size:11px;color:#6B7280;margin-top:1px;}
-	.md-evt-score{
-	  background:rgba(255,107,74,0.12);border:1px solid rgba(255,107,74,0.25);
-	  border-radius:6px;padding:2px 9px;
-	  font-family:'Barlow Condensed',sans-serif;font-size:12px;font-weight:800;color:#FF6B4A;
-	  flex-shrink:0;align-self:center;
-	}
-	.md-empty{
-	  display:flex;flex-direction:column;align-items:center;
-	  padding:48px 20px;gap:12px;text-align:center;
-	  font-size:14px;color:#6B7280;
-	}
-	.md-empty-small{
-	  padding:8px 0;color:#6B7280;font-size:12px;text-align:center;
-	}
-	.md-stat-section-hdr{
-	  font-family:'Barlow Condensed',sans-serif;font-size:12px;font-weight:800;
-	  color:#FF6B4A;letter-spacing:1px;text-transform:uppercase;
-	  margin:18px 0 8px;display:flex;align-items:center;gap:7px;
-	}
-	.md-stat-section-hdr::after{content:'';flex:1;height:1px;background:rgba(255,107,74,0.2);}
-	.md-stat-line{
-	  display:flex;align-items:center;gap:10px;
-	  padding:6px 2px 2px;font-size:13px;
-	}
-	.md-stat-val-h{min-width:32px;font-family:'Barlow Condensed',sans-serif;font-weight:700;color:#fff;text-align:right;}
-	.md-stat-label{flex:1;color:#B0B7C3;text-align:center;font-size:12px;}
-	.md-stat-val-a{min-width:32px;font-family:'Barlow Condensed',sans-serif;font-weight:700;color:#fff;text-align:left;}
-	.md-subtab{
-	  flex:1;padding:7px 4px;text-align:center;border:none;cursor:pointer;border-radius:8px;
-	  font-family:'Barlow Condensed',sans-serif;font-size:10px;font-weight:700;letter-spacing:0.5px;
-	  background:transparent;color:#6B7280;transition:all .2s;
-	}
-	.md-subtab.active{background:#FF6B4A;color:#fff;}
-	.md-player-row{
-	  display:flex;align-items:center;gap:10px;padding:9px 14px;
-	  border-bottom:1px solid rgba(255,255,255,0.04);cursor:pointer;transition:background .15s;
-	}
-	.md-player-row:last-child{border-bottom:none;}
-	.md-player-row:active{background:rgba(255,107,74,0.05);}
-	.md-info-section-title{
-	  font-family:'Barlow Condensed',sans-serif;font-size:10px;font-weight:700;
-	  color:#6B7280;letter-spacing:2px;text-transform:uppercase;
-	  margin-bottom:10px;display:flex;align-items:center;gap:8px;
-	}
-	.md-info-section-title::after{content:'';flex:1;height:1px;background:rgba(255,255,255,0.07);}
-	.md-player-sheet-bg{
-	  position:fixed;inset:0;z-index:200;
-	  background:rgba(0,0,0,0.7);backdrop-filter:blur(8px);
-	  display:flex;align-items:flex-end;justify-content:center;
-	  animation:fadeIn .15s ease;
-	}
-	.md-player-sheet-inner{
-	  width:100%;max-width:430px;
-	  background:#141B2B;border-radius:20px 20px 0 0;
-	  padding:20px 16px 36px;
-	  border-top:1px solid rgba(255,255,255,0.12);
-	  animation:mdSlideUp .22s cubic-bezier(.22,1,.36,1);
-	}
-	@keyframes mdSlideUp{from{transform:translateY(40px);opacity:0;}to{transform:translateY(0);opacity:1;}}
+```
+
+MATCH DETAIL OVERLAY — LIGHT THEME
+══════════════════════════════════════════ */
+.md-overlay{
+position:fixed;inset:0;z-index:950;
+background:#eef0f5;
+display:flex;flex-direction:column;
+max-width:430px;margin:0 auto;
+overflow:hidden;
+animation:fadeIn .18s ease;
+}
+.md-topbar{
+flex-shrink:0;
+display:flex;align-items:center;gap:10px;
+padding:10px 14px;
+background:#ffffff;
+border-bottom:1px solid rgba(0,0,0,0.07);
+}
+.md-back-btn{
+background:none;border:none;
+color:rgba(15,17,23,0.5);
+font-size:22px;cursor:pointer;
+padding:0;line-height:1;width:36px;
+}
+.md-topbar-title{
+flex:1;text-align:center;
+font-family:‘Barlow Condensed’,sans-serif;
+font-size:12px;font-weight:700;
+color:rgba(15,17,23,0.4);letter-spacing:1.5px;text-transform:uppercase;
+}
+.md-header{
+flex-shrink:0;
+background:linear-gradient(180deg,#ffffff 0%,#f8f9fc 100%);
+border-bottom:1px solid rgba(0,0,0,0.07);
+padding:14px 16px 12px;
+position:relative;overflow:hidden;
+}
+.md-header-glow{
+content:’’;position:absolute;inset:0;
+background:radial-gradient(ellipse 60% 80% at 50% -10%,rgba(0,193,112,0.06),transparent);
+pointer-events:none;
+}
+.md-league-row{
+font-family:‘Barlow Condensed’,sans-serif;font-size:11px;font-weight:600;
+color:rgba(15,17,23,0.4);letter-spacing:1.2px;text-transform:uppercase;
+margin-bottom:6px;display:flex;align-items:center;gap:6px;
+}
+.md-league-dot{width:5px;height:5px;border-radius:50%;background:#00c170;flex-shrink:0;}
+.md-scoreline{
+display:flex;align-items:center;justify-content:space-between;gap:8px;
+margin-bottom:8px;
+}
+.md-team-name{
+flex:1;font-family:‘Barlow Condensed’,sans-serif;
+font-size:18px;font-weight:800;color:#0f1117;
+overflow:hidden;text-overflow:ellipsis;white-space:nowrap;
+line-height:1.1;
+}
+.md-team-name.away{text-align:right;}
+.md-score-block{
+display:flex;align-items:center;gap:6px;flex-shrink:0;
+}
+.md-score{
+font-family:‘Barlow Condensed’,sans-serif;
+font-size:48px;font-weight:900;color:#00c170;
+line-height:1;letter-spacing:-1px;
+}
+.md-score-sep{
+font-family:‘Barlow Condensed’,sans-serif;
+font-size:32px;font-weight:300;color:rgba(15,17,23,0.25);
+line-height:1;
+}
+.md-status-row{
+display:flex;align-items:center;justify-content:center;gap:8px;
+margin-top:4px;
+}
+.md-status-badge{
+font-family:‘Barlow Condensed’,sans-serif;
+font-size:11px;font-weight:800;letter-spacing:1px;
+padding:3px 10px;border-radius:20px;
+background:rgba(0,193,112,0.12);color:#00c170;
+}
+.md-status-badge.live{
+background:rgba(229,53,53,0.1);color:#e53535;
+animation:pulse 1.5s infinite;
+}
+.md-status-badge.done{background:rgba(15,17,23,0.06);color:rgba(15,17,23,0.45);}
+.md-scorers{
+font-size:11px;color:rgba(15,17,23,0.45);
+margin-top:6px;text-align:center;
+white-space:nowrap;overflow:hidden;text-overflow:ellipsis;
+}
+/* Advance pts badge */
+.md-adv{
+display:flex;align-items:center;gap:6px;
+margin-top:6px;justify-content:center;
+}
+.md-adv-badge{
+font-size:11px;font-weight:700;color:#00c170;
+background:rgba(0,193,112,0.1);border:1px solid rgba(0,193,112,0.2);
+padding:2px 10px;border-radius:20px;
+}
+/* Tabs */
+.md-tabs{
+display:flex;border-bottom:1px solid rgba(0,0,0,0.07);
+background:#ffffff;flex-shrink:0;
+overflow-x:auto;
+}
+.md-tab{
+flex:1;min-width:fit-content;
+font-family:‘Barlow Condensed’,sans-serif;
+font-size:11px;font-weight:700;letter-spacing:1px;text-transform:uppercase;
+color:rgba(15,17,23,0.4);padding:10px 10px;
+border:none;background:none;cursor:pointer;
+border-bottom:2px solid transparent;
+transition:color .15s,border-color .15s;white-space:nowrap;
+}
+.md-tab.active{color:#00c170;border-bottom-color:#00c170;}
+/* Content */
+.md-content{flex:1;overflow-y:auto;background:#eef0f5;}
+.md-section{background:#ffffff;border-radius:14px;margin:10px;padding:14px;}
+.md-section-title{
+font-family:‘Barlow Condensed’,sans-serif;
+font-size:10px;font-weight:800;letter-spacing:1.5px;
+text-transform:uppercase;color:rgba(15,17,23,0.35);
+text-align:center;margin:14px 0 6px;
+display:flex;align-items:center;gap:8px;
+}
+.md-section-title::before,.md-section-title::after{
+content:’’;flex:1;height:1px;background:rgba(0,0,0,0.07);
+}
+/* Timeline events */
+.md-evt-row{
+display:flex;align-items:flex-start;gap:10px;
+padding:10px 14px;border-bottom:1px solid rgba(0,0,0,0.05);
+}
+.md-evt-row:last-child{border-bottom:none;}
+.md-evt-row.home{flex-direction:row;}
+.md-evt-row.away{flex-direction:row-reverse;}
+.md-evt-min{
+font-family:‘Barlow Condensed’,sans-serif;
+font-size:13px;font-weight:800;color:#e53535;
+min-width:36px;
+}
+.md-evt-row.away .md-evt-min{text-align:right;}
+.md-evt-icon{font-size:16px;flex-shrink:0;}
+.md-evt-info{flex:1;min-width:0;}
+.md-evt-name{
+font-size:13px;font-weight:700;color:#0f1117;
+overflow:hidden;text-overflow:ellipsis;white-space:nowrap;
+}
+.md-evt-sub{font-size:11px;color:rgba(15,17,23,0.45);margin-top:2px;}
+.md-evt-score{
+font-family:‘Barlow Condensed’,sans-serif;
+font-size:13px;font-weight:900;
+background:#00c170;color:#fff;
+padding:2px 8px;border-radius:6px;
+white-space:nowrap;flex-shrink:0;
+}
+.md-var-row{
+display:flex;align-items:center;gap:8px;
+padding:8px 14px;background:rgba(66,165,245,0.06);
+border-bottom:1px solid rgba(66,165,245,0.1);
+}
+.md-empty{
+text-align:center;padding:40px 20px;
+color:rgba(15,17,23,0.35);font-size:13px;
+}
+.md-empty-small{
+text-align:center;padding:16px;
+color:rgba(15,17,23,0.3);font-size:12px;
+}
+/* Stats bars */
+.md-stat-row{margin-bottom:14px;}
+.md-stat-labels{
+display:flex;justify-content:space-between;
+margin-bottom:5px;
+}
+.md-stat-val{
+font-family:‘Barlow Condensed’,sans-serif;
+font-size:15px;font-weight:800;color:#0f1117;
+}
+.md-stat-lbl{
+font-size:10px;font-weight:700;color:rgba(15,17,23,0.35);
+letter-spacing:.8px;text-transform:uppercase;
+flex:1;text-align:center;padding:0 8px;
+}
+.md-stat-bar{height:6px;background:#eef0f5;border-radius:3px;overflow:hidden;display:flex;}
+.md-stat-h{height:100%;background:#00c170;border-radius:3px;transition:width .6s ease;}
+.md-stat-a{height:100%;background:#2563eb;border-radius:3px;transition:width .6s ease;margin-left:auto;}
+/* Player sheet */
+.md-ps{
+position:absolute;inset:0;z-index:10;
+background:#ffffff;
+display:flex;flex-direction:column;
+animation:mdSlideUp .22s cubic-bezier(.22,1,.36,1);
+border-top:1px solid rgba(0,0,0,0.07);
+}
+@keyframes mdSlideUp{from{transform:translateY(40px);opacity:0;}to{transform:translateY(0);opacity:1;}}
+@keyframes blink{0%,100%{opacity:1}50%{opacity:0}}
+
+```
 	</style>
 </head>
 <body>
@@ -1863,8 +1875,8 @@
 					
 					  // ── LOADING SCREEN ──
 					  if(isLoading&&!isPartial){
-					    return React.createElement("div",{style:{position:"fixed",inset:0,zIndex:950,background:"#0A0F1E",display:"flex",flexDirection:"column",alignItems:"center",justifyContent:"center",gap:16}},
-					      React.createElement("div",{style:{width:40,height:40,border:"3px solid rgba(255,107,74,0.2)",borderTopColor:"#FF6B4A",borderRadius:"50%",animation:"spin .7s linear infinite"}}),
+					    return React.createElement("div",{style:{position:"fixed",inset:0,zIndex:950,background:"#ffffff",display:"flex",flexDirection:"column",alignItems:"center",justifyContent:"center",gap:16}},
+					      React.createElement("div",{style:{width:40,height:40,border:"3px solid rgba(255,107,74,0.2)",borderTopColor:"#00c170",borderRadius:"50%",animation:"spin .7s linear infinite"}}),
 					      React.createElement("div",{style:{fontFamily:"'Barlow Condensed',sans-serif",fontSize:14,color:"rgba(255,255,255,0.4)",letterSpacing:2,textTransform:"uppercase"}},
 					        "Chargement..."
 					      ),
@@ -1873,10 +1885,10 @@
 					  }
 					
 					  if(state.error){
-					    return React.createElement("div",{style:{position:"fixed",inset:0,zIndex:950,background:"#0A0F1E",display:"flex",flexDirection:"column",alignItems:"center",justifyContent:"center",gap:12,padding:24}},
+					    return React.createElement("div",{style:{position:"fixed",inset:0,zIndex:950,background:"#ffffff",display:"flex",flexDirection:"column",alignItems:"center",justifyContent:"center",gap:12,padding:24}},
 					      React.createElement("div",{style:{fontSize:44}},"⚠️"),
 					      React.createElement("div",{style:{fontSize:14,color:"rgba(255,255,255,0.5)",textAlign:"center"}}),
-					      React.createElement("button",{onClick:onClose,style:{background:"#FF6B4A",border:"none",color:"#fff",borderRadius:12,padding:"11px 24px",fontFamily:"'Barlow Condensed',sans-serif",fontSize:14,fontWeight:700,cursor:"pointer",marginTop:8}},"Retour"),
+					      React.createElement("button",{onClick:onClose,style:{background:"#00c170",border:"none",color:"#fff",borderRadius:12,padding:"11px 24px",fontFamily:"'Barlow Condensed',sans-serif",fontSize:14,fontWeight:700,cursor:"pointer",marginTop:8}},"Retour"),
 					      React.createElement("button",{onClick:onClose,style:{position:"absolute",top:16,left:16,background:"none",border:"none",color:"rgba(255,255,255,0.5)",fontSize:24,cursor:"pointer",padding:0}},"←")
 					    );
 					  }
@@ -1927,8 +1939,8 @@
 					    }
 					
 					    const sorted=[...events].sort((a,b)=>(a.time?.elapsed||0)-(b.time?.elapsed||0));
-					    const firstH=sorted.filter(e=>(e.time?.elapsed||0)<=45);
-					    const secondH=sorted.filter(e=>(e.time?.elapsed||0)>45);
+					    const firstH=evtsW.filter(e=>(e.time?.elapsed||0)<=45);
+					    const secondH=evtsW.filter(e=>(e.time?.elapsed||0)>45);
 					    const htH=fix.score?.halftime?.home??0,htA=fix.score?.halftime?.away??0;
 					    const fgH=fix.goals?.home??0,fgA=fix.goals?.away??0;
 					
@@ -2036,7 +2048,7 @@
 					                React.createElement("div",{className:"md-stat-val-a"},[String(av)])
 					              ),
 					              React.createElement("div",{style:{display:"flex",gap:3,marginBottom:8,height:3}},
-					                React.createElement("div",{style:{flex:hp,background:"#FF6B4A",borderRadius:2,transition:"flex .5s"}}),
+					                React.createElement("div",{style:{flex:hp,background:"#00c170",borderRadius:2,transition:"flex .5s"}}),
 					                React.createElement("div",{style:{flex:100-hp,background:"#42A5F5",borderRadius:2,transition:"flex .5s"}})
 					              )
 					            );
@@ -2057,7 +2069,7 @@
 					      if(!lu)return null;
 					      const team=lu.team;
 					      const teamPlrs=players.find(t=>t.team?.id===team?.id)?.players||[];
-					      const accentColor=isHm?"#FF6B4A":"#42A5F5";
+					      const accentColor=isHm?"#00c170":"#42A5F5";
 					      const borderColor=isHm?"rgba(255,107,74,0.3)":"rgba(66,165,245,0.3)";
 					
 					      const renderPlayer=(p,isSub)=>{
@@ -2082,7 +2094,7 @@
 					        );
 					      };
 					
-					      return React.createElement("div",{key:team?.id,style:{background:"#141B2B",border:"1px solid rgba(255,255,255,0.07)",borderRadius:16,overflow:"hidden",marginBottom:8}},
+					      return React.createElement("div",{key:team?.id,style:{background:"#f8f9fc",border:"1px solid rgba(255,255,255,0.07)",borderRadius:16,overflow:"hidden",marginBottom:8}},
 					        React.createElement("div",{style:{display:"flex",alignItems:"center",gap:10,padding:"12px 14px",borderBottom:"1px solid rgba(255,255,255,0.07)",background:isHm?"linear-gradient(90deg,rgba(255,107,74,0.06),transparent)":"linear-gradient(90deg,rgba(66,165,245,0.06),transparent)"}},
 					          React.createElement("img",{src:team?.logo,style:{width:32,height:32,objectFit:"contain"},onError:e=>{e.target.style.display="none"}}),
 					          React.createElement("div",null,
@@ -2133,28 +2145,28 @@
 					
 					    return React.createElement(React.Fragment,null,
 					      React.createElement("div",{style:{display:"grid",gridTemplateColumns:"1fr 1fr 1fr",gap:8,marginBottom:16}},
-					        [{val:hW,label:`${hn.split(" ")[0]}\nVictoires`,color:"#FF6B4A"},
+					        [{val:hW,label:`${hn.split(" ")[0]}\nVictoires`,color:"#00c170"},
 					         {val:draws,label:"Matchs\nNuls",color:"#B0B7C3"},
 					         {val:aW,label:`${an.split(" ")[0]}\nVictoires`,color:"#42A5F5"}
 					        ].map(({val,label,color})=>
-					          React.createElement("div",{key:label,style:{background:"#141B2B",border:"1px solid rgba(255,255,255,0.07)",borderRadius:12,padding:"12px 8px",textAlign:"center"}},
+					          React.createElement("div",{key:label,style:{background:"#f8f9fc",border:"1px solid rgba(255,255,255,0.07)",borderRadius:12,padding:"12px 8px",textAlign:"center"}},
 					            React.createElement("div",{style:{fontFamily:"'Barlow Condensed',sans-serif",fontSize:24,fontWeight:800,color,lineHeight:1}},[val]),
 					            React.createElement("div",{style:{fontSize:10,color:"#6B7280",marginTop:4,lineHeight:1.3,whiteSpace:"pre-line"}},[label])
 					          )
 					        )
 					      ),
 					      React.createElement("div",{style:{display:"grid",gridTemplateColumns:"1fr 1fr",gap:8,marginBottom:16}},
-					        React.createElement("div",{style:{background:"#141B2B",border:"1px solid rgba(255,255,255,0.07)",borderRadius:10,padding:10,display:"flex",alignItems:"center",gap:8}},
-					          React.createElement("div",{style:{fontFamily:"'Barlow Condensed',sans-serif",fontSize:18,fontWeight:800,color:"#FF6B4A"}},[h2h.length]),
+					        React.createElement("div",{style:{background:"#f8f9fc",border:"1px solid rgba(255,255,255,0.07)",borderRadius:10,padding:10,display:"flex",alignItems:"center",gap:8}},
+					          React.createElement("div",{style:{fontFamily:"'Barlow Condensed',sans-serif",fontSize:18,fontWeight:800,color:"#00c170"}},[h2h.length]),
 					          React.createElement("div",{style:{fontSize:11,color:"#6B7280",lineHeight:1.3}},"Total matchs")
 					        ),
-					        React.createElement("div",{style:{background:"#141B2B",border:"1px solid rgba(255,255,255,0.07)",borderRadius:10,padding:10,display:"flex",alignItems:"center",gap:8}},
-					          React.createElement("div",{style:{fontFamily:"'Barlow Condensed',sans-serif",fontSize:18,fontWeight:800,color:"#FF6B4A"}},[`${hGoals}-${aGoals}`]),
+					        React.createElement("div",{style:{background:"#f8f9fc",border:"1px solid rgba(255,255,255,0.07)",borderRadius:10,padding:10,display:"flex",alignItems:"center",gap:8}},
+					          React.createElement("div",{style:{fontFamily:"'Barlow Condensed',sans-serif",fontSize:18,fontWeight:800,color:"#00c170"}},[`${hGoals}-${aGoals}`]),
 					          React.createElement("div",{style:{fontSize:11,color:"#6B7280",lineHeight:1.3}},"Buts Dom./Ext.")
 					        )
 					      ),
 					      years.map(year=>React.createElement("div",{key:year},
-					        React.createElement("div",{style:{fontFamily:"'Barlow Condensed',sans-serif",fontSize:14,fontWeight:800,color:"#FF6B4A",margin:"16px 0 8px",paddingBottom:6,borderBottom:"1px solid rgba(255,107,74,0.2)"}},[year]),
+					        React.createElement("div",{style:{fontFamily:"'Barlow Condensed',sans-serif",fontSize:14,fontWeight:800,color:"#00c170",margin:"16px 0 8px",paddingBottom:6,borderBottom:"1px solid rgba(255,107,74,0.2)"}},[year]),
 					        byYear[year].map((m,i)=>{
 					          const mg=m.goals.home??0,ag2=m.goals.away??0;
 					          const isHm=m.teams.home.id===hid;
@@ -2186,7 +2198,7 @@
 					          React.createElement("thead",null,
 					            React.createElement("tr",null,
 					              [{w:28,label:"#"},{w:null,label:"Équipe",cls:"team-col"},{w:null,label:"MJ"},{w:null,label:"B"},{w:null,label:"PTS"},{w:null,label:"Évol"}].map((h,i)=>
-					                React.createElement("th",{key:i,style:{background:"#141B2B",fontFamily:"'Barlow Condensed',sans-serif",fontSize:9,fontWeight:700,color:"#6B7280",letterSpacing:1,textTransform:"uppercase",padding:"8px 4px",textAlign:h.cls?"left":"center",paddingLeft:h.cls?10:4,borderBottom:"1px solid rgba(255,255,255,0.12)",width:h.w||undefined}},[h.label])
+					                React.createElement("th",{key:i,style:{background:"#f8f9fc",fontFamily:"'Barlow Condensed',sans-serif",fontSize:9,fontWeight:700,color:"#6B7280",letterSpacing:1,textTransform:"uppercase",padding:"8px 4px",textAlign:h.cls?"left":"center",paddingLeft:h.cls?10:4,borderBottom:"1px solid rgba(255,255,255,0.12)",width:h.w||undefined}},[h.label])
 					              )
 					            )
 					          ),
@@ -2199,7 +2211,7 @@
 					              const rowBg=isHm?"rgba(255,107,74,0.07)":isAw?"rgba(66,165,245,0.06)":"transparent";
 					              return React.createElement("tr",{key:r.team?.id,style:{borderBottom:"1px solid rgba(255,255,255,0.04)",background:rowBg}},
 					                React.createElement("td",{style:{padding:"9px 4px",textAlign:"center"}},
-					                  React.createElement("span",{style:{fontFamily:"'Barlow Condensed',sans-serif",fontSize:13,fontWeight:800,color:isTop?"#FF6B4A":"#6B7280"}},[r.rank])
+					                  React.createElement("span",{style:{fontFamily:"'Barlow Condensed',sans-serif",fontSize:13,fontWeight:800,color:isTop?"#00c170":"#6B7280"}},[r.rank])
 					                ),
 					                React.createElement("td",{style:{padding:"9px 4px",textAlign:"left",paddingLeft:10}},
 					                  React.createElement("div",{style:{display:"flex",alignItems:"center",gap:7}},
@@ -2210,7 +2222,7 @@
 					                React.createElement("td",{style:{padding:"9px 4px",textAlign:"center",fontSize:12,color:"#B0B7C3"}},[r.all?.played??"-"]),
 					                React.createElement("td",{style:{padding:"9px 4px",textAlign:"center",fontSize:11,color:"#B0B7C3"}},[`${bFor}:${bAga}`]),
 					                React.createElement("td",{style:{padding:"9px 4px",textAlign:"center"}},
-					                  React.createElement("span",{style:{fontFamily:"'Barlow Condensed',sans-serif",fontSize:14,fontWeight:800,color:isTop?"#FF6B4A":"#fff"}},[r.points])
+					                  React.createElement("span",{style:{fontFamily:"'Barlow Condensed',sans-serif",fontSize:14,fontWeight:800,color:isTop?"#00c170":"#fff"}},[r.points])
 					                ),
 					                React.createElement("td",{style:{padding:"9px 4px",textAlign:"center"}},
 					                  React.createElement("span",{style:{fontSize:11,fontWeight:700,color:gd>0?"#4CAF50":gd<0?"#F44336":"#6B7280"}},[gd>0?`▲ +${gd}`:gd<0?`▼ ${gd}`:"—"])
@@ -2245,7 +2257,7 @@
 					    ].filter(Boolean);
 					    return React.createElement("div",{style:{marginTop:20}},
 					      React.createElement("div",{className:"md-info-section-title"},"Informations match"),
-					      React.createElement("div",{style:{background:"#141B2B",border:"1px solid rgba(255,255,255,0.07)",borderRadius:14,overflow:"hidden"}},
+					      React.createElement("div",{style:{background:"#f8f9fc",border:"1px solid rgba(255,255,255,0.07)",borderRadius:14,overflow:"hidden"}},
 					        infos.map((r,i)=>React.createElement("div",{key:i,style:{display:"flex",alignItems:"center",gap:12,padding:"12px 14px",borderBottom:i<infos.length-1?"1px solid rgba(255,255,255,0.04)":"none"}},
 					          React.createElement("span",{style:{fontSize:17,flexShrink:0,width:24,textAlign:"center"}},[r.icon]),
 					          React.createElement("div",{style:{flex:1,fontSize:13,color:"#B0B7C3",lineHeight:1.4}},[r.label])
@@ -2257,7 +2269,7 @@
 					  // ── MAIN RENDER ──
 					  return React.createElement("div",{className:"md-overlay"},
 					    // Loading bar
-					    isPartial?React.createElement("div",{style:{position:"absolute",top:0,left:0,width:"70%",height:2,background:"linear-gradient(90deg,#FF6B4A,#FF9A7C)",zIndex:999,borderRadius:"0 2px 2px 0",animation:"shimmer 1.2s linear infinite"}}):null,
+					    isPartial?React.createElement("div",{style:{position:"absolute",top:0,left:0,width:"70%",height:2,background:"linear-gradient(90deg,#00c170,#FF9A7C)",zIndex:999,borderRadius:"0 2px 2px 0",animation:"shimmer 1.2s linear infinite"}}):null,
 					
 					    // Top bar
 					    React.createElement("div",{className:"md-topbar"},
@@ -2322,7 +2334,7 @@
 					
 					      // STATS
 					      tab==="stats"?React.createElement("div",{className:"md-panel"},
-					        React.createElement("div",{style:{display:"flex",gap:4,marginBottom:16,background:"#141B2B",borderRadius:10,padding:3}},
+					        React.createElement("div",{style:{display:"flex",gap:4,marginBottom:16,background:"#f8f9fc",borderRadius:10,padding:3}},
 					          [{id:"all",label:"Match"},{id:"first",label:"1re MT"},{id:"second",label:"2e MT"}].map(p=>
 					            React.createElement("button",{key:p.id,className:`md-subtab${period===p.id?" active":""}`,onClick:()=>setPeriod(p.id)},[p.label])
 					          )
@@ -2348,7 +2360,7 @@
 					      React.createElement("div",{className:"md-player-sheet-inner"},
 					        React.createElement("button",{onClick:()=>setPlayerSheet(null),style:{float:"right",background:"none",border:"none",color:"#6B7280",fontSize:22,cursor:"pointer"}},"✕"),
 					        React.createElement("div",{style:{display:"flex",alignItems:"center",gap:14,marginBottom:18}},
-					          React.createElement("div",{style:{width:56,height:56,borderRadius:"50%",border:"2px solid #FF6B4A",overflow:"hidden",background:"#1E2738",display:"flex",alignItems:"center",justifyContent:"center",fontSize:20,color:"#6B7280",flexShrink:0}},
+					          React.createElement("div",{style:{width:56,height:56,borderRadius:"50%",border:"2px solid #00c170",overflow:"hidden",background:"#1E2738",display:"flex",alignItems:"center",justifyContent:"center",fontSize:20,color:"#6B7280",flexShrink:0}},
 					            playerSheet.photo?React.createElement("img",{src:playerSheet.photo,style:{width:"100%",height:"100%",objectFit:"cover"},onError:e=>{e.target.parentNode.textContent="👤"}}):"👤"
 					          ),
 					          React.createElement("div",null,
@@ -2369,7 +2381,7 @@
 					             {val:playerSheet.stats.cards?.red??0,lbl:"🟥",color:"#F44336"},
 					            ].map(({val,lbl,color})=>
 					              React.createElement("div",{key:lbl,style:{background:"#1E2738",borderRadius:10,padding:10,textAlign:"center"}},
-					                React.createElement("div",{style:{fontFamily:"'Barlow Condensed',sans-serif",fontSize:20,fontWeight:800,color:color||"#FF6B4A"}},[val]),
+					                React.createElement("div",{style:{fontFamily:"'Barlow Condensed',sans-serif",fontSize:20,fontWeight:800,color:color||"#00c170"}},[val]),
 					                React.createElement("div",{style:{fontSize:10,color:"#6B7280",marginTop:3}},[lbl])
 					              )
 					            )
