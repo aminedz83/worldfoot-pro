@@ -2850,7 +2850,7 @@
 				      const p_events  =started?api(`/fixtures/events?fixture=${fid}`,detailTTL,sig).then(d=>update({events:d})).catch(()=>{}):Promise.resolve();
 				      const p_stats   =started?api(`/fixtures/statistics?fixture=${fid}`,detailTTL,sig).then(d=>update({stats:d})).catch(()=>{}):Promise.resolve();
 				      const p_lineups =api(`/fixtures/lineups?fixture=${fid}`,detailTTL,sig).then(d=>update({lineups:d})).catch(()=>{});
-				      const p_players =started?api(`/fixtures/players?fixture=${fid}`,detailTTL,sig).then(d=>update({players:d})).catch(()=>{}):Promise.resolve();
+				      const p_players =api(`/fixtures/players?fixture=${fid}`,detailTTL,sig).then(d=>update({players:d})).catch(()=>{});
 				      const p_h2h     =api(`/fixtures/headtohead?h2h=${hid}-${aid}&last=50`,86400000,sig).then(d=>update({h2h:d})).catch(()=>{});
 				      const p_inj     =api(`/injuries?fixture=${fid}`,isDone?10800000:3600000,sig).then(d=>update({injuries:d})).catch(()=>{});
 
@@ -2878,37 +2878,44 @@
 				        },60000);
 				      }
 
-				      // ── FALLBACK lineups: si lineups vides → retry players puis vue liste ──
+				      // ── FALLBACK lineups: si lineups vides après allSettled ──
+				      // p_lineups et p_players sont déjà fetch, on lit le résultat via closures
 				      {
-				        const det=await new Promise(res=>setDet(prev=>{res(prev);return prev;}));
-				        const hasLineups=det?.data?.lineups?.length>0;
-				        const hasPlayers=det?.data?.players?.length>0;
-				        if(!hasLineups){
-				          // Si players déjà dispo → construire vue liste directement
-				          // Sinon → retry /fixtures/players explicitement (petites ligues)
-				          let plrs=det?.data?.players||[];
-				          if(!hasPlayers){
+				        let resolvedLineups=[],resolvedPlayers=[];
+				        await new Promise(res=>setDet(prev=>{
+				          resolvedLineups=prev?.data?.lineups||[];
+				          resolvedPlayers=prev?.data?.players||[];
+				          res();
+				          return prev;
+				        }));
+				        if(!resolvedLineups.length){
+				          // Pas de lineups → retry players si vides (matchs NS ou petites ligues)
+				          let plrs=resolvedPlayers;
+				          if(!plrs.length){
 				            try{plrs=await api(`/fixtures/players?fixture=${fid}`,detailTTL,sig);}catch(e){plrs=[];}
+				            if(plrs.length)setDet(prev=>prev?.data?{...prev,data:{...prev.data,players:plrs}}:prev);
 				          }
 				          if(plrs.length){
-				            // Construire vue liste : titulaires = minutes>0, remplaçants = entrés en jeu
+				            const isPreMatch=!started;
 				            const pseudo=plrs.map(team=>{
-				              const all=(team.players||[]);
-				              const starters=all.filter(p=>(p.statistics?.[0]?.games?.minutes||0)>0||(p.statistics?.[0]?.games?.substitute===false))
-				                .sort((a,b)=>(b.statistics?.[0]?.games?.minutes||0)-(a.statistics?.[0]?.games?.minutes||0));
-				              const subs=all.filter(p=>p.statistics?.[0]?.games?.substitute===true&&(p.statistics?.[0]?.games?.minutes||0)>0);
-				              const unused=all.filter(p=>!starters.includes(p)&&!subs.includes(p));
+				              const all=team.players||[];
+				              // Pré-match: tous les joueurs = titulaires potentiels (pas de stats minutes)
+				              // Post-match: triés par minutes jouées
+				              const starters=isPreMatch
+				                ?all.filter(p=>p.statistics?.[0]?.games?.substitute===false||p.statistics?.[0]?.games?.minutes>0||all.indexOf(p)<11)
+				                :all.filter(p=>(p.statistics?.[0]?.games?.minutes||0)>0||(p.statistics?.[0]?.games?.substitute===false))
+				                  .sort((a,b)=>(b.statistics?.[0]?.games?.minutes||0)-(a.statistics?.[0]?.games?.minutes||0));
+				              const subs=all.filter(p=>!starters.includes(p));
 				              return{
 				                team:team.team,formation:null,coach:{name:null},_listView:true,
-				                startXI:starters.slice(0,15).map(p=>({player:{id:p.player?.id,name:p.player?.name,number:p.statistics?.[0]?.games?.number||null,pos:p.statistics?.[0]?.games?.position||null,photo:p.player?.photo||null,minutes:p.statistics?.[0]?.games?.minutes||null}})),
-				                substitutes:[...subs,...unused].slice(0,12).map(p=>({player:{id:p.player?.id,name:p.player?.name,number:p.statistics?.[0]?.games?.number||null,pos:null,photo:p.player?.photo||null,minutes:p.statistics?.[0]?.games?.minutes||0}})),
+				                startXI:starters.slice(0,11).map(p=>({player:{id:p.player?.id,name:p.player?.name,number:p.statistics?.[0]?.games?.number||null,pos:p.statistics?.[0]?.games?.position||null,photo:p.player?.photo||null}})),
+				                substitutes:subs.slice(0,12).map(p=>({player:{id:p.player?.id,name:p.player?.name,number:p.statistics?.[0]?.games?.number||null,pos:null,photo:p.player?.photo||null}})),
 				              };
 				            });
-				            setDet(prev=>prev?.data?{...prev,data:{...prev.data,players:plrs,lineups:pseudo,_fallbackLineups:true}}:prev);
+				            setDet(prev=>prev?.data?{...prev,data:{...prev.data,lineups:pseudo,_fallbackLineups:true}}:prev);
 				          }
 				        }
 				      }
-
 
 				      // ── FALLBACK stats: retry 3s si vides ──
 				      setDet(prev=>{
@@ -3459,7 +3466,7 @@
 					      // Phase 3 — Lineups + Players + H2H + Injuries (arrière-plan)
 					      const[lineups,plrs,h2h,injuries]=await Promise.all([
 					        api(`/fixtures/lineups?fixture=${fid}`,detailTTL,sig).catch(()=>[]),
-					        started?api(`/fixtures/players?fixture=${fid}`,detailTTL,sig).catch(()=>[]):Promise.resolve([]),
+					        api(`/fixtures/players?fixture=${fid}`,detailTTL,sig).catch(()=>[]),
 					        api(`/fixtures/headtohead?h2h=${hid}-${aid}&last=50`,86400000,sig).catch(()=>[]),
 					        api(`/injuries?fixture=${fid}`,isDone?10800000:3600000,sig).catch(()=>[]),
 					      ]);
