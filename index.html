@@ -2958,10 +2958,24 @@
 					    return()=>{c=true;};
 					  },[selRound,lid,s]);
 
-					  const zc=desc=>{const d=(desc??"").toLowerCase();if(d.includes("champions"))return T.blueB;if(d.includes("europa")&&!d.includes("conf"))return T.gold;if(d.includes("conf"))return T.purpleB;if(d.includes("releg"))return T.red;return"transparent";};
-					  const SEL={width:"100%",background:T.bg2,border:`1px solid ${T.bg4}`,color:T.t1,borderRadius:8,padding:"10px 13px",fontSize:13,outline:"none",cursor:"pointer"};
-					  const REGIONS2=[...new Set(LEAGUES.map(l=>l.region))];
+					  const zc=desc=>{
+```
 
+const d=(desc??””).toLowerCase();
+if(d.includes(“promotion”))return”#00c170”;
+if(d.includes(“champions league”)||d.includes(“ligue des champions”)||(d.includes(“champions”)&&!d.includes(“conf”)))return”#1a56db”;
+if(d.includes(“europa league”)||d.includes(“ligue europa”))return”#7b1f1f”;
+if(d.includes(“conference”)||d.includes(“conférence”)||d.includes(“conf”))return”#a67c00”;
+if(d.includes(“releg”)||d.includes(“relegation”)||d.includes(“relégation”))return”#e53935”;
+if(d.includes(“playoff”)||d.includes(“play-off”)||d.includes(“barrage”))return”#f59e0b”;
+if(d.includes(“europa”))return”#7b1f1f”;
+if(d.includes(“qualif”))return”#1a56db”;
+return”transparent”;
+};
+const SEL={width:“100%”,background:T.bg2,border:`1px solid ${T.bg4}`,color:T.t1,borderRadius:8,padding:“10px 13px”,fontSize:13,outline:“none”,cursor:“pointer”};
+const REGIONS2=[…new Set(LEAGUES.map(l=>l.region))];
+
+```
 					  // Regrouper les tours  liminatoires (exclure les tours de groupes)
 					  const knockoutRounds=rounds.filter(r=>{const rl=r.toLowerCase();return !rl.includes("group")&&!rl.includes("league phase")&&!rl.includes("qualifying");});
 					  const groupRounds=rounds.filter(r=>{const rl=r.toLowerCase();return rl.includes("group")||rl.includes("league phase");});
@@ -3053,37 +3067,41 @@
 					            {grp.map(r=><StRow key={r.rank+"-"+gi} r={r} zc={zc} viewMode={viewMode}/>)}
 					          </div>;
 					        })}
-					        {/* Légende dynamique */}
-					        {(st==="ok"||st==="groups")&&<div style={{padding:"16px 14px 32px",background:"#f7f8fa"}}>
-					          <div className="bc" style={{fontSize:11,fontWeight:800,color:"#555",letterSpacing:.8,marginBottom:10,textAlign:"center"}}>LÉGENDE</div>
-					          <div style={{display:"flex",flexDirection:"column",gap:4}}>
-					            {(()=>{
-					              const region=byId(lid)?.region||"";
-					              const isAfrica=region==="Afrique"||region==="Algérie";
-					              return[
-					                {c:"#00b86b", lb: isAfrica?"Ligue des Champions CAF / Qualification":"Ligue des Champions UEFA / Qualification"},
-					                {c:"#42a5f5", lb: isAfrica?"CAF Confederation Cup":"Ligue Europa / Conférence UEFA"},
-					                {c:"rgba(150,150,150,.5)", lb:"Mi-tableau"},
-					                {c:"#e53535", lb:"Relégation / Barrage"},
-					              ];
-					            })().map(({c,lb})=><div key={lb} style={{
-					              display:"flex",alignItems:"center",gap:10,
-					              padding:"10px 12px",
-					              background:"#fff",
-					              borderRadius:8,
-					              border:"1px solid rgba(0,0,0,.07)",
-					              borderLeft:`4px solid ${c}`,
-					            }}>
-					              <span className="bc" style={{fontSize:12,color:"#444",fontWeight:500}}>{lb}</span>
-					            </div>)}
-					          </div>
-					          <div className="bc" style={{fontSize:10,color:"#aaa",marginTop:12,textAlign:"center"}}>
-					            Forme: <span style={{color:"#00b86b",fontWeight:700}}>V</span>=Victoire · <span style={{color:"#888"}}>N</span>=Nul · <span style={{color:"#e53535",fontWeight:700}}>D</span>=Défaite
-					          </div>
-					          <div className="bc" style={{fontSize:10,color:"#bbb",marginTop:6,textAlign:"center"}}>
-					            Score = Buts Pour : Buts Contre
-					          </div>
-					        </div>}
+					        {/* Légende dynamique depuis descriptions API */}
+					        {(st==="ok"||st==="groups")&&(()=>{
+					          // allGroups = tableau de groupes, chaque groupe = tableau de rows avec r.description
+					          const seen=new Map();
+					          allGroups.forEach(grp=>{
+					            (Array.isArray(grp)?grp:[grp]).forEach(r=>{
+					              const d=r?.description;
+					              if(d&&d.trim()&&!seen.has(d)){
+					                seen.set(d,zc(d));
+					              }
+					            });
+					          });
+					          const entries=[...seen.entries()];
+					          if(!entries.length)return null;
+					          // Trier: d'abord les colorées, puis transparent (mi-tableau)
+					          const order=e=>e[1]==="transparent"?99:0;
+					          entries.sort((a,b)=>order(a)-order(b));
+					          return <div style={{padding:"14px 14px 28px",background:"#f7f8fa"}}>
+					            <div style={{display:"flex",flexDirection:"column",gap:7}}>
+					              {entries.map(([desc,color])=>color==="transparent"?null:<div key={desc} style={{
+					                display:"flex",alignItems:"center",gap:12,
+					                padding:"11px 14px",
+					                background:"#fff",
+					                borderRadius:10,
+					                border:"1px solid rgba(0,0,0,.06)",
+					              }}>
+					                <div style={{width:20,height:20,borderRadius:5,background:color,flexShrink:0}}/>
+					                <span style={{fontSize:13,color:"#1a1a2e",fontWeight:400,lineHeight:1.3}}>{desc}</span>
+					              </div>)}
+					            </div>
+					            <div style={{fontSize:12,color:"rgba(15,17,23,.38)",marginTop:16,lineHeight:1.6,padding:"0 2px"}}>
+					              Si les équipes terminent à égalité de points à la fin de la saison, les résultats des face-à-face les départageront.
+					            </div>
+					          </div>;
+					        })()}
 					      </>}
 
 					      {}
