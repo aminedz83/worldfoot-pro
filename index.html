@@ -450,7 +450,7 @@
 	/* Header score — blanc, logos grands */
 	.md-header{flex-shrink:0;background:#fff;border-bottom:1px solid rgba(0,0,0,.07);padding:14px 16px 12px;position:relative;overflow:hidden}
 	.md-header-glow{display:none}
-	.md-league-row{font-family:'Barlow Condensed',sans-serif;font-size:11px;font-weight:700;color:rgba(15,17,23,.4);letter-spacing:1px;margin-bottom:14px;display:flex;align-items:center;gap:6px}
+	.md-league-row{font-family:'Barlow Condensed',sans-serif;font-size:11px;font-weight:700;color:rgba(15,17,23,.4);letter-spacing:1px;margin-bottom:14px;display:flex;align-items:center;gap:6px;overflow:hidden}.md-league-row span{color:rgba(15,17,23,.55);font-weight:700;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;font-size:11px}
 	.md-league-dot{width:5px;height:5px;border-radius:50%;background:#00c170;flex-shrink:0}
 
 	/* Scoreline avec logos */
@@ -502,9 +502,9 @@
 	.md-empty-small{text-align:center;padding:12px;color:rgba(15,17,23,.22);font-size:12px;background:#fff}
 
 	/* Stats */
-	.md-stat-line{background:#fff;border-radius:0;padding:10px 14px;margin-bottom:1px}
-	.md-stat-label{font-size:11px;font-weight:500;color:rgba(15,17,23,.42);text-align:center;margin-bottom:5px}
-	.md-stat-val-h,.md-stat-val-a{font-family:'Barlow Condensed',sans-serif;font-size:17px;font-weight:900;color:#0f1117}
+	.md-stat-line{background:#fff;border-radius:0;padding:10px 14px;margin-bottom:1px;display:flex;flex-direction:column}
+	.md-stat-label{font-size:11px;font-weight:500;color:rgba(15,17,23,.42);text-align:center;flex:1;min-width:0;letter-spacing:.2px}
+	.md-stat-val-h,.md-stat-val-a{font-family:'Barlow Condensed',sans-serif;font-size:17px;font-weight:900;color:#0f1117;flex-shrink:0;min-width:36px}.md-stat-val-a{text-align:right}
 	.md-stat-bar{height:5px;background:rgba(0,0,0,.08);border-radius:0;overflow:hidden;display:flex}
 	.md-stat-h{height:100%;background:#e53935;transition:width .6s ease}
 	.md-stat-a{height:100%;background:#2563eb;transition:width .6s ease;margin-left:auto}
@@ -1907,15 +1907,15 @@
 					            const hv=gv(hSt,k)??0,av=gv(aSt,k)??0;
 					            const hn=numv(hv),an=numv(av),tot=hn+an||1;
 					            const hp=Math.round(hn/tot*100);
-					            return React.createElement("div",{key:k},
-					              React.createElement("div",{className:"md-stat-line"},
+					            return React.createElement("div",{key:k,className:"md-stat-line"},
+					              React.createElement("div",{style:{display:"flex",alignItems:"center",gap:8,marginBottom:6}},
 					                React.createElement("div",{className:"md-stat-val-h"},[String(hv)]),
 					                React.createElement("div",{className:"md-stat-label"},[STAT_LABELS2[k]||k]),
 					                React.createElement("div",{className:"md-stat-val-a"},[String(av)])
 					              ),
-					              React.createElement("div",{style:{display:"flex",gap:3,marginBottom:8,height:3}},
-					                React.createElement("div",{style:{flex:hp,background:"#00c170",borderRadius:2,transition:"flex .5s"}}),
-					                React.createElement("div",{style:{flex:100-hp,background:"#42A5F5",borderRadius:2,transition:"flex .5s"}})
+					              React.createElement("div",{style:{display:"flex",height:4,borderRadius:2,overflow:"hidden",background:"rgba(0,0,0,.07)"}},
+					                React.createElement("div",{style:{width:`${hp}%`,background:"#e53935",transition:"width .5s"}}),
+					                React.createElement("div",{style:{width:`${100-hp}%`,background:"#2563eb",transition:"width .5s"}})
 					              )
 					            );
 					          })
