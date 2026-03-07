@@ -465,7 +465,7 @@
 				var jsxCode =
 					document.getElementById("jsx-source").textContent;
 				var compiled = Babel.transform(jsxCode, {
-					presets: ["react"],
+					presets: ["react", "env"],
 				}).code;
 				var script = document.createElement("script");
 				script.textContent = compiled;
@@ -1596,7 +1596,7 @@ const r = await fetch(BASE + path, { headers: { “x-apisports-key”: API_KEY }
 if (!r.ok) throw new Error(`HTTP ${r.status}`);
 const j = await r.json();
 if (j.errors && Object.keys(j.errors).length) throw new Error(Object.values(j.errors)[0]);
-const d = j.response ?? [];
+const d = j.response || [];
 _wfmd_cache.set(path, { d, t: now });
 return d;
 }
