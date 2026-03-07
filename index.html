@@ -1883,8 +1883,51 @@
 
 			const renderStats=()=>{
 					    if(!stats.length){
-					      return React.createElement("div",{className:"md-empty"},"📊 Statistiques non disponibles");
-					    }
+				      // Fallback: afficher stats joueurs individuelles depuis players[]
+				      if(!players.length)return React.createElement("div",{className:"md-empty"},"📊 Statistiques non disponibles pour cette rencontre");
+				      return React.createElement("div",{style:{paddingBottom:24}},
+				        React.createElement("div",{style:{textAlign:"center",padding:"10px 16px 14px",background:"rgba(245,158,11,.06)",borderRadius:10,border:"1px solid rgba(245,158,11,.2)",marginBottom:8}},
+				          React.createElement("div",{style:{fontSize:12,color:"#92400e",fontWeight:600}},"📊 Stats d'équipe non disponibles · Stats joueurs affichées")
+				        ),
+				        players.map(team=>{
+				          const tColor=team.team?.id===hid?"#e53935":"#2563eb";
+				          return React.createElement("div",{key:team.team?.id,style:{marginBottom:12}},
+				            React.createElement("div",{style:{display:"flex",alignItems:"center",gap:8,padding:"10px 14px",background:"#fff",borderBottom:"1px solid rgba(0,0,0,.06)"}},
+				              React.createElement("img",{src:team.team?.logo,style:{width:24,height:24,objectFit:"contain"},onError:e=>{e.target.style.display="none"}}),
+				              React.createElement("span",{style:{fontFamily:"'Barlow Condensed',sans-serif",fontSize:15,fontWeight:800,color:tColor}},[team.team?.name])
+				            ),
+				            (team.players||[])
+				              .filter(p=>p.statistics?.[0]?.games?.minutes>0)
+				              .sort((a,b)=>(b.statistics?.[0]?.games?.minutes||0)-(a.statistics?.[0]?.games?.minutes||0))
+				              .map(p=>{
+				                const st=p.statistics?.[0]||{};
+				                const g=st.games||{},sh=st.shots||{},gl=st.goals||{},ps=st.passes||{},df=st.duels||{};
+				                const photo=p.player?.photo;
+				                const rating=parseFloat(g.rating||0);
+				                const rBg=rating>=8?"#2e7d32":rating>=7?"#558b2f":rating>=6?"#e65100":"#c62828";
+				                return React.createElement("div",{key:p.player?.id,style:{display:"flex",alignItems:"center",gap:10,padding:"9px 12px",background:"#fff",borderBottom:"1px solid rgba(0,0,0,.05)"}},
+				                  React.createElement("div",{style:{width:36,height:36,borderRadius:"50%",overflow:"hidden",background:"#eef0f5",flexShrink:0}},
+				                    photo?React.createElement("img",{src:photo,style:{width:"100%",height:"100%",objectFit:"cover"},onError:e=>{e.target.style.display="none"}}):
+				                    React.createElement("div",{style:{width:"100%",height:"100%",display:"flex",alignItems:"center",justifyContent:"center",fontSize:11,color:"rgba(15,17,23,.3)"}},"👤")
+				                  ),
+				                  React.createElement("div",{style:{flex:1,minWidth:0}},
+				                    React.createElement("div",{style:{fontSize:13,fontWeight:600,color:"#0f1117",overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap"}},[p.player?.name]),
+				                    React.createElement("div",{style:{display:"flex",gap:8,marginTop:3,flexWrap:"wrap"}},
+				                      g.minutes?React.createElement("span",{style:{fontSize:10,color:"rgba(15,17,23,.4)"}},[`⏱ ${g.minutes}'`]):null,
+				                      gl.total?React.createElement("span",{style:{fontSize:10,color:"#0f1117",fontWeight:700,background:"rgba(0,193,112,.12)",borderRadius:4,padding:"1px 5px"}},[`⚽ ${gl.total}`]):null,
+				                      gl.assists?React.createElement("span",{style:{fontSize:10,color:"rgba(15,17,23,.5)",background:"rgba(0,0,0,.06)",borderRadius:4,padding:"1px 5px"}},[`🎯 ${gl.assists}`]):null,
+				                      sh.total?React.createElement("span",{style:{fontSize:10,color:"rgba(15,17,23,.4)"}},[`Tirs: ${sh.on||0}/${sh.total}`]):null,
+				                      ps.accuracy?React.createElement("span",{style:{fontSize:10,color:"rgba(15,17,23,.4)"}},[`Passes: ${ps.accuracy}%`]):null,
+				                      df.won&&df.total?React.createElement("span",{style:{fontSize:10,color:"rgba(15,17,23,.4)"}},[`Duels: ${df.won}/${df.total}`]):null
+				                    )
+				                  ),
+				                  rating>0?React.createElement("div",{style:{background:rBg,borderRadius:5,padding:"3px 7px",fontSize:12,fontWeight:900,color:"#fff",flexShrink:0}},rating.toFixed(1)):null
+				                );
+				              })
+				          );
+				        })
+				      );
+				    }
 					    return React.createElement(React.Fragment,null,
 					      // Teams header
 					      React.createElement("div",{style:{display:"flex",alignItems:"center",justifyContent:"space-between",marginBottom:16,padding:"10px 14px",background:"rgba(0,0,0,.04)",borderRadius:12,border:"1px solid rgba(255,255,255,0.07)"}},
@@ -1926,7 +1969,8 @@
 					
 					  // ── RENDER COMPOS ──
 					  const renderCompos=()=>{
-			    if(!lineups.length)return React.createElement("div",{className:"md-empty"},"📋 Compositions non disponibles");
+			    const isFallback=state?.data?._fallbackLineups===true;
+			    if(!lineups.length&&!players.length)return React.createElement("div",{className:"md-empty"},"📋 Compositions non disponibles pour cette rencontre");
 
 			    const photoOf=(pid)=>players.flatMap(t=>t.players||[]).find(p=>p.player?.id===pid)?.player?.photo||null;
 			    const ratingOf=(pid)=>{
@@ -2014,6 +2058,11 @@
 
 			    // ── Vue TERRAIN ──
 			    const renderTerrain=()=>{
+			      if(isFallback)return React.createElement("div",{style:{textAlign:"center",padding:"24px 16px",background:"rgba(245,158,11,.06)",borderRadius:10,border:"1px solid rgba(245,158,11,.2)"}},
+			        React.createElement("div",{style:{fontSize:13,color:"#92400e",fontWeight:600,marginBottom:4}},"📋 Formation officielle non disponible"),
+			        React.createElement("div",{style:{fontSize:11,color:"rgba(146,64,14,.7)",marginBottom:12}},"Joueurs classés par temps de jeu"),
+			        renderListe()
+			      );
 			      const hRows=buildRows(hLu);
 			      const aRows=buildRows(aLu);
 			      // Away: inverser l'ordre (GK en bas du terrain = bas de l'écran)
@@ -2506,7 +2555,37 @@
 					        api(`/injuries?fixture=${fid}`,isDone?10800000:3600000,sig).catch(()=>[]),
 					      ]);
 					      setDet({data:{fixture:fix,stats,events:evts,lineups,players:plrs,h2h,injuries}});
-					    }catch(e){if(e.name!=="AbortError")setDet({error:e.message});}
+
+				      // ── FALLBACK: si lineups vides mais players dispo → construire pseudo-lineups ──
+				      if(!lineups.length&&plrs.length){
+				        const pseudo=plrs.map(team=>{
+				          const starters=(team.players||[])
+				            .filter(p=>p.statistics?.[0]?.games?.minutes>0||p.statistics?.[0]?.games?.number!=null)
+				            .sort((a,b)=>(b.statistics?.[0]?.games?.minutes||0)-(a.statistics?.[0]?.games?.minutes||0));
+				          const subs=(team.players||[]).filter(p=>!starters.includes(p));
+				          return{
+				            team:team.team,
+				            formation:null,
+				            coach:{name:null},
+				            startXI:starters.slice(0,11).map(p=>({player:{id:p.player?.id,name:p.player?.name,number:p.statistics?.[0]?.games?.number||p.player?.id,pos:p.statistics?.[0]?.games?.position||null,photo:p.player?.photo||null}})),
+				            substitutes:subs.slice(0,9).map(p=>({player:{id:p.player?.id,name:p.player?.name,number:p.statistics?.[0]?.games?.number||null,pos:null,photo:p.player?.photo||null}})),
+				          };
+				        });
+				        setDet(prev=>({...prev,data:{...prev.data,lineups:pseudo,_fallbackLineups:true}}));
+				      }
+
+				      // ── FALLBACK stats: si vides → retry après 3s (matchs algériens etc.) ──
+				      if(!stats.length&&started&&!isLive){
+				        setTimeout(async()=>{
+				          try{
+				            const statsRetry=await api(`/fixtures/statistics?fixture=${fid}`,5000,sig).catch(()=>[]);
+				            if(statsRetry.length){
+				              setDet(prev=>prev?.data?{...prev,data:{...prev.data,stats:statsRetry}}:prev);
+				            }
+				          }catch(e){}
+				        },3000);
+				      }
+				    }catch(e){if(e.name!=="AbortError")setDet({error:e.message});}
 					  },[]);
 
 					  const groups=useMemo(()=>{
