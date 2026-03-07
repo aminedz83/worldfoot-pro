@@ -440,85 +440,100 @@
 	@keyframes mdSlideUp{from{transform:translateY(44px);opacity:0}to{transform:translateY(0);opacity:1}}
 	@keyframes mdIn{from{opacity:0;transform:translateY(6px)}to{opacity:1;transform:translateY(0)}}
 
-	.md-overlay{position:fixed;inset:0;z-index:950;background:#f0f2f5;display:flex;flex-direction:column;max-width:430px;margin:0 auto;overflow:hidden;animation:mdIn .18s ease}
+	/* ═══════════════════════════════════════════════
+	   MATCH DETAIL — PREMIUM REDESIGN
+	   ═══════════════════════════════════════════════ */
+	@keyframes mdBarGrow{from{transform:scaleX(0)}to{transform:scaleX(1)}}
+	@keyframes shimmer{0%{background-position:-200% 0}100%{background-position:200% 0}}
 
-	/* Topbar */
-	.md-topbar{flex-shrink:0;display:flex;align-items:center;gap:10px;padding:12px 14px 11px;background:#fff;border-bottom:1px solid rgba(0,0,0,.07)}
-	.md-back-btn{background:none;border:none;color:rgba(15,17,23,.4);font-size:22px;cursor:pointer;padding:0;line-height:1;width:32px;height:32px;display:flex;align-items:center;justify-content:center;border-radius:8px}
-	.md-topbar-title{flex:1;text-align:center;font-family:'Barlow Condensed',sans-serif;font-size:11px;font-weight:800;letter-spacing:2px;text-transform:uppercase;color:rgba(15,17,23,.3)}
+	.md-overlay{position:fixed;inset:0;z-index:950;background:#0d0f14;display:flex;flex-direction:column;max-width:430px;margin:0 auto;overflow:hidden;animation:mdIn .2s ease}
 
-	/* Header score — blanc, logos grands */
-	.md-header{flex-shrink:0;background:#fff;border-bottom:1px solid rgba(0,0,0,.07);padding:14px 16px 12px;position:relative;overflow:hidden}
+	/* ── Topbar ── */
+	.md-topbar{flex-shrink:0;display:flex;align-items:center;gap:10px;padding:14px 14px 12px;background:rgba(13,15,20,.96);border-bottom:1px solid rgba(255,255,255,.06);backdrop-filter:blur(12px)}
+	.md-back-btn{background:rgba(255,255,255,.08);border:none;color:rgba(255,255,255,.7);font-size:18px;cursor:pointer;padding:0;line-height:1;width:34px;height:34px;display:flex;align-items:center;justify-content:center;border-radius:10px;transition:background .15s}
+	.md-back-btn:active{background:rgba(255,255,255,.15)}
+	.md-topbar-title{flex:1;text-align:center;font-family:'Barlow Condensed',sans-serif;font-size:11px;font-weight:800;letter-spacing:2.5px;text-transform:uppercase;color:rgba(255,255,255,.32)}
+
+	/* ── Hero Header ── */
+	.md-header{flex-shrink:0;background:linear-gradient(175deg,#1a1d28 0%,#0d0f14 100%);padding:16px 16px 14px;position:relative;overflow:hidden;border-bottom:1px solid rgba(255,255,255,.07)}
+	.md-header::before{content:'';position:absolute;inset:0;background:radial-gradient(ellipse at 20% 50%,rgba(0,193,112,.07) 0%,transparent 60%),radial-gradient(ellipse at 80% 50%,rgba(37,99,235,.07) 0%,transparent 60%);pointer-events:none}
 	.md-header-glow{display:none}
-	.md-league-row{font-family:'Barlow',sans-serif;font-size:13px;font-weight:400;margin-bottom:14px;display:flex;align-items:center;gap:8px;padding:0 2px}.md-league-row .lg-country{color:rgba(15,17,23,.45);font-weight:400;font-size:13px;white-space:nowrap;flex-shrink:0}.md-league-row .lg-name{color:#1a1a2e;font-weight:700;font-size:13px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
-	.md-league-dot{width:5px;height:5px;border-radius:50%;background:#00c170;flex-shrink:0}
+	.md-league-row{font-family:'Barlow',sans-serif;font-size:12px;font-weight:400;margin-bottom:16px;display:flex;align-items:center;gap:8px;padding:0 2px}
+	.md-league-row .lg-country{color:rgba(255,255,255,.35);font-weight:400;font-size:12px;white-space:nowrap;flex-shrink:0}
+	.md-league-row .lg-name{color:rgba(255,255,255,.75);font-weight:700;font-size:12px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+	.md-league-dot{width:5px;height:5px;border-radius:50%;background:#00c170;flex-shrink:0;box-shadow:0 0 6px rgba(0,193,112,.6)}
 
-	/* Scoreline avec logos */
+	/* ── Scoreline ── */
 	.md-scoreline{display:flex;align-items:center;justify-content:space-between;gap:6px;margin-bottom:10px}
-	.md-team-col{flex:1;min-width:0;display:flex;flex-direction:column;align-items:center;gap:6px}
-	.md-team-col.away{align-items:center}
-	.md-team-name{font-family:'Barlow',sans-serif;font-size:13px;font-weight:500;color:#0f1117;text-align:center;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;max-width:100%;line-height:1.2}
-	.md-score-center{display:flex;flex-direction:column;align-items:center;flex-shrink:0;min-width:100px;gap:0}
-	.md-score-nums{font-family:'Barlow Condensed',sans-serif;font-size:52px;font-weight:900;color:#e53935;line-height:1;letter-spacing:-2px;text-align:center}
-	.md-score-nums.live{color:#e53935}
-	.md-datetime{font-family:'Barlow',sans-serif;font-size:12px;color:rgba(15,17,23,.42);text-align:center;margin-bottom:2px}
+	.md-team-col{flex:1;min-width:0;display:flex;flex-direction:column;align-items:center;gap:7px}
+	.md-team-name{font-family:'Barlow',sans-serif;font-size:12px;font-weight:600;color:rgba(255,255,255,.8);text-align:center;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;max-width:100%;line-height:1.2}
+	.md-score-center{display:flex;flex-direction:column;align-items:center;flex-shrink:0;min-width:110px;gap:2px}
+	.md-score-nums{font-family:'Barlow Condensed',sans-serif;font-size:58px;font-weight:900;color:#fff;line-height:1;letter-spacing:-3px;text-align:center;text-shadow:0 2px 20px rgba(0,0,0,.4)}
+	.md-score-nums.live{color:#ff4444;text-shadow:0 0 30px rgba(255,68,68,.35)}
+	.md-datetime{font-family:'Barlow',sans-serif;font-size:11px;color:rgba(255,255,255,.38);text-align:center;margin-bottom:2px}
 
-	/* Status */
-	.md-status-row{display:flex;align-items:center;justify-content:center;gap:8px;margin-top:4px}
-	.md-status-badge{font-family:'Barlow Condensed',sans-serif;font-size:10px;font-weight:800;letter-spacing:1px;text-transform:uppercase;padding:3px 10px;border-radius:20px;background:rgba(0,0,0,.06);color:rgba(15,17,23,.42)}
-	.md-status-badge.live{background:rgba(229,57,53,.1);color:#e53935;animation:pulse 1.4s infinite}
-	.md-status-badge.done{background:rgba(0,0,0,.05);color:rgba(15,17,23,.35)}
-	.md-minute{font-family:'Barlow Condensed',sans-serif;font-size:12px;font-weight:800;color:#e53935;background:rgba(229,57,53,.08);border-radius:20px;padding:2px 9px}
-	.live-dot{display:inline-block;width:5px;height:5px;border-radius:50%;background:#e53935;margin-right:4px;animation:dotPulse 1.4s infinite}
-	.md-goals-row{display:flex;justify-content:space-between;gap:8px;margin-top:5px}
-	.md-goal-scorer{font-size:11px;color:rgba(15,17,23,.42);line-height:1.6;flex:1}
+	/* ── Status ── */
+	.md-status-row{display:flex;align-items:center;justify-content:center;gap:8px;margin-top:6px}
+	.md-status-badge{font-family:'Barlow Condensed',sans-serif;font-size:10px;font-weight:800;letter-spacing:1.5px;text-transform:uppercase;padding:4px 12px;border-radius:20px;background:rgba(255,255,255,.08);color:rgba(255,255,255,.38);border:1px solid rgba(255,255,255,.08)}
+	.md-status-badge.live{background:rgba(255,68,68,.15);color:#ff6666;border-color:rgba(255,68,68,.3);animation:pulse 1.4s infinite}
+	.md-status-badge.done{background:rgba(0,193,112,.1);color:#00c170;border-color:rgba(0,193,112,.2)}
+	.md-minute{font-family:'Barlow Condensed',sans-serif;font-size:11px;font-weight:800;color:#ff6666;background:rgba(255,68,68,.12);border-radius:20px;padding:3px 10px;border:1px solid rgba(255,68,68,.2)}
+	.live-dot{display:inline-block;width:6px;height:6px;border-radius:50%;background:#ff4444;margin-right:5px;animation:dotPulse 1.4s infinite;box-shadow:0 0 8px rgba(255,68,68,.6)}
+	.md-goals-row{display:flex;justify-content:space-between;gap:8px;margin-top:8px}
+	.md-goal-scorer{font-size:10.5px;color:rgba(255,255,255,.38);line-height:1.7;flex:1}
 	.md-goal-scorer.away{text-align:right}
 
-	/* Tabs — style FlashScore rouge */
-	.md-tabs{display:flex;border-bottom:2px solid rgba(0,0,0,.07);background:#fff;flex-shrink:0;overflow-x:auto}
-	.md-tab-btn{flex:1;min-width:fit-content;font-family:'Barlow',sans-serif;font-size:11px;font-weight:600;letter-spacing:.3px;text-transform:uppercase;color:rgba(15,17,23,.38);padding:11px 8px;border:none;background:none;cursor:pointer;border-bottom:2.5px solid transparent;margin-bottom:-2px;transition:color .15s,border-color .15s;white-space:nowrap}
-	.md-tab-btn.active{color:#e53935;border-bottom-color:#e53935;font-weight:700}
+	/* ── Tabs — segment scrollable ── */
+	.md-tabs{display:flex;border-bottom:1px solid rgba(255,255,255,.07);background:rgba(13,15,20,.98);flex-shrink:0;overflow-x:auto;scrollbar-width:none;-webkit-overflow-scrolling:touch}
+	.md-tabs::-webkit-scrollbar{display:none}
+	.md-tab-btn{flex:1;min-width:fit-content;font-family:'Barlow',sans-serif;font-size:11px;font-weight:600;letter-spacing:.5px;text-transform:uppercase;color:rgba(255,255,255,.32);padding:12px 10px;border:none;background:none;cursor:pointer;border-bottom:2px solid transparent;margin-bottom:-1px;transition:color .15s,border-color .15s;white-space:nowrap}
+	.md-tab-btn.active{color:#00c170;border-bottom-color:#00c170;font-weight:700}
 
-	/* Content */
-	.md-content{flex:1;overflow-y:auto;background:#f0f2f5}
-	.md-panel{padding:8px 8px 28px}
+	/* ── Content ── */
+	.md-content{flex:1;overflow-y:auto;background:#0d0f14;scrollbar-width:thin;scrollbar-color:rgba(255,255,255,.08) transparent}
+	.md-content::-webkit-scrollbar{width:3px}
+	.md-content::-webkit-scrollbar-thumb{background:rgba(255,255,255,.1);border-radius:2px}
+	.md-panel{padding:8px 8px 32px}
 
-	/* Séparateurs mi-temps */
-	.md-period-label,.md-info-section-title,.md-stat-section-hdr{font-family:'Barlow',sans-serif;font-size:11px;font-weight:700;text-transform:uppercase;color:rgba(15,17,23,.5);margin:10px 0 0;display:flex;align-items:center;justify-content:space-between;padding:7px 14px;background:#eef0f5;border-top:1px solid rgba(0,0,0,.07);border-bottom:1px solid rgba(0,0,0,.07)}
+	/* ── Section labels ── */
+	.md-period-label,.md-info-section-title,.md-stat-section-hdr{font-family:'Barlow Condensed',sans-serif;font-size:10px;font-weight:800;text-transform:uppercase;letter-spacing:2px;color:rgba(255,255,255,.25);margin:10px 0 0;display:flex;align-items:center;justify-content:space-between;padding:8px 14px;background:rgba(255,255,255,.03);border-top:1px solid rgba(255,255,255,.05);border-bottom:1px solid rgba(255,255,255,.05)}
 	.md-period-label::before,.md-period-label::after,.md-info-section-title::before,.md-info-section-title::after{display:none}
-	.md-stat-section-hdr{padding:10px 0 4px;margin:0;background:none;border:none;font-family:'Barlow Condensed',sans-serif;font-size:10px;letter-spacing:1.5px;justify-content:center;color:rgba(15,17,23,.3)}
+	.md-stat-section-hdr{padding:12px 0 4px;margin:0;background:none;border:none;font-size:9px;letter-spacing:2px;justify-content:center;color:rgba(255,255,255,.2)}
 
-	/* Events — pas de border-radius, style liste */
-	.md-evt-row{display:flex;align-items:center;gap:8px;padding:9px 14px;background:#fff;border-radius:0;margin-bottom:0;border-bottom:1px solid rgba(0,0,0,.05)}
-	.md-evt-row.home-evt,.md-evt-row.away-evt{flex-direction:row}
-	.md-evt-min{font-family:'Barlow Condensed',sans-serif;font-size:13px;font-weight:700;color:rgba(15,17,23,.45);min-width:32px;flex-shrink:0}
-	.md-evt-icon{font-size:16px;flex-shrink:0}
+	/* ── Events ── */
+	.md-evt-row{display:flex;align-items:center;gap:10px;padding:11px 14px;background:rgba(255,255,255,.03);border-radius:0;margin-bottom:0;border-bottom:1px solid rgba(255,255,255,.04);transition:background .12s}
+	.md-evt-row:active{background:rgba(255,255,255,.06)}
+	.md-evt-row.goal-evt{background:rgba(0,193,112,.05);border-left:2px solid rgba(0,193,112,.4)}
+	.md-evt-min{font-family:'Barlow Condensed',sans-serif;font-size:13px;font-weight:700;color:rgba(255,255,255,.32);min-width:34px;flex-shrink:0}
+	.md-evt-icon{font-size:17px;flex-shrink:0}
 	.md-evt-content{flex:1;min-width:0}
-	.md-evt-player{font-size:13px;font-weight:500;color:#0f1117;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
-	.md-evt-sub{font-size:11px;color:rgba(15,17,23,.4);margin-top:1px}
-	.md-evt-score{font-family:'Barlow Condensed',sans-serif;font-size:14px;font-weight:900;background:transparent;color:"#0f1117";padding:0 4px;border-radius:0;white-space:nowrap;flex-shrink:0}
-	.md-var-row{display:flex;align-items:center;gap:8px;padding:8px 14px;background:rgba(37,99,235,.04);margin-bottom:0;border-left:3px solid rgba(37,99,235,.25);border-bottom:1px solid rgba(0,0,0,.05)}
-	.md-empty{text-align:center;padding:44px 20px;color:rgba(15,17,23,.22);font-size:13px}
-	.md-empty-small{text-align:center;padding:12px;color:rgba(15,17,23,.22);font-size:12px;background:#fff}
+	.md-evt-player{font-size:13px;font-weight:600;color:rgba(255,255,255,.88);overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+	.md-evt-sub{font-size:11px;color:rgba(255,255,255,.32);margin-top:2px}
+	.md-evt-score{font-family:'Barlow Condensed',sans-serif;font-size:15px;font-weight:900;color:#fff;padding:2px 8px;border-radius:6px;background:rgba(255,255,255,.08);white-space:nowrap;flex-shrink:0}
+	.md-var-row{display:flex;align-items:center;gap:8px;padding:8px 14px;background:rgba(37,99,235,.06);margin-bottom:0;border-left:2px solid rgba(37,99,235,.3);border-bottom:1px solid rgba(255,255,255,.04)}
+	.md-empty{text-align:center;padding:48px 20px;color:rgba(255,255,255,.18);font-size:13px}
+	.md-empty-small{text-align:center;padding:12px;color:rgba(255,255,255,.18);font-size:12px;background:rgba(255,255,255,.03)}
 
-	/* Stats */
-	.md-stat-line{background:#fff;border-radius:0;padding:10px 14px;margin-bottom:1px;display:flex;flex-direction:column}
-	.md-stat-label{font-size:11px;font-weight:500;color:rgba(15,17,23,.42);text-align:center;flex:1;min-width:0;letter-spacing:.2px}
-	.md-stat-val-h,.md-stat-val-a{font-family:'Barlow Condensed',sans-serif;font-size:17px;font-weight:900;color:#0f1117;flex-shrink:0;min-width:36px}.md-stat-val-a{text-align:right}
-	.md-stat-bar{height:5px;background:rgba(0,0,0,.08);border-radius:0;overflow:hidden;display:flex}
-	.md-stat-h{height:100%;background:#e53935;transition:width .6s ease}
-	.md-stat-a{height:100%;background:#2563eb;transition:width .6s ease;margin-left:auto}
+	/* ── Stats premium ── */
+	.md-stat-line{background:rgba(255,255,255,.03);border-radius:0;padding:11px 14px;margin-bottom:1px;display:flex;flex-direction:column;border-bottom:1px solid rgba(255,255,255,.04)}
+	.md-stat-label{font-size:10.5px;font-weight:600;color:rgba(255,255,255,.38);text-align:center;flex:1;min-width:0;letter-spacing:.3px;text-transform:uppercase}
+	.md-stat-val-h,.md-stat-val-a{font-family:'Barlow Condensed',sans-serif;font-size:18px;font-weight:900;color:#fff;flex-shrink:0;min-width:36px}
+	.md-stat-val-a{text-align:right}
+	.md-stat-bar{height:4px;background:rgba(255,255,255,.07);border-radius:4px;overflow:hidden;display:flex}
+	.md-stat-h{height:100%;background:linear-gradient(90deg,#00c170,#00a86b);transform-origin:left;animation:mdBarGrow .7s cubic-bezier(.4,0,.2,1) forwards}
+	.md-stat-a{height:100%;background:linear-gradient(90deg,#2563eb,#1d4ed8);transform-origin:right;animation:mdBarGrow .7s cubic-bezier(.4,0,.2,1) forwards;margin-left:auto}
 
-	/* Compositions */
-	.md-player-row{display:flex;align-items:center;gap:10px;padding:9px 12px;background:#fff;border-radius:0;margin-bottom:1px;cursor:pointer;border-bottom:1px solid rgba(0,0,0,.05)}
-	.md-player-row:active{background:#f8f9fc}
-	.md-subtab{display:inline-flex;align-items:center;justify-content:center;font-family:'Barlow',sans-serif;font-size:12px;font-weight:600;padding:6px 16px;border-radius:20px;cursor:pointer;border:1.5px solid rgba(0,0,0,.12);color:rgba(15,17,23,.45);background:#fff;transition:all .15s}
-	.md-subtab.active{background:#e53935;border-color:#e53935;color:#fff}
+	/* ── Compositions ── */
+	.md-player-row{display:flex;align-items:center;gap:10px;padding:10px 12px;background:rgba(255,255,255,.03);border-radius:0;margin-bottom:0;cursor:pointer;border-bottom:1px solid rgba(255,255,255,.04);transition:background .12s}
+	.md-player-row:active{background:rgba(255,255,255,.07)}
+	.md-subtab{display:inline-flex;align-items:center;justify-content:center;font-family:'Barlow',sans-serif;font-size:12px;font-weight:600;padding:6px 18px;border-radius:20px;cursor:pointer;border:1.5px solid rgba(255,255,255,.12);color:rgba(255,255,255,.4);background:rgba(255,255,255,.04);transition:all .15s}
+	.md-subtab.active{background:#00c170;border-color:#00c170;color:#fff}
 
-	/* Player sheet */
-	.md-player-sheet-bg{position:absolute;inset:0;background:rgba(0,0,0,.22);z-index:10;animation:mdIn .15s ease}
-	.md-player-sheet-inner{position:absolute;bottom:0;left:0;right:0;background:#fff;border-radius:20px 20px 0 0;padding:20px 16px 32px;z-index:11;animation:mdSlideUp .22s cubic-bezier(.22,1,.36,1);max-height:72vh;overflow-y:auto}
-	.md-ps{position:absolute;inset:0;z-index:10;background:#f0f2f5;animation:mdSlideUp .22s cubic-bezier(.22,1,.36,1)}
+	/* ── Player sheet ── */
+	.md-player-sheet-bg{position:absolute;inset:0;background:rgba(0,0,0,.6);z-index:10;animation:mdIn .15s ease;backdrop-filter:blur(4px)}
+	.md-player-sheet-inner{position:absolute;bottom:0;left:0;right:0;background:linear-gradient(180deg,#1a1d28 0%,#141720 100%);border-radius:24px 24px 0 0;border-top:1px solid rgba(255,255,255,.1);padding:8px 16px 36px;z-index:11;animation:mdSlideUp .25s cubic-bezier(.22,1,.36,1);max-height:75vh;overflow-y:auto}
+	.md-player-sheet-inner::before{content:'';display:block;width:36px;height:4px;background:rgba(255,255,255,.15);border-radius:2px;margin:0 auto 16px}
+	.md-ps{position:absolute;inset:0;z-index:10;background:#0d0f14;animation:mdSlideUp .22s cubic-bezier(.22,1,.36,1)}
 	</style>
 </head>
 <body>
@@ -1596,13 +1611,13 @@
 					    <div style={{background:"#fff",borderBottom:"1px solid rgba(0,0,0,.07)"}}>
 					      <div style={{display:"flex",gap:6,padding:"10px 14px 8px"}}>
 					        <div style={{display:"flex",background:"#f0f1f5",borderRadius:10,padding:3,gap:2,flex:1}}>
-					          {[["pitch","⚽ Schéma"],["list","📋 Listes"]].map(([v,lb])=><button key={v} onClick={()=>setView(v)} style={{flex:1,background:view===v?"#1a1aff":"none",border:"none",color:view===v?"#fff":"#555",borderRadius:8,padding:"8px",fontSize:12,fontWeight:view===v?700:500,cursor:"pointer",transition:"all .15s"}}>{lb}</button>)}
+					          {[["pitch","⚽ Schéma"],["list","📋 Listes"]].map(([v,lb])=><button key={v} onClick={()=>setView(v)} style={{flex:1,background:view===v?"#00c170":"rgba(255,255,255,.06)",border:"none",color:view===v?"#fff":"rgba(255,255,255,.4)",borderRadius:8,padding:"8px",fontSize:12,fontWeight:view===v?700:500,cursor:"pointer",transition:"all .15s"}}>{lb}</button>)}
 					        </div>
 					      </div>
 					      {view==="pitch"&&<div style={{display:"flex",alignItems:"center",gap:8,padding:"0 14px 12px",overflowX:"auto"}}>
 					        {[{id:"rating",icon:"★",label:"Note"},{id:"age",icon:"Age",label:"Âge",circle:true},{id:"height",icon:"📏",label:"Taille"},{id:"value",icon:"🏔️",label:"Valeur marchande"}].map(f=>{
 					          const active=pitchFilter===f.id;
-					          return<button key={f.id} onClick={()=>setPitchFilter(f.id)} style={{display:"flex",alignItems:"center",gap:6,padding:active?"8px 16px":"0",width:active?undefined:40,height:40,borderRadius:20,border:"none",cursor:"pointer",background:active?"#1a1aff":"#eef0f5",color:active?"#fff":"#111",fontWeight:active?700:500,fontSize:13,flexShrink:0,transition:"all .2s",justifyContent:"center",whiteSpace:"nowrap"}}>
+					          return<button key={f.id} onClick={()=>setPitchFilter(f.id)} style={{display:"flex",alignItems:"center",gap:6,padding:active?"8px 16px":"0",width:active?undefined:40,height:40,borderRadius:20,border:"none",cursor:"pointer",background:active?"#00c170":"rgba(255,255,255,.07)",color:active?"#fff":"rgba(255,255,255,.4)",fontWeight:active?700:500,fontSize:13,flexShrink:0,transition:"all .2s",justifyContent:"center",whiteSpace:"nowrap"}}>
 					            {f.circle?<div style={{width:24,height:24,borderRadius:"50%",background:active?"rgba(255,255,255,.3)":"#222",display:"flex",alignItems:"center",justifyContent:"center"}}><span style={{fontSize:9,fontWeight:900,color:"#fff"}}>{f.icon}</span></div>:<span>{f.icon}</span>}
 					            {active&&<span>{f.label}</span>}
 					          </button>;
@@ -1744,21 +1759,21 @@
 					
 					  // ── LOADING SCREEN ──
 					  if(isLoading&&!isPartial){
-					    return React.createElement("div",{style:{position:"fixed",inset:0,zIndex:950,background:"#fff",display:"flex",flexDirection:"column",alignItems:"center",justifyContent:"center",gap:16}},
+					    return React.createElement("div",{style:{position:"fixed",inset:0,zIndex:950,background:"#0d0f14",display:"flex",flexDirection:"column",alignItems:"center",justifyContent:"center",gap:16}},
 					      React.createElement("div",{style:{width:40,height:40,border:"3px solid rgba(255,107,74,0.2)",borderTopColor:"#FF6B4A",borderRadius:"50%",animation:"spin .7s linear infinite"}}),
-					      React.createElement("div",{style:{fontFamily:"'Barlow Condensed',sans-serif",fontSize:14,color:"rgba(15,17,23,.38)",letterSpacing:2,textTransform:"uppercase"}},
+					      React.createElement("div",{style:{fontFamily:"'Barlow Condensed',sans-serif",fontSize:14,color:"rgba(255,255,255,.32)",letterSpacing:2,textTransform:"uppercase"}},
 					        "Chargement..."
 					      ),
-					      React.createElement("button",{onClick:onClose,style:{position:"absolute",top:16,left:16,background:"none",border:"none",color:"rgba(15,17,23,.5)",fontSize:24,cursor:"pointer",padding:0}},"←")
+					      React.createElement("button",{onClick:onClose,style:{position:"absolute",top:16,left:16,background:"none",border:"none",color:"rgba(255,255,255,.4)",fontSize:24,cursor:"pointer",padding:0}},"←")
 					    );
 					  }
 					
 					  if(state.error){
-					    return React.createElement("div",{style:{position:"fixed",inset:0,zIndex:950,background:"#fff",display:"flex",flexDirection:"column",alignItems:"center",justifyContent:"center",gap:12,padding:24}},
+					    return React.createElement("div",{style:{position:"fixed",inset:0,zIndex:950,background:"#0d0f14",display:"flex",flexDirection:"column",alignItems:"center",justifyContent:"center",gap:12,padding:24}},
 					      React.createElement("div",{style:{fontSize:44}},"⚠️"),
-					      React.createElement("div",{style:{fontSize:14,color:"rgba(15,17,23,.5)",textAlign:"center"}}),
-					      React.createElement("button",{onClick:onClose,style:{background:"#00c170",border:"none",color:"#0f1117",borderRadius:12,padding:"11px 24px",fontFamily:"'Barlow Condensed',sans-serif",fontSize:14,fontWeight:700,cursor:"pointer",marginTop:8}},"Retour"),
-					      React.createElement("button",{onClick:onClose,style:{position:"absolute",top:16,left:16,background:"none",border:"none",color:"rgba(15,17,23,.5)",fontSize:24,cursor:"pointer",padding:0}},"←")
+					      React.createElement("div",{style:{fontSize:14,color:"rgba(255,255,255,.4)",textAlign:"center"}}),
+					      React.createElement("button",{onClick:onClose,style:{background:"#00c170",border:"none",color:"rgba(255,255,255,.9)",borderRadius:12,padding:"11px 24px",fontFamily:"'Barlow Condensed',sans-serif",fontSize:14,fontWeight:700,cursor:"pointer",marginTop:8}},"Retour"),
+					      React.createElement("button",{onClick:onClose,style:{position:"absolute",top:16,left:16,background:"none",border:"none",color:"rgba(255,255,255,.4)",fontSize:24,cursor:"pointer",padding:0}},"←")
 					    );
 					  }
 					
@@ -1852,22 +1867,22 @@
 				        :isVar?React.createElement("div",{style:{width:28,height:28,borderRadius:"50%",background:"rgba(37,99,235,.08)",display:"flex",alignItems:"center",justifyContent:"center",flexShrink:0,fontSize:13}},"📺")
 				        :React.createElement("div",{style:{width:28,height:28,borderRadius:"50%",background:"rgba(0,0,0,.06)",display:"flex",alignItems:"center",justifyContent:"center",flexShrink:0,fontSize:13}},"📋");
 
-				      const scoreEl=(isGoal&&!isMiss)?React.createElement("div",{style:{fontFamily:"'Barlow Condensed',sans-serif",fontSize:15,fontWeight:900,color:"#0f1117",background:"rgba(0,0,0,.06)",borderRadius:6,padding:"2px 10px",whiteSpace:"nowrap",flexShrink:0}},`${e.hs} - ${e.as}`):null;
+				      const scoreEl=(isGoal&&!isMiss)?React.createElement("div",{style:{fontFamily:"'Barlow Condensed',sans-serif",fontSize:15,fontWeight:900,color:"#fff",background:"rgba(255,255,255,.1)",borderRadius:6,padding:"2px 10px",whiteSpace:"nowrap",flexShrink:0}},`${e.hs} - ${e.as}`):null;
 
-				      const nameEl=React.createElement("div",{style:{fontSize:13,fontWeight:isGoal&&!isMiss?700:500,color:"#0f1117",overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap"}},
+				      const nameEl=React.createElement("div",{style:{fontSize:13,fontWeight:isGoal&&!isMiss?700:500,color:"rgba(255,255,255,.88)",overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap"}},
 				        e.player?.name||"?",
 				        isPen&&!isMiss?React.createElement("span",{style:{fontSize:10,background:"rgba(0,193,112,.12)",color:"#00c170",borderRadius:3,padding:"1px 5px",marginLeft:5,fontWeight:700}},"Pen."):null,
 				        isCSC?React.createElement("span",{style:{fontSize:10,background:"rgba(229,57,53,.1)",color:"#e53935",borderRadius:3,padding:"1px 5px",marginLeft:5,fontWeight:700}},"CSC"):null
 				      );
 				      const subLine=isSubst&&e.assist?.name
-				        ?React.createElement("div",{style:{fontSize:11,color:"rgba(15,17,23,.42)",marginTop:1}},`(${e.assist.name})`)
+				        ?React.createElement("div",{style:{fontSize:11,color:"rgba(255,255,255,.35)",marginTop:1}},`(${e.assist.name})`)
 				        :e.assist?.name&&!isSubst
-				        ?React.createElement("div",{style:{fontSize:11,color:"rgba(15,17,23,.42)",marginTop:1}},`(${e.assist.name})`)
+				        ?React.createElement("div",{style:{fontSize:11,color:"rgba(255,255,255,.35)",marginTop:1}},`(${e.assist.name})`)
 				        :isMiss?React.createElement("div",{style:{fontSize:11,color:"#e53935",marginTop:1}},"Pénalty manqué"):null;
 
 				      if(isVar){
 				        return React.createElement("div",{key:i,style:{display:"flex",alignItems:"center",gap:8,padding:"8px 12px",background:"rgba(37,99,235,.04)",borderRadius:8,marginBottom:3,borderLeft:"3px solid rgba(37,99,235,.25)"}},
-				          React.createElement("span",{style:{fontFamily:"'Barlow Condensed',sans-serif",fontSize:12,fontWeight:700,color:"rgba(15,17,23,.4)",minWidth:32}},[minStr]),
+				          React.createElement("span",{style:{fontFamily:"'Barlow Condensed',sans-serif",fontSize:12,fontWeight:700,color:"rgba(255,255,255,.3)",minWidth:32}},[minStr]),
 				          iconEl,
 				          React.createElement("span",{style:{fontSize:11,color:"#2563eb",fontWeight:600,flex:1}},`VAR · ${e.detail||"Vérification"}`)
 				        );
@@ -1876,31 +1891,31 @@
 				      // Layout FlashScore: home = minute à gauche | icon | score | nom | (passeur)
 				      //                   away = (passeur) | nom | score | icon | minute à droite
 				      if(isHome){
-				        return React.createElement("div",{key:i,style:{display:"flex",alignItems:"center",gap:8,padding:"9px 12px 9px 14px",background:"#fff",borderRadius:0,marginBottom:1,borderBottom:"1px solid rgba(0,0,0,.05)"}},
-				          React.createElement("span",{style:{fontFamily:"'Barlow Condensed',sans-serif",fontSize:13,fontWeight:700,color:isGoal&&!isMiss?"#0f1117":"rgba(15,17,23,.45)",minWidth:32,flexShrink:0}},[minStr]),
+				        return React.createElement("div",{key:i,style:{display:"flex",alignItems:"center",gap:8,padding:"9px 12px 9px 14px",background:"rgba(255,255,255,.03)",borderRadius:0,marginBottom:0,borderBottom:"1px solid rgba(255,255,255,.04)"}},
+				          React.createElement("span",{style:{fontFamily:"'Barlow Condensed',sans-serif",fontSize:13,fontWeight:700,color:isGoal&&!isMiss?"#0f1117":"rgba(255,255,255,0.81)",minWidth:32,flexShrink:0}},[minStr]),
 				          iconEl,
 				          scoreEl,
 				          React.createElement("div",{style:{flex:1,minWidth:0}},nameEl,subLine),
 				          React.createElement("div",{style:{flex:1}})
 				        );
 				      } else {
-				        return React.createElement("div",{key:i,style:{display:"flex",alignItems:"center",gap:8,padding:"9px 14px 9px 12px",background:"#fff",borderRadius:0,marginBottom:1,borderBottom:"1px solid rgba(0,0,0,.05)"}},
+				        return React.createElement("div",{key:i,style:{display:"flex",alignItems:"center",gap:8,padding:"9px 14px 9px 12px",background:"rgba(255,255,255,.03)",borderRadius:0,marginBottom:0,borderBottom:"1px solid rgba(255,255,255,.04)"}},
 				          React.createElement("div",{style:{flex:1}}),
 				          React.createElement("div",{style:{flex:1,minWidth:0,textAlign:"right"}},nameEl,subLine),
 				          scoreEl,
 				          iconEl,
-				          React.createElement("span",{style:{fontFamily:"'Barlow Condensed',sans-serif",fontSize:13,fontWeight:700,color:isGoal&&!isMiss?"#0f1117":"rgba(15,17,23,.45)",minWidth:32,flexShrink:0,textAlign:"right"}},[minStr])
+				          React.createElement("span",{style:{fontFamily:"'Barlow Condensed',sans-serif",fontSize:13,fontWeight:700,color:isGoal&&!isMiss?"#0f1117":"rgba(255,255,255,0.81)",minWidth:32,flexShrink:0,textAlign:"right"}},[minStr])
 				        );
 				      }
 				    };
 
 				    // Séparateur mi-temps style FlashScore — bandeau gris avec score
-				    const HalfSep=({label,scoreH,scoreA})=>React.createElement("div",{style:{display:"flex",alignItems:"center",justifyContent:"space-between",padding:"7px 14px",background:"#eef0f5",borderTop:"1px solid rgba(0,0,0,.07)",borderBottom:"1px solid rgba(0,0,0,.07)",marginBottom:1}},
-				      React.createElement("span",{style:{fontFamily:"'Barlow Condensed',sans-serif",fontSize:11,fontWeight:800,letterSpacing:1.2,textTransform:"uppercase",color:"rgba(15,17,23,.5)"}},[label]),
-				      scoreH!=null&&scoreA!=null?React.createElement("span",{style:{fontFamily:"'Barlow Condensed',sans-serif",fontSize:13,fontWeight:900,color:"rgba(15,17,23,.5)"}},[`${scoreH} - ${scoreA}`]):null
+				    const HalfSep=({label,scoreH,scoreA})=>React.createElement("div",{style:{display:"flex",alignItems:"center",justifyContent:"space-between",padding:"7px 14px",background:"rgba(255,255,255,.04)",borderTop:"1px solid rgba(255,255,255,.06)",borderBottom:"1px solid rgba(255,255,255,.06)",marginBottom:1}},
+				      React.createElement("span",{style:{fontFamily:"'Barlow Condensed',sans-serif",fontSize:11,fontWeight:800,letterSpacing:1.2,textTransform:"uppercase",color:"rgba(255,255,255,.3)"}},[label]),
+				      scoreH!=null&&scoreA!=null?React.createElement("span",{style:{fontFamily:"'Barlow Condensed',sans-serif",fontSize:13,fontWeight:900,color:"rgba(255,255,255,.3)"}},[`${scoreH} - ${scoreA}`]):null
 				    );
 
-				    return React.createElement("div",{style:{background:"#fff",borderRadius:10,overflow:"hidden",boxShadow:"0 1px 4px rgba(0,0,0,.06)"}},
+				    return React.createElement("div",{style:{background:"rgba(255,255,255,.04)",borderRadius:10,overflow:"hidden",border:"1px solid rgba(255,255,255,.07)"}},
 				      React.createElement(HalfSep,{label:"1. Mi-temps",scoreH:htH,scoreA:htA}),
 				      firstH.length?firstH.map(renderEvt):React.createElement("div",{className:"md-empty-small"},"Aucun événement"),
 				      ["2H","HT","ET","FT","AET","PEN"].includes(sh)?React.createElement(React.Fragment,null,
@@ -1919,26 +1934,26 @@
 			      const label=period==="first"?"1re mi-temps":"2e mi-temps";
 			      const htScore=period==="first"?fix.score?.halftime:null;
 			      const makeRow=(icon,label,hv,av)=>React.createElement("div",{style:{display:"flex",alignItems:"center",padding:"10px 14px",borderBottom:"1px solid rgba(0,0,0,.05)",gap:8}},
-			        React.createElement("div",{style:{flex:1,textAlign:"right",fontFamily:"'Barlow Condensed',sans-serif",fontSize:18,fontWeight:900,color:"#0f1117"}},[hv]),
-			        React.createElement("div",{style:{flex:2,textAlign:"center",fontSize:11,color:"rgba(15,17,23,.45)",fontWeight:600,textTransform:"uppercase"}},[`${icon} ${label}`]),
-			        React.createElement("div",{style:{flex:1,textAlign:"left",fontFamily:"'Barlow Condensed',sans-serif",fontSize:18,fontWeight:900,color:"#0f1117"}},[av])
+			        React.createElement("div",{style:{flex:1,textAlign:"right",fontFamily:"'Barlow Condensed',sans-serif",fontSize:18,fontWeight:900,color:"#fff"}},[hv]),
+			        React.createElement("div",{style:{flex:2,textAlign:"center",fontSize:11,color:"rgba(255,255,255,.4)",fontWeight:600,textTransform:"uppercase"}},[`${icon} ${label}`]),
+			        React.createElement("div",{style:{flex:1,textAlign:"left",fontFamily:"'Barlow Condensed',sans-serif",fontSize:18,fontWeight:900,color:"#fff"}},[av])
 			      );
 			      return React.createElement("div",{style:{paddingBottom:16}},
 			        // Score mi-temps
-			        htScore!=null?React.createElement("div",{style:{textAlign:"center",padding:"14px 16px",background:"rgba(0,0,0,.03)",borderBottom:"1px solid rgba(0,0,0,.06)",marginBottom:8}},
-			          React.createElement("div",{style:{fontSize:11,color:"rgba(15,17,23,.4)",fontWeight:700,textTransform:"uppercase",letterSpacing:1,marginBottom:4}},[label]),
-			          React.createElement("div",{style:{fontFamily:"'Barlow Condensed',sans-serif",fontSize:32,fontWeight:900,color:"#0f1117",letterSpacing:-1}},[`${htScore.home} - ${htScore.away}`])
-			        ):React.createElement("div",{style:{textAlign:"center",padding:"10px 16px",background:"rgba(0,0,0,.03)",borderBottom:"1px solid rgba(0,0,0,.06)",marginBottom:8}},
-			          React.createElement("div",{style:{fontSize:11,color:"rgba(15,17,23,.4)",fontWeight:700,textTransform:"uppercase",letterSpacing:1}},[label])
+			        htScore!=null?React.createElement("div",{style:{textAlign:"center",padding:"14px 16px",background:"rgba(255,255,255,.04)",borderBottom:"1px solid rgba(255,255,255,.06)",marginBottom:8}},
+			          React.createElement("div",{style:{fontSize:11,color:"rgba(255,255,255,.35)",fontWeight:700,textTransform:"uppercase",letterSpacing:1,marginBottom:4}},[label]),
+			          React.createElement("div",{style:{fontFamily:"'Barlow Condensed',sans-serif",fontSize:32,fontWeight:900,color:"#fff",letterSpacing:-1}},[`${htScore.home} - ${htScore.away}`])
+			        ):React.createElement("div",{style:{textAlign:"center",padding:"10px 16px",background:"rgba(255,255,255,.04)",borderBottom:"1px solid rgba(255,255,255,.06)",marginBottom:8}},
+			          React.createElement("div",{style:{fontSize:11,color:"rgba(255,255,255,.3)",fontWeight:700,textTransform:"uppercase",letterSpacing:1}},[label])
 			        ),
 			        // Header équipes
 			        React.createElement("div",{style:{display:"flex",alignItems:"center",justifyContent:"space-between",padding:"8px 14px",marginBottom:4}},
 			          React.createElement("div",{style:{display:"flex",alignItems:"center",gap:6}},
 			            React.createElement("img",{src:fix.teams.home.logo,style:{width:20,height:20,objectFit:"contain"},onError:e=>{e.target.style.display="none"}}),
-			            React.createElement("span",{style:{fontSize:11,fontWeight:700,color:"#0f1117"}},fix.teams.home.name)
+			            React.createElement("span",{style:{fontSize:11,fontWeight:700,color:"rgba(255,255,255,.8)"}},fix.teams.home.name)
 			          ),
 			          React.createElement("div",{style:{display:"flex",alignItems:"center",gap:6}},
-			            React.createElement("span",{style:{fontSize:11,fontWeight:700,color:"#0f1117"}},fix.teams.away.name),
+			            React.createElement("span",{style:{fontSize:11,fontWeight:700,color:"rgba(255,255,255,.8)"}},fix.teams.away.name),
 			            React.createElement("img",{src:fix.teams.away.logo,style:{width:20,height:20,objectFit:"contain"},onError:e=>{e.target.style.display="none"}})
 			          )
 			        ),
@@ -1962,7 +1977,7 @@
 				        players.map(team=>{
 				          const tColor=team.team?.id===hid?"#e53935":"#2563eb";
 				          return React.createElement("div",{key:team.team?.id,style:{marginBottom:12}},
-				            React.createElement("div",{style:{display:"flex",alignItems:"center",gap:8,padding:"10px 14px",background:"#fff",borderBottom:"1px solid rgba(0,0,0,.06)"}},
+				            React.createElement("div",{style:{display:"flex",alignItems:"center",gap:8,padding:"10px 14px",background:"rgba(255,255,255,.05)",borderBottom:"1px solid rgba(255,255,255,.07)"}},
 				              React.createElement("img",{src:team.team?.logo,style:{width:24,height:24,objectFit:"contain"},onError:e=>{e.target.style.display="none"}}),
 				              React.createElement("span",{style:{fontFamily:"'Barlow Condensed',sans-serif",fontSize:15,fontWeight:800,color:tColor}},[team.team?.name])
 				            ),
@@ -1975,20 +1990,20 @@
 				                const photo=p.player?.photo;
 				                const rating=parseFloat(g.rating||0);
 				                const rBg=rating>=8?"#2e7d32":rating>=7?"#558b2f":rating>=6?"#e65100":"#c62828";
-				                return React.createElement("div",{key:p.player?.id,style:{display:"flex",alignItems:"center",gap:10,padding:"9px 12px",background:"#fff",borderBottom:"1px solid rgba(0,0,0,.05)"}},
-				                  React.createElement("div",{style:{width:36,height:36,borderRadius:"50%",overflow:"hidden",background:"#eef0f5",flexShrink:0}},
+				                return React.createElement("div",{key:p.player?.id,style:{display:"flex",alignItems:"center",gap:10,padding:"9px 12px",background:"rgba(255,255,255,.03)",borderBottom:"1px solid rgba(255,255,255,.04)"}},
+				                  React.createElement("div",{style:{width:36,height:36,borderRadius:"50%",overflow:"hidden",background:"rgba(255,255,255,.08)",flexShrink:0}},
 				                    photo?React.createElement("img",{src:photo,style:{width:"100%",height:"100%",objectFit:"cover"},onError:e=>{e.target.style.display="none"}}):
-				                    React.createElement("div",{style:{width:"100%",height:"100%",display:"flex",alignItems:"center",justifyContent:"center",fontSize:11,color:"rgba(15,17,23,.3)"}},"👤")
+				                    React.createElement("div",{style:{width:"100%",height:"100%",display:"flex",alignItems:"center",justifyContent:"center",fontSize:11,color:"rgba(255,255,255,0.54)"}},"👤")
 				                  ),
 				                  React.createElement("div",{style:{flex:1,minWidth:0}},
-				                    React.createElement("div",{style:{fontSize:13,fontWeight:600,color:"#0f1117",overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap"}},[p.player?.name]),
+				                    React.createElement("div",{style:{fontSize:13,fontWeight:600,color:"rgba(255,255,255,.85)",overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap"}},[p.player?.name]),
 				                    React.createElement("div",{style:{display:"flex",gap:8,marginTop:3,flexWrap:"wrap"}},
-				                      g.minutes?React.createElement("span",{style:{fontSize:10,color:"rgba(15,17,23,.4)"}},[`⏱ ${g.minutes}'`]):null,
-				                      gl.total?React.createElement("span",{style:{fontSize:10,color:"#0f1117",fontWeight:700,background:"rgba(0,193,112,.12)",borderRadius:4,padding:"1px 5px"}},[`⚽ ${gl.total}`]):null,
-				                      gl.assists?React.createElement("span",{style:{fontSize:10,color:"rgba(15,17,23,.5)",background:"rgba(0,0,0,.06)",borderRadius:4,padding:"1px 5px"}},[`🎯 ${gl.assists}`]):null,
-				                      sh.total?React.createElement("span",{style:{fontSize:10,color:"rgba(15,17,23,.4)"}},[`Tirs: ${sh.on||0}/${sh.total}`]):null,
-				                      ps.accuracy?React.createElement("span",{style:{fontSize:10,color:"rgba(15,17,23,.4)"}},[`Passes: ${ps.accuracy}%`]):null,
-				                      df.won&&df.total?React.createElement("span",{style:{fontSize:10,color:"rgba(15,17,23,.4)"}},[`Duels: ${df.won}/${df.total}`]):null
+				                      g.minutes?React.createElement("span",{style:{fontSize:10,color:"rgba(255,255,255,.3)"}},[`⏱ ${g.minutes}'`]):null,
+				                      gl.total?React.createElement("span",{style:{fontSize:10,color:"#00c170",fontWeight:700,background:"rgba(0,193,112,.15)",borderRadius:4,padding:"1px 5px"}},[`⚽ ${gl.total}`]):null,
+				                      gl.assists?React.createElement("span",{style:{fontSize:10,color:"rgba(255,255,255,.5)",background:"rgba(255,255,255,.07)",borderRadius:4,padding:"1px 5px"}},[`🎯 ${gl.assists}`]):null,
+				                      sh.total?React.createElement("span",{style:{fontSize:10,color:"rgba(255,255,255,.3)"}},[`Tirs: ${sh.on||0}/${sh.total}`]):null,
+				                      ps.accuracy?React.createElement("span",{style:{fontSize:10,color:"rgba(255,255,255,.3)"}},[`Passes: ${ps.accuracy}%`]):null,
+				                      df.won&&df.total?React.createElement("span",{style:{fontSize:10,color:"rgba(255,255,255,.3)"}},[`Duels: ${df.won}/${df.total}`]):null
 				                    )
 				                  ),
 				                  rating>0?React.createElement("div",{style:{background:rBg,borderRadius:5,padding:"3px 7px",fontSize:12,fontWeight:900,color:"#fff",flexShrink:0}},rating.toFixed(1)):null
@@ -2003,11 +2018,11 @@
 					      React.createElement("div",{style:{display:"flex",alignItems:"center",justifyContent:"space-between",marginBottom:16,padding:"10px 14px",background:"rgba(0,0,0,.04)",borderRadius:12,border:"1px solid rgba(255,255,255,0.07)"}},
 					        React.createElement("div",{style:{display:"flex",alignItems:"center",gap:8,flex:1,minWidth:0}},
 					          React.createElement("img",{src:fix.teams.home.logo,style:{width:24,height:24,objectFit:"contain"},onError:e=>{e.target.style.display="none"}}),
-					          React.createElement("span",{style:{fontSize:12,fontWeight:700,color:"#0f1117",overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap"}},[fix.teams.home.name])
+					          React.createElement("span",{style:{fontSize:12,fontWeight:700,color:"rgba(255,255,255,.9)",overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap"}},[fix.teams.home.name])
 					        ),
-					        React.createElement("div",{style:{fontFamily:"'Barlow Condensed',sans-serif",fontSize:10,fontWeight:700,color:"rgba(15,17,23,.38)",padding:"0 10px",flexShrink:0}},"VS"),
+					        React.createElement("div",{style:{fontFamily:"'Barlow Condensed',sans-serif",fontSize:10,fontWeight:700,color:"rgba(255,255,255,0.68)",padding:"0 10px",flexShrink:0}},"VS"),
 					        React.createElement("div",{style:{display:"flex",alignItems:"center",gap:8,flex:1,minWidth:0,justifyContent:"flex-end"}},
-					          React.createElement("span",{style:{fontSize:12,fontWeight:700,color:"#0f1117",overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap",textAlign:"right"}},[fix.teams.away.name]),
+					          React.createElement("span",{style:{fontSize:12,fontWeight:700,color:"rgba(255,255,255,.9)",overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap",textAlign:"right"}},[fix.teams.away.name]),
 					          React.createElement("img",{src:fix.teams.away.logo,style:{width:24,height:24,objectFit:"contain"},onError:e=>{e.target.style.display="none"}})
 					        )
 					      ),
@@ -2103,7 +2118,7 @@
 			          React.createElement("div",{style:{width:52,height:52,borderRadius:"50%",overflow:"hidden",background:"#d0d4dc",border:"2px solid rgba(255,255,255,.85)",boxShadow:"0 2px 6px rgba(0,0,0,.2)"}},
 			            photo
 			              ?React.createElement("img",{src:photo,loading:"lazy",style:{width:"100%",height:"100%",objectFit:"cover"},onError:e=>{e.target.style.display="none"}})
-			              :React.createElement("div",{style:{width:"100%",height:"100%",display:"flex",alignItems:"center",justifyContent:"center",fontFamily:"'Barlow Condensed',sans-serif",fontSize:14,fontWeight:700,color:"rgba(15,17,23,.35)"}},p.number||"?")
+			              :React.createElement("div",{style:{width:"100%",height:"100%",display:"flex",alignItems:"center",justifyContent:"center",fontFamily:"'Barlow Condensed',sans-serif",fontSize:14,fontWeight:700,color:"rgba(255,255,255,0.63)"}},p.number||"?")
 			          ),
 			          // Icônes événements — en haut à gauche (empilés)
 			          React.createElement("div",{style:{position:"absolute",top:-3,left:-3,display:"flex",flexDirection:"column",gap:1}},
@@ -2120,8 +2135,8 @@
 			        ),
 			        // Numéro + Nom
 			        React.createElement("div",{style:{textAlign:"center",lineHeight:1.3}},
-			          React.createElement("span",{style:{fontSize:11,color:"rgba(15,17,23,.5)",fontWeight:400,marginRight:3}},p.number),
-			          React.createElement("span",{style:{fontSize:11,fontWeight:700,color:"#0f1117"}},shortName)
+			          React.createElement("span",{style:{fontSize:11,color:"rgba(255,255,255,0.90)",fontWeight:400,marginRight:3}},p.number),
+			          React.createElement("span",{style:{fontSize:11,fontWeight:700,color:"rgba(255,255,255,.9)"}},shortName)
 			        )
 			      );
 			    };
@@ -2217,45 +2232,45 @@
 			            setPlayerSheet({...p,photo,stats:plrStats?.statistics?.[0]||null});
 			          }},
 			            React.createElement("div",{style:{fontFamily:"'Barlow Condensed',sans-serif",fontSize:12,fontWeight:700,color:accentColor,minWidth:24,textAlign:"center",opacity:isSub?.55:1}},p.number||"—"),
-			            React.createElement("div",{style:{width:34,height:34,borderRadius:"50%",overflow:"hidden",background:"#eef0f5",flexShrink:0,opacity:isSub?.65:1}},
+			            React.createElement("div",{style:{width:34,height:34,borderRadius:"50%",overflow:"hidden",background:"rgba(255,255,255,.08)",flexShrink:0,opacity:isSub?.65:1}},
 			              photo?React.createElement("img",{src:photo,style:{width:"100%",height:"100%",objectFit:"cover"},onError:e=>{e.target.parentNode.innerHTML="👤"}}):
-			              React.createElement("div",{style:{width:"100%",height:"100%",display:"flex",alignItems:"center",justifyContent:"center",fontSize:11,color:"rgba(15,17,23,.3)"}},p.number||"?")
+			              React.createElement("div",{style:{width:"100%",height:"100%",display:"flex",alignItems:"center",justifyContent:"center",fontSize:11,color:"rgba(255,255,255,0.54)"}},p.number||"?")
 			            ),
 			            React.createElement("div",{style:{flex:1,minWidth:0,opacity:isSub?.7:1}},
-			              React.createElement("div",{style:{fontSize:13,fontWeight:500,color:"#0f1117",overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap"}},p.name),
-			              p.pos?React.createElement("div",{style:{fontSize:10,color:"rgba(15,17,23,.35)",marginTop:1}},p.pos):null
+			              React.createElement("div",{style:{fontSize:13,fontWeight:500,color:"rgba(255,255,255,.9)",overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap"}},p.name),
+			              p.pos?React.createElement("div",{style:{fontSize:10,color:"rgba(255,255,255,0.63)",marginTop:1}},p.pos):null
 			            ),
 			            icons.some(x=>x.t==="goal")?React.createElement("span",{style:{fontSize:13,marginRight:2}},"⚽"):null,
 			            icons.some(x=>x.t==="yellow")?React.createElement("div",{style:{width:9,height:12,borderRadius:2,background:"#f59e0b",marginRight:2,flexShrink:0}}):null,
 			            icons.some(x=>x.t==="red")?React.createElement("div",{style:{width:9,height:12,borderRadius:2,background:"#e53935",marginRight:2,flexShrink:0}}):null,
 			            rating?React.createElement("div",{style:{background:ratingBg(rating),borderRadius:5,padding:"2px 7px",fontSize:11,fontWeight:900,color:"#fff",flexShrink:0}},rating.toFixed(1)):null,
-			            minShow?React.createElement("div",{style:{fontSize:10,fontWeight:700,color:"rgba(15,17,23,.4)",flexShrink:0,marginLeft:4}},`${isSub?"↑":"↓"}${minShow.time?.elapsed}'`):null
+			            minShow?React.createElement("div",{style:{fontSize:10,fontWeight:700,color:"rgba(255,255,255,0.72)",flexShrink:0,marginLeft:4}},`${isSub?"↑":"↓"}${minShow.time?.elapsed}'`):null
 			          );
 			        };
-			        return React.createElement("div",{key:lu.team?.id,style:{background:"#fff",borderRadius:12,overflow:"hidden",marginBottom:8,boxShadow:"0 1px 4px rgba(0,0,0,.06)"}},
-			          React.createElement("div",{style:{background:isHm?"rgba(0,193,112,.04)":"rgba(37,99,235,.04)",borderBottom:"1px solid rgba(0,0,0,.06)"}},
+			        return React.createElement("div",{key:lu.team?.id,style:{background:"rgba(255,255,255,.04)",borderRadius:12,overflow:"hidden",marginBottom:8,border:"1px solid rgba(255,255,255,.08)"}},
+			          React.createElement("div",{style:{background:isHm?"rgba(0,193,112,.06)":"rgba(37,99,235,.06)",borderBottom:"1px solid rgba(255,255,255,.07)"}},
 			            // Header: logo + formation
 			            React.createElement("div",{style:{display:"flex",alignItems:"center",gap:10,padding:"11px 14px"}},
 			              React.createElement("img",{src:lu.team?.logo,style:{width:28,height:28,objectFit:"contain"},onError:e=>{e.target.style.display="none"}}),
 			              React.createElement("div",{style:{flex:1,minWidth:0}},
 			                React.createElement("div",{style:{fontFamily:"'Barlow Condensed',sans-serif",fontSize:20,fontWeight:900,color:accentColor,letterSpacing:-.5}},lu.team?.name||"—"),
-			                lu.formation?React.createElement("div",{style:{fontSize:11,color:"rgba(15,17,23,.4)",marginTop:1}},[`Formation: ${lu.formation}`]):null
+			                lu.formation?React.createElement("div",{style:{fontSize:11,color:"rgba(255,255,255,0.72)",marginTop:1}},[`Formation: ${lu.formation}`]):null
 			              )
 			            ),
 			            // Entraîneur
 			            lu.coach?.name?React.createElement("div",{style:{display:"flex",alignItems:"center",gap:8,padding:"7px 14px",borderTop:"1px solid rgba(0,0,0,.04)"}},
-			              React.createElement("span",{style:{fontSize:11,color:"rgba(15,17,23,.38)"}},"🧑‍💼 Entraîneur :"),
-			              React.createElement("span",{style:{fontSize:12,fontWeight:600,color:"#0f1117"}},[lu.coach.name])
+			              React.createElement("span",{style:{fontSize:11,color:"rgba(255,255,255,0.68)"}},"🧑‍💼 Entraîneur :"),
+			              React.createElement("span",{style:{fontSize:12,fontWeight:600,color:"rgba(255,255,255,.9)"}},[lu.coach.name])
 			            ):null,
 			            // Absents (blessés/suspendus)
 			            (()=>{
 			              const teamAbsents=injuries.filter(inj=>inj.team?.id===lu.team?.id);
 			              if(!teamAbsents.length)return null;
 			              return React.createElement("div",{style:{padding:"7px 14px",borderTop:"1px solid rgba(0,0,0,.04)"}},
-			                React.createElement("div",{style:{fontSize:10,fontWeight:700,color:"rgba(15,17,23,.38)",letterSpacing:1,textTransform:"uppercase",marginBottom:6}},"Absents"),
+			                React.createElement("div",{style:{fontSize:10,fontWeight:700,color:"rgba(255,255,255,0.68)",letterSpacing:1,textTransform:"uppercase",marginBottom:6}},"Absents"),
 			                teamAbsents.map(inj=>React.createElement("div",{key:inj.player?.id,style:{display:"flex",alignItems:"center",gap:8,padding:"4px 0"}},
 			                  React.createElement("img",{src:inj.player?.photo,loading:"lazy",style:{width:22,height:22,borderRadius:"50%",objectFit:"cover"},onError:e=>{e.target.style.display="none"}}),
-			                  React.createElement("span",{style:{fontSize:12,color:"#0f1117",flex:1}},[inj.player?.name||"—"]),
+			                  React.createElement("span",{style:{fontSize:12,color:"rgba(255,255,255,.9)",flex:1}},[inj.player?.name||"—"]),
 			                  React.createElement("span",{style:{fontSize:10,color:"#e53935",fontWeight:600}},[inj.reason||inj.player?.reason||inj.player?.type||"—"])
 			                ))
 			              );
@@ -2263,7 +2278,7 @@
 			          ),
 			          (lu.startXI||[]).map(({player:p})=>renderPl(p,false)),
 			          (lu.substitutes||[]).length?React.createElement(React.Fragment,null,
-			            React.createElement("div",{style:{fontSize:9,fontWeight:800,letterSpacing:1.5,color:"rgba(15,17,23,.35)",textTransform:"uppercase",padding:"7px 14px",background:"rgba(0,0,0,.02)"}},"Remplaçants"),
+			            React.createElement("div",{style:{fontSize:9,fontWeight:800,letterSpacing:1.5,color:"rgba(255,255,255,0.63)",textTransform:"uppercase",padding:"7px 14px",background:"rgba(0,0,0,.02)"}},"Remplaçants"),
 			            (lu.substitutes||[]).map(({player:p})=>renderPl(p,true))
 			          ):null
 			        );
@@ -2317,17 +2332,17 @@
 			    return React.createElement(React.Fragment,null,
 
 			      // ── Résumé bilan ──
-			      React.createElement("div",{style:{background:"#fff",borderRadius:12,padding:"14px 16px",marginBottom:8,boxShadow:"0 1px 4px rgba(0,0,0,.06)"}},
+			      React.createElement("div",{style:{background:"rgba(255,255,255,.04)",borderRadius:12,padding:"14px 16px",marginBottom:8,border:"1px solid rgba(255,255,255,.07)"}},
 
 			        // Logos + noms
 			        React.createElement("div",{style:{display:"flex",alignItems:"center",justifyContent:"space-between",marginBottom:14}},
 			          React.createElement("div",{style:{display:"flex",alignItems:"center",gap:7,flex:1,minWidth:0}},
 			            React.createElement(Logo,{src:fix.teams.home.logo,size:28}),
-			            React.createElement("span",{style:{fontSize:12,fontWeight:700,color:"#0f1117",overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap"}},[hShort])
+			            React.createElement("span",{style:{fontSize:12,fontWeight:700,color:"rgba(255,255,255,.9)",overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap"}},[hShort])
 			          ),
-			          React.createElement("span",{style:{fontFamily:"'Barlow Condensed',sans-serif",fontSize:11,fontWeight:700,color:"rgba(15,17,23,.3)",padding:"0 8px",flexShrink:0}},"HISTORIQUE"),
+			          React.createElement("span",{style:{fontFamily:"'Barlow Condensed',sans-serif",fontSize:11,fontWeight:700,color:"rgba(255,255,255,0.54)",padding:"0 8px",flexShrink:0}},"HISTORIQUE"),
 			          React.createElement("div",{style:{display:"flex",alignItems:"center",gap:7,flex:1,minWidth:0,justifyContent:"flex-end"}},
-			            React.createElement("span",{style:{fontSize:12,fontWeight:700,color:"#0f1117",overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap",textAlign:"right"}},[aShort]),
+			            React.createElement("span",{style:{fontSize:12,fontWeight:700,color:"rgba(255,255,255,.9)",overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap",textAlign:"right"}},[aShort]),
 			            React.createElement(Logo,{src:fix.teams.away.logo,size:28})
 			          )
 			        ),
@@ -2336,8 +2351,8 @@
 			        React.createElement("div",{style:{display:"flex",alignItems:"center",justifyContent:"space-between",marginBottom:8}},
 			          React.createElement("span",{style:{fontFamily:"'Barlow Condensed',sans-serif",fontSize:26,fontWeight:900,color:"#00c170",minWidth:32}},[hW]),
 			          React.createElement("div",{style:{display:"flex",flexDirection:"column",alignItems:"center",gap:2}},
-			            React.createElement("span",{style:{fontFamily:"'Barlow Condensed',sans-serif",fontSize:20,fontWeight:800,color:"rgba(15,17,23,.4)"}},[draws]),
-			            React.createElement("span",{style:{fontSize:9,fontWeight:600,color:"rgba(15,17,23,.3)",letterSpacing:1,textTransform:"uppercase"}},["Nuls"])
+			            React.createElement("span",{style:{fontFamily:"'Barlow Condensed',sans-serif",fontSize:20,fontWeight:800,color:"rgba(255,255,255,0.72)"}},[draws]),
+			            React.createElement("span",{style:{fontSize:9,fontWeight:600,color:"rgba(255,255,255,0.54)",letterSpacing:1,textTransform:"uppercase"}},["Nuls"])
 			          ),
 			          React.createElement("span",{style:{fontFamily:"'Barlow Condensed',sans-serif",fontSize:26,fontWeight:900,color:"#e53935",minWidth:32,textAlign:"right"}},[aW])
 			        ),
@@ -2351,41 +2366,41 @@
 			        // Barre de progression tricolore
 			        React.createElement("div",{style:{height:6,borderRadius:3,overflow:"hidden",display:"flex",gap:1}},
 			          React.createElement("div",{style:{flex:hPct,background:"#00c170",transition:"flex .5s",minWidth:hW?4:0}}),
-			          React.createElement("div",{style:{flex:dPct,background:"rgba(15,17,23,.15)",transition:"flex .5s",minWidth:draws?4:0}}),
+			          React.createElement("div",{style:{flex:dPct,background:"rgba(255,255,255,0.27)",transition:"flex .5s",minWidth:draws?4:0}}),
 			          React.createElement("div",{style:{flex:aPct,background:"#e53935",transition:"flex .5s",minWidth:aW?4:0}})
 			        ),
 
 			        // Pourcentages
 			        React.createElement("div",{style:{display:"flex",justifyContent:"space-between",marginTop:5}},
 			          React.createElement("span",{style:{fontSize:10,color:"#00c170",fontWeight:700}},[`${hPct}%`]),
-			          React.createElement("span",{style:{fontSize:10,color:"rgba(15,17,23,.3)",fontWeight:600}},[`${dPct}%`]),
+			          React.createElement("span",{style:{fontSize:10,color:"rgba(255,255,255,0.54)",fontWeight:600}},[`${dPct}%`]),
 			          React.createElement("span",{style:{fontSize:10,color:"#e53935",fontWeight:700}},[`${aPct}%`])
 			        ),
 
 			        // Buts
 			        React.createElement("div",{style:{display:"flex",justifyContent:"space-between",marginTop:12,paddingTop:10,borderTop:"1px solid rgba(0,0,0,.06)"}},
 			          React.createElement("div",{style:{textAlign:"center"}},
-			            React.createElement("div",{style:{fontFamily:"'Barlow Condensed',sans-serif",fontSize:18,fontWeight:900,color:"#0f1117"}},[hGoals]),
-			            React.createElement("div",{style:{fontSize:9,color:"rgba(15,17,23,.38)",marginTop:1,textTransform:"uppercase",letterSpacing:.5}},"Buts")
+			            React.createElement("div",{style:{fontFamily:"'Barlow Condensed',sans-serif",fontSize:18,fontWeight:900,color:"rgba(255,255,255,.9)"}},[hGoals]),
+			            React.createElement("div",{style:{fontSize:9,color:"rgba(255,255,255,0.68)",marginTop:1,textTransform:"uppercase",letterSpacing:.5}},"Buts")
 			          ),
 			          React.createElement("div",{style:{textAlign:"center"}},
-			            React.createElement("div",{style:{fontSize:11,color:"rgba(15,17,23,.35)",fontWeight:500}},[`${matches.length} matchs`])
+			            React.createElement("div",{style:{fontSize:11,color:"rgba(255,255,255,0.63)",fontWeight:500}},[`${matches.length} matchs`])
 			          ),
 			          React.createElement("div",{style:{textAlign:"center"}},
-			            React.createElement("div",{style:{fontFamily:"'Barlow Condensed',sans-serif",fontSize:18,fontWeight:900,color:"#0f1117"}},[aGoals]),
-			            React.createElement("div",{style:{fontSize:9,color:"rgba(15,17,23,.38)",marginTop:1,textTransform:"uppercase",letterSpacing:.5}},"Buts")
+			            React.createElement("div",{style:{fontFamily:"'Barlow Condensed',sans-serif",fontSize:18,fontWeight:900,color:"rgba(255,255,255,.9)"}},[aGoals]),
+			            React.createElement("div",{style:{fontSize:9,color:"rgba(255,255,255,0.68)",marginTop:1,textTransform:"uppercase",letterSpacing:.5}},"Buts")
 			          )
 			        )
 			      ),
 
 			      // ── Liste des matchs ──
-			      React.createElement("div",{style:{background:"#fff",borderRadius:12,overflow:"hidden",boxShadow:"0 1px 4px rgba(0,0,0,.06)"}},
+			      React.createElement("div",{style:{background:"rgba(255,255,255,.04)",borderRadius:12,overflow:"hidden",border:"1px solid rgba(255,255,255,.07)"}},
 			        // Header colonnes
 			        React.createElement("div",{style:{display:"flex",alignItems:"center",padding:"7px 12px",borderBottom:"1px solid rgba(0,0,0,.06)",background:"rgba(0,0,0,.02)"}},
-			          React.createElement("span",{style:{fontSize:9,fontWeight:700,color:"rgba(15,17,23,.35)",textTransform:"uppercase",letterSpacing:.8,width:40,flexShrink:0}},"Date"),
-			          React.createElement("span",{style:{fontSize:9,fontWeight:700,color:"rgba(15,17,23,.35)",textTransform:"uppercase",letterSpacing:.8,flex:1}},"Match"),
-			          React.createElement("span",{style:{fontSize:9,fontWeight:700,color:"rgba(15,17,23,.35)",textTransform:"uppercase",letterSpacing:.8,width:42,textAlign:"center",flexShrink:0}},"Score"),
-			          React.createElement("span",{style:{fontSize:9,fontWeight:700,color:"rgba(15,17,23,.35)",textTransform:"uppercase",letterSpacing:.8,width:22,textAlign:"center",flexShrink:0}},"/")
+			          React.createElement("span",{style:{fontSize:9,fontWeight:700,color:"rgba(255,255,255,0.63)",textTransform:"uppercase",letterSpacing:.8,width:40,flexShrink:0}},"Date"),
+			          React.createElement("span",{style:{fontSize:9,fontWeight:700,color:"rgba(255,255,255,0.63)",textTransform:"uppercase",letterSpacing:.8,flex:1}},"Match"),
+			          React.createElement("span",{style:{fontSize:9,fontWeight:700,color:"rgba(255,255,255,0.63)",textTransform:"uppercase",letterSpacing:.8,width:42,textAlign:"center",flexShrink:0}},"Score"),
+			          React.createElement("span",{style:{fontSize:9,fontWeight:700,color:"rgba(255,255,255,0.63)",textTransform:"uppercase",letterSpacing:.8,width:22,textAlign:"center",flexShrink:0}},"/")
 			        ),
 
 			        matches.map((m,i)=>{
@@ -2415,25 +2430,25 @@
 			          }},
 			            // Date
 			            React.createElement("div",{style:{width:40,flexShrink:0}},
-			              React.createElement("div",{style:{fontSize:10,fontWeight:600,color:"rgba(15,17,23,.5)",lineHeight:1.3}},[date]),
-			              React.createElement("div",{style:{fontSize:9,color:"rgba(15,17,23,.25)",marginTop:1,overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap",maxWidth:38}},[m.league?.country||""])
+			              React.createElement("div",{style:{fontSize:10,fontWeight:600,color:"rgba(255,255,255,0.90)",lineHeight:1.3}},[date]),
+			              React.createElement("div",{style:{fontSize:9,color:"rgba(255,255,255,0.45)",marginTop:1,overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap",maxWidth:38}},[m.league?.country||""])
 			            ),
 			            // Match: home vs away avec logos
 			            React.createElement("div",{style:{flex:1,minWidth:0,padding:"0 8px"}},
 			              React.createElement("div",{style:{display:"flex",alignItems:"center",gap:5,marginBottom:3}},
 			                React.createElement("img",{src:m.teams.home.logo,style:{width:14,height:14,objectFit:"contain",flexShrink:0},onError:e=>e.target.style.display="none"}),
-			                React.createElement("span",{style:{fontSize:12,fontWeight:hmBold?700:400,color:hmBold?"#0f1117":"rgba(15,17,23,.7)",overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap"}},[hmName])
+			                React.createElement("span",{style:{fontSize:12,fontWeight:hmBold?700:400,color:hmBold?"#0f1117":"rgba(255,255,255,1.00)",overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap"}},[hmName])
 			              ),
 			              React.createElement("div",{style:{display:"flex",alignItems:"center",gap:5}},
 			                React.createElement("img",{src:m.teams.away.logo,style:{width:14,height:14,objectFit:"contain",flexShrink:0},onError:e=>e.target.style.display="none"}),
-			                React.createElement("span",{style:{fontSize:12,fontWeight:awBold?700:400,color:awBold?"#0f1117":"rgba(15,17,23,.7)",overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap"}},[awName])
+			                React.createElement("span",{style:{fontSize:12,fontWeight:awBold?700:400,color:awBold?"#0f1117":"rgba(255,255,255,1.00)",overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap"}},[awName])
 			              ),
-			              league?React.createElement("div",{style:{fontSize:9,color:"rgba(15,17,23,.25)",marginTop:3,overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap"}},[league]):null
+			              league?React.createElement("div",{style:{fontSize:9,color:"rgba(255,255,255,0.45)",marginTop:3,overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap"}},[league]):null
 			            ),
 			            // Score deux lignes (home / away) + Badge V/N/D
 			            React.createElement("div",{style:{width:36,flexShrink:0,display:"flex",flexDirection:"column",alignItems:"center",justifyContent:"center",gap:0}},
-			              React.createElement("span",{style:{fontFamily:"'Barlow Condensed',sans-serif",fontSize:15,fontWeight:900,color:hmBold?"#0f1117":"rgba(15,17,23,.55)",lineHeight:1.35}},[String(gH)]),
-			              React.createElement("span",{style:{fontFamily:"'Barlow Condensed',sans-serif",fontSize:15,fontWeight:900,color:awBold?"#0f1117":"rgba(15,17,23,.55)",lineHeight:1.35}},[String(gA)])
+			              React.createElement("span",{style:{fontFamily:"'Barlow Condensed',sans-serif",fontSize:15,fontWeight:900,color:hmBold?"#0f1117":"rgba(255,255,255,0.99)",lineHeight:1.35}},[String(gH)]),
+			              React.createElement("span",{style:{fontFamily:"'Barlow Condensed',sans-serif",fontSize:15,fontWeight:900,color:awBold?"#0f1117":"rgba(255,255,255,0.99)",lineHeight:1.35}},[String(gA)])
 			            ),
 			            // Badge V/N/D
 			            React.createElement("div",{style:{width:22,flexShrink:0,display:"flex",justifyContent:"center",alignItems:"center"}},
@@ -2483,7 +2498,7 @@
 				          React.createElement("thead",null,
 				            React.createElement("tr",null,
 				              [{w:28,label:"#"},{w:null,label:"Équipe",cls:"team-col"},{w:null,label:"MJ"},{w:null,label:"G/N/P"},{w:null,label:"Buts"},{w:null,label:"PTS"}].map((h,i)=>
-				                React.createElement("th",{key:i,style:{background:"#fff",fontFamily:"'Barlow Condensed',sans-serif",fontSize:9,fontWeight:700,color:"rgba(15,17,23,.38)",letterSpacing:1,textTransform:"uppercase",padding:"8px 4px",textAlign:h.cls?"left":"center",paddingLeft:h.cls?10:4,borderBottom:"1px solid rgba(0,0,0,.07)",width:h.w||undefined}},[h.label])
+				                React.createElement("th",{key:i,style:{background:"rgba(255,255,255,.06)",fontFamily:"'Barlow Condensed',sans-serif",fontSize:9,fontWeight:700,color:"rgba(255,255,255,0.68)",letterSpacing:1,textTransform:"uppercase",padding:"8px 4px",textAlign:h.cls?"left":"center",paddingLeft:h.cls?10:4,borderBottom:"1px solid rgba(0,0,0,.07)",width:h.w||undefined}},[h.label])
 				              )
 				            )
 				          ),
@@ -2500,27 +2515,27 @@
 				              return React.createElement("tr",{key:r.team?.id,style:{borderBottom:"1px solid rgba(0,0,0,.05)",background:rowBg}},
 				                // Rang
 				                React.createElement("td",{style:{padding:"9px 4px",textAlign:"center",borderLeft}},
-				                  React.createElement("span",{style:{fontFamily:"'Barlow Condensed',sans-serif",fontSize:13,fontWeight:800,color:isTop4?"#e53935":"rgba(15,17,23,.4)"}},[r.rank])
+				                  React.createElement("span",{style:{fontFamily:"'Barlow Condensed',sans-serif",fontSize:13,fontWeight:800,color:isTop4?"#e53935":"rgba(255,255,255,0.72)"}},[r.rank])
 				                ),
 				                // Équipe + score live si concernée
 				                React.createElement("td",{style:{padding:"9px 4px 9px 10px"}},
 				                  React.createElement("div",{style:{display:"flex",alignItems:"center",gap:7}},
 				                    React.createElement("img",{src:r.team?.logo,style:{width:18,height:18,objectFit:"contain",flexShrink:0},onError:e=>{e.target.style.display="none"}}),
-				                    React.createElement("span",{style:{fontSize:12,fontWeight:isHm||isAw?700:500,color:"#0f1117",whiteSpace:"nowrap",overflow:"hidden",textOverflow:"ellipsis",maxWidth:95}},[r.team?.name]),
+				                    React.createElement("span",{style:{fontSize:12,fontWeight:isHm||isAw?700:500,color:"rgba(255,255,255,.9)",whiteSpace:"nowrap",overflow:"hidden",textOverflow:"ellipsis",maxWidth:95}},[r.team?.name]),
 				                    isLive&&hasScore&&(isHm||isAw)?React.createElement("span",{style:{fontSize:10,fontWeight:800,color:"#e53935",background:"rgba(229,57,53,.1)",borderRadius:4,padding:"1px 5px",flexShrink:0,animation:"pulse 1.4s infinite"}},[isHm?`${curHg}-${curAg}`:`${curAg}-${curHg}`]):null
 				                  )
 				                ),
 				                // MJ
-				                React.createElement("td",{style:{padding:"9px 4px",textAlign:"center",fontSize:12,color:"rgba(15,17,23,.5)"}},[r.all?.played??"-"]),
+				                React.createElement("td",{style:{padding:"9px 4px",textAlign:"center",fontSize:12,color:"rgba(255,255,255,0.90)"}},[r.all?.played??"-"]),
 				                // G/N/P
-				                React.createElement("td",{style:{padding:"9px 4px",textAlign:"center",fontSize:11,color:"rgba(15,17,23,.45)",whiteSpace:"nowrap"}},[`${r.all?.win??0}/${r.all?.draw??0}/${r.all?.lose??0}`]),
+				                React.createElement("td",{style:{padding:"9px 4px",textAlign:"center",fontSize:11,color:"rgba(255,255,255,0.81)",whiteSpace:"nowrap"}},[`${r.all?.win??0}/${r.all?.draw??0}/${r.all?.lose??0}`]),
 				                // Buts
-				                React.createElement("td",{style:{padding:"9px 4px",textAlign:"center",fontSize:11,color:"rgba(15,17,23,.45)",whiteSpace:"nowrap"}},[`${bFor}:${bAga}`]),
+				                React.createElement("td",{style:{padding:"9px 4px",textAlign:"center",fontSize:11,color:"rgba(255,255,255,0.81)",whiteSpace:"nowrap"}},[`${bFor}:${bAga}`]),
 				                // Points (+ projection live)
 				                React.createElement("td",{style:{padding:"9px 4px",textAlign:"center"}},
 				                  React.createElement("div",{style:{display:"flex",flexDirection:"column",alignItems:"center",gap:1}},
-				                    React.createElement("span",{style:{fontFamily:"'Barlow Condensed',sans-serif",fontSize:14,fontWeight:900,color:isHm||isAw?"#0f1117":"rgba(15,17,23,.7)"}},[r.points]),
-				                    proj!==null&&proj!==r.points?React.createElement("span",{style:{fontSize:9,fontWeight:700,color:proj>r.points?"#00c170":"rgba(15,17,23,.3)",background:proj>r.points?"rgba(0,193,112,.1)":"rgba(0,0,0,.04)",borderRadius:3,padding:"0 4px",lineHeight:1.6}},[`→${proj}`]):null
+				                    React.createElement("span",{style:{fontFamily:"'Barlow Condensed',sans-serif",fontSize:14,fontWeight:900,color:isHm||isAw?"#0f1117":"rgba(255,255,255,1.00)"}},[r.points]),
+				                    proj!==null&&proj!==r.points?React.createElement("span",{style:{fontSize:9,fontWeight:700,color:proj>r.points?"#00c170":"rgba(255,255,255,0.54)",background:proj>r.points?"rgba(0,193,112,.1)":"rgba(0,0,0,.04)",borderRadius:3,padding:"0 4px",lineHeight:1.6}},[`→${proj}`]):null
 				                  )
 				                )
 				              );
@@ -2599,9 +2614,9 @@
 					      tab==="resume"?React.createElement("div",{className:"md-panel"},
 					        renderTimeline(),
 					        // Infos de match en bas du résumé
-					        React.createElement("div",{style:{background:"#fff",borderRadius:12,marginTop:8,overflow:"hidden",boxShadow:"0 1px 4px rgba(0,0,0,.05)"}},
-					          React.createElement("div",{style:{padding:"10px 14px",background:"rgba(0,0,0,.03)",borderBottom:"1px solid rgba(0,0,0,.06)"}},
-					            React.createElement("span",{style:{fontSize:11,fontWeight:800,color:"rgba(15,17,23,.5)",letterSpacing:1,textTransform:"uppercase"}},["INFORMATIONS DE MATCH"])
+					        React.createElement("div",{style:{background:"rgba(255,255,255,.04)",borderRadius:12,marginTop:8,overflow:"hidden",border:"1px solid rgba(255,255,255,.07)"}},
+					          React.createElement("div",{style:{padding:"10px 14px",background:"rgba(255,255,255,.04)",borderBottom:"1px solid rgba(255,255,255,.06)"}},
+					            React.createElement("span",{style:{fontSize:11,fontWeight:800,color:"rgba(255,255,255,.3)",letterSpacing:1,textTransform:"uppercase"}},["INFORMATIONS DE MATCH"])
 					          ),
 					          [
 					            fix.fixture?.referee?{icon:"🟡",label:"Arbitre",value:fix.fixture.referee}:null,
@@ -2615,8 +2630,8 @@
 					              borderBottom:i<arr.length-1?"1px solid rgba(0,0,0,.05)":"none",
 					            }},
 					              React.createElement("span",{style:{fontSize:16,marginRight:10,flexShrink:0}},[icon]),
-					              React.createElement("span",{style:{fontSize:13,color:"rgba(15,17,23,.5)",flex:1}},[label]),
-					              React.createElement("span",{style:{fontSize:13,fontWeight:600,color:"#0f1117",textAlign:"right",maxWidth:200,overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap"}},[value])
+					              React.createElement("span",{style:{fontSize:13,color:"rgba(255,255,255,.38)",flex:1}},[label]),
+					              React.createElement("span",{style:{fontSize:13,fontWeight:600,color:"rgba(255,255,255,.85)",textAlign:"right",maxWidth:200,overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap"}},[value])
 					            )
 					          )
 					        )
@@ -2624,7 +2639,7 @@
 					
 					      // STATS
 					      tab==="stats"?React.createElement("div",{className:"md-panel"},
-					        React.createElement("div",{style:{display:"flex",gap:4,marginBottom:16,background:"#fff",borderRadius:10,padding:3}},
+					        React.createElement("div",{style:{display:"flex",gap:4,marginBottom:16,background:"rgba(255,255,255,.05)",borderRadius:10,padding:3}},
 					          [{id:"all",label:"Match"},{id:"first",label:"1re MT"},{id:"second",label:"2e MT"}].map(p=>
 					            React.createElement("button",{key:p.id,className:`md-subtab${period===p.id?" active":""}`,onClick:()=>setPeriod(p.id)},[p.label])
 					          )
@@ -2641,27 +2656,27 @@
 					      // CLASSEMENT
 					      tab==="classement"?React.createElement("div",{className:"md-panel"},
 					        standings.length?renderStandings():
-					          React.createElement("div",{style:{display:"flex",flexDirection:"column",alignItems:"center",padding:"40px 20px",gap:10,color:"rgba(15,17,23,.38)",fontSize:14}},"📊 Chargement classement...")
+					          React.createElement("div",{style:{display:"flex",flexDirection:"column",alignItems:"center",padding:"40px 20px",gap:10,color:"rgba(255,255,255,0.68)",fontSize:14}},"📊 Chargement classement...")
 					      ):null
 					    ),
 					
 					    // Player sheet overlay
 					    playerSheet?React.createElement("div",{className:"md-player-sheet-bg",onClick:e=>{if(e.target===e.currentTarget)setPlayerSheet(null);}},
 					      React.createElement("div",{className:"md-player-sheet-inner"},
-					        React.createElement("button",{onClick:()=>setPlayerSheet(null),style:{float:"right",background:"none",border:"none",color:"rgba(15,17,23,.38)",fontSize:22,cursor:"pointer"}},"✕"),
+					        React.createElement("button",{onClick:()=>setPlayerSheet(null),style:{float:"right",background:"none",border:"none",color:"rgba(255,255,255,0.68)",fontSize:22,cursor:"pointer"}},"✕"),
 					        React.createElement("div",{style:{display:"flex",alignItems:"center",gap:14,marginBottom:18}},
-					          React.createElement("div",{style:{width:56,height:56,borderRadius:"50%",border:"2px solid #FF6B4A",overflow:"hidden",background:"#eef0f5",display:"flex",alignItems:"center",justifyContent:"center",fontSize:20,color:"rgba(15,17,23,.38)",flexShrink:0}},
+					          React.createElement("div",{style:{width:56,height:56,borderRadius:"50%",border:"2px solid #FF6B4A",overflow:"hidden",background:"rgba(255,255,255,.08)",display:"flex",alignItems:"center",justifyContent:"center",fontSize:20,color:"rgba(255,255,255,.35)",flexShrink:0}},
 					            playerSheet.photo?React.createElement("img",{src:playerSheet.photo,style:{width:"100%",height:"100%",objectFit:"cover"},onError:e=>{e.target.parentNode.textContent="👤"}}):"👤"
 					          ),
 					          React.createElement("div",null,
-					            React.createElement("div",{style:{fontFamily:"'Barlow Condensed',sans-serif",fontSize:18,fontWeight:800,color:"#0f1117"}},[playerSheet.name]),
-					            React.createElement("div",{style:{fontSize:12,color:"rgba(15,17,23,.38)",marginTop:3}},
+					            React.createElement("div",{style:{fontFamily:"'Barlow Condensed',sans-serif",fontSize:18,fontWeight:800,color:"rgba(255,255,255,.92)"}},[playerSheet.name]),
+					            React.createElement("div",{style:{fontSize:12,color:"rgba(255,255,255,0.68)",marginTop:3}},
 					              [playerSheet.pos,playerSheet.nationality,playerSheet.number?"#"+playerSheet.number:null].filter(Boolean).join(" · ")
 					            )
 					          )
 					        ),
 					        playerSheet.stats?React.createElement(React.Fragment,null,
-					          playerSheet.stats.games?.rating&&(()=>{const r=parseFloat(playerSheet.stats.games.rating);const rc=r>=8?"#4CAF50":r>=7?"#FFC107":"#F44336";return React.createElement("div",{style:{background:"#eef0f5",borderRadius:10,padding:12,textAlign:"center",marginBottom:8}},React.createElement("div",{style:{fontFamily:"'Barlow Condensed',sans-serif",fontSize:28,fontWeight:800,color:rc}},[r.toFixed(1)]),React.createElement("div",{style:{fontSize:10,color:"rgba(15,17,23,.38)",marginTop:3}},"Note du match"));})(),
+					          playerSheet.stats.games?.rating&&(()=>{const r=parseFloat(playerSheet.stats.games.rating);const rc=r>=8?"#4CAF50":r>=7?"#FFC107":"#F44336";return React.createElement("div",{style:{background:"rgba(255,255,255,.07)",borderRadius:10,padding:12,textAlign:"center",marginBottom:8}},React.createElement("div",{style:{fontFamily:"'Barlow Condensed',sans-serif",fontSize:28,fontWeight:800,color:rc}},[r.toFixed(1)]),React.createElement("div",{style:{fontSize:10,color:"rgba(255,255,255,.35)",marginTop:3}},"Note du match"));})(),
 					          React.createElement("div",{style:{display:"grid",gridTemplateColumns:"repeat(3,1fr)",gap:8}},
 					            [{val:playerSheet.stats.games?.minutes??"-",lbl:"Minutes"},
 					             {val:playerSheet.stats.goals?.total??0,lbl:"Buts"},
@@ -2670,13 +2685,13 @@
 					             {val:playerSheet.stats.cards?.yellow??0,lbl:"🟨",color:"#00c170"},
 					             {val:playerSheet.stats.cards?.red??0,lbl:"🟥",color:"#e53935"},
 					            ].map(({val,lbl,color})=>
-					              React.createElement("div",{key:lbl,style:{background:"#eef0f5",borderRadius:10,padding:10,textAlign:"center"}},
+					              React.createElement("div",{key:lbl,style:{background:"rgba(255,255,255,.07)",borderRadius:10,padding:10,textAlign:"center"}},
 					                React.createElement("div",{style:{fontFamily:"'Barlow Condensed',sans-serif",fontSize:20,fontWeight:800,color:color||"#FF6B4A"}},[val]),
-					                React.createElement("div",{style:{fontSize:10,color:"rgba(15,17,23,.38)",marginTop:3}},[lbl])
+					                React.createElement("div",{style:{fontSize:10,color:"rgba(255,255,255,0.68)",marginTop:3}},[lbl])
 					              )
 					            )
 					          )
-					        ):React.createElement("div",{style:{textAlign:"center",color:"rgba(15,17,23,.38)",fontSize:12,padding:12}},"Statistiques non disponibles")
+					        ):React.createElement("div",{style:{textAlign:"center",color:"rgba(255,255,255,.28)",fontSize:12,padding:12}},"Statistiques non disponibles")
 					      )
 					    ):null
 					  );
