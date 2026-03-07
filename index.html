@@ -2505,17 +2505,16 @@
 				          React.createElement("tbody",null,
 				            st.map(r=>{
 				              const isHm=r.team?.id===hid,isAw=r.team?.id===aid;
-				              const isTop4=r.rank<=4;
-				              const proj=projH(r);
+				              proj=projH(r);
 				              const gd=r.goalsDiff;
 				              const bFor=r.all?.goals?.for??0,bAga=r.all?.goals?.against??0;
-				              // Surbrillance: home=vert clair, away=bleu clair
-				              const rowBg=isHm?"rgba(0,193,112,.08)":isAw?"rgba(37,99,235,.06)":"#fff";
-				              const borderLeft=isHm?"3px solid #00c170":isAw?"3px solid #2563eb":"3px solid transparent";
+				              const descC=(d=>{d=((d)??"").toLowerCase();return d.includes("champions league")||d.includes("ligue des champions")||(d.includes("champions")&&!d.includes("conf"))?"#1a56db":d.includes("europa league")||d.includes("ligue europa")?"#e53935":d.includes("conference")||d.includes("conf")?"#f59e0b":d.includes("promotion")?"#00c170":d.includes("releg")||d.includes("relégation")?"#dc2626":d.includes("playoff")||d.includes("play-off")||d.includes("barrage")?"#f59e0b":d.includes("europa")?"#e53935":d.includes("qualif")?"#1a56db":null;})(r.description);
+				              const rowBg=isHm?"rgba(0,193,112,.08)":isAw?"rgba(37,99,235,.06)":descC?descC+"12":"#fff";
+				              const borderLeft=isHm?"3px solid #00c170":isAw?"3px solid #2563eb":descC?"3px solid "+descC:"3px solid transparent";
 				              return React.createElement("tr",{key:r.team?.id,style:{borderBottom:"1px solid rgba(0,0,0,.05)",background:rowBg}},
 				                // Rang
 				                React.createElement("td",{style:{padding:"9px 4px",textAlign:"center",borderLeft}},
-				                  React.createElement("span",{style:{fontFamily:"'Barlow Condensed',sans-serif",fontSize:13,fontWeight:800,color:isTop4?"#e53935":"rgba(17,24,39,0.71)"}},[r.rank])
+				                  React.createElement("span",{style:{fontFamily:"'Barlow Condensed',sans-serif",fontSize:13,fontWeight:800,color:descC||"rgba(17,24,39,.45)"}},[r.rank])
 				                ),
 				                // Équipe + score live si concernée
 				                React.createElement("td",{style:{padding:"9px 4px 9px 10px"}},
