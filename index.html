@@ -981,9 +981,14 @@ border-top:1px solid rgba(0,0,0,0.07);
 
 					function useOccasion(fixtureId){
 					  const[occ,setOcc]=useState(null);
-					  const lastUid=useRef(null);
+					  const lastUid=useRef(null);   // uid du dernier event connu
+					  const initialised=useRef(false); // 1er fetch = snapshot, PAS d'alerte
 					  useEffect(()=>{
-					    if(!fixtureId)return;
+					    if(!fixtureId){setOcc(null);return;}
+					    // Reset à chaque nouveau match
+					    lastUid.current=null;
+					    initialised.current=false;
+					    setOcc(null);
 					    let alive=true,timer=null;
 					    const DANGER=["Goal","missed_penalty","Penalty","Var"];
 					    const check=async()=>{
@@ -992,19 +997,26 @@ border-top:1px solid rgba(0,0,0,0.07);
 					        if(!alive||!evts||!evts.length)return;
 					        const last=evts[evts.length-1];
 					        const uid=(last.time?.elapsed||0)+"_"+(last.type||"")+"_"+(last.player?.id||"");
-					        if(uid===lastUid.current)return;
+					        if(!initialised.current){
+					          // 1er appel = on mémorise l'état actuel SANS alerter
+					          lastUid.current=uid;
+					          initialised.current=true;
+					          return;
+					        }
+					        if(uid===lastUid.current)return; // rien de nouveau
 					        lastUid.current=uid;
+					        // Vérifier si c'est un événement dangereux
 					        const isDanger=DANGER.some(d=>(last.type||"").toLowerCase().includes(d.toLowerCase()))||(last.detail||"").toLowerCase().includes("penalty")||(last.detail||"").toLowerCase().includes("missed");
 					        if(!isDanger)return;
 					        const tid=last.team?.id?"_tid_"+last.team.id:null;
 					        if(!tid)return;
-					        setOcc(tid);
+					        if(alive)setOcc(tid);
 					        if(timer)clearTimeout(timer);
 					        timer=setTimeout(()=>{if(alive)setOcc(null);},6000);
 					      }catch(e){}
 					    };
 					    const iv=setInterval(check,12000);
-					    check();
+					    check(); // 1er appel = snapshot sans alerte
 					    return()=>{alive=false;clearInterval(iv);if(timer)clearTimeout(timer);};
 					  },[fixtureId]);
 					  return occ;
@@ -1806,7 +1818,12 @@ border-top:1px solid rgba(0,0,0,0.07);
 					//
 					// MATCH DETAIL   tous les hooks AVANT early return
 					//
-											function MatchDetail({state,onClose}){
+																	function MatchDetailWrapper({state,onClose}){
+					  if(!state)return null;
+					  return React.createElement(MatchDetail,{state,onClose});
+					}
+
+					function MatchDetail({state,onClose}){
 					  const[tab,setTab]=React.useState("resume");
 					  const[period,setPeriod]=React.useState("all");
 					  const[playerSheet,setPlayerSheet]=React.useState(null);
@@ -1848,8 +1865,6 @@ border-top:1px solid rgba(0,0,0,0.07);
 					    setPeriod("all");
 					    if(contentRef.current)contentRef.current.scrollTop=0;
 					  },[fix?.fixture?.id]);
-					
-					  if(!state)return null;
 					
 					  const isPartial=state.partial===true;
 					  const isLoading=state.loading===true;
@@ -2584,7 +2599,7 @@ border-top:1px solid rgba(0,0,0,0.07);
 					        </div>)}
 					      </div>
 					    </Sheet>
-					    <MatchDetail state={detail} onClose={()=>setDet(null)}/>
+					    <MatchDetailWrapper state={detail} onClose={()=>setDet(null)}/>
 					  </div>;
 					}
 
@@ -3044,7 +3059,7 @@ border-top:1px solid rgba(0,0,0,0.07);
 					        </div>;})}
 					      </div>)}
 					    </div>
-					    <MatchDetail state={detail} onClose={()=>setDt(null)}/>
+					    <MatchDetailWrapper state={detail} onClose={()=>setDt(null)}/>
 					  </div>;
 					}
 
