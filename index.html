@@ -956,7 +956,7 @@
 					    <div style={{position:"relative",flexShrink:0}}>
 					      {player?.number&&<div style={{position:"absolute",top:-14,left:"50%",transform:"translateX(-50%)",fontSize:10,color:"rgba(255,255,255,.5)",fontWeight:600,whiteSpace:"nowrap"}}>#{player.number}</div>}
 					      <div style={{width:52,height:52,borderRadius:"50%",border:`2.5px solid ${color}`,overflow:"hidden",background:"#1a2e1a",display:"flex",alignItems:"center",justifyContent:"center",boxShadow:"0 3px 10px rgba(0,0,0,.5)"}}>
-					        {photoSrc&&!imgErr?<img src={photoSrc} alt="" style={{width:"100%",height:"100%",objectFit:"cover"}} onError={()=>setImgErr(true)}/>
+					        {photoSrc&&!imgErr?<img src={photoSrc} alt="" loading="lazy" style={{width:"100%",height:"100%",objectFit:"cover"}} onError={()=>setImgErr(true)}/>
 					          :<div style={{width:"100%",height:"100%",background:`${color}22`,display:"flex",alignItems:"center",justifyContent:"center"}}><span style={{fontSize:17,fontWeight:900,color}}>{player?.number}</span></div>}
 					      </div>
 					      {badgeVal&&<div style={{position:"absolute",bottom:-8,left:"50%",transform:"translateX(-50%)",background:badgeColor||"#111",borderRadius:5,padding:"2px 6px",border:"1.5px solid rgba(255,255,255,.15)",minWidth:32,textAlign:"center",whiteSpace:"nowrap"}}>
@@ -1618,7 +1618,7 @@
 					          <Pitch lineup={hLu} isHome={true}/>
 					          {hLu.coach&&<div style={{display:"flex",alignItems:"center",gap:8,marginTop:8,padding:"7px 9px",background:T.bg3,borderRadius:8}}>
 					            <Avatar src={hLu.coach.photo} size={32} ring={T.red}/>
-					            <div><div style={{fontSize:10,color:T.t3}}>Entraîneur</div><div style={{fontSize:12,fontWeight:700,color:T.t1}}>{hLu.coach.name}</div></div>
+					            <div><div style={{fontSize:10,color:T.t3}}>Entraîneur</div><div style={{fontSize:12,fontWeight:700,color:T.t1}}>{hLu.coach?.name||"—"}</div></div>
 					          </div>}
 					        </div>}
 					        {aLu&&<div style={{flex:1}}>
@@ -1626,7 +1626,7 @@
 					          <Pitch lineup={aLu} isHome={false}/>
 					          {aLu.coach&&<div style={{display:"flex",alignItems:"center",gap:8,marginTop:8,padding:"7px 9px",background:T.bg3,borderRadius:8}}>
 					            <Avatar src={aLu.coach.photo} size={32} ring={T.blueB}/>
-					            <div><div style={{fontSize:10,color:T.t3}}>Entraîneur</div><div style={{fontSize:12,fontWeight:700,color:T.t1}}>{aLu.coach.name}</div></div>
+					            <div><div style={{fontSize:10,color:T.t3}}>Entraîneur</div><div style={{fontSize:12,fontWeight:700,color:T.t1}}>{aLu.coach?.name||"—"}</div></div>
 					          </div>}
 					        </div>}
 					      </div>
@@ -1673,6 +1673,7 @@
 					  const lineups =state?.data?.lineups??[];
 					  const h2h     =state?.data?.h2h??[];
 					  const players =state?.data?.players??[];
+					  const injuries=state?.data?.injuries??[];
 					
 					  const s  =fix?.fixture?.status??{short:"NS",elapsed:null};
 					  const sh =s.short;
@@ -2048,7 +2049,7 @@
 			          // Photo principale
 			          React.createElement("div",{style:{width:52,height:52,borderRadius:"50%",overflow:"hidden",background:"#d0d4dc",border:"2px solid rgba(255,255,255,.85)",boxShadow:"0 2px 6px rgba(0,0,0,.2)"}},
 			            photo
-			              ?React.createElement("img",{src:photo,style:{width:"100%",height:"100%",objectFit:"cover"},onError:e=>{e.target.style.display="none"}})
+			              ?React.createElement("img",{src:photo,loading:"lazy",style:{width:"100%",height:"100%",objectFit:"cover"},onError:e=>{e.target.style.display="none"}})
 			              :React.createElement("div",{style:{width:"100%",height:"100%",display:"flex",alignItems:"center",justifyContent:"center",fontFamily:"'Barlow Condensed',sans-serif",fontSize:14,fontWeight:700,color:"rgba(15,17,23,.35)"}},p.number||"?")
 			          ),
 			          // Icônes événements — en haut à gauche (empilés)
@@ -2179,10 +2180,33 @@
 			          );
 			        };
 			        return React.createElement("div",{key:lu.team?.id,style:{background:"#fff",borderRadius:12,overflow:"hidden",marginBottom:8,boxShadow:"0 1px 4px rgba(0,0,0,.06)"}},
-			          React.createElement("div",{style:{display:"flex",alignItems:"center",gap:10,padding:"11px 14px",borderBottom:"1px solid rgba(0,0,0,.06)"}},
-			            React.createElement("img",{src:lu.team?.logo,style:{width:28,height:28,objectFit:"contain"},onError:e=>{e.target.style.display="none"}}),
-			            React.createElement("span",{style:{fontFamily:"'Barlow Condensed',sans-serif",fontSize:20,fontWeight:900,color:accentColor,letterSpacing:-.5}},lu.formation||"—"),
-			            lu.coach?.name?React.createElement("span",{style:{fontSize:11,color:"rgba(15,17,23,.38)",marginLeft:4}},lu.coach.name):null
+			          React.createElement("div",{style:{background:isHm?"rgba(0,193,112,.04)":"rgba(37,99,235,.04)",borderBottom:"1px solid rgba(0,0,0,.06)"}},
+			            // Header: logo + formation
+			            React.createElement("div",{style:{display:"flex",alignItems:"center",gap:10,padding:"11px 14px"}},
+			              React.createElement("img",{src:lu.team?.logo,style:{width:28,height:28,objectFit:"contain"},onError:e=>{e.target.style.display="none"}}),
+			              React.createElement("div",{style:{flex:1,minWidth:0}},
+			                React.createElement("div",{style:{fontFamily:"'Barlow Condensed',sans-serif",fontSize:20,fontWeight:900,color:accentColor,letterSpacing:-.5}},lu.team?.name||"—"),
+			                lu.formation?React.createElement("div",{style:{fontSize:11,color:"rgba(15,17,23,.4)",marginTop:1}},[`Formation: ${lu.formation}`]):null
+			              )
+			            ),
+			            // Entraîneur
+			            lu.coach?.name?React.createElement("div",{style:{display:"flex",alignItems:"center",gap:8,padding:"7px 14px",borderTop:"1px solid rgba(0,0,0,.04)"}},
+			              React.createElement("span",{style:{fontSize:11,color:"rgba(15,17,23,.38)"}},"🧑‍💼 Entraîneur :"),
+			              React.createElement("span",{style:{fontSize:12,fontWeight:600,color:"#0f1117"}},[lu.coach.name])
+			            ):null,
+			            // Absents (blessés/suspendus)
+			            (()=>{
+			              const teamAbsents=injuries.filter(inj=>inj.team?.id===lu.team?.id);
+			              if(!teamAbsents.length)return null;
+			              return React.createElement("div",{style:{padding:"7px 14px",borderTop:"1px solid rgba(0,0,0,.04)"}},
+			                React.createElement("div",{style:{fontSize:10,fontWeight:700,color:"rgba(15,17,23,.38)",letterSpacing:1,textTransform:"uppercase",marginBottom:6}},"Absents"),
+			                teamAbsents.map(inj=>React.createElement("div",{key:inj.player?.id,style:{display:"flex",alignItems:"center",gap:8,padding:"4px 0"}},
+			                  React.createElement("img",{src:inj.player?.photo,loading:"lazy",style:{width:22,height:22,borderRadius:"50%",objectFit:"cover"},onError:e=>{e.target.style.display="none"}}),
+			                  React.createElement("span",{style:{fontSize:12,color:"#0f1117",flex:1}},[inj.player?.name||"—"]),
+			                  React.createElement("span",{style:{fontSize:10,color:"#e53935",fontWeight:600}},[inj.reason||inj.player?.reason||inj.player?.type||"—"])
+			                ))
+			              );
+			            })()
 			          ),
 			          (lu.startXI||[]).map(({player:p})=>renderPl(p,false)),
 			          (lu.substitutes||[]).length?React.createElement(React.Fragment,null,
