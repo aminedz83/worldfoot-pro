@@ -2768,7 +2768,7 @@
 					  useEffect(()=>{const t=setTimeout(()=>stripRef.current?.querySelector("[data-td='1']")?.scrollIntoView({inline:"center",block:"nearest"}),80);return()=>clearTimeout(t);},[]);
 
 					  const openMatch=useCallback(async id=>{
-				    if(openMatch._ctrl)openMatch._ctrl.abort();
+				    if(openMatch._liveIv){clearInterval(openMatch._liveIv);openMatch._liveIv=null;}if(openMatch._ctrl)openMatch._ctrl.abort();
 				    openMatch._ctrl=new AbortController();
 				    const sig=openMatch._ctrl.signal;
 
@@ -2812,6 +2812,26 @@
 				      // Attendre tous puis enlever le spinner "partial"
 				      await Promise.allSettled([p_events,p_stats,p_lineups,p_players,p_h2h,p_inj]);
 				      setDet(prev=>prev?.data?{...prev,partial:false}:prev);
+
+				      // ── Refresh elapsed toutes les 60s si live ──
+				      if(openMatch._liveIv)clearInterval(openMatch._liveIv);
+				      if(isLive){
+				        openMatch._liveIv=setInterval(async()=>{
+				          try{
+				            const rf=await api(`/fixtures?id=${fid}`,5000);
+				            const elapsed=rf[0]?.fixture?.status?.elapsed;
+				            const goals=rf[0]?.goals;
+				            const status=rf[0]?.fixture?.status;
+				            if(elapsed!=null)setDet(prev=>{
+				              if(!prev?.data?.fixture)return prev;
+				              return {...prev,data:{...prev.data,fixture:{...prev.data.fixture,
+				                goals:goals??prev.data.fixture.goals,
+				                fixture:{...prev.data.fixture.fixture,status:status??prev.data.fixture.fixture.status}
+				              }}};
+				            });
+				          }catch(e){}
+				        },60000);
+				      }
 
 				      // ── FALLBACK lineups: si vides mais players dispo ──
 				      setDet(prev=>{
@@ -3345,7 +3365,7 @@
 					    return()=>{c=true;};
 					  },[lid,s]);
 					  const openMatch=useCallback(async id=>{
-					    if(openMatch._ctrl) openMatch._ctrl.abort();
+					    if(openMatch._liveIv){clearInterval(openMatch._liveIv);openMatch._liveIv=null;}if(openMatch._ctrl)openMatch._ctrl.abort();
 					    openMatch._ctrl=new AbortController();
 					    const sig=openMatch._ctrl.signal;
 
