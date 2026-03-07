@@ -2055,7 +2055,51 @@
 					  // ── RENDER COMPOS ──
 					  const renderCompos=()=>{
 			    const isFallback=state?.data?._fallbackLineups===true;
-			    if(!lineups.length&&!players.length)return React.createElement("div",{className:"md-empty"},"📋 Compositions non disponibles pour cette rencontre");
+			    // Cas 1: lineups OK → affichage normal
+			    // Cas 2: pas de lineups mais players dispo → liste joueurs (déjà géré via _fallbackLineups)
+			    // Cas 3: ni lineups ni players → afficher joueurs depuis events (buts/cartons)
+			    if(!lineups.length&&!players.length){
+			      const evtPlayers={}; // {teamId: {id,name,photo,events[]}}
+			      events.forEach(e=>{
+			        if(!e.player?.id)return;
+			        const tid=e.team?.id;
+			        if(!evtPlayers[tid])evtPlayers[tid]={teamId:tid,teamName:e.team?.name,players:{}};
+			        if(!evtPlayers[tid].players[e.player.id])evtPlayers[tid].players[e.player.id]={id:e.player.id,name:e.player.name,events:[]};
+			        evtPlayers[tid].players[e.player.id].events.push(e);
+			      });
+			      const evtTeams=Object.values(evtPlayers);
+			      if(!evtTeams.length)return React.createElement("div",{className:"md-empty"},"📋 Compositions non disponibles pour cette rencontre");
+			      return React.createElement("div",{style:{paddingBottom:24}},
+			        React.createElement("div",{style:{margin:"8px 8px 10px",padding:"10px 12px",background:"rgba(245,158,11,.07)",borderRadius:10,border:"1px solid rgba(245,158,11,.2)"}},
+			          React.createElement("div",{style:{fontSize:11,color:"#92400e",fontWeight:600}},"⚠️ Formation officielle non disponible · Joueurs détectés depuis les événements")
+			        ),
+			        evtTeams.map(team=>{
+			          const isHm=team.teamId===hid;
+			          const accentColor=isHm?"#00b86b":"#2563eb";
+			          const tObj=isHm?fix.teams.home:fix.teams.away;
+			          return React.createElement("div",{key:team.teamId,style:{marginBottom:8,background:"#fff",borderRadius:12,overflow:"hidden",border:"1px solid rgba(0,0,0,.07)"}},
+			            React.createElement("div",{style:{display:"flex",alignItems:"center",gap:10,padding:"11px 14px",background:isHm?"rgba(0,184,107,.05)":"rgba(37,99,235,.05)",borderBottom:"1px solid rgba(0,0,0,.06)"}},
+			              React.createElement("img",{src:tObj.logo,style:{width:24,height:24,objectFit:"contain"},onError:e=>{e.target.style.display="none"}}),
+			              React.createElement("span",{style:{fontFamily:"'Barlow Condensed',sans-serif",fontSize:16,fontWeight:800,color:accentColor}},[tObj.name])
+			            ),
+			            Object.values(team.players).map(p=>{
+			              const goal=p.events.filter(e=>e.type==="Goal"&&e.detail!=="Missed Penalty");
+			              const yellow=p.events.filter(e=>e.type==="Card"&&e.detail==="Yellow Card");
+			              const red=p.events.filter(e=>e.type==="Card"&&(e.detail==="Red Card"||e.detail==="Second Yellow Card"));
+			              return React.createElement("div",{key:p.id,style:{display:"flex",alignItems:"center",gap:10,padding:"9px 14px",borderBottom:"1px solid rgba(0,0,0,.04)"}},
+			                React.createElement("span",{style:{fontSize:13,fontWeight:500,color:"#111827",flex:1}},[p.name]),
+			                React.createElement("div",{style:{display:"flex",gap:5,alignItems:"center"}},
+			                  goal.map((g,i)=>React.createElement("span",{key:i,style:{fontSize:12}},[`⚽${g.time?.elapsed?g.time.elapsed+"'":""}`])),
+			                  yellow.length?React.createElement("span",{style:{fontSize:12}},"🟨"):null,
+			                  red.length?React.createElement("span",{style:{fontSize:12}},"🟥"):null
+			                )
+			              );
+			            })
+			          );
+			        })
+			      );
+			    }
+
 
 			    const photoOf=(pid)=>players.flatMap(t=>t.players||[]).find(p=>p.player?.id===pid)?.player?.photo||null;
 			    const ratingOf=(pid)=>{
@@ -2143,11 +2187,6 @@
 
 			    // ── Vue TERRAIN ──
 			    const renderTerrain=()=>{
-			      if(isFallback)return React.createElement("div",{style:{textAlign:"center",padding:"24px 16px",background:"rgba(245,158,11,.06)",borderRadius:10,border:"1px solid rgba(245,158,11,.2)"}},
-			        React.createElement("div",{style:{fontSize:13,color:"#92400e",fontWeight:600,marginBottom:4}},"📋 Formation officielle non disponible"),
-			        React.createElement("div",{style:{fontSize:11,color:"rgba(146,64,14,.7)",marginBottom:12}},"Joueurs classés par temps de jeu"),
-			        renderListe()
-			      );
 			      const hRows=buildRows(hLu);
 			      const aRows=buildRows(aLu);
 			      // Away: inverser l'ordre (GK en bas du terrain = bas de l'écran)
@@ -2289,6 +2328,13 @@
 			      );
 			    };
 
+			    // Si fallback (players seulement) → vue liste directe sans boutons terrain
+			    if(isFallback)return React.createElement(React.Fragment,null,
+			      React.createElement("div",{style:{margin:"0 0 10px",padding:"9px 12px",background:"rgba(245,158,11,.07)",borderRadius:10,border:"1px solid rgba(245,158,11,.2)"}},
+			        React.createElement("div",{style:{fontSize:11,color:"#92400e",fontWeight:600}},"⚠️ Formation officielle non disponible · Joueurs ayant participé")
+			      ),
+			      renderListe()
+			    );
 			    return React.createElement(React.Fragment,null,
 			      React.createElement("div",{style:{display:"flex",gap:6,marginBottom:10}},
 			        React.createElement("button",{className:`md-subtab${compoView==="terrain"?" active":""}`,onClick:()=>setCompoView("terrain")},"⚽ Terrain"),
@@ -2832,24 +2878,37 @@
 				        },60000);
 				      }
 
-				      // ── FALLBACK lineups: si vides mais players dispo ──
-				      setDet(prev=>{
-				        if(!prev?.data)return prev;
-				        const{lineups,players:plrs}=prev.data;
-				        if(lineups?.length||!plrs?.length)return prev;
-				        const pseudo=plrs.map(team=>{
-				          const starters=(team.players||[])
-				            .filter(p=>p.statistics?.[0]?.games?.minutes>0||p.statistics?.[0]?.games?.number!=null)
-				            .sort((a,b)=>(b.statistics?.[0]?.games?.minutes||0)-(a.statistics?.[0]?.games?.minutes||0));
-				          const subs=(team.players||[]).filter(p=>!starters.includes(p));
-				          return{
-				            team:team.team,formation:null,coach:{name:null},
-				            startXI:starters.slice(0,11).map(p=>({player:{id:p.player?.id,name:p.player?.name,number:p.statistics?.[0]?.games?.number||p.player?.id,pos:p.statistics?.[0]?.games?.position||null,photo:p.player?.photo||null}})),
-				            substitutes:subs.slice(0,9).map(p=>({player:{id:p.player?.id,name:p.player?.name,number:p.statistics?.[0]?.games?.number||null,pos:null,photo:p.player?.photo||null}})),
-				          };
-				        });
-				        return{...prev,data:{...prev.data,lineups:pseudo,_fallbackLineups:true}};
-				      });
+				      // ── FALLBACK lineups: si lineups vides → retry players puis vue liste ──
+				      {
+				        const det=await new Promise(res=>setDet(prev=>{res(prev);return prev;}));
+				        const hasLineups=det?.data?.lineups?.length>0;
+				        const hasPlayers=det?.data?.players?.length>0;
+				        if(!hasLineups){
+				          // Si players déjà dispo → construire vue liste directement
+				          // Sinon → retry /fixtures/players explicitement (petites ligues)
+				          let plrs=det?.data?.players||[];
+				          if(!hasPlayers){
+				            try{plrs=await api(`/fixtures/players?fixture=${fid}`,detailTTL,sig);}catch(e){plrs=[];}
+				          }
+				          if(plrs.length){
+				            // Construire vue liste : titulaires = minutes>0, remplaçants = entrés en jeu
+				            const pseudo=plrs.map(team=>{
+				              const all=(team.players||[]);
+				              const starters=all.filter(p=>(p.statistics?.[0]?.games?.minutes||0)>0||(p.statistics?.[0]?.games?.substitute===false))
+				                .sort((a,b)=>(b.statistics?.[0]?.games?.minutes||0)-(a.statistics?.[0]?.games?.minutes||0));
+				              const subs=all.filter(p=>p.statistics?.[0]?.games?.substitute===true&&(p.statistics?.[0]?.games?.minutes||0)>0);
+				              const unused=all.filter(p=>!starters.includes(p)&&!subs.includes(p));
+				              return{
+				                team:team.team,formation:null,coach:{name:null},_listView:true,
+				                startXI:starters.slice(0,15).map(p=>({player:{id:p.player?.id,name:p.player?.name,number:p.statistics?.[0]?.games?.number||null,pos:p.statistics?.[0]?.games?.position||null,photo:p.player?.photo||null,minutes:p.statistics?.[0]?.games?.minutes||null}})),
+				                substitutes:[...subs,...unused].slice(0,12).map(p=>({player:{id:p.player?.id,name:p.player?.name,number:p.statistics?.[0]?.games?.number||null,pos:null,photo:p.player?.photo||null,minutes:p.statistics?.[0]?.games?.minutes||0}})),
+				              };
+				            });
+				            setDet(prev=>prev?.data?{...prev,data:{...prev.data,players:plrs,lineups:pseudo,_fallbackLineups:true}}:prev);
+				          }
+				        }
+				      }
+
 
 				      // ── FALLBACK stats: retry 3s si vides ──
 				      setDet(prev=>{
