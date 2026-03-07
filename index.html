@@ -959,141 +959,141 @@ function renderCompos() {
     return;
   }
 
-  /* ── Helpers ── */
+  /* ── Helpers data ── */
   function photoOf(teamId, pid) {
-    var t = players.find(function(t){ return t.team&&t.team.id===teamId; });
-    var r = t&&t.players&&t.players.find(function(p){ return p.player&&p.player.id===pid; });
-    return r ? r.player.photo : null;
+    var t=players.find(function(t){return t.team&&t.team.id===teamId;});
+    var r=t&&t.players&&t.players.find(function(p){return p.player&&p.player.id===pid;});
+    return r?r.player.photo:null;
   }
   function statsOf(teamId, pid) {
-    var t = players.find(function(t){ return t.team&&t.team.id===teamId; });
-    var r = t&&t.players&&t.players.find(function(p){ return p.player&&p.player.id===pid; });
-    return r ? r.statistics : null;
+    var t=players.find(function(t){return t.team&&t.team.id===teamId;});
+    var r=t&&t.players&&t.players.find(function(p){return p.player&&p.player.id===pid;});
+    return r?r.statistics:null;
   }
   function ratingOf(st) {
-    if (!st||!st[0]) return null;
-    var g=st[0].games; return g&&g.rating ? parseFloat(g.rating).toFixed(1) : null;
+    if(!st||!st[0])return null;
+    var g=st[0].games;
+    return g&&g.rating?parseFloat(g.rating).toFixed(1):null;
   }
   function ratingBg(r) {
-    if (!r) return '#aaa';
+    if(!r)return'#aaa';
     var v=parseFloat(r);
-    if(v>=8) return '#2e7d32';
-    if(v>=7) return '#558b2f';
-    if(v>=6.5) return '#ef6c00';
-    if(v>=5) return '#bf360c';
-    return '#b71c1c';
+    if(v>=8.5)return'#1b5e20';
+    if(v>=7.5)return'#2e7d32';
+    if(v>=7) return'#558b2f';
+    if(v>=6.5)return'#ef6c00';
+    if(v>=5.5)return'#bf360c';
+    return'#b71c1c';
   }
   function goalCount(pid) {
-    return events.filter(function(e){ return e.type==='Goal'&&e.player&&e.player.id===pid&&e.detail!=='Own Goal'; }).length;
+    return events.filter(function(e){return e.type==='Goal'&&e.player&&e.player.id===pid&&e.detail!=='Own Goal';}).length;
   }
-  function hasYellow(pid) { return events.some(function(e){ return e.type==='Card'&&e.detail==='Yellow Card'&&e.player&&e.player.id===pid; }); }
-  function hasRed(pid)    { return events.some(function(e){ return e.type==='Card'&&(e.detail==='Red Card'||e.detail==='Yellow Red Card')&&e.player&&e.player.id===pid; }); }
-  function wasSubOut(pid) { return events.some(function(e){ return e.type==='subst'&&e.player&&e.player.id===pid; }); }
-  function subOutMin(pid) {
-    var e=events.find(function(e){ return e.type==='subst'&&e.player&&e.player.id===pid; });
-    return e?(e.time&&e.time.elapsed||''):null;
-  }
-  function subInMin(pid) {
-    var e=events.find(function(e){ return e.type==='subst'&&e.assist&&e.assist.id===pid; });
-    return e?(e.time&&e.time.elapsed||''):null;
-  }
-  var NAT_CODES={"Afghanistan":"AF","Albania":"AL","Algeria":"DZ","Angola":"AO","Argentina":"AR","Armenia":"AM","Australia":"AU","Austria":"AT","Azerbaijan":"AZ","Bahrain":"BH","Belgium":"BE","Bolivia":"BO","Bosnia":"BA","Brazil":"BR","Bulgaria":"BG","Cameroon":"CM","Canada":"CA","Chile":"CL","China":"CN","Colombia":"CO","Costa Rica":"CR","Croatia":"HR","Czech Republic":"CZ","Denmark":"DK","DR Congo":"CD","Ecuador":"EC","Egypt":"EG","England":"GB","Finland":"FI","France":"FR","Gabon":"GA","Georgia":"GE","Germany":"DE","Ghana":"GH","Greece":"GR","Honduras":"HN","Hungary":"HU","India":"IN","Indonesia":"ID","Iran":"IR","Iraq":"IQ","Israel":"IL","Italy":"IT","Ivory Coast":"CI","Japan":"JP","Kazakhstan":"KZ","Kenya":"KE","Kosovo":"XK","Lebanon":"LB","Lithuania":"LT","Mali":"ML","Mexico":"MX","Moldova":"MD","Montenegro":"ME","Morocco":"MA","Netherlands":"NL","Nigeria":"NG","Norway":"NO","Pakistan":"PK","Palestine":"PS","Paraguay":"PY","Peru":"PE","Poland":"PL","Portugal":"PT","Qatar":"QA","Romania":"RO","Russia":"RU","Saudi Arabia":"SA","Scotland":"GB","Senegal":"SN","Serbia":"RS","Slovakia":"SK","Slovenia":"SI","South Africa":"ZA","South Korea":"KR","Spain":"ES","Sweden":"SE","Switzerland":"CH","Syria":"SY","Thailand":"TH","Tunisia":"TN","Turkey":"TR","UAE":"AE","Ukraine":"UA","United States":"US","Uruguay":"UY","Uzbekistan":"UZ","Venezuela":"VE","Vietnam":"VN","Wales":"GB","Zambia":"ZM","Zimbabwe":"ZW","Congo":"CG","Hong Kong":"HK","Taiwan":"TW","Iceland":"IS","Ireland":"IE","Latvia":"LV","North Macedonia":"MK","Cyprus":"CY","Dominican Republic":"DO","Haiti":"HT","Nicaragua":"NI","Libya":"LY","Togo":"TG","Rwanda":"RW","Malawi":"MW","Namibia":"NA","Burundi":"BI","Guinea":"GN","Sierra Leone":"SL","Tanzania":"TZ","Uganda":"UG"};
-  function natFlag(nat) {
-    if(!nat) return '';
-    var code=NAT_CODES[nat]||null;
-    if(!code||code.length!==2) return '';
-    return String.fromCodePoint(0x1F1E6+code.charCodeAt(0)-65)+String.fromCodePoint(0x1F1E6+code.charCodeAt(1)-65);
-  }
+  function hasYellow(pid){return events.some(function(e){return e.type==='Card'&&e.detail==='Yellow Card'&&e.player&&e.player.id===pid;});}
+  function hasRed(pid){return events.some(function(e){return e.type==='Card'&&(e.detail==='Red Card'||e.detail==='Yellow Red Card')&&e.player&&e.player.id===pid;});}
+  function wasSubOut(pid){return events.some(function(e){return e.type==='subst'&&e.player&&e.player.id===pid;});}
+  function subOutMin(pid){var e=events.find(function(e){return e.type==='subst'&&e.player&&e.player.id===pid;});return e?(e.time&&e.time.elapsed||''):null;}
+  function subInMin(pid){var e=events.find(function(e){return e.type==='subst'&&e.assist&&e.assist.id===pid;});return e?(e.time&&e.time.elapsed||''):null;}
+  function isMOM(st){if(!st||!st[0])return false;var g=st[0].games;return g&&g.rating&&parseFloat(g.rating)>=9;}
 
-  /* ── Un joueur sur le terrain ── */
+  var NAT_CODES={"Afghanistan":"AF","Albania":"AL","Algeria":"DZ","Angola":"AO","Argentina":"AR","Armenia":"AM","Australia":"AU","Austria":"AT","Azerbaijan":"AZ","Bahrain":"BH","Belgium":"BE","Bolivia":"BO","Bosnia":"BA","Brazil":"BR","Bulgaria":"BG","Cameroon":"CM","Canada":"CA","Chile":"CL","China":"CN","Colombia":"CO","Costa Rica":"CR","Croatia":"HR","Czech Republic":"CZ","Denmark":"DK","DR Congo":"CD","Ecuador":"EC","Egypt":"EG","England":"GB","Finland":"FI","France":"FR","Gabon":"GA","Georgia":"GE","Germany":"DE","Ghana":"GH","Greece":"GR","Honduras":"HN","Hungary":"HU","India":"IN","Indonesia":"ID","Iran":"IR","Iraq":"IQ","Israel":"IL","Italy":"IT","Ivory Coast":"CI","Japan":"JP","Kazakhstan":"KZ","Kenya":"KE","Kosovo":"XK","Lebanon":"LB","Lithuania":"LT","Mali":"ML","Mexico":"MX","Moldova":"MD","Montenegro":"ME","Morocco":"MA","Netherlands":"NL","Nigeria":"NG","Norway":"NO","Pakistan":"PK","Palestine":"PS","Paraguay":"PY","Peru":"PE","Poland":"PL","Portugal":"PT","Qatar":"QA","Romania":"RO","Russia":"RU","Saudi Arabia":"SA","Scotland":"GB","Senegal":"SN","Serbia":"RS","Slovakia":"SK","Slovenia":"SI","South Africa":"ZA","South Korea":"KR","Spain":"ES","Sweden":"SE","Switzerland":"CH","Syria":"SY","Thailand":"TH","Tunisia":"TN","Turkey":"TR","UAE":"AE","Ukraine":"UA","United States":"US","Uruguay":"UY","Uzbekistan":"UZ","Venezuela":"VE","Vietnam":"VN","Wales":"GB","Zambia":"ZM","Zimbabwe":"ZW","Congo":"CG","Hong Kong":"HK","Taiwan":"TW","Iceland":"IS","Ireland":"IE","Latvia":"LV","North Macedonia":"MK","Cyprus":"CY","Dominican Republic":"DO","Haiti":"HT","Nicaragua":"NI","Libya":"LY","Togo":"TG","Rwanda":"RW","Tanzania":"TZ","Uganda":"UG","Guinea":"GN","Sierra Leone":"SL","Malawi":"MW","Namibia":"NA","Burundi":"BI"};
+  function natFlag(nat){if(!nat)return'';var c=NAT_CODES[nat]||null;if(!c||c.length!==2)return'';return String.fromCodePoint(0x1F1E6+c.charCodeAt(0)-65)+String.fromCodePoint(0x1F1E6+c.charCodeAt(1)-65);}
+
+  /* ── Rendu d'un joueur sur le terrain ── */
   function pitchPlayer(p, teamId) {
-    if(!p) return '';
-    var photo = photoOf(teamId, p.id);
-    var stats = statsOf(teamId, p.id);
-    var rating = ratingOf(stats);
-    var rBg = ratingBg(rating);
-    var goals = goalCount(p.id);
-    var yel = hasYellow(p.id);
-    var red = hasRed(p.id);
-    var subOut = wasSubOut(p.id);
-    var shortName = p.name ? p.name.split(' ').pop() : '?';
+    if(!p)return'';
+    var photo=photoOf(teamId,p.id);
+    var stats=statsOf(teamId,p.id);
+    var rating=ratingOf(stats);
+    var rBg=ratingBg(rating);
+    var goals=goalCount(p.id);
+    var yel=hasYellow(p.id);
+    var red=hasRed(p.id);
+    var subOut=wasSubOut(p.id);
+    var mom=isMOM(stats);
+    // Nom court = dernier mot du nom
+    var parts=(p.name||'?').split(' ');
+    var shortName=parts[parts.length-1];
 
-    var badges = '';
-    // But: badge bleu foncé avec ⚽ et compteur
-    if(goals > 0) {
-      badges += '<span class="cp-pl-goals"><span style="font-size:9px">⚽</span>'+(goals>1?'<b style="font-size:8px;margin-left:1px">'+goals+'</b>':'')+'</span>';
-    }
+    // Image
+    var imgHtml=photo
+      ?'<img class="cp-pl-photo" src="'+esc(photo)+'" onerror="this.outerHTML=\'<div class=cp-pl-nophoto>'+esc(p.number||'?')+'</div>\'">'
+      :'<div class="cp-pl-nophoto">'+esc(p.number||'?')+'</div>';
+
+    // Badges
+    var badges='';
+    // Substitution haut-gauche
+    if(subOut) badges+='<span class="cp-pl-subout">↓</span>';
+    // Buts haut-gauche (si pas subOut, sinon décaler)
+    if(goals>0) badges+='<span class="cp-pl-goals-badge"><span style="font-size:10px">⚽</span>'+(goals>1?'<b>'+goals+'</b>':'')+'</span>';
     // Carton
-    if(red)    badges += '<span class="cp-pl-rcard"></span>';
-    else if(yel) badges += '<span class="cp-pl-ycard"></span>';
-    // Substitution sortie
-    if(subOut) badges += '<span class="cp-pl-sub">↓</span>';
-
-    var imgHtml = photo
-      ? '<img class="cp-pl-img" src="'+esc(photo)+'" onerror="this.outerHTML=\'<div class=cp-pl-no-img>'+esc(p.number||'?')+'</div>\'" />'
-      : '<div class="cp-pl-no-img">'+esc(p.number||'?')+'</div>';
+    if(red)      badges+='<span class="cp-pl-rcard"></span>';
+    else if(yel) badges+='<span class="cp-pl-ycard"></span>';
+    // Étoile MOM haut-droite
+    if(mom) badges+='<span class="cp-pl-mom">✦</span>';
+    // Note bas-droite
+    var ratingHtml=rating?'<span class="cp-pl-rtg" style="background:'+rBg+'">'+rating+'</span>':'';
 
     return '<div class="cp-pl" onclick="wfmd_openPlayerSheet('+JSON.stringify({id:p.id,name:p.name,number:p.number,pos:p.pos})+')">'
-      +'<div class="cp-pl-wrap">'
-      + imgHtml
-      + badges
-      +(rating ? '<span class="cp-pl-rating" style="background:'+rBg+'">'+rating+'</span>' : '')
-      +'</div>'
-      +'<div class="cp-pl-name"><span class="cp-pl-num">'+esc(p.number||'')+'</span> '+esc(shortName)+'</div>'
+      +'<div class="cp-pl-wrap">'+imgHtml+badges+ratingHtml+'</div>'
+      +'<div class="cp-pl-label"><span class="cp-pl-numtxt">'+esc(p.number||'')+'</span> '+esc(shortName)+'</div>'
       +'</div>';
   }
 
-  /* ── Construire lignes par formation ── */
+  /* ── Grouper les titulaires par ligne selon la formation ── */
   function buildLines(lu) {
-    var st = (lu.startXI||[]).map(function(i){return i.player;}).filter(Boolean);
-    var form = (lu.formation||'4-3-3').split('-').map(Number);
-    var lines = [[st[0]]]; // GK
+    var st=(lu.startXI||[]).map(function(i){return i.player;}).filter(Boolean);
+    var form=(lu.formation||'4-3-3').split('-').map(Number);
+    // lines[0] = GK, lines[1] = 1ère ligne (défenseurs), etc.
+    var lines=[[st[0]]];
     var idx=1;
-    form.forEach(function(n){ lines.push(st.slice(idx,idx+n)); idx+=n; });
+    form.forEach(function(n){lines.push(st.slice(idx,idx+n));idx+=n;});
     return lines;
   }
 
-  /* ── Rendu terrain d'une équipe ── */
+  /* ── Rendu d'un bloc équipe sur le terrain ──
+     HOME : GK en HAUT, attaquants en BAS (vers la ligne médiane)
+       → lines ordre naturel : [GK, def, mil, att] → flex-column normal
+     AWAY : GK en BAS, attaquants en HAUT (vers la ligne médiane)
+       → lines ordre inversé : [att, mil, def, GK] → inverser le tableau
+  */
   function renderTeamField(lu, isHome) {
-    if(!lu) return '';
-    var lines = buildLines(lu);
-    // Home: attaquants en haut → GK en bas → inverser l'ordre
-    if(isHome) lines = lines.slice().reverse();
-    // Away: GK en haut (près ligne médiane) → attaquants en bas → ordre normal
-    var html = '<div class="cp-team-rows'+(isHome?'':' away')+'">';
+    if(!lu)return'';
+    var lines=buildLines(lu);
+    if(!isHome) lines=lines.slice().reverse(); // Away: inverser pour GK en bas
+    var html='<div class="cp-team-rows">';
     lines.forEach(function(line){
-      html += '<div class="cp-row">';
-      line.forEach(function(p){ html += pitchPlayer(p, lu.team.id); });
-      html += '</div>';
+      html+='<div class="cp-row">';
+      line.forEach(function(p){html+=pitchPlayer(p,lu.team.id);});
+      html+='</div>';
     });
-    html += '</div>';
+    html+='</div>';
     return html;
   }
 
   /* ── Ligne joueur dans la liste ── */
   function playerRow(p, teamId, isHome) {
-    if(!p) return '';
-    var stats = statsOf(teamId, p.id);
-    var rating = ratingOf(stats);
-    var rBg = ratingBg(rating);
-    var nat = stats&&stats[0]&&stats[0].player ? natFlag(stats[0].player.nationality) : '';
-    var goals = goalCount(p.id);
-    var yel = hasYellow(p.id);
-    var red = hasRed(p.id);
-    var outM = subOutMin(p.id);
-    var inM  = subInMin(p.id);
-    var isGK = p.pos==='G';
-    var isCap = stats&&stats[0]&&stats[0].games&&stats[0].games.captain;
+    if(!p)return'';
+    var stats=statsOf(teamId,p.id);
+    var rating=ratingOf(stats);
+    var rBg=ratingBg(rating);
+    var nat=stats&&stats[0]&&stats[0].player?natFlag(stats[0].player.nationality):'';
+    var goals=goalCount(p.id);
+    var yel=hasYellow(p.id);
+    var red=hasRed(p.id);
+    var outM=subOutMin(p.id);
+    var inM=subInMin(p.id);
+    var isGK=p.pos==='G';
+    var isCap=stats&&stats[0]&&stats[0].games&&stats[0].games.captain;
     var icons='';
-    if(goals>0) icons+='<span style="font-size:12px">⚽'+(goals>1?'×'+goals:'')+'</span>';
-    if(yel)  icons+='<span style="display:inline-block;width:8px;height:11px;background:#ffa726;border-radius:1px;vertical-align:middle"></span>';
-    if(red)  icons+='<span style="display:inline-block;width:8px;height:11px;background:#e53935;border-radius:1px;vertical-align:middle"></span>';
-    if(outM!==null) icons+='<span style="font-size:11px;color:var(--red)">↓</span>';
-    if(inM!==null)  icons+='<span style="font-size:11px;color:var(--accent)">↑</span>';
+    if(goals>0)icons+='<span style="font-size:12px">⚽'+(goals>1?'×'+goals:'')+'</span>';
+    if(yel)icons+='<span style="display:inline-block;width:8px;height:11px;background:#ffa726;border-radius:1px;vertical-align:middle"></span>';
+    if(red)icons+='<span style="display:inline-block;width:8px;height:11px;background:#e53935;border-radius:1px;vertical-align:middle"></span>';
+    if(outM!==null)icons+='<span style="font-size:11px;color:var(--red)">↓</span>';
+    if(inM!==null)icons+='<span style="font-size:11px;color:var(--accent)">↑</span>';
     var extra=(isGK?' <span style="font-size:10px;color:var(--t3)">(G)</span>':'')+(isCap?' <span style="font-size:10px;color:var(--t3)">(C)</span>':'');
-    var onclick='wfmd_openPlayerSheet('+JSON.stringify({id:p.id,name:p.name,number:p.number,pos:p.pos})+')';
-    if(isHome) {
-      return '<div class="cp-list-row" onclick="'+onclick+'">'
+    var oc='wfmd_openPlayerSheet('+JSON.stringify({id:p.id,name:p.name,number:p.number,pos:p.pos})+')';
+    if(isHome){
+      return '<div class="cp-list-row" onclick="'+oc+'">'
         +'<span class="cp-num">'+esc(p.number||'—')+'</span>'
         +(nat?'<span class="cp-flag">'+nat+'</span>':'<span class="cp-flag-empty"></span>')
         +'<span class="cp-pname">'+esc(p.name)+extra+'</span>'
@@ -1101,7 +1101,7 @@ function renderCompos() {
         +(rating?'<span class="cp-badge" style="background:'+rBg+'">'+rating+'</span>':'<span class="cp-badge-empty"></span>')
         +'</div>';
     } else {
-      return '<div class="cp-list-row cp-list-row-away" onclick="'+onclick+'">'
+      return '<div class="cp-list-row cp-list-row-away" onclick="'+oc+'">'
         +(rating?'<span class="cp-badge" style="background:'+rBg+'">'+rating+'</span>':'<span class="cp-badge-empty"></span>')
         +'<span class="cp-icons">'+icons+'</span>'
         +'<span class="cp-pname" style="text-align:right">'+esc(p.name)+extra+'</span>'
@@ -1111,11 +1111,11 @@ function renderCompos() {
     }
   }
 
-  /* ── ASSEMBLAGE ── */
-  var html = '';
+  /* ── ASSEMBLAGE FINAL ── */
+  var html='';
 
-  // 1. TERRAIN COMPLET
-  html += '<div class="cp-field">'
+  // 1. TERRAIN
+  html+='<div class="cp-field">'
     +'<div class="cp-field-goal-home"></div>'
     +'<div class="cp-field-box-home"></div>'
     +'<div class="cp-field-midline"></div>'
@@ -1123,22 +1123,21 @@ function renderCompos() {
     +'<div class="cp-field-box-away"></div>'
     +'<div class="cp-field-goal-away"></div>'
     +'<div class="cp-field-content">'
-    + renderTeamField(hLu, true)
+    +renderTeamField(hLu,true)
     +'<div class="cp-mid-space"></div>'
-    + renderTeamField(aLu, false)
+    +renderTeamField(aLu,false)
     +'</div>'
     +'</div>';
 
   // 2. COMPOS DÉPART
   var hSt=(hLu&&hLu.startXI||[]).map(function(i){return i.player;}).filter(Boolean);
   var aSt=(aLu&&aLu.startXI||[]).map(function(i){return i.player;}).filter(Boolean);
-  var maxS=Math.max(hSt.length,aSt.length);
-  html+='<div class="cp-list-block">';
-  html+='<div class="cp-list-header">'
+  html+='<div class="cp-list-block"><div class="cp-list-header">'
     +'<span class="cp-list-team-name">'+esc(fix.teams.home.name)+'</span>'
     +'<span style="font-size:10px;color:var(--t3);font-weight:700">COMPOS</span>'
     +'<span class="cp-list-team-name" style="text-align:right">'+esc(fix.teams.away.name)+'</span>'
     +'</div>';
+  var maxS=Math.max(hSt.length,aSt.length);
   for(var i=0;i<maxS;i++){
     html+='<div class="cp-dual-row">';
     html+=hSt[i]?playerRow(hSt[i],hLu.team.id,true):'<div class="cp-list-row"></div>';
@@ -1173,7 +1172,7 @@ function renderCompos() {
       +'</div></div>';
   }
 
-  container.innerHTML = html;
+  container.innerHTML=html;
 }
 
 
@@ -1700,114 +1699,104 @@ height:100%;
 .wfmd-stat-bar.away { background:var(--blue); border-radius:0 2px 2px 0; transition:width .5s ease; }
 
 /* ══ COMPOS ══ */
-/* ─── TERRAIN ─────────────────────────────────── */
+
+/* ─── TERRAIN ─────────────────────────────── */
 .cp-field {
   position: relative;
-  background: #d8e8d0;
+  background: #e8e8e8;
   margin: 0 0 14px;
-  border-radius: 8px;
-  overflow: hidden;
-  border: 2px solid #b8cbb0;
-  /* lignes terrain */
-  background-image:
-    /* contour */
-    linear-gradient(#a8bba0 1px,transparent 1px),
-    linear-gradient(90deg,#a8bba0 1px,transparent 1px),
-    /* ligne médiane */
-    linear-gradient(#a8bba0 1px,transparent 1px),
-    /* surface de réparation home (haut) */
-    linear-gradient(#a8bba0 1px,transparent 1px),
-    /* surface de réparation away (bas) */
-    linear-gradient(#a8bba0 1px,transparent 1px);
+  border-radius: 6px;
+  overflow: visible;
+  border: 1.5px solid #c0c0c0;
 }
-/* Ligne médiane */
+/* Ligne médiane absolue */
 .cp-field-midline {
   position: absolute;
-  left: 8%; right: 8%;
+  left: 0; right: 0;
   top: 50%;
   height: 1.5px;
-  background: rgba(100,130,90,0.5);
+  background: rgba(160,160,160,0.7);
   z-index: 0;
+  pointer-events: none;
 }
 /* Cercle central */
 .cp-field-circle {
   position: absolute;
   left: 50%; top: 50%;
   transform: translate(-50%,-50%);
-  width: 80px; height: 80px;
+  width: 72px; height: 72px;
   border-radius: 50%;
-  border: 1.5px solid rgba(100,130,90,0.5);
+  border: 1.5px solid rgba(160,160,160,0.6);
   z-index: 0;
+  pointer-events: none;
 }
 /* Surface de réparation home (haut) */
 .cp-field-box-home {
   position: absolute;
-  top: 0; left: 25%; right: 25%;
-  height: 15%;
-  border: 1.5px solid rgba(100,130,90,0.45);
+  top: 0; left: 22%; right: 22%;
+  height: 14%;
+  border: 1.5px solid rgba(160,160,160,0.5);
   border-top: none;
   z-index: 0;
+  pointer-events: none;
 }
 /* Surface de réparation away (bas) */
 .cp-field-box-away {
   position: absolute;
-  bottom: 0; left: 25%; right: 25%;
-  height: 15%;
-  border: 1.5px solid rgba(100,130,90,0.45);
+  bottom: 0; left: 22%; right: 22%;
+  height: 14%;
+  border: 1.5px solid rgba(160,160,160,0.5);
   border-bottom: none;
   z-index: 0;
+  pointer-events: none;
 }
-/* But home (haut) */
+/* But home */
 .cp-field-goal-home {
   position: absolute;
-  top: 0; left: 38%; right: 38%;
+  top: -3px; left: 37%; right: 37%;
   height: 3%;
-  border: 2px solid rgba(90,120,80,0.6);
+  border: 2px solid rgba(140,140,140,0.6);
   border-top: none;
-  background: rgba(255,255,255,0.3);
   z-index: 0;
+  pointer-events: none;
 }
-/* But away (bas) */
+/* But away */
 .cp-field-goal-away {
   position: absolute;
-  bottom: 0; left: 38%; right: 38%;
+  bottom: -3px; left: 37%; right: 37%;
   height: 3%;
-  border: 2px solid rgba(90,120,80,0.6);
+  border: 2px solid rgba(140,140,140,0.6);
   border-bottom: none;
-  background: rgba(255,255,255,0.3);
   z-index: 0;
+  pointer-events: none;
 }
-/* Contenu (joueurs par-dessus le terrain) */
+/* Contenu par-dessus le terrain */
 .cp-field-content {
   position: relative;
   z-index: 1;
   display: flex;
   flex-direction: column;
-  padding: 10px 4px 10px;
-  gap: 0;
+  padding: 10px 2px 10px;
 }
-/* Bloc d'une équipe */
+/* Séparateur mi-terrain (espace) */
+.cp-mid-space { height: 32px; }
+
+/* Bloc lignes d'une équipe */
 .cp-team-rows {
   display: flex;
   flex-direction: column;
-  gap: 10px;
-  padding: 6px 0;
+  gap: 8px;
 }
-.cp-team-rows.away {
-  flex-direction: column-reverse;
-}
-/* Espaceur ligne médiane */
-.cp-mid-space {
-  height: 30px;
-}
+
 /* Rangée de joueurs */
 .cp-row {
   display: flex;
   justify-content: space-around;
-  align-items: center;
-  padding: 0 4px;
+  align-items: flex-end;
+  padding: 0 2px;
 }
-/* ─── JOUEUR ──────────────────────────────────── */
+
+/* ─── UN JOUEUR ────────────────────────────── */
 .cp-pl {
   display: flex;
   flex-direction: column;
@@ -1818,87 +1807,103 @@ height:100%;
   max-width: 80px;
   min-width: 0;
 }
+/* Wrapper relatif pour badges */
 .cp-pl-wrap {
   position: relative;
+  display: inline-flex;
 }
-/* Photo avec fond blanc arrondi */
-.cp-pl-img {
-  width: 56px; height: 56px;
-  border-radius: 50%;
+/* Photo carré arrondi blanc */
+.cp-pl-photo {
+  width: 54px; height: 54px;
+  border-radius: 12px;
   object-fit: cover;
   display: block;
   background: #fff;
-  box-shadow: 0 2px 8px rgba(0,0,0,.22);
+  box-shadow: 0 2px 6px rgba(0,0,0,.18);
 }
-.cp-pl-no-img {
-  width: 56px; height: 56px;
-  border-radius: 50%;
-  background: rgba(255,255,255,0.7);
+/* Placeholder sans photo */
+.cp-pl-nophoto {
+  width: 54px; height: 54px;
+  border-radius: 12px;
+  background: #fff;
+  box-shadow: 0 2px 6px rgba(0,0,0,.18);
   display: flex; align-items: center; justify-content: center;
-  font-size: 16px; font-weight: 700; color: #555;
-  box-shadow: 0 2px 8px rgba(0,0,0,.15);
+  font-size: 15px; font-weight: 700; color: #aaa;
 }
-/* Note badge coin bas-droit */
-.cp-pl-rating {
+/* Note badge bas-droite */
+.cp-pl-rtg {
   position: absolute;
-  bottom: -3px; right: -6px;
+  bottom: -4px; right: -6px;
   font-size: 10px; font-weight: 900; color: #fff;
-  padding: 2px 5px; border-radius: 6px; line-height: 1.3;
+  padding: 2px 5px;
+  border-radius: 6px;
+  line-height: 1.3;
   white-space: nowrap;
-  box-shadow: 0 1px 3px rgba(0,0,0,.3);
+  box-shadow: 0 1px 4px rgba(0,0,0,.25);
 }
-/* Badge but (bleu foncé avec chiffre) */
-.cp-pl-goals {
+/* Badge buts — cercle bleu foncé haut-gauche */
+.cp-pl-goals-badge {
   position: absolute;
-  top: -5px; left: -6px;
+  top: -6px; left: -6px;
   background: #1a237e;
   color: #fff;
-  font-size: 9px; font-weight: 800;
-  width: 18px; height: 18px;
+  min-width: 18px; height: 18px;
+  border-radius: 9px;
+  padding: 0 3px;
+  display: flex; align-items: center; justify-content: center;
+  gap: 2px;
+  font-size: 9px; font-weight: 900;
+  box-shadow: 0 1px 4px rgba(0,0,0,.3);
+}
+/* Étoile MOM (bleu avec ✦) */
+.cp-pl-mom {
+  position: absolute;
+  top: -6px; right: -6px;
+  background: #1565c0;
+  color: #fff;
+  width: 16px; height: 16px;
   border-radius: 50%;
   display: flex; align-items: center; justify-content: center;
-  box-shadow: 0 1px 3px rgba(0,0,0,.3);
+  font-size: 9px;
+  box-shadow: 0 1px 4px rgba(0,0,0,.3);
 }
-.cp-pl-goal-icon {
-  position: absolute;
-  top: 10px; left: -4px;
-  font-size: 12px; line-height: 1;
-}
-/* Cartons */
+/* Carton jaune/rouge */
 .cp-pl-ycard {
-  position: absolute; top: -5px; left: 14px;
+  position: absolute; top: -5px; left: 16px;
   width: 9px; height: 13px; background: #ffa726;
   border-radius: 2px; box-shadow: 0 1px 3px rgba(0,0,0,.3);
 }
 .cp-pl-rcard {
-  position: absolute; top: -5px; left: 14px;
+  position: absolute; top: -5px; left: 16px;
   width: 9px; height: 13px; background: #e53935;
   border-radius: 2px; box-shadow: 0 1px 3px rgba(0,0,0,.3);
 }
-/* Substitution */
-.cp-pl-sub {
+/* Icône substitution ↓ (petit cercle gris) */
+.cp-pl-subout {
   position: absolute; top: -5px; left: -5px;
-  background: rgba(255,255,255,0.9);
-  border-radius: 50%;
-  width: 16px; height: 16px;
+  width: 16px; height: 16px; border-radius: 50%;
+  background: rgba(255,255,255,0.92);
+  border: 1px solid #ccc;
   display: flex; align-items: center; justify-content: center;
-  font-size: 10px; line-height: 1;
-  box-shadow: 0 1px 3px rgba(0,0,0,.2);
+  font-size: 9px; line-height: 1; color: #555;
+  box-shadow: 0 1px 3px rgba(0,0,0,.15);
+}
+/* Icône ballon (capitaine / buteur symbole) */
+.cp-pl-ball {
+  position: absolute; top: -5px; left: -5px;
+  font-size: 13px; line-height: 1;
 }
 /* Nom sous la photo */
-.cp-pl-name {
-  font-size: 10.5px; font-weight: 700; color: #111;
+.cp-pl-label {
+  font-size: 10.5px; font-weight: 700; color: #1a1a1a;
   text-align: center; line-height: 1.2;
   width: 100%;
   overflow: hidden; white-space: nowrap; text-overflow: ellipsis;
   padding: 0 2px;
-  text-shadow: 0 1px 2px rgba(255,255,255,0.8);
 }
-.cp-pl-num {
-  font-size: 9.5px; color: #555; font-weight: 500;
-}
+.cp-pl-numtxt { font-size: 9.5px; color: #777; font-weight: 500; }
 
-/* ─── LISTE JOUEURS ────────────────────────────── */
+/* ─── LISTE JOUEURS ────────────────────────── */
 .cp-list-block {
   background: var(--bg1); border: 1px solid var(--line);
   border-radius: 12px; overflow: hidden; margin-bottom: 10px;
@@ -1933,27 +1938,14 @@ height:100%;
   flex-direction: row-reverse;
   border-left: 1px solid var(--line);
 }
-.cp-num {
-  font-size: 11px; font-weight: 700; color: var(--t4);
-  min-width: 18px; text-align: center; flex-shrink: 0;
-}
+.cp-num { font-size: 11px; font-weight: 700; color: var(--t4); min-width: 18px; text-align: center; flex-shrink: 0; }
 .cp-flag { font-size: 13px; flex-shrink: 0; line-height: 1; }
 .cp-flag-empty { width: 16px; flex-shrink: 0; }
-.cp-pname {
-  font-size: 12px; font-weight: 600; color: var(--t1);
-  flex: 1; min-width: 0; white-space: nowrap;
-  overflow: hidden; text-overflow: ellipsis; line-height: 1.3;
-}
+.cp-pname { font-size: 12px; font-weight: 600; color: var(--t1); flex: 1; min-width: 0; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; line-height: 1.3; }
 .cp-icons { display: flex; align-items: center; gap: 2px; flex-shrink: 0; }
-.cp-badge {
-  font-size: 10px; font-weight: 800; color: #fff;
-  padding: 2px 5px; border-radius: 5px; flex-shrink: 0; line-height: 1.3;
-}
+.cp-badge { font-size: 10px; font-weight: 800; color: #fff; padding: 2px 5px; border-radius: 5px; flex-shrink: 0; line-height: 1.3; }
 .cp-badge-empty { width: 30px; flex-shrink: 0; }
-.cp-coach-row {
-  display: flex; align-items: center; gap: 8px;
-  padding: 8px 10px; flex: 1;
-}
+.cp-coach-row { display: flex; align-items: center; gap: 8px; padding: 8px 10px; flex: 1; }
 .cp-coach-row-away { flex-direction: row-reverse; border-left: 1px solid var(--line); }
 
 
