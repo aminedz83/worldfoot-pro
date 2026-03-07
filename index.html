@@ -2606,13 +2606,12 @@
 					        )
 					      ),
 					      React.createElement("div",{className:"md-status-row"},
-					        React.createElement("div",{className:`md-status-badge ${statusClass}`},
-					          isLive?React.createElement("span",{className:"live-dot"}):null,
-					          React.createElement("span",[getStatusLabel(sh)])
+					        React.createElement("div",{className:`md-status-badge ${statusClass}`,style:{display:"flex",alignItems:"center",justifyContent:"center",gap:6}},
+					          React.createElement("span",null,[getStatusLabel(sh)]),
+					          isLive&&s.elapsed?React.createElement("span",{style:{fontWeight:900}},
+					            [sh==="2H"&&s.elapsed>90?`· 90+${s.elapsed-90}'`:`· ${s.elapsed}'`]
+					          ):null
 					        ),
-					        isLive&&s.elapsed?React.createElement("span",{className:"md-minute"},
-					          [sh==="2H"&&s.elapsed>90?`90+${s.elapsed-90}'`:`${s.elapsed}'`]
-					        ):null,
 					        null
 					      ),
 					      goals.length>0?React.createElement("div",{className:"md-goals-row"},
