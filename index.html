@@ -943,6 +943,7 @@ function renderCompos() {
   const fix     = WFMD_STATE.fixture;
   const lineups = WFMD_STATE.lineups;
   const players = WFMD_STATE.players;
+  const events  = WFMD_STATE.events;
   const container = document.getElementById('wfmd-compos-container');
   if (!container) return;
 
@@ -951,60 +952,301 @@ function renderCompos() {
     return;
   }
 
-  const photoOf = function(teamPlayers, pid) {
-    const r = teamPlayers && teamPlayers.find(function(p){ return p.player&&p.player.id===pid; });
+  const hLu = lineups.find(function(l){ return l.team&&l.team.id===fix.teams.home.id; });
+  const aLu = lineups.find(function(l){ return l.team&&l.team.id===fix.teams.away.id; });
+  if (!hLu && !aLu) { container.innerHTML = '<div class="wfmd-empty"><div class="wfmd-empty-icon">📋</div><div class="wfmd-empty-msg">Compositions non disponibles</div></div>'; return; }
+
+  // Helper: photo du joueur
+  const photoOf = function(teamId, pid) {
+    const t = players.find(function(t){ return t.team&&t.team.id===teamId; });
+    const r = t && t.players && t.players.find(function(p){ return p.player&&p.player.id===pid; });
     return r ? r.player.photo : null;
   };
 
-  const renderTeam = function(lu, isHome) {
-    if (!lu) return '';
-    const team = lu.team;
+  // Helper: stats du joueur
+  const statsOf = function(teamId, pid) {
+    const t = players.find(function(t){ return t.team&&t.team.id===teamId; });
+    const r = t && t.players && t.players.find(function(p){ return p.player&&p.player.id===pid; });
+    return r ? r.statistics : null;
+  };
+
+  // Helper: note joueur
+  const ratingOf = function(stats) {
+    if (!stats||!stats[0]) return null;
+    var g = stats[0].games;
+    return g && g.rating ? parseFloat(g.rating).toFixed(1) : null;
+  };
+
+  // Helper: couleur note
+  const ratingColor = function(r) {
+    if (!r) return '#aaa';
+    var v = parseFloat(r);
+    if (v >= 8)   return '#00c170';
+    if (v >= 7)   return '#8bc34a';
+    if (v >= 6.5) return '#ffa726';
+    if (v >= 5)   return '#ff7043';
+    return '#e53935';
+  };
+
+  // Helper: drapeau nationalité
+  var NAT_CODES = {
+    "Afghanistan":"AF","Albania":"AL","Algeria":"DZ","Angola":"AO","Argentina":"AR","Armenia":"AM",
+    "Australia":"AU","Austria":"AT","Azerbaijan":"AZ","Bahrain":"BH","Bangladesh":"BD","Belarus":"BY",
+    "Belgium":"BE","Bolivia":"BO","Bosnia":"BA","Brazil":"BR","Bulgaria":"BG","Burkina Faso":"BF",
+    "Cameroon":"CM","Canada":"CA","Chile":"CL","China":"CN","Colombia":"CO","Costa Rica":"CR",
+    "Croatia":"HR","Czech Republic":"CZ","Denmark":"DK","DR Congo":"CD","Ecuador":"EC","Egypt":"EG",
+    "England":"GB-ENG","Ethiopia":"ET","Finland":"FI","France":"FR","Gabon":"GA","Georgia":"GE",
+    "Germany":"DE","Ghana":"GH","Greece":"GR","Honduras":"HN","Hungary":"HU","India":"IN",
+    "Indonesia":"ID","Iran":"IR","Iraq":"IQ","Israel":"IL","Italy":"IT","Ivory Coast":"CI",
+    "Jamaica":"JM","Japan":"JP","Jordan":"JO","Kazakhstan":"KZ","Kenya":"KE","Kosovo":"XK",
+    "Kuwait":"KW","Lebanon":"LB","Lithuania":"LT","Luxembourg":"LU","Malaysia":"MY","Mali":"ML",
+    "Malta":"MT","Mauritania":"MR","Mexico":"MX","Moldova":"MD","Montenegro":"ME","Morocco":"MA",
+    "Mozambique":"MZ","Myanmar":"MM","Netherlands":"NL","New Zealand":"NZ","Nigeria":"NG",
+    "Norway":"NO","Oman":"OM","Pakistan":"PK","Palestine":"PS","Panama":"PA","Paraguay":"PY",
+    "Peru":"PE","Philippines":"PH","Poland":"PL","Portugal":"PT","Qatar":"QA","Romania":"RO",
+    "Russia":"RU","Saudi Arabia":"SA","Scotland":"GB-SCT","Senegal":"SN","Serbia":"RS",
+    "Slovakia":"SK","Slovenia":"SI","South Africa":"ZA","South Korea":"KR","Spain":"ES",
+    "Sudan":"SD","Sweden":"SE","Switzerland":"CH","Syria":"SY","Tajikistan":"TJ","Thailand":"TH",
+    "Tunisia":"TN","Turkey":"TR","Turkmenistan":"TM","UAE":"AE","Uganda":"UG","Ukraine":"UA",
+    "United States":"US","Uruguay":"UY","Uzbekistan":"UZ","Venezuela":"VE","Vietnam":"VN",
+    "Wales":"GB-WLS","Zambia":"ZM","Zimbabwe":"ZW","El Salvador":"SV","Honduras":"HN",
+    "Trinidad and Tobago":"TT","Hong Kong":"HK","Taiwan":"TW","Congo":"CG","Benin":"BJ",
+    "Burkina Faso":"BF","Cape Verde":"CV","Comoros":"KM","Djibouti":"DJ","Eritrea":"ER",
+    "Guinea":"GN","Guinea-Bissau":"GW","Haiti":"HT","Liberia":"LR","Madagascar":"MG",
+    "Malawi":"MW","Mauritius":"MU","Namibia":"NA","Niger":"NE","Rwanda":"RW","Sierra Leone":"SL",
+    "Somalia":"SO","South Sudan":"SS","Togo":"TG","Tanzania":"TZ","Cyprus":"CY","Finland":"FI",
+    "Iceland":"IS","Ireland":"IE","Latvia":"LV","Lithuania":"LT","North Macedonia":"MK",
+    "Northern Ireland":"GB-NIR","Albania":"AL","Belarus":"BY","Estonia":"EE","Moldova":"MD",
+    "Montenegro":"ME","Serbia":"RS","Slovakia":"SK","Slovenia":"SI","Bosnia":"BA","Kosovo":"XK",
+    "Bolivia":"BO","Chile":"CL","Colombia":"CO","Ecuador":"EC","Paraguay":"PY","Peru":"PE",
+    "Uruguay":"UY","Venezuela":"VE","Dominican Republic":"DO","Cuba":"CU","Guatemala":"GT",
+    "Nicaragua":"NI","Honduras":"HN","Costa Rica":"CR","Panama":"PA","Jamaica":"JM","Haiti":"HT",
+    "Libya":"LY","Sudan":"SD","Somalia":"SO","Chad":"TD","Mali":"ML","Niger":"NE","Senegal":"SN",
+    "Guinea":"GN","Sierra Leone":"SL","Liberia":"LR","Ghana":"GH","Nigeria":"NG","Benin":"BJ",
+    "Togo":"TG","Cameroon":"CM","Central African Republic":"CF","Gabon":"GA","Congo":"CG",
+    "DR Congo":"CD","Angola":"AO","Zambia":"ZM","Mozambique":"MZ","Zimbabwe":"ZW",
+    "Botswana":"BW","Namibia":"NA","South Africa":"ZA","Rwanda":"RW","Uganda":"UG",
+    "Kenya":"KE","Tanzania":"TZ","Ethiopia":"ET","Eritrea":"ER","Djibouti":"DJ","Somalia":"SO",
+    "Mauritius":"MU","Madagascar":"MG","Malawi":"MW","Lesotho":"LS","Swaziland":"SZ",
+    "Burundi":"BI","Comoros":"KM"
+  };
+  const natFlag = function(nat) {
+    if (!nat) return '';
+    var code = NAT_CODES[nat] || null;
+    if (!code) return '';
+    // Gérer codes spéciaux GB-xxx
+    if (code.indexOf('-') >= 0) {
+      var parts = code.split('-');
+      var c1 = String.fromCodePoint(0x1F1E6 + parts[0].charCodeAt(0) - 65);
+      var c2 = String.fromCodePoint(0x1F1E6 + parts[0].charCodeAt(1) - 65);
+      return c1 + c2; // Fallback: drapeau UK pour Scotland/Wales/Northern Ireland
+    }
+    if (code.length !== 2) return '';
+    var c1 = String.fromCodePoint(0x1F1E6 + code.charCodeAt(0) - 65);
+    var c2 = String.fromCodePoint(0x1F1E6 + code.charCodeAt(1) - 65);
+    return c1 + c2;
+  };
+
+  // Helper: events du joueur
+  const eventsOf = function(pid) {
+    return events.filter(function(e){ return (e.player&&e.player.id===pid)||(e.assist&&e.assist.id===pid); });
+  };
+  const hasGoal = function(pid) { return events.some(function(e){ return e.type==='Goal'&&e.player&&e.player.id===pid; }); };
+  const hasYellow = function(pid) { return events.some(function(e){ return e.type==='Card'&&e.detail==='Yellow Card'&&e.player&&e.player.id===pid; }); };
+  const hasRed = function(pid) { return events.some(function(e){ return e.type==='Card'&&(e.detail==='Red Card'||e.detail==='Yellow Red Card')&&e.player&&e.player.id===pid; }); };
+  const subOutMin = function(pid) {
+    var e = events.find(function(e){ return e.type==='subst'&&e.player&&e.player.id===pid; });
+    return e ? (e.time&&e.time.elapsed||'') : null;
+  };
+  const subInMin = function(pid) {
+    var e = events.find(function(e){ return e.type==='subst'&&e.assist&&e.assist.id===pid; });
+    return e ? (e.time&&e.time.elapsed||'') : null;
+  };
+
+  // ═══════════════════════════════════════════
+  // SECTION 1 : PITCH VIEW
+  // ═══════════════════════════════════════════
+  const renderPitchTeam = function(lu, isHome) {
+    if (!lu || !lu.startXI) return '';
+    const tid = lu.team.id;
     const side = isHome ? 'home' : 'away';
-    const teamPlrs = (players.find(function(t){ return t.team&&t.team.id===team.id; })||{}).players||[];
+    const accentColor = isHome ? 'var(--accent)' : 'var(--blue)';
 
-    let html = '<div class="wfmd-team-block">'
-      + '<div class="wfmd-team-header ' + side + '">'
-      + '<img src="' + esc(team&&team.logo||'') + '" class="wfmd-team-logo" onerror="this.style.display=\'none\'"/>'
-      + '<div><div class="wfmd-formation">' + esc(lu.formation||'—') + '</div>'
-      + '<div class="wfmd-coach">' + esc(lu.coach&&lu.coach.name||'') + '</div></div>'
-      + '</div>';
-
-    (lu.startXI||[]).forEach(function(item) {
-      const p = item.player; if (!p) return;
-      const photo = photoOf(teamPlrs, p.id);
-      const minOut = WFMD_STATE.events.find(function(e){ return e.type==='subst'&&e.player&&e.player.id===p.id; });
-      html += '<div class="wfmd-player-row" onclick="wfmd_openPlayerSheet(' + JSON.stringify({id:p.id,name:p.name,number:p.number,photo:photo,pos:p.pos}).replace(/"/g,'&quot;') + ')">'
-        + '<div class="wfmd-player-num ' + side + '">' + (p.number||'—') + '</div>'
-        + '<div class="wfmd-player-photo">' + (photo ? '<img src="'+esc(photo)+'" onerror="this.parentNode.innerHTML=\'👤\'"/>' : '👤') + '</div>'
-        + '<div class="wfmd-player-info"><div class="wfmd-player-name">' + esc(p.name) + '</div>' + (p.pos ? '<div class="wfmd-player-pos">' + esc(p.pos) + '</div>' : '') + '</div>'
-        + (minOut ? '<div class="wfmd-player-min">' + (minOut.time&&minOut.time.elapsed||'') + "'↓</div>" : '')
-        + '</div>';
+    // Grouper par ligne (grid = formation inverse pour away)
+    const formation = (lu.formation||'4-3-3').split('-').map(Number);
+    const lines = []; // [GK], [ligne1], [ligne2]...
+    const starters = (lu.startXI||[]).map(function(i){ return i.player; }).filter(Boolean);
+    // GK = pos G, reste groupé par formation
+    var lineGroups = [[starters[0]]]; // GK
+    var idx2 = 1;
+    formation.forEach(function(n) {
+      lineGroups.push(starters.slice(idx2, idx2+n));
+      idx2 += n;
     });
+    if (!isHome) lineGroups = lineGroups.reverse(); // Away: attaque en bas
 
-    const subs = lu.substitutes||[];
-    if (subs.length) {
-      html += '<div class="wfmd-subs-divider">Remplaçants</div>';
-      subs.forEach(function(item) {
-        const p = item.player; if (!p) return;
-        const photo = photoOf(teamPlrs, p.id);
-        const minIn = WFMD_STATE.events.find(function(e){ return e.type==='subst'&&e.assist&&e.assist.id===p.id; });
-        html += '<div class="wfmd-player-row sub" onclick="wfmd_openPlayerSheet(' + JSON.stringify({id:p.id,name:p.name,number:p.number,photo:photo,pos:p.pos}).replace(/"/g,'&quot;') + ')">'
-          + '<div class="wfmd-player-num ' + side + '" style="opacity:.5">' + (p.number||'—') + '</div>'
-          + '<div class="wfmd-player-photo" style="opacity:.6">' + (photo ? '<img src="'+esc(photo)+'" onerror="this.parentNode.innerHTML=\'👤\'"/>' : '👤') + '</div>'
-          + '<div class="wfmd-player-info"><div class="wfmd-player-name" style="opacity:.75">' + esc(p.name) + '</div>' + (p.pos ? '<div class="wfmd-player-pos">' + esc(p.pos) + '</div>' : '') + '</div>'
-          + (minIn ? '<div class="wfmd-player-min green">↑' + (minIn.time&&minIn.time.elapsed||'') + "'</div>" : '')
+    var html = '<div class="cp-pitch-team cp-' + side + '">';
+    lineGroups.forEach(function(line) {
+      html += '<div class="cp-line">';
+      line.forEach(function(p) {
+        if (!p) return;
+        const photo = photoOf(tid, p.id);
+        const stats = statsOf(tid, p.id);
+        const rating = ratingOf(stats);
+        const rColor = ratingColor(rating);
+        const gol = hasGoal(p.id);
+        const yel = hasYellow(p.id);
+        const red = hasRed(p.id);
+        const outMin = subOutMin(p.id);
+        const shortName = p.name ? p.name.split(' ').pop() : '?';
+        html += '<div class="cp-player" onclick="wfmd_openPlayerSheet(' + JSON.stringify({id:p.id,name:p.name,number:p.number,pos:p.pos}) + ')">'
+          + '<div class="cp-avatar">'
+          + (photo ? '<img src="'+esc(photo)+'" class="cp-photo" onerror="this.parentNode.innerHTML=\'<span class=cp-no>'+esc(p.number||'?')+'</span>\'" />' : '<span class="cp-no">'+esc(p.number||'?')+'</span>')
+          + (rating ? '<span class="cp-rating" style="background:'+rColor+'">'+rating+'</span>' : '')
+          + (gol ? '<span class="cp-evt-icon">⚽</span>' : '')
+          + (yel ? '<span class="cp-evt-icon" style="font-size:8px;background:#ffa726;width:8px;height:11px;border-radius:1px;display:inline-block;vertical-align:top;margin-left:1px"></span>' : '')
+          + (red ? '<span class="cp-evt-icon" style="font-size:8px;background:#e53935;width:8px;height:11px;border-radius:1px;display:inline-block;vertical-align:top;margin-left:1px"></span>' : '')
+          + (outMin !== null ? '<span class="cp-sub-out">↓'+outMin+"'</span>" : '')
+          + '</div>'
+          + '<div class="cp-name">' + esc(shortName) + '</div>'
           + '</div>';
       });
-    }
+      html += '</div>';
+    });
     html += '</div>';
     return html;
   };
 
-  const hLu = lineups.find(function(l){ return l.team&&l.team.id===fix.teams.home.id; });
-  const aLu = lineups.find(function(l){ return l.team&&l.team.id===fix.teams.away.id; });
+  // ═══════════════════════════════════════════
+  // SECTION 2 : LISTE JOUEURS (avec drapeaux)
+  // ═══════════════════════════════════════════
+  const renderPlayerRow = function(p, tid, isHome, isSub) {
+    if (!p) return '';
+    const stats = statsOf(tid, p.id);
+    const rating = ratingOf(stats);
+    const rColor = ratingColor(rating);
+    const natCode = stats && stats[0] && stats[0].player ? natFlag(stats[0].player.nationality) : '';
+    const gol = hasGoal(p.id);
+    const yel = hasYellow(p.id);
+    const red = hasRed(p.id);
+    const outMin = subOutMin(p.id);
+    const inMin = subInMin(p.id);
+    const isGK = p.pos === 'G';
+    const isCap = stats && stats[0] && stats[0].games && stats[0].games.captain;
 
-  container.innerHTML = renderTeam(hLu,true) + '<div class="wfmd-vs-sep">— VS —</div>' + renderTeam(aLu,false);
+    var icons = '';
+    if (gol) icons += '<span style="font-size:13px">⚽</span>';
+    if (yel) icons += '<span style="display:inline-block;width:9px;height:12px;background:#ffa726;border-radius:1px;vertical-align:middle;margin:0 1px"></span>';
+    if (red) icons += '<span style="display:inline-block;width:9px;height:12px;background:#e53935;border-radius:1px;vertical-align:middle;margin:0 1px"></span>';
+    if (outMin !== null) icons += '<span style="font-size:11px;color:var(--red)">↓</span>';
+    if (inMin !== null) icons += '<span style="font-size:11px;color:var(--accent)">↑</span>';
+
+    var nameExtra = '';
+    if (isGK) nameExtra += ' <span style="font-size:10px;color:var(--t3);font-weight:600">(G)</span>';
+    if (isCap) nameExtra += ' <span style="font-size:10px;color:var(--t3);font-weight:600">(C)</span>';
+
+    if (isHome) {
+      return '<div class="cp-list-row" onclick="wfmd_openPlayerSheet(' + JSON.stringify({id:p.id,name:p.name,number:p.number,pos:p.pos}) + ')">'
+        + '<span class="cp-num">' + (p.number||'—') + '</span>'
+        + (natCode ? '<span class="cp-flag">'+natCode+'</span>' : '<span class="cp-flag-empty"></span>')
+        + '<span class="cp-pname">' + esc(p.name) + nameExtra + '</span>'
+        + '<span class="cp-icons">' + icons + '</span>'
+        + (rating ? '<span class="cp-badge" style="background:'+rColor+'">'+rating+'</span>' : '<span class="cp-badge-empty"></span>')
+        + '</div>';
+    } else {
+      return '<div class="cp-list-row cp-list-row-away" onclick="wfmd_openPlayerSheet(' + JSON.stringify({id:p.id,name:p.name,number:p.number,pos:p.pos}) + ')">'
+        + (rating ? '<span class="cp-badge" style="background:'+rColor+'">'+rating+'</span>' : '<span class="cp-badge-empty"></span>')
+        + '<span class="cp-icons">' + icons + '</span>'
+        + '<span class="cp-pname" style="text-align:right">' + esc(p.name) + nameExtra + '</span>'
+        + (natCode ? '<span class="cp-flag">'+natCode+'</span>' : '<span class="cp-flag-empty"></span>')
+        + '<span class="cp-num">' + (p.number||'—') + '</span>'
+        + '</div>';
+    }
+  };
+
+  const renderSection = function(lu, isHome, title) {
+    if (!lu) return '';
+    const tid = lu.team.id;
+    const side = isHome ? 'home' : 'away';
+    var html = '<div class="cp-section-' + side + '">';
+    (lu.startXI||[]).forEach(function(item){ html += renderPlayerRow(item.player, tid, isHome, false); });
+    html += '</div>';
+    return html;
+  };
+
+  const renderSubs = function(lu, isHome) {
+    if (!lu || !(lu.substitutes||[]).length) return '';
+    const tid = lu.team.id;
+    var html = '';
+    (lu.substitutes||[]).forEach(function(item){ html += renderPlayerRow(item.player, tid, isHome, true); });
+    return html;
+  };
+
+  // ═══════════════════════════════════════════
+  // ASSEMBLAGE HTML
+  // ═══════════════════════════════════════════
+  var html = '';
+
+  // — PITCH —
+  html += '<div class="cp-pitch-wrap">'
+    + '<div class="cp-pitch">'
+    + renderPitchTeam(hLu, true)
+    + '<div class="cp-pitch-mid"></div>'
+    + renderPitchTeam(aLu, false)
+    + '</div>'
+    + '</div>';
+
+  // — COMPOSITIONS DE DÉPART —
+  html += '<div class="cp-list-block">';
+  html += '<div class="cp-list-header">'
+    + '<span class="cp-list-team-name">' + esc(fix.teams.home.name) + '</span>'
+    + '<span style="font-size:11px;color:var(--t3);font-weight:700">COMPOSITIONS</span>'
+    + '<span class="cp-list-team-name" style="text-align:right">' + esc(fix.teams.away.name) + '</span>'
+    + '</div>';
+
+  // Starter rows côte à côte
+  const hStarters = (hLu&&hLu.startXI||[]).map(function(i){return i.player;}).filter(Boolean);
+  const aStarters = (aLu&&aLu.startXI||[]).map(function(i){return i.player;}).filter(Boolean);
+  const maxS = Math.max(hStarters.length, aStarters.length);
+  for (var i=0; i<maxS; i++) {
+    html += '<div class="cp-dual-row">';
+    html += hStarters[i] ? renderPlayerRow(hStarters[i], hLu.team.id, true, false) : '<div class="cp-list-row"></div>';
+    html += aStarters[i] ? renderPlayerRow(aStarters[i], aLu.team.id, false, false) : '<div class="cp-list-row cp-list-row-away"></div>';
+    html += '</div>';
+  }
+  html += '</div>';
+
+  // — REMPLAÇANTS —
+  const hSubs = (hLu&&hLu.substitutes||[]).map(function(i){return i.player;}).filter(Boolean);
+  const aSubs = (aLu&&aLu.substitutes||[]).map(function(i){return i.player;}).filter(Boolean);
+  if (hSubs.length || aSubs.length) {
+    html += '<div class="cp-list-block">';
+    html += '<div class="cp-subs-title">Remplaçants</div>';
+    const maxSub = Math.max(hSubs.length, aSubs.length);
+    for (var j=0; j<maxSub; j++) {
+      html += '<div class="cp-dual-row">';
+      html += hSubs[j] ? renderPlayerRow(hSubs[j], hLu.team.id, true, true) : '<div class="cp-list-row"></div>';
+      html += aSubs[j] ? renderPlayerRow(aSubs[j], aLu.team.id, false, true) : '<div class="cp-list-row cp-list-row-away"></div>';
+      html += '</div>';
+    }
+    html += '</div>';
+  }
+
+  // — ENTRAÎNEURS —
+  const hCoach = hLu && hLu.coach && hLu.coach.name;
+  const aCoach = aLu && aLu.coach && aLu.coach.name;
+  if (hCoach || aCoach) {
+    html += '<div class="cp-list-block">';
+    html += '<div class="cp-subs-title">Entraîneurs</div>';
+    html += '<div class="cp-dual-row">';
+    html += '<div class="cp-coach-row"><span style="font-size:16px">👔</span><span class="cp-pname">' + esc(hCoach||'—') + '</span></div>';
+    html += '<div class="cp-coach-row cp-coach-row-away"><span class="cp-pname" style="text-align:right">' + esc(aCoach||'—') + '</span><span style="font-size:16px">👔</span></div>';
+    html += '</div></div>';
+  }
+
+  container.innerHTML = html;
 }
+
 
 // ═══════════════════════════════════════════════
 // H2H
@@ -1528,42 +1770,119 @@ height:100%;
 .wfmd-stat-bar.away { background:var(--blue); border-radius:0 2px 2px 0; transition:width .5s ease; }
 
 /* ══ COMPOS ══ */
-.wfmd-team-block { background:var(--bg2); border:1px solid var(--line); border-radius:16px; overflow:hidden; margin-bottom:12px; }
-.wfmd-team-header {
-  display:flex; align-items:center; gap:10px;
-  padding:12px 14px; border-bottom:1px solid var(--line);
-  background:linear-gradient(90deg,rgba(0,193,112,.08),transparent);
+
+/* PITCH */
+.cp-pitch-wrap {
+  background: linear-gradient(180deg,#2d6a2d 0%,#3a7a3a 20%,#2d6a2d 50%,#3a7a3a 80%,#2d6a2d 100%);
+  border-radius:12px; overflow:hidden; margin:0 0 16px;
+  border:2px solid rgba(255,255,255,.15);
+  position:relative; padding:8px 4px;
 }
-.wfmd-team-header.away { background:linear-gradient(90deg,rgba(37,99,235,.06),transparent); }
-.wfmd-team-logo { width:32px; height:32px; object-fit:contain; flex-shrink:0; }
-.wfmd-formation { font-size:22px; font-weight:800; color:var(--accent); letter-spacing:-.5px; }
-.wfmd-team-header.away .wfmd-formation { color:var(--blue); }
-.wfmd-coach { font-size:11px; color:var(--t3); margin-top:1px; }
-.wfmd-player-row {
-  display:flex; align-items:center; gap:10px;
-  padding:9px 14px; border-bottom:1px solid var(--line);
-  cursor:pointer; transition:background .15s;
+.cp-pitch-wrap::before {
+  content:''; position:absolute; left:50%; top:0; bottom:0;
+  width:1px; background:rgba(255,255,255,.2);
 }
-.wfmd-player-row:last-child { border-bottom:none; }
-.wfmd-player-row:active { background:rgba(0,193,112,.06); }
-.wfmd-player-row.sub { background:rgba(255,255,255,.01); }
-.wfmd-player-num { font-size:12px; font-weight:700; color:var(--accent); min-width:28px; text-align:center; }
-.wfmd-player-num.away { color:var(--blue); }
-.wfmd-player-photo {
-  width:32px; height:32px; border-radius:50%;
-  border:1.5px solid rgba(0,193,112,.3);
-  overflow:hidden; background:var(--bg3);
+.cp-pitch-wrap::after {
+  content:''; position:absolute; left:50%; top:50%; transform:translate(-50%,-50%);
+  width:70px; height:70px; border-radius:50%;
+  border:1px solid rgba(255,255,255,.2);
+}
+.cp-pitch { display:flex; flex-direction:column; gap:2px; }
+.cp-pitch-team { display:flex; flex-direction:column; gap:6px; }
+.cp-line { display:flex; justify-content:space-around; align-items:flex-end; padding:2px 4px; }
+.cp-pitch-mid { height:6px; }
+.cp-player {
+  display:flex; flex-direction:column; align-items:center; gap:2px;
+  cursor:pointer; width:58px;
+}
+.cp-avatar {
+  position:relative; width:38px; height:38px;
+  border-radius:50%; overflow:hidden;
+  background:rgba(255,255,255,.15);
+  border:2px solid rgba(255,255,255,.4);
   display:flex; align-items:center; justify-content:center;
-  flex-shrink:0; font-size:14px;
 }
-.wfmd-player-photo img { width:100%; height:100%; object-fit:cover; }
-.wfmd-player-info { flex:1; min-width:0; }
-.wfmd-player-name { font-size:13px; font-weight:600; color:var(--t1); white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
-.wfmd-player-pos { font-size:10px; color:var(--t3); margin-top:1px; }
-.wfmd-player-min { font-size:10px; font-weight:700; color:var(--red); background:rgba(244,67,54,.1); border-radius:5px; padding:2px 6px; flex-shrink:0; }
-.wfmd-player-min.green { color:var(--green); background:rgba(0,193,112,.1); }
-.wfmd-subs-divider { font-size:9px; font-weight:700; letter-spacing:1.5px; color:var(--t4); text-transform:uppercase; padding:7px 14px; background:rgba(255,255,255,.02); }
-.wfmd-vs-sep { text-align:center; font-size:12px; font-weight:700; color:var(--t4); padding:8px; letter-spacing:3px; }
+.cp-photo { width:100%; height:100%; object-fit:cover; display:block; }
+.cp-no { font-size:13px; font-weight:700; color:#fff; }
+.cp-rating {
+  position:absolute; bottom:-4px; right:-4px;
+  font-size:9px; font-weight:800; color:#fff;
+  padding:1px 3px; border-radius:4px; line-height:1.3;
+  border:1px solid rgba(255,255,255,.3);
+}
+.cp-sub-out {
+  position:absolute; top:-4px; right:-4px;
+  font-size:8px; font-weight:700; color:#fff;
+  background:var(--red); padding:1px 3px; border-radius:4px; line-height:1.3;
+}
+.cp-evt-icon {
+  position:absolute; top:-4px; left:-2px;
+  font-size:10px; line-height:1;
+}
+.cp-name {
+  font-size:9.5px; font-weight:600; color:#fff;
+  text-align:center; line-height:1.2;
+  text-shadow:0 1px 3px rgba(0,0,0,.6);
+  max-width:58px; overflow:hidden; white-space:nowrap; text-overflow:ellipsis;
+}
+
+/* LISTE JOUEURS */
+.cp-list-block {
+  background:var(--bg1); border:1px solid var(--line);
+  border-radius:12px; overflow:hidden; margin-bottom:10px;
+}
+.cp-list-header {
+  display:grid; grid-template-columns:1fr auto 1fr;
+  align-items:center; padding:10px 12px 8px;
+  border-bottom:1px solid var(--line);
+  background:var(--bg2);
+}
+.cp-list-team-name {
+  font-size:11px; font-weight:800; color:var(--t1);
+  letter-spacing:.3px; white-space:nowrap;
+  overflow:hidden; text-overflow:ellipsis;
+}
+.cp-subs-title {
+  font-size:12px; font-weight:800; color:var(--t1);
+  padding:10px 12px 6px; border-bottom:1px solid var(--line);
+  background:var(--bg2);
+}
+.cp-dual-row {
+  display:grid; grid-template-columns:1fr 1fr;
+  border-bottom:1px solid var(--line);
+}
+.cp-dual-row:last-child { border-bottom:none; }
+.cp-list-row {
+  display:flex; align-items:center; gap:5px;
+  padding:7px 8px; cursor:pointer; min-width:0;
+}
+.cp-list-row:active { background:var(--bg3); }
+.cp-list-row-away {
+  flex-direction:row-reverse; justify-content:flex-start;
+  border-left:1px solid var(--line);
+}
+.cp-num {
+  font-size:11px; font-weight:700; color:var(--t4);
+  min-width:18px; text-align:center; flex-shrink:0;
+}
+.cp-flag { font-size:13px; flex-shrink:0; line-height:1; }
+.cp-flag-empty { width:16px; flex-shrink:0; }
+.cp-pname {
+  font-size:12px; font-weight:600; color:var(--t1);
+  flex:1; min-width:0; white-space:nowrap;
+  overflow:hidden; text-overflow:ellipsis; line-height:1.3;
+}
+.cp-icons { display:flex; align-items:center; gap:2px; flex-shrink:0; }
+.cp-badge {
+  font-size:10px; font-weight:800; color:#fff;
+  padding:2px 5px; border-radius:5px; flex-shrink:0; line-height:1.3;
+}
+.cp-badge-empty { width:30px; flex-shrink:0; }
+.cp-coach-row {
+  display:flex; align-items:center; gap:8px;
+  padding:8px 10px; flex:1;
+}
+.cp-coach-row-away { flex-direction:row-reverse; border-left:1px solid var(--line); }
 
 /* ══ H2H ══ */
 .wfmd-h2h-summary { display:grid; grid-template-columns:1fr 1fr 1fr; gap:8px; margin-bottom:16px; }
