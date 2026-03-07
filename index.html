@@ -502,6 +502,15 @@ let wfmd_cdInterval = null;
 let wfmd_cdVal = 30;
 
 // ═══════════════════════════════════════════════
+// HELPERS
+// ═══════════════════════════════════════════════
+function logoUrl(url) {
+  if (!url) return '';
+  // Proxy via wsrv.nl pour éviter les problèmes CORS/CSP
+  return 'https://wsrv.nl/?url=' + encodeURIComponent(url) + '&w=64&h=64&fit=contain&output=png&n=-1';
+}
+
+// ═══════════════════════════════════════════════
 // API
 // ═══════════════════════════════════════════════
 async function wfmd_api(path, ttl) {
@@ -669,9 +678,9 @@ function updateHeader() {
   if (awayEl) awayEl.textContent = fix.teams.away.name;
 
   var homeLogoEl = document.getElementById('wfmd-mh-home-logo');
-  if (homeLogoEl) { homeLogoEl.style.display = ''; homeLogoEl.src = fix.teams.home.logo || ''; }
+  if (homeLogoEl) { homeLogoEl.style.display = ''; homeLogoEl.src = logoUrl(fix.teams.home.logo); }
   var awayLogoEl = document.getElementById('wfmd-mh-away-logo');
-  if (awayLogoEl) { awayLogoEl.style.display = ''; awayLogoEl.src = fix.teams.away.logo || ''; }
+  if (awayLogoEl) { awayLogoEl.style.display = ''; awayLogoEl.src = logoUrl(fix.teams.away.logo); }
 
   var dtEl = document.getElementById('wfmd-mh-datetime');
   if (dtEl) dtEl.textContent = ddmm(fix.fixture.date) + ' ' + hhmm(fix.fixture.date);
@@ -918,7 +927,7 @@ function renderCompos() {
 
     let html = '<div class="wfmd-team-block">'
       + '<div class="wfmd-team-header ' + side + '">'
-      + '<img src="' + esc(team&&team.logo||'') + '" class="wfmd-team-logo" onerror="this.style.display=\'none\'"/>'
+      + '<img src="' + esc(logoUrl(team&&team.logo)) + '" class="wfmd-team-logo" onerror="this.style.display=\'none\'"/>'
       + '<div><div class="wfmd-formation">' + esc(lu.formation||'—') + '</div>'
       + '<div class="wfmd-coach">' + esc(lu.coach&&lu.coach.name||'') + '</div></div>'
       + '</div>';
@@ -1050,7 +1059,7 @@ function renderStandings() {
     const bAga = r.all&&r.all.goals&&r.all.goals.against||0;
     html += '<tr class="wfmd-tr' + cls + '">'
       + '<td><span class="wfmd-rank' + (isTop?' top':'') + '">' + r.rank + '</span></td>'
-      + '<td class="left"><div class="wfmd-team-cell"><img src="' + esc(r.team&&r.team.logo||'') + '" class="wfmd-team-logo-sm" onerror="this.style.display=\'none\'"/><span class="wfmd-team-nm">' + esc(r.team&&r.team.name||'') + '</span></div></td>'
+      + '<td class="left"><div class="wfmd-team-cell"><img src="' + esc(logoUrl(r.team&&r.team.logo)) + '" class="wfmd-team-logo-sm" onerror="this.style.display=\'none\'"/><span class="wfmd-team-nm">' + esc(r.team&&r.team.name||'') + '</span></div></td>'
       + '<td>' + (r.all&&r.all.played||'-') + '</td>'
       + '<td class="small">' + bFor + ':' + bAga + '</td>'
       + '<td><span class="wfmd-pts' + (isTop?' top':'') + '">' + (r.points||0) + '</span></td>'
