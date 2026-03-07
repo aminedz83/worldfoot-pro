@@ -2068,7 +2068,15 @@
 			        evtPlayers[tid].players[e.player.id].events.push(e);
 			      });
 			      const evtTeams=Object.values(evtPlayers);
-			      if(!evtTeams.length)return React.createElement("div",{className:"md-empty"},"📋 Compositions non disponibles pour cette rencontre");
+			      if(!evtTeams.length){
+			        const isNS=sh==="NS"||sh==="TBD";
+			        return React.createElement("div",{className:"md-empty",style:{textAlign:"center",padding:"40px 20px"}},
+			          React.createElement("div",{style:{fontSize:28,marginBottom:12}},isNS?"⏳":"📋"),
+			          React.createElement("div",{style:{fontSize:13,fontWeight:600,color:"rgba(17,24,39,.5)"}},
+			            isNS?"Les compositions seront disponibles peu avant le coup d'envoi":"Compositions non disponibles pour cette rencontre"
+			          )
+			        );
+			      }
 			      return React.createElement("div",{style:{paddingBottom:24}},
 			        React.createElement("div",{style:{margin:"8px 8px 10px",padding:"10px 12px",background:"rgba(245,158,11,.07)",borderRadius:10,border:"1px solid rgba(245,158,11,.2)"}},
 			          React.createElement("div",{style:{fontSize:11,color:"#92400e",fontWeight:600}},"⚠️ Formation officielle non disponible · Joueurs détectés depuis les événements")
@@ -2856,9 +2864,8 @@
 				      const p_h2h     =api(`/fixtures/headtohead?h2h=${hid}-${aid}&last=50`,86400000,sig).then(d=>update({h2h:d})).catch(()=>{});
 				      const p_inj     =api(`/injuries?fixture=${fid}`,isDone?10800000:3600000,sig).then(d=>update({injuries:d})).catch(()=>{});
 
-				      // Attendre tous puis enlever le spinner "partial"
+				      // Attendre tous (partial reste true jusqu'après le fallback lineups)
 				      await Promise.allSettled([p_events,p_stats,p_lineups,p_players,p_h2h,p_inj]);
-				      setDet(prev=>prev?.data?{...prev,partial:false}:prev);
 
 				      // ── Refresh elapsed toutes les 60s si live ──
 				      if(openMatch._liveIv)clearInterval(openMatch._liveIv);
@@ -2918,6 +2925,9 @@
 				          }
 				        }
 				      }
+
+				      // Tout est résolu → enlever le spinner
+				      setDet(prev=>prev?.data?{...prev,partial:false}:prev);
 
 				      // ── FALLBACK stats: retry 3s si vides ──
 				      setDet(prev=>{
