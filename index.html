@@ -2958,24 +2958,10 @@
 					    return()=>{c=true;};
 					  },[selRound,lid,s]);
 
-					  const zc=desc=>{
-```
+					  const zc=desc=>{const d=(desc??"").toLowerCase();if(d.includes("promotion"))return"#00c170";if(d.includes("champions league")||d.includes("ligue des champions")||(d.includes("champions")&&!d.includes("conf")))return"#1a56db";if(d.includes("europa league")||d.includes("ligue europa"))return"#7b1f1f";if(d.includes("conference")||d.includes("conf"))return"#a67c00";if(d.includes("releg")||d.includes("relégation"))return"#e53935";if(d.includes("playoff")||d.includes("play-off")||d.includes("barrage"))return"#f59e0b";if(d.includes("europa"))return"#7b1f1f";if(d.includes("qualif"))return"#1a56db";return"transparent";};
+					  const SEL={width:"100%",background:T.bg2,border:`1px solid ${T.bg4}`,color:T.t1,borderRadius:8,padding:"10px 13px",fontSize:13,outline:"none",cursor:"pointer"};
+					  const REGIONS2=[...new Set(LEAGUES.map(l=>l.region))];
 
-const d=(desc??””).toLowerCase();
-if(d.includes(“promotion”))return”#00c170”;
-if(d.includes(“champions league”)||d.includes(“ligue des champions”)||(d.includes(“champions”)&&!d.includes(“conf”)))return”#1a56db”;
-if(d.includes(“europa league”)||d.includes(“ligue europa”))return”#7b1f1f”;
-if(d.includes(“conference”)||d.includes(“conférence”)||d.includes(“conf”))return”#a67c00”;
-if(d.includes(“releg”)||d.includes(“relegation”)||d.includes(“relégation”))return”#e53935”;
-if(d.includes(“playoff”)||d.includes(“play-off”)||d.includes(“barrage”))return”#f59e0b”;
-if(d.includes(“europa”))return”#7b1f1f”;
-if(d.includes(“qualif”))return”#1a56db”;
-return”transparent”;
-};
-const SEL={width:“100%”,background:T.bg2,border:`1px solid ${T.bg4}`,color:T.t1,borderRadius:8,padding:“10px 13px”,fontSize:13,outline:“none”,cursor:“pointer”};
-const REGIONS2=[…new Set(LEAGUES.map(l=>l.region))];
-
-```
 					  // Regrouper les tours  liminatoires (exclure les tours de groupes)
 					  const knockoutRounds=rounds.filter(r=>{const rl=r.toLowerCase();return !rl.includes("group")&&!rl.includes("league phase")&&!rl.includes("qualifying");});
 					  const groupRounds=rounds.filter(r=>{const rl=r.toLowerCase();return rl.includes("group")||rl.includes("league phase");});
