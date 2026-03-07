@@ -3,7 +3,7 @@
 <html lang="fr">
 	<head>
 		<meta charset="UTF-8" />
-		<!-- v1772761167 -->
+		<!-- v1772761168 -->
 		<meta
 			http-equiv="Cache-Control"
 			content="no-cache, no-store, must-revalidate"
@@ -67,7 +67,7 @@
 			// Service Worker avec support notifications
 			if ("serviceWorker" in navigator) {
 				const sw = `
-    const C='wf-pro-v8';
+    const C='wf-pro-v9';
     self.addEventListener('install',e=>{e.waitUntil(caches.open(C).then(c=>c.addAll(['./'])).then(()=>self.skipWaiting()));});
     self.addEventListener('activate',e=>{e.waitUntil(caches.keys().then(ks=>Promise.all(ks.filter(k=>k!==C).map(k=>caches.delete(k)))).then(()=>self.clients.claim()));});
     self.addEventListener('push',e=>{
@@ -1818,7 +1818,7 @@ border-top:1px solid rgba(0,0,0,0.07);
 					//
 					// MATCH DETAIL   tous les hooks AVANT early return
 					//
-																	function MatchDetailWrapper({state,onClose}){
+																							function MatchDetailWrapper({state,onClose}){
 					  if(!state)return null;
 					  return React.createElement(MatchDetail,{state,onClose});
 					}
@@ -4985,7 +4985,20 @@ border-top:1px solid rgba(0,0,0,0.07);
 					if(localStorage.getItem('wf_auth')!=='1'){
 					  window.location.href='login.html';
 					} else {
-					  ReactDOM.createRoot(document.getElementById('root')).render(React.createElement(App,null));
+					  class GlobalEB extends React.Component{
+					  constructor(p){super(p);this.state={err:null,info:null};}
+					  static getDerivedStateFromError(e){return{err:e};}
+					  componentDidCatch(e,i){this.setState({err:e,info:i});console.error('App crash:',e,i);}
+					  render(){
+					    if(this.state.err){const e=this.state.err;return React.createElement('div',{style:{padding:20,fontFamily:'monospace',fontSize:12,background:'#fff',position:'fixed',inset:0,zIndex:9999,overflow:'auto'}},
+					      React.createElement('div',{style:{color:'#e53535',fontWeight:700,marginBottom:8}},'⚠️ Erreur: '+(e.message||String(e))),
+					      React.createElement('pre',{style:{fontSize:10,color:'#666',whiteSpace:'pre-wrap'}},(this.state.info&&this.state.info.componentStack)||''),
+					      React.createElement('button',{onClick:()=>window.location.reload(),style:{marginTop:12,background:'#00c170',color:'#fff',border:'none',borderRadius:8,padding:'8px 16px',cursor:'pointer'}},'Recharger')
+					    );}
+					    return this.props.children;
+					  }
+					}
+					ReactDOM.createRoot(document.getElementById('root')).render(React.createElement(GlobalEB,null,React.createElement(App,null)));
 					}
 	</script>
 </body>
