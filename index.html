@@ -1794,6 +1794,18 @@
 					
 					  const hSt=stats.find(s=>s.team?.id===hid)?.statistics||[];
 					  const aSt=stats.find(s=>s.team?.id===aid)?.statistics||[];
+
+					  // ── STATS PAR MI-TEMPS (depuis events) ──
+					  const computeHalfStats=(half)=>{
+					    const isFirst=half==="first";
+					    const evts=events.filter(e=>isFirst?(e.time?.elapsed||0)<=45:(e.time?.elapsed||0)>45);
+					    const goals=(tid)=>evts.filter(e=>e.type==="Goal"&&e.detail!=="Missed Penalty"&&((e.team?.id===tid&&e.detail!=="Own Goal")||(e.team?.id!==tid&&e.detail==="Own Goal"))).length;
+					    const yellows=(tid)=>evts.filter(e=>e.type==="Card"&&e.detail==="Yellow Card"&&e.team?.id===tid).length;
+					    const reds=(tid)=>evts.filter(e=>e.type==="Card"&&(e.detail==="Red Card"||e.detail==="Second Yellow Card")&&e.team?.id===tid).length;
+					    return {goals,yellows,reds};
+					  };
+					  const halfStats=period!=="all"?computeHalfStats(period):null;
+
 					
 					  // ── RENDER TIMELINE ──
 					  const renderTimeline=()=>{
@@ -1899,7 +1911,48 @@
 				  };
 
 			const renderStats=()=>{
-					    if(!stats.length){
+			    // ── Vue mi-temps : stats calculées depuis events ──
+			    if(period!=="all"&&halfStats){
+			      const hG=halfStats.goals(hid),aG=halfStats.goals(aid);
+			      const hY=halfStats.yellows(hid),aY=halfStats.yellows(aid);
+			      const hR=halfStats.reds(hid),aR=halfStats.reds(aid);
+			      const label=period==="first"?"1re mi-temps":"2e mi-temps";
+			      const htScore=period==="first"?fix.score?.halftime:null;
+			      const makeRow=(icon,label,hv,av)=>React.createElement("div",{style:{display:"flex",alignItems:"center",padding:"10px 14px",borderBottom:"1px solid rgba(0,0,0,.05)",gap:8}},
+			        React.createElement("div",{style:{flex:1,textAlign:"right",fontFamily:"'Barlow Condensed',sans-serif",fontSize:18,fontWeight:900,color:"#0f1117"}},[hv]),
+			        React.createElement("div",{style:{flex:2,textAlign:"center",fontSize:11,color:"rgba(15,17,23,.45)",fontWeight:600,textTransform:"uppercase"}},[`${icon} ${label}`]),
+			        React.createElement("div",{style:{flex:1,textAlign:"left",fontFamily:"'Barlow Condensed',sans-serif",fontSize:18,fontWeight:900,color:"#0f1117"}},[av])
+			      );
+			      return React.createElement("div",{style:{paddingBottom:16}},
+			        // Score mi-temps
+			        htScore!=null?React.createElement("div",{style:{textAlign:"center",padding:"14px 16px",background:"rgba(0,0,0,.03)",borderBottom:"1px solid rgba(0,0,0,.06)",marginBottom:8}},
+			          React.createElement("div",{style:{fontSize:11,color:"rgba(15,17,23,.4)",fontWeight:700,textTransform:"uppercase",letterSpacing:1,marginBottom:4}},[label]),
+			          React.createElement("div",{style:{fontFamily:"'Barlow Condensed',sans-serif",fontSize:32,fontWeight:900,color:"#0f1117",letterSpacing:-1}},[`${htScore.home} - ${htScore.away}`])
+			        ):React.createElement("div",{style:{textAlign:"center",padding:"10px 16px",background:"rgba(0,0,0,.03)",borderBottom:"1px solid rgba(0,0,0,.06)",marginBottom:8}},
+			          React.createElement("div",{style:{fontSize:11,color:"rgba(15,17,23,.4)",fontWeight:700,textTransform:"uppercase",letterSpacing:1}},[label])
+			        ),
+			        // Header équipes
+			        React.createElement("div",{style:{display:"flex",alignItems:"center",justifyContent:"space-between",padding:"8px 14px",marginBottom:4}},
+			          React.createElement("div",{style:{display:"flex",alignItems:"center",gap:6}},
+			            React.createElement("img",{src:fix.teams.home.logo,style:{width:20,height:20,objectFit:"contain"},onError:e=>{e.target.style.display="none"}}),
+			            React.createElement("span",{style:{fontSize:11,fontWeight:700,color:"#0f1117"}},fix.teams.home.name)
+			          ),
+			          React.createElement("div",{style:{display:"flex",alignItems:"center",gap:6}},
+			            React.createElement("span",{style:{fontSize:11,fontWeight:700,color:"#0f1117"}},fix.teams.away.name),
+			            React.createElement("img",{src:fix.teams.away.logo,style:{width:20,height:20,objectFit:"contain"},onError:e=>{e.target.style.display="none"}})
+			          )
+			        ),
+			        makeRow("⚽","Buts",hG,aG),
+			        makeRow("🟨","Cartons jaunes",hY,aY),
+			        (hR||aR)?makeRow("🟥","Cartons rouges",hR,aR):null,
+			        React.createElement("div",{style:{margin:"16px 14px 0",padding:"10px 12px",background:"rgba(245,158,11,.06)",borderRadius:8,border:"1px solid rgba(245,158,11,.18)"}},
+			          React.createElement("div",{style:{fontSize:11,color:"#92400e",fontWeight:500}},
+			            "ℹ️ Possession, tirs, corners et fautes ne sont pas disponibles par mi-temps via l'API."
+			          )
+			        )
+			      );
+			    }
+			    if(!stats.length){
 				      // Fallback: afficher stats joueurs individuelles depuis players[]
 				      if(!players.length)return React.createElement("div",{className:"md-empty"},"📊 Statistiques non disponibles pour cette rencontre");
 				      return React.createElement("div",{style:{paddingBottom:24}},
