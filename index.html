@@ -2488,7 +2488,7 @@
 					        isLive&&s.elapsed?React.createElement("span",{className:"md-minute"},
 					          [sh==="2H"&&s.elapsed>90?`90+${s.elapsed-90}'`:`${s.elapsed}'`]
 					        ):null,
-					        has&&Math.abs(hg-ag)>0?React.createElement("span",{style:{fontSize:11,fontWeight:500,color:"#00c170"}},[`+${Math.abs(hg-ag)} pts d'avance`]):null
+					        null
 					      ),
 					      goals.length>0?React.createElement("div",{className:"md-goals-row"},
 					        React.createElement("div",{className:"md-goal-scorer"},
@@ -2509,7 +2509,29 @@
 					    React.createElement("div",{className:"md-content",ref:contentRef},
 					      // RÉSUMÉ
 					      tab==="resume"?React.createElement("div",{className:"md-panel"},
-					        renderTimeline()
+					        renderTimeline(),
+					        // Infos de match en bas du résumé
+					        React.createElement("div",{style:{background:"#fff",borderRadius:12,marginTop:8,overflow:"hidden",boxShadow:"0 1px 4px rgba(0,0,0,.05)"}},
+					          React.createElement("div",{style:{padding:"10px 14px",background:"rgba(0,0,0,.03)",borderBottom:"1px solid rgba(0,0,0,.06)"}},
+					            React.createElement("span",{style:{fontSize:11,fontWeight:800,color:"rgba(15,17,23,.5)",letterSpacing:1,textTransform:"uppercase"}},["INFORMATIONS DE MATCH"])
+					          ),
+					          [
+					            fix.fixture?.referee?{icon:"🟡",label:"Arbitre",value:fix.fixture.referee}:null,
+					            fix.fixture?.venue?.name?{icon:"🏟️",label:"Stade",value:`${fix.fixture.venue.name}${fix.fixture.venue.city?` (${fix.fixture.venue.city})`:""}` }:null,
+					            fix.fixture?.venue?.capacity?{icon:"👥",label:"Capacité",value:fix.fixture.venue.capacity.toLocaleString("fr-FR")}:null,
+					            fix.fixture?.attendance?{icon:"🎟️",label:"Spectateurs",value:Number(fix.fixture.attendance).toLocaleString("fr-FR")}:null,
+					          ].filter(Boolean).map(({icon,label,value},i,arr)=>
+					            React.createElement("div",{key:label,style:{
+					              display:"flex",alignItems:"center",
+					              padding:"13px 14px",
+					              borderBottom:i<arr.length-1?"1px solid rgba(0,0,0,.05)":"none",
+					            }},
+					              React.createElement("span",{style:{fontSize:16,marginRight:10,flexShrink:0}},[icon]),
+					              React.createElement("span",{style:{fontSize:13,color:"rgba(15,17,23,.5)",flex:1}},[label]),
+					              React.createElement("span",{style:{fontSize:13,fontWeight:600,color:"#0f1117",textAlign:"right",maxWidth:200,overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap"}},[value])
+					            )
+					          )
+					        )
 					      ):null,
 					
 					      // STATS
