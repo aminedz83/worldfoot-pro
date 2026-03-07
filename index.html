@@ -67,7 +67,7 @@
 			// Service Worker avec support notifications
 			if ("serviceWorker" in navigator) {
 				const sw = `
-    const C='wf-pro-v10';
+    const C='wf-pro-v11';
     self.addEventListener('install',e=>{e.waitUntil(caches.open(C).then(c=>c.addAll(['./'])).then(()=>self.skipWaiting()));});
     self.addEventListener('activate',e=>{e.waitUntil(caches.keys().then(ks=>Promise.all(ks.filter(k=>k!==C).map(k=>caches.delete(k)))).then(()=>self.clients.claim()));});
     self.addEventListener('push',e=>{
@@ -434,67 +434,99 @@
 			border-radius: 8px;
 		}
 	
-	/* ══════════════════════════════════════════
-	   MATCH DETAIL — FLASHSCORE THEME
+			/* ══════════════════════════════════════════
+	   MATCH DETAIL — PREMIUM LIGHT (cohérent avec l'app)
 	   ══════════════════════════════════════════ */
-	@keyframes mdSlideUp{from{transform:translateY(40px);opacity:0;}to{transform:translateY(0);opacity:1;}}
-	.md-overlay{position:fixed;inset:0;z-index:950;background:#1a1f2e;display:flex;flex-direction:column;max-width:430px;margin:0 auto;overflow:hidden;animation:fadeIn .18s ease;}
-	.md-topbar{flex-shrink:0;display:flex;align-items:center;gap:10px;padding:10px 14px;background:#1a1f2e;border-bottom:2px solid #e8a838;}
-	.md-back-btn{background:none;border:none;color:rgba(255,255,255,0.5);font-size:22px;cursor:pointer;padding:0;line-height:1;width:36px;}
-	.md-topbar-title{flex:1;text-align:center;font-family:'Barlow Condensed',sans-serif;font-size:12px;font-weight:700;letter-spacing:1.5px;text-transform:uppercase;color:rgba(255,255,255,0.4);}
-	.md-header{flex-shrink:0;background:#1a1f2e;border-bottom:1px solid rgba(255,255,255,0.06);padding:16px 16px 12px;position:relative;overflow:hidden;}
-	.md-header-glow{position:absolute;inset:0;pointer-events:none;background:radial-gradient(ellipse 60% 80% at 50% -10%,rgba(232,168,56,0.08),transparent);}
-	.md-league-row{font-family:'Barlow Condensed',sans-serif;font-size:11px;font-weight:700;color:rgba(255,255,255,0.35);letter-spacing:1.2px;text-transform:uppercase;margin-bottom:10px;display:flex;align-items:center;gap:6px;}
-	.md-league-dot{width:5px;height:5px;border-radius:50%;background:#e8a838;flex-shrink:0;}
-	.md-scoreline{display:flex;align-items:center;justify-content:space-between;gap:6px;margin-bottom:10px;}
-	.md-team-name{flex:1;font-family:'Barlow Condensed',sans-serif;font-size:18px;font-weight:900;color:#ffffff;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;line-height:1.1;}
-	.md-team-name.away{text-align:right;}
-	.md-score-center{display:flex;flex-direction:column;align-items:center;flex-shrink:0;min-width:90px;}
-	.md-score-nums{font-family:'Barlow Condensed',sans-serif;font-size:48px;font-weight:900;color:#ffffff;line-height:1;letter-spacing:-1px;text-align:center;}
-	.md-score-nums.live{color:#e8a838;}
-	.md-datetime{font-family:'Barlow Condensed',sans-serif;font-size:11px;color:rgba(255,255,255,0.35);margin-top:2px;text-align:center;}
-	.md-minute{display:inline-flex;align-items:center;gap:4px;font-family:'Barlow Condensed',sans-serif;font-size:12px;font-weight:800;color:#e53935;background:rgba(229,57,53,0.12);border-radius:20px;padding:2px 8px;margin-top:4px;}
-	.md-status-row{display:flex;align-items:center;justify-content:center;gap:8px;margin-top:2px;}
-	.md-status-badge{font-family:'Barlow Condensed',sans-serif;font-size:11px;font-weight:800;letter-spacing:1px;text-transform:uppercase;padding:3px 10px;border-radius:4px;background:rgba(255,255,255,0.08);color:rgba(255,255,255,0.5);}
-	.md-status-badge.live{background:rgba(229,57,53,0.15);color:#e53935;animation:pulse 1.5s infinite;}
-	.md-status-badge.done{background:rgba(255,255,255,0.06);color:rgba(255,255,255,0.35);}
-	.md-goals-row{display:flex;justify-content:space-between;gap:8px;margin-top:6px;}
-	.md-goal-scorer{font-size:11px;color:rgba(255,255,255,0.4);line-height:1.6;flex:1;}
-	.md-goal-scorer.away{text-align:right;}
-	.md-tabs{display:flex;border-bottom:1px solid rgba(255,255,255,0.06);background:#1a1f2e;flex-shrink:0;overflow-x:auto;}
-	.md-tab-btn{flex:1;min-width:fit-content;font-family:'Barlow Condensed',sans-serif;font-size:11px;font-weight:800;letter-spacing:1px;text-transform:uppercase;color:rgba(255,255,255,0.3);padding:12px 10px;border:none;background:none;cursor:pointer;border-bottom:2px solid transparent;margin-bottom:-1px;transition:color .15s,border-color .15s;white-space:nowrap;}
-	.md-tab-btn.active{color:#e8a838;border-bottom-color:#e8a838;}
-	.md-content{flex:1;overflow-y:auto;background:#1a1f2e;}
-	.md-panel{padding:10px 10px 24px;}
-	.md-section-title,.md-info-section-title,.md-period-label{font-family:'Barlow Condensed',sans-serif;font-size:10px;font-weight:800;letter-spacing:1.5px;text-transform:uppercase;color:rgba(255,255,255,0.25);text-align:center;margin:14px 0 8px;display:flex;align-items:center;gap:8px;}
-	.md-section-title::before,.md-section-title::after,.md-info-section-title::before,.md-info-section-title::after,.md-period-label::before,.md-period-label::after{content:'';flex:1;height:1px;background:rgba(255,255,255,0.06);}
-	.md-evt-row{display:flex;align-items:flex-start;gap:8px;padding:9px 12px;background:#242938;border-radius:6px;margin-bottom:3px;}
-	.md-evt-row.home-evt{flex-direction:row;}
-	.md-evt-row.away-evt{flex-direction:row-reverse;}
-	.md-evt-min{font-family:'Barlow Condensed',sans-serif;font-size:13px;font-weight:800;color:#e8a838;min-width:38px;flex-shrink:0;}
-	.md-evt-row.away-evt .md-evt-min{text-align:right;}
-	.md-evt-icon{font-size:16px;flex-shrink:0;}
-	.md-evt-content{flex:1;min-width:0;}
-	.md-evt-player{font-size:13px;font-weight:700;color:#ffffff;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;}
-	.md-evt-sub{font-size:11px;color:rgba(255,255,255,0.4);margin-top:1px;}
-	.md-evt-score{font-family:'Barlow Condensed',sans-serif;font-size:13px;font-weight:900;background:#e8a838;color:#1a1f2e;padding:2px 9px;border-radius:4px;white-space:nowrap;flex-shrink:0;align-self:center;}
-	.md-var-row{display:flex;align-items:center;gap:8px;padding:8px 12px;background:rgba(37,99,235,0.08);border-radius:6px;margin-bottom:3px;}
-	.md-empty{text-align:center;padding:40px 20px;color:rgba(255,255,255,0.2);font-size:13px;}
-	.md-empty-small{text-align:center;padding:12px;color:rgba(255,255,255,0.15);font-size:12px;}
-	.md-stat-section-hdr{font-family:'Barlow Condensed',sans-serif;font-size:11px;font-weight:800;letter-spacing:1.2px;text-transform:uppercase;color:rgba(255,255,255,0.3);text-align:center;padding:10px 0 4px;}
-	.md-stat-line{background:#242938;border-radius:6px;padding:10px 14px;margin-bottom:3px;}
-	.md-stat-label{font-size:11px;font-weight:600;color:rgba(255,255,255,0.4);text-align:center;margin-bottom:5px;}
-	.md-stat-val-h,.md-stat-val-a{font-family:'Barlow Condensed',sans-serif;font-size:15px;font-weight:900;color:#ffffff;}
-	.md-stat-bar{height:4px;background:rgba(255,255,255,0.08);border-radius:2px;overflow:hidden;display:flex;}
-	.md-stat-h{height:100%;background:#e8a838;border-radius:2px;transition:width .6s ease;}
-	.md-stat-a{height:100%;background:#4fc3f7;border-radius:2px;transition:width .6s ease;margin-left:auto;}
-	.md-player-row{display:flex;align-items:center;gap:10px;padding:9px 12px;background:#242938;border-radius:6px;margin-bottom:3px;cursor:pointer;transition:background .15s;}
-	.md-player-row:active{background:#2e3347;}
-	.md-subtab{display:inline-flex;align-items:center;justify-content:center;font-family:'Barlow Condensed',sans-serif;font-size:11px;font-weight:700;letter-spacing:.8px;text-transform:uppercase;padding:5px 14px;border-radius:4px;cursor:pointer;border:1px solid rgba(255,255,255,0.12);color:rgba(255,255,255,0.4);background:none;transition:all .15s;}
-	.md-subtab.active{background:#e8a838;border-color:#e8a838;color:#1a1f2e;}
-	.md-player-sheet-bg{position:absolute;inset:0;background:rgba(0,0,0,0.5);z-index:10;animation:fadeIn .15s ease;}
-	.md-player-sheet-inner{position:absolute;bottom:0;left:0;right:0;background:#242938;border-radius:16px 16px 0 0;padding:20px 16px 32px;z-index:11;animation:mdSlideUp .22s cubic-bezier(.22,1,.36,1);max-height:70vh;overflow-y:auto;}
-	.md-ps{position:absolute;inset:0;z-index:10;background:#1a1f2e;animation:mdSlideUp .22s cubic-bezier(.22,1,.36,1);}
+	@keyframes mdSlideUp{from{transform:translateY(44px);opacity:0}to{transform:translateY(0);opacity:1}}
+	@keyframes mdIn{from{opacity:0;transform:translateY(6px)}to{opacity:1;transform:translateY(0)}}
+
+	/* ── Overlay ── */
+	.md-overlay{position:fixed;inset:0;z-index:950;background:#eef0f5;display:flex;flex-direction:column;max-width:430px;margin:0 auto;overflow:hidden;animation:mdIn .18s ease}
+
+	/* ── Topbar ── */
+	.md-topbar{flex-shrink:0;display:flex;align-items:center;gap:10px;padding:12px 14px 11px;background:#fff;border-bottom:1px solid rgba(0,0,0,.07);box-shadow:0 1px 0 rgba(0,0,0,.04)}
+	.md-back-btn{background:none;border:none;color:rgba(15,17,23,.4);font-size:20px;cursor:pointer;padding:0;line-height:1;width:32px;height:32px;display:flex;align-items:center;justify-content:center;border-radius:8px;transition:background .15s}
+	.md-back-btn:active{background:rgba(0,0,0,.06)}
+	.md-topbar-title{flex:1;text-align:center;font-family:'Barlow Condensed',sans-serif;font-size:11px;font-weight:800;letter-spacing:1.8px;text-transform:uppercase;color:rgba(15,17,23,.3)}
+
+	/* ── Header score ── */
+	.md-header{flex-shrink:0;background:#fff;border-bottom:1px solid rgba(0,0,0,.07);padding:14px 16px 12px;position:relative;overflow:hidden}
+	.md-header-glow{position:absolute;inset:0;pointer-events:none;background:radial-gradient(ellipse 70% 100% at 50% -20%,rgba(0,193,112,.07),transparent)}
+	.md-league-row{font-family:'Barlow Condensed',sans-serif;font-size:10px;font-weight:800;color:rgba(15,17,23,.32);letter-spacing:1.4px;text-transform:uppercase;margin-bottom:12px;display:flex;align-items:center;gap:6px}
+	.md-league-dot{width:4px;height:4px;border-radius:50%;background:#00c170;flex-shrink:0}
+
+	/* ── Scoreline ── */
+	.md-scoreline{display:flex;align-items:center;justify-content:space-between;gap:8px;margin-bottom:8px}
+	.md-team-col{flex:1;min-width:0;display:flex;flex-direction:column;align-items:flex-start;gap:5px}
+	.md-team-col.away{align-items:flex-end}
+	.md-team-name{font-family:'Barlow Condensed',sans-serif;font-size:16px;font-weight:900;color:#0f1117;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;max-width:100%;line-height:1.1}
+	.md-team-logo{width:38px;height:38px;object-fit:contain;flex-shrink:0}
+	.md-score-center{display:flex;flex-direction:column;align-items:center;flex-shrink:0;min-width:96px;gap:2px}
+	.md-score-nums{font-family:'Barlow Condensed',sans-serif;font-size:50px;font-weight:900;color:#0f1117;line-height:1;letter-spacing:-2px;text-align:center}
+	.md-score-nums.live{color:#00c170}
+	.md-datetime{font-family:'Barlow Condensed',sans-serif;font-size:11px;color:rgba(15,17,23,.35);text-align:center}
+
+	/* ── Status ── */
+	.md-status-row{display:flex;align-items:center;justify-content:center;gap:8px;margin-top:4px}
+	.md-status-badge{font-family:'Barlow Condensed',sans-serif;font-size:10px;font-weight:800;letter-spacing:1.2px;text-transform:uppercase;padding:3px 10px;border-radius:20px;background:rgba(15,17,23,.06);color:rgba(15,17,23,.4)}
+	.md-status-badge.live{background:rgba(229,57,53,.1);color:#e53935;animation:pulse 1.4s infinite}
+	.md-status-badge.done{background:rgba(15,17,23,.05);color:rgba(15,17,23,.35)}
+	.md-minute{font-family:'Barlow Condensed',sans-serif;font-size:12px;font-weight:800;color:#e53935;background:rgba(229,57,53,.08);border-radius:20px;padding:2px 9px}
+	.live-dot{display:inline-block;width:5px;height:5px;border-radius:50%;background:#e53935;margin-right:4px;animation:dotPulse 1.4s infinite}
+
+	/* ── Buteurs ── */
+	.md-goals-row{display:flex;justify-content:space-between;gap:8px;margin-top:6px}
+	.md-goal-scorer{font-size:11px;color:rgba(15,17,23,.42);line-height:1.6;flex:1}
+	.md-goal-scorer.away{text-align:right}
+
+	/* ── Tabs ── */
+	.md-tabs{display:flex;border-bottom:2px solid rgba(0,0,0,.06);background:#fff;flex-shrink:0;overflow-x:auto}
+	.md-tab-btn{flex:1;min-width:fit-content;font-family:'Barlow Condensed',sans-serif;font-size:11px;font-weight:800;letter-spacing:1.2px;text-transform:uppercase;color:rgba(15,17,23,.3);padding:11px 10px;border:none;background:none;cursor:pointer;border-bottom:2.5px solid transparent;margin-bottom:-2px;transition:color .15s,border-color .15s;white-space:nowrap}
+	.md-tab-btn.active{color:#00c170;border-bottom-color:#00c170}
+	.md-tab-btn:active{background:rgba(0,0,0,.03)}
+
+	/* ── Content ── */
+	.md-content{flex:1;overflow-y:auto;background:#eef0f5}
+	.md-panel{padding:10px 10px 28px}
+
+	/* ── Section titles ── */
+	.md-period-label,.md-info-section-title,.md-stat-section-hdr{font-family:'Barlow Condensed',sans-serif;font-size:9px;font-weight:800;letter-spacing:1.8px;text-transform:uppercase;color:rgba(15,17,23,.28);text-align:center;margin:14px 0 6px;display:flex;align-items:center;gap:8px}
+	.md-period-label::before,.md-period-label::after,.md-info-section-title::before,.md-info-section-title::after{content:'';flex:1;height:1px;background:rgba(0,0,0,.07)}
+	.md-stat-section-hdr{padding:10px 0 4px;margin:0}
+
+	/* ── Événements timeline ── */
+	.md-evt-row{display:flex;align-items:center;gap:10px;padding:10px 12px;background:#fff;border-radius:10px;margin-bottom:4px;box-shadow:0 1px 3px rgba(0,0,0,.04)}
+	.md-evt-row.home-evt{flex-direction:row}
+	.md-evt-row.away-evt{flex-direction:row-reverse}
+	.md-evt-min{font-family:'Barlow Condensed',sans-serif;font-size:13px;font-weight:800;color:#00c170;min-width:36px;flex-shrink:0;text-align:left}
+	.md-evt-row.away-evt .md-evt-min{text-align:right}
+	.md-evt-icon{font-size:17px;flex-shrink:0}
+	.md-evt-content{flex:1;min-width:0}
+	.md-evt-player{font-size:13px;font-weight:700;color:#0f1117;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+	.md-evt-sub{font-size:11px;color:rgba(15,17,23,.4);margin-top:1px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+	.md-evt-score{font-family:'Barlow Condensed',sans-serif;font-size:13px;font-weight:900;background:#00c170;color:#fff;padding:2px 10px;border-radius:6px;white-space:nowrap;flex-shrink:0}
+	.md-var-row{display:flex;align-items:center;gap:10px;padding:9px 12px;background:rgba(37,99,235,.05);border-radius:10px;margin-bottom:4px;border-left:3px solid rgba(37,99,235,.3)}
+	.md-empty{text-align:center;padding:44px 20px;color:rgba(15,17,23,.22);font-size:13px}
+	.md-empty-small{text-align:center;padding:14px;color:rgba(15,17,23,.18);font-size:12px}
+
+	/* ── Stats ── */
+	.md-stat-line{background:#fff;border-radius:10px;padding:10px 14px;margin-bottom:4px;box-shadow:0 1px 3px rgba(0,0,0,.04)}
+	.md-stat-label{font-size:11px;font-weight:600;color:rgba(15,17,23,.38);text-align:center;margin-bottom:5px}
+	.md-stat-val-h,.md-stat-val-a{font-family:'Barlow Condensed',sans-serif;font-size:16px;font-weight:900;color:#0f1117}
+	.md-stat-bar{height:5px;background:rgba(0,0,0,.07);border-radius:3px;overflow:hidden;display:flex}
+	.md-stat-h{height:100%;background:#00c170;border-radius:3px;transition:width .6s ease}
+	.md-stat-a{height:100%;background:#2563eb;border-radius:3px;transition:width .6s ease;margin-left:auto}
+
+	/* ── Compositions ── */
+	.md-player-row{display:flex;align-items:center;gap:10px;padding:9px 12px;background:#fff;border-radius:10px;margin-bottom:3px;cursor:pointer;transition:background .15s;box-shadow:0 1px 3px rgba(0,0,0,.04)}
+	.md-player-row:active{background:#f5f7fb}
+	.md-subtab{display:inline-flex;align-items:center;justify-content:center;font-family:'Barlow Condensed',sans-serif;font-size:11px;font-weight:700;letter-spacing:.8px;text-transform:uppercase;padding:5px 14px;border-radius:20px;cursor:pointer;border:1.5px solid rgba(0,0,0,.1);color:rgba(15,17,23,.4);background:none;transition:all .15s}
+	.md-subtab.active{background:#00c170;border-color:#00c170;color:#fff}
+
+	/* ── Player sheet ── */
+	.md-player-sheet-bg{position:absolute;inset:0;background:rgba(0,0,0,.22);z-index:10;animation:mdIn .15s ease}
+	.md-player-sheet-inner{position:absolute;bottom:0;left:0;right:0;background:#fff;border-radius:20px 20px 0 0;padding:20px 16px 32px;z-index:11;animation:mdSlideUp .22s cubic-bezier(.22,1,.36,1);max-height:72vh;overflow-y:auto;box-shadow:0 -4px 32px rgba(0,0,0,.1)}
+	.md-ps{position:absolute;inset:0;z-index:10;background:#eef0f5;animation:mdSlideUp .22s cubic-bezier(.22,1,.36,1)}
 	</style>
 </head>
 <body>
@@ -1702,21 +1734,21 @@
 					
 					  // ── LOADING SCREEN ──
 					  if(isLoading&&!isPartial){
-					    return React.createElement("div",{style:{position:"fixed",inset:0,zIndex:950,background:"#242938",display:"flex",flexDirection:"column",alignItems:"center",justifyContent:"center",gap:16}},
+					    return React.createElement("div",{style:{position:"fixed",inset:0,zIndex:950,background:"#fff",display:"flex",flexDirection:"column",alignItems:"center",justifyContent:"center",gap:16}},
 					      React.createElement("div",{style:{width:40,height:40,border:"3px solid rgba(255,107,74,0.2)",borderTopColor:"#FF6B4A",borderRadius:"50%",animation:"spin .7s linear infinite"}}),
-					      React.createElement("div",{style:{fontFamily:"'Barlow Condensed',sans-serif",fontSize:14,color:"rgba(255,255,255,0.35)",letterSpacing:2,textTransform:"uppercase"}},
+					      React.createElement("div",{style:{fontFamily:"'Barlow Condensed',sans-serif",fontSize:14,color:"rgba(15,17,23,.38)",letterSpacing:2,textTransform:"uppercase"}},
 					        "Chargement..."
 					      ),
-					      React.createElement("button",{onClick:onClose,style:{position:"absolute",top:16,left:16,background:"none",border:"none",color:"rgba(255,255,255,0.45)",fontSize:24,cursor:"pointer",padding:0}},"←")
+					      React.createElement("button",{onClick:onClose,style:{position:"absolute",top:16,left:16,background:"none",border:"none",color:"rgba(15,17,23,.5)",fontSize:24,cursor:"pointer",padding:0}},"←")
 					    );
 					  }
 					
 					  if(state.error){
-					    return React.createElement("div",{style:{position:"fixed",inset:0,zIndex:950,background:"#242938",display:"flex",flexDirection:"column",alignItems:"center",justifyContent:"center",gap:12,padding:24}},
+					    return React.createElement("div",{style:{position:"fixed",inset:0,zIndex:950,background:"#fff",display:"flex",flexDirection:"column",alignItems:"center",justifyContent:"center",gap:12,padding:24}},
 					      React.createElement("div",{style:{fontSize:44}},"⚠️"),
-					      React.createElement("div",{style:{fontSize:14,color:"rgba(255,255,255,0.45)",textAlign:"center"}}),
-					      React.createElement("button",{onClick:onClose,style:{background:"#e8a838",border:"none",color:"#ffffff",borderRadius:12,padding:"11px 24px",fontFamily:"'Barlow Condensed',sans-serif",fontSize:14,fontWeight:700,cursor:"pointer",marginTop:8}},"Retour"),
-					      React.createElement("button",{onClick:onClose,style:{position:"absolute",top:16,left:16,background:"none",border:"none",color:"rgba(255,255,255,0.45)",fontSize:24,cursor:"pointer",padding:0}},"←")
+					      React.createElement("div",{style:{fontSize:14,color:"rgba(15,17,23,.5)",textAlign:"center"}}),
+					      React.createElement("button",{onClick:onClose,style:{background:"#00c170",border:"none",color:"#0f1117",borderRadius:12,padding:"11px 24px",fontFamily:"'Barlow Condensed',sans-serif",fontSize:14,fontWeight:700,cursor:"pointer",marginTop:8}},"Retour"),
+					      React.createElement("button",{onClick:onClose,style:{position:"absolute",top:16,left:16,background:"none",border:"none",color:"rgba(15,17,23,.5)",fontSize:24,cursor:"pointer",padding:0}},"←")
 					    );
 					  }
 					
@@ -1801,7 +1833,7 @@
 					        return React.createElement("div",{key:i,className:"md-var-row"},
 					          React.createElement("span",{className:"md-evt-min"},[minStr]),
 					          React.createElement("span",{style:{fontSize:14}},"⏱️"),
-					          React.createElement("span",{style:{fontSize:11,color:"#4fc3f7",fontWeight:600,flex:1}},
+					          React.createElement("span",{style:{fontSize:11,color:"#2563eb",fontWeight:600,flex:1}},
 					            `VAR · ${e.detail||"Vérification"}  ${isKO?"❌":"✅"}`
 					          )
 					        );
@@ -1812,9 +1844,9 @@
 					      const scoreEl=(isGoal&&!isMiss)?React.createElement("div",{className:"md-evt-score"},`${e.hs}-${e.as}`):null;
 					      const assist=e.assist?.name&&!isSubst?React.createElement("div",{className:"md-evt-sub"},`Passeur: ${e.assist.name}`):null;
 					      const subOut=isSubst&&e.assist?.name?React.createElement("div",{className:"md-evt-sub"},`→ ${e.assist.name}`):null;
-					      const penLabel=isPen&&!isMiss?React.createElement("span",{style:{fontSize:9,background:"rgba(76,175,80,0.15)",color:"#66bb6a",borderRadius:4,padding:"1px 5px",marginLeft:4,fontWeight:700}},"Pen."):null;
-					      const cscLabel=isCSC?React.createElement("span",{style:{fontSize:9,background:"rgba(244,67,54,0.15)",color:"#ef5350",borderRadius:4,padding:"1px 5px",marginLeft:4,fontWeight:700}},"CSC"):null;
-					      const missLabel=isMiss?React.createElement("div",{style:{fontSize:11,color:"#ef5350",marginTop:1}},"Pénalty manqué"):null;
+					      const penLabel=isPen&&!isMiss?React.createElement("span",{style:{fontSize:9,background:"rgba(76,175,80,0.15)",color:"#00c170",borderRadius:4,padding:"1px 5px",marginLeft:4,fontWeight:700}},"Pen."):null;
+					      const cscLabel=isCSC?React.createElement("span",{style:{fontSize:9,background:"rgba(244,67,54,0.15)",color:"#e53935",borderRadius:4,padding:"1px 5px",marginLeft:4,fontWeight:700}},"CSC"):null;
+					      const missLabel=isMiss?React.createElement("div",{style:{fontSize:11,color:"#e53935",marginTop:1}},"Pénalty manqué"):null;
 					
 					      const rowClass=`md-evt-row${isHome?" home-evt":" away-evt"}`;
 					      return React.createElement("div",{key:i,className:rowClass},
@@ -1848,14 +1880,14 @@
 					    }
 					    return React.createElement(React.Fragment,null,
 					      // Teams header
-					      React.createElement("div",{style:{display:"flex",alignItems:"center",justifyContent:"space-between",marginBottom:16,padding:"10px 14px",background:"rgba(255,255,255,0.04)",borderRadius:12,border:"1px solid rgba(255,255,255,0.07)"}},
+					      React.createElement("div",{style:{display:"flex",alignItems:"center",justifyContent:"space-between",marginBottom:16,padding:"10px 14px",background:"rgba(0,0,0,.04)",borderRadius:12,border:"1px solid rgba(255,255,255,0.07)"}},
 					        React.createElement("div",{style:{display:"flex",alignItems:"center",gap:8,flex:1,minWidth:0}},
 					          React.createElement("img",{src:fix.teams.home.logo,style:{width:24,height:24,objectFit:"contain"},onError:e=>{e.target.style.display="none"}}),
-					          React.createElement("span",{style:{fontSize:12,fontWeight:700,color:"#ffffff",overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap"}},[fix.teams.home.name])
+					          React.createElement("span",{style:{fontSize:12,fontWeight:700,color:"#0f1117",overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap"}},[fix.teams.home.name])
 					        ),
-					        React.createElement("div",{style:{fontFamily:"'Barlow Condensed',sans-serif",fontSize:10,fontWeight:700,color:"rgba(255,255,255,0.35)",padding:"0 10px",flexShrink:0}},"VS"),
+					        React.createElement("div",{style:{fontFamily:"'Barlow Condensed',sans-serif",fontSize:10,fontWeight:700,color:"rgba(15,17,23,.38)",padding:"0 10px",flexShrink:0}},"VS"),
 					        React.createElement("div",{style:{display:"flex",alignItems:"center",gap:8,flex:1,minWidth:0,justifyContent:"flex-end"}},
-					          React.createElement("span",{style:{fontSize:12,fontWeight:700,color:"#ffffff",overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap",textAlign:"right"}},[fix.teams.away.name]),
+					          React.createElement("span",{style:{fontSize:12,fontWeight:700,color:"#0f1117",overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap",textAlign:"right"}},[fix.teams.away.name]),
 					          React.createElement("img",{src:fix.teams.away.logo,style:{width:24,height:24,objectFit:"contain"},onError:e=>{e.target.style.display="none"}})
 					        )
 					      ),
@@ -1875,7 +1907,7 @@
 					                React.createElement("div",{className:"md-stat-val-a"},[String(av)])
 					              ),
 					              React.createElement("div",{style:{display:"flex",gap:3,marginBottom:8,height:3}},
-					                React.createElement("div",{style:{flex:hp,background:"#e8a838",borderRadius:2,transition:"flex .5s"}}),
+					                React.createElement("div",{style:{flex:hp,background:"#00c170",borderRadius:2,transition:"flex .5s"}}),
 					                React.createElement("div",{style:{flex:100-hp,background:"#42A5F5",borderRadius:2,transition:"flex .5s"}})
 					              )
 					            );
@@ -1909,29 +1941,29 @@
 					          const plrStats=players.flatMap(t=>t.players||[]).find(pl=>pl.player?.id===p.id);
 					          setPlayerSheet({...p,photo,stats:plrStats?.statistics?.[0]||null});
 					        }},
-					          React.createElement("div",{style:{fontFamily:"'Barlow Condensed',sans-serif",fontSize:12,fontWeight:700,color:isHm?"#e8a838":"#4fc3f7",minWidth:28,textAlign:"center",opacity:isSub?0.5:1}},`#${p.number||"—"}`),
-					          React.createElement("div",{style:{width:32,height:32,borderRadius:"50%",border:`1.5px solid ${borderColor}`,overflow:"hidden",background:"#2e3347",display:"flex",alignItems:"center",justifyContent:"center",flexShrink:0,fontSize:12,color:"rgba(255,255,255,0.35)",opacity:isSub?0.6:1}},
+					          React.createElement("div",{style:{fontFamily:"'Barlow Condensed',sans-serif",fontSize:12,fontWeight:700,color:isHm?"#00c170":"#2563eb",minWidth:28,textAlign:"center",opacity:isSub?0.5:1}},`#${p.number||"—"}`),
+					          React.createElement("div",{style:{width:32,height:32,borderRadius:"50%",border:`1.5px solid ${borderColor}`,overflow:"hidden",background:"#eef0f5",display:"flex",alignItems:"center",justifyContent:"center",flexShrink:0,fontSize:12,color:"rgba(15,17,23,.38)",opacity:isSub?0.6:1}},
 					            photo?React.createElement("img",{src:photo,style:{width:"100%",height:"100%",objectFit:"cover"},onError:e=>{e.target.parentNode.textContent="👤"}}):"👤"
 					          ),
 					          React.createElement("div",{style:{flex:1,minWidth:0,opacity:isSub?0.7:1}},
-					            React.createElement("div",{style:{fontSize:13,fontWeight:600,color:"#ffffff",whiteSpace:"nowrap",overflow:"hidden",textOverflow:"ellipsis"}},[p.name]),
-					            p.pos?React.createElement("div",{style:{fontSize:10,color:"rgba(255,255,255,0.35)",marginTop:1}},[p.pos]):null
+					            React.createElement("div",{style:{fontSize:13,fontWeight:600,color:"#0f1117",whiteSpace:"nowrap",overflow:"hidden",textOverflow:"ellipsis"}},[p.name]),
+					            p.pos?React.createElement("div",{style:{fontSize:10,color:"rgba(15,17,23,.38)",marginTop:1}},[p.pos]):null
 					          ),
-					          minShow?React.createElement("div",{style:{fontSize:10,fontWeight:700,color:"#66bb6a",background:"rgba(76,175,80,0.1)",borderRadius:5,padding:"2px 6px",flexShrink:0}},[`${isSub?"↑":""}${minShow.time?.elapsed}'`]):null
+					          minShow?React.createElement("div",{style:{fontSize:10,fontWeight:700,color:"#00c170",background:"rgba(76,175,80,0.1)",borderRadius:5,padding:"2px 6px",flexShrink:0}},[`${isSub?"↑":""}${minShow.time?.elapsed}'`]):null
 					        );
 					      };
 					
-					      return React.createElement("div",{key:team?.id,style:{background:"#242938",border:"1px solid rgba(255,255,255,0.07)",borderRadius:16,overflow:"hidden",marginBottom:8}},
+					      return React.createElement("div",{key:team?.id,style:{background:"#fff",border:"1px solid rgba(255,255,255,0.07)",borderRadius:16,overflow:"hidden",marginBottom:8}},
 					        React.createElement("div",{style:{display:"flex",alignItems:"center",gap:10,padding:"12px 14px",borderBottom:"1px solid rgba(255,255,255,0.07)",background:isHm?"linear-gradient(90deg,rgba(255,107,74,0.06),transparent)":"linear-gradient(90deg,rgba(66,165,245,0.06),transparent)"}},
 					          React.createElement("img",{src:team?.logo,style:{width:32,height:32,objectFit:"contain"},onError:e=>{e.target.style.display="none"}}),
 					          React.createElement("div",null,
-					            React.createElement("div",{style:{fontFamily:"'Barlow Condensed',sans-serif",fontSize:22,fontWeight:800,color:isHm?"#e8a838":"#4fc3f7",letterSpacing:-0.5}},[lu.formation||"—"]),
-					            lu.coach?.name?React.createElement("div",{style:{fontSize:11,color:"rgba(255,255,255,0.35)",marginTop:1}},[lu.coach.name]):null
+					            React.createElement("div",{style:{fontFamily:"'Barlow Condensed',sans-serif",fontSize:22,fontWeight:800,color:isHm?"#00c170":"#2563eb",letterSpacing:-0.5}},[lu.formation||"—"]),
+					            lu.coach?.name?React.createElement("div",{style:{fontSize:11,color:"rgba(15,17,23,.38)",marginTop:1}},[lu.coach.name]):null
 					          )
 					        ),
 					        (lu.startXI||[]).map(({player:p})=>renderPlayer(p,false)),
 					        (lu.substitutes||[]).length?React.createElement(React.Fragment,null,
-					          React.createElement("div",{style:{fontFamily:"'Barlow Condensed',sans-serif",fontSize:9,fontWeight:700,letterSpacing:1.5,color:"rgba(255,255,255,0.35)",textTransform:"uppercase",padding:"7px 14px",background:"rgba(255,255,255,0.03)"}},
+					          React.createElement("div",{style:{fontFamily:"'Barlow Condensed',sans-serif",fontSize:9,fontWeight:700,letterSpacing:1.5,color:"rgba(15,17,23,.38)",textTransform:"uppercase",padding:"7px 14px",background:"rgba(0,0,0,.03)"}},
 					            "Remplaçants"
 					          ),
 					          (lu.substitutes||[]).map(({player:p})=>renderPlayer(p,true))
@@ -1943,7 +1975,7 @@
 					    const aLu=lineups.find(l=>l.team?.id===aid);
 					    return React.createElement(React.Fragment,null,
 					      renderTeamBlock(hLu,true),
-					      React.createElement("div",{style:{textAlign:"center",fontFamily:"'Barlow Condensed',sans-serif",fontSize:13,fontWeight:700,color:"rgba(255,255,255,0.35)",padding:6,letterSpacing:3}},"— VS —"),
+					      React.createElement("div",{style:{textAlign:"center",fontFamily:"'Barlow Condensed',sans-serif",fontSize:13,fontWeight:700,color:"rgba(15,17,23,.38)",padding:6,letterSpacing:3}},"— VS —"),
 					      renderTeamBlock(aLu,false)
 					    );
 					  };
@@ -1972,28 +2004,28 @@
 					
 					    return React.createElement(React.Fragment,null,
 					      React.createElement("div",{style:{display:"grid",gridTemplateColumns:"1fr 1fr 1fr",gap:8,marginBottom:16}},
-					        [{val:hW,label:`${hn.split(" ")[0]}\nVictoires`,color:"#e8a838"},
-					         {val:draws,label:"Matchs\nNuls",color:"rgba(255,255,255,0.45)"},
-					         {val:aW,label:`${an.split(" ")[0]}\nVictoires`,color:"#4fc3f7"}
+					        [{val:hW,label:`${hn.split(" ")[0]}\nVictoires`,color:"#00c170"},
+					         {val:draws,label:"Matchs\nNuls",color:"rgba(15,17,23,.5)"},
+					         {val:aW,label:`${an.split(" ")[0]}\nVictoires`,color:"#2563eb"}
 					        ].map(({val,label,color})=>
-					          React.createElement("div",{key:label,style:{background:"#242938",border:"1px solid rgba(255,255,255,0.07)",borderRadius:12,padding:"12px 8px",textAlign:"center"}},
+					          React.createElement("div",{key:label,style:{background:"#fff",border:"1px solid rgba(255,255,255,0.07)",borderRadius:12,padding:"12px 8px",textAlign:"center"}},
 					            React.createElement("div",{style:{fontFamily:"'Barlow Condensed',sans-serif",fontSize:24,fontWeight:800,color,lineHeight:1}},[val]),
-					            React.createElement("div",{style:{fontSize:10,color:"rgba(255,255,255,0.35)",marginTop:4,lineHeight:1.3,whiteSpace:"pre-line"}},[label])
+					            React.createElement("div",{style:{fontSize:10,color:"rgba(15,17,23,.38)",marginTop:4,lineHeight:1.3,whiteSpace:"pre-line"}},[label])
 					          )
 					        )
 					      ),
 					      React.createElement("div",{style:{display:"grid",gridTemplateColumns:"1fr 1fr",gap:8,marginBottom:16}},
-					        React.createElement("div",{style:{background:"#242938",border:"1px solid rgba(255,255,255,0.07)",borderRadius:10,padding:10,display:"flex",alignItems:"center",gap:8}},
-					          React.createElement("div",{style:{fontFamily:"'Barlow Condensed',sans-serif",fontSize:18,fontWeight:800,color:"#e8a838"}},[h2h.length]),
-					          React.createElement("div",{style:{fontSize:11,color:"rgba(255,255,255,0.35)",lineHeight:1.3}},"Total matchs")
+					        React.createElement("div",{style:{background:"#fff",border:"1px solid rgba(255,255,255,0.07)",borderRadius:10,padding:10,display:"flex",alignItems:"center",gap:8}},
+					          React.createElement("div",{style:{fontFamily:"'Barlow Condensed',sans-serif",fontSize:18,fontWeight:800,color:"#00c170"}},[h2h.length]),
+					          React.createElement("div",{style:{fontSize:11,color:"rgba(15,17,23,.38)",lineHeight:1.3}},"Total matchs")
 					        ),
-					        React.createElement("div",{style:{background:"#242938",border:"1px solid rgba(255,255,255,0.07)",borderRadius:10,padding:10,display:"flex",alignItems:"center",gap:8}},
-					          React.createElement("div",{style:{fontFamily:"'Barlow Condensed',sans-serif",fontSize:18,fontWeight:800,color:"#e8a838"}},[`${hGoals}-${aGoals}`]),
-					          React.createElement("div",{style:{fontSize:11,color:"rgba(255,255,255,0.35)",lineHeight:1.3}},"Buts Dom./Ext.")
+					        React.createElement("div",{style:{background:"#fff",border:"1px solid rgba(255,255,255,0.07)",borderRadius:10,padding:10,display:"flex",alignItems:"center",gap:8}},
+					          React.createElement("div",{style:{fontFamily:"'Barlow Condensed',sans-serif",fontSize:18,fontWeight:800,color:"#00c170"}},[`${hGoals}-${aGoals}`]),
+					          React.createElement("div",{style:{fontSize:11,color:"rgba(15,17,23,.38)",lineHeight:1.3}},"Buts Dom./Ext.")
 					        )
 					      ),
 					      years.map(year=>React.createElement("div",{key:year},
-					        React.createElement("div",{style:{fontFamily:"'Barlow Condensed',sans-serif",fontSize:14,fontWeight:800,color:"#e8a838",margin:"16px 0 8px",paddingBottom:6,borderBottom:"1px solid rgba(255,107,74,0.2)"}},[year]),
+					        React.createElement("div",{style:{fontFamily:"'Barlow Condensed',sans-serif",fontSize:14,fontWeight:800,color:"#00c170",margin:"16px 0 8px",paddingBottom:6,borderBottom:"1px solid rgba(255,107,74,0.2)"}},[year]),
 					        byYear[year].map((m,i)=>{
 					          const mg=m.goals.home??0,ag2=m.goals.away??0;
 					          const isHm=m.teams.home.id===hid;
@@ -2002,10 +2034,10 @@
 					          return React.createElement("div",{key:i,style:{display:"flex",alignItems:"center",gap:8,padding:"9px 0",borderBottom:"1px solid rgba(255,255,255,0.04)"}},
 					            React.createElement("div",{style:{width:7,height:7,borderRadius:"50%",background:resultColor,flexShrink:0}}),
 					            React.createElement("div",{style:{flex:1,minWidth:0}},
-					              React.createElement("div",{style:{fontSize:12,fontWeight:600,color:"#ffffff",whiteSpace:"nowrap",overflow:"hidden",textOverflow:"ellipsis"}},[m.teams.home.name]),
-					              React.createElement("div",{style:{fontSize:11,color:"rgba(255,255,255,0.35)",whiteSpace:"nowrap",overflow:"hidden",textOverflow:"ellipsis"}},[m.teams.away.name])
+					              React.createElement("div",{style:{fontSize:12,fontWeight:600,color:"#0f1117",whiteSpace:"nowrap",overflow:"hidden",textOverflow:"ellipsis"}},[m.teams.home.name]),
+					              React.createElement("div",{style:{fontSize:11,color:"rgba(15,17,23,.38)",whiteSpace:"nowrap",overflow:"hidden",textOverflow:"ellipsis"}},[m.teams.away.name])
 					            ),
-					            React.createElement("div",{style:{fontFamily:"'Barlow Condensed',sans-serif",fontSize:14,fontWeight:800,color:"#ffffff",minWidth:44,textAlign:"center"}},[`${mg}–${ag2}`])
+					            React.createElement("div",{style:{fontFamily:"'Barlow Condensed',sans-serif",fontSize:14,fontWeight:800,color:"#0f1117",minWidth:44,textAlign:"center"}},[`${mg}–${ag2}`])
 					          );
 					        })
 					      ))
@@ -2025,7 +2057,7 @@
 					          React.createElement("thead",null,
 					            React.createElement("tr",null,
 					              [{w:28,label:"#"},{w:null,label:"Équipe",cls:"team-col"},{w:null,label:"MJ"},{w:null,label:"B"},{w:null,label:"PTS"},{w:null,label:"Évol"}].map((h,i)=>
-					                React.createElement("th",{key:i,style:{background:"#242938",fontFamily:"'Barlow Condensed',sans-serif",fontSize:9,fontWeight:700,color:"rgba(255,255,255,0.35)",letterSpacing:1,textTransform:"uppercase",padding:"8px 4px",textAlign:h.cls?"left":"center",paddingLeft:h.cls?10:4,borderBottom:"1px solid rgba(255,255,255,0.12)",width:h.w||undefined}},[h.label])
+					                React.createElement("th",{key:i,style:{background:"#fff",fontFamily:"'Barlow Condensed',sans-serif",fontSize:9,fontWeight:700,color:"rgba(15,17,23,.38)",letterSpacing:1,textTransform:"uppercase",padding:"8px 4px",textAlign:h.cls?"left":"center",paddingLeft:h.cls?10:4,borderBottom:"1px solid rgba(255,255,255,0.12)",width:h.w||undefined}},[h.label])
 					              )
 					            )
 					          ),
@@ -2043,11 +2075,11 @@
 					                React.createElement("td",{style:{padding:"9px 4px",textAlign:"left",paddingLeft:10}},
 					                  React.createElement("div",{style:{display:"flex",alignItems:"center",gap:7}},
 					                    React.createElement("img",{src:r.team?.logo,style:{width:18,height:18,objectFit:"contain",flexShrink:0},onError:e=>{e.target.style.display="none"}}),
-					                    React.createElement("span",{style:{fontSize:12,fontWeight:600,color:"#ffffff",whiteSpace:"nowrap",overflow:"hidden",textOverflow:"ellipsis",maxWidth:110}},[r.team?.name])
+					                    React.createElement("span",{style:{fontSize:12,fontWeight:600,color:"#0f1117",whiteSpace:"nowrap",overflow:"hidden",textOverflow:"ellipsis",maxWidth:110}},[r.team?.name])
 					                  )
 					                ),
-					                React.createElement("td",{style:{padding:"9px 4px",textAlign:"center",fontSize:12,color:"rgba(255,255,255,0.45)"}},[r.all?.played??"-"]),
-					                React.createElement("td",{style:{padding:"9px 4px",textAlign:"center",fontSize:11,color:"rgba(255,255,255,0.45)"}},[`${bFor}:${bAga}`]),
+					                React.createElement("td",{style:{padding:"9px 4px",textAlign:"center",fontSize:12,color:"rgba(15,17,23,.5)"}},[r.all?.played??"-"]),
+					                React.createElement("td",{style:{padding:"9px 4px",textAlign:"center",fontSize:11,color:"rgba(15,17,23,.5)"}},[`${bFor}:${bAga}`]),
 					                React.createElement("td",{style:{padding:"9px 4px",textAlign:"center"}},
 					                  React.createElement("span",{style:{fontFamily:"'Barlow Condensed',sans-serif",fontSize:14,fontWeight:800,color:isTop?"#FF6B4A":"#fff"}},[r.points])
 					                ),
@@ -2061,7 +2093,7 @@
 					      ),
 					      React.createElement("div",{style:{marginTop:14,display:"flex",flexDirection:"column",gap:5}},
 					        [{bg:"rgba(255,107,74,0.5)",label:"Équipe domicile"},{bg:"rgba(66,165,245,0.5)",label:"Équipe extérieur"},{bg:"#4CAF50",label:"Qualification C1"},{bg:"#F44336",label:"Relégation"}].map(({bg,label})=>
-					          React.createElement("div",{key:label,style:{display:"flex",alignItems:"center",gap:7,fontSize:11,color:"rgba(255,255,255,0.35)"}},
+					          React.createElement("div",{key:label,style:{display:"flex",alignItems:"center",gap:7,fontSize:11,color:"rgba(15,17,23,.38)"}},
 					            React.createElement("div",{style:{width:10,height:10,borderRadius:"50%",background:bg,flexShrink:0}}),
 					            label
 					          )
@@ -2084,10 +2116,10 @@
 					    ].filter(Boolean);
 					    return React.createElement("div",{style:{marginTop:20}},
 					      React.createElement("div",{className:"md-info-section-title"},"Informations match"),
-					      React.createElement("div",{style:{background:"#242938",border:"1px solid rgba(255,255,255,0.07)",borderRadius:14,overflow:"hidden"}},
+					      React.createElement("div",{style:{background:"#fff",border:"1px solid rgba(255,255,255,0.07)",borderRadius:14,overflow:"hidden"}},
 					        infos.map((r,i)=>React.createElement("div",{key:i,style:{display:"flex",alignItems:"center",gap:12,padding:"12px 14px",borderBottom:i<infos.length-1?"1px solid rgba(255,255,255,0.04)":"none"}},
 					          React.createElement("span",{style:{fontSize:17,flexShrink:0,width:24,textAlign:"center"}},[r.icon]),
-					          React.createElement("div",{style:{flex:1,fontSize:13,color:"rgba(255,255,255,0.45)",lineHeight:1.4}},[r.label])
+					          React.createElement("div",{style:{flex:1,fontSize:13,color:"rgba(15,17,23,.5)",lineHeight:1.4}},[r.label])
 					        ))
 					      )
 					    );
@@ -2096,7 +2128,7 @@
 					  // ── MAIN RENDER ──
 					  return React.createElement("div",{className:"md-overlay"},
 					    // Loading bar
-					    isPartial?React.createElement("div",{style:{position:"absolute",top:0,left:0,width:"70%",height:2,background:"linear-gradient(90deg,#e8a838,#ffd280)",zIndex:999,borderRadius:"0 2px 2px 0",animation:"shimmer 1.2s linear infinite"}}):null,
+					    isPartial?React.createElement("div",{style:{position:"absolute",top:0,left:0,width:"70%",height:2,background:"linear-gradient(90deg,#00c170,#34d399)",zIndex:999,borderRadius:"0 2px 2px 0",animation:"shimmer 1.2s linear infinite"}}):null,
 					
 					    // Top bar
 					    React.createElement("div",{className:"md-topbar"},
@@ -2134,7 +2166,7 @@
 					        isLive&&s.elapsed?React.createElement("span",{className:"md-minute"},
 					          [sh==="2H"&&s.elapsed>90?`90+${s.elapsed-90}'`:`${s.elapsed}'`]
 					        ):null,
-					        has&&Math.abs(hg-ag)>0?React.createElement("span",{style:{fontSize:11,fontWeight:500,color:"#66bb6a"}},[`+${Math.abs(hg-ag)} pts d'avance`]):null
+					        has&&Math.abs(hg-ag)>0?React.createElement("span",{style:{fontSize:11,fontWeight:500,color:"#00c170"}},[`+${Math.abs(hg-ag)} pts d'avance`]):null
 					      ),
 					      goals.length>0?React.createElement("div",{className:"md-goals-row"},
 					        React.createElement("div",{className:"md-goal-scorer"},
@@ -2161,7 +2193,7 @@
 					
 					      // STATS
 					      tab==="stats"?React.createElement("div",{className:"md-panel"},
-					        React.createElement("div",{style:{display:"flex",gap:4,marginBottom:16,background:"#242938",borderRadius:10,padding:3}},
+					        React.createElement("div",{style:{display:"flex",gap:4,marginBottom:16,background:"#fff",borderRadius:10,padding:3}},
 					          [{id:"all",label:"Match"},{id:"first",label:"1re MT"},{id:"second",label:"2e MT"}].map(p=>
 					            React.createElement("button",{key:p.id,className:`md-subtab${period===p.id?" active":""}`,onClick:()=>setPeriod(p.id)},[p.label])
 					          )
@@ -2178,42 +2210,42 @@
 					      // CLASSEMENT
 					      tab==="classement"?React.createElement("div",{className:"md-panel"},
 					        standings.length?renderStandings():
-					          React.createElement("div",{style:{display:"flex",flexDirection:"column",alignItems:"center",padding:"40px 20px",gap:10,color:"rgba(255,255,255,0.35)",fontSize:14}},"📊 Chargement classement...")
+					          React.createElement("div",{style:{display:"flex",flexDirection:"column",alignItems:"center",padding:"40px 20px",gap:10,color:"rgba(15,17,23,.38)",fontSize:14}},"📊 Chargement classement...")
 					      ):null
 					    ),
 					
 					    // Player sheet overlay
 					    playerSheet?React.createElement("div",{className:"md-player-sheet-bg",onClick:e=>{if(e.target===e.currentTarget)setPlayerSheet(null);}},
 					      React.createElement("div",{className:"md-player-sheet-inner"},
-					        React.createElement("button",{onClick:()=>setPlayerSheet(null),style:{float:"right",background:"none",border:"none",color:"rgba(255,255,255,0.35)",fontSize:22,cursor:"pointer"}},"✕"),
+					        React.createElement("button",{onClick:()=>setPlayerSheet(null),style:{float:"right",background:"none",border:"none",color:"rgba(15,17,23,.38)",fontSize:22,cursor:"pointer"}},"✕"),
 					        React.createElement("div",{style:{display:"flex",alignItems:"center",gap:14,marginBottom:18}},
-					          React.createElement("div",{style:{width:56,height:56,borderRadius:"50%",border:"2px solid #FF6B4A",overflow:"hidden",background:"#2e3347",display:"flex",alignItems:"center",justifyContent:"center",fontSize:20,color:"rgba(255,255,255,0.35)",flexShrink:0}},
+					          React.createElement("div",{style:{width:56,height:56,borderRadius:"50%",border:"2px solid #FF6B4A",overflow:"hidden",background:"#eef0f5",display:"flex",alignItems:"center",justifyContent:"center",fontSize:20,color:"rgba(15,17,23,.38)",flexShrink:0}},
 					            playerSheet.photo?React.createElement("img",{src:playerSheet.photo,style:{width:"100%",height:"100%",objectFit:"cover"},onError:e=>{e.target.parentNode.textContent="👤"}}):"👤"
 					          ),
 					          React.createElement("div",null,
-					            React.createElement("div",{style:{fontFamily:"'Barlow Condensed',sans-serif",fontSize:18,fontWeight:800,color:"#ffffff"}},[playerSheet.name]),
-					            React.createElement("div",{style:{fontSize:12,color:"rgba(255,255,255,0.35)",marginTop:3}},
+					            React.createElement("div",{style:{fontFamily:"'Barlow Condensed',sans-serif",fontSize:18,fontWeight:800,color:"#0f1117"}},[playerSheet.name]),
+					            React.createElement("div",{style:{fontSize:12,color:"rgba(15,17,23,.38)",marginTop:3}},
 					              [playerSheet.pos,playerSheet.nationality,playerSheet.number?"#"+playerSheet.number:null].filter(Boolean).join(" · ")
 					            )
 					          )
 					        ),
 					        playerSheet.stats?React.createElement(React.Fragment,null,
-					          playerSheet.stats.games?.rating&&(()=>{const r=parseFloat(playerSheet.stats.games.rating);const rc=r>=8?"#4CAF50":r>=7?"#FFC107":"#F44336";return React.createElement("div",{style:{background:"#2e3347",borderRadius:10,padding:12,textAlign:"center",marginBottom:8}},React.createElement("div",{style:{fontFamily:"'Barlow Condensed',sans-serif",fontSize:28,fontWeight:800,color:rc}},[r.toFixed(1)]),React.createElement("div",{style:{fontSize:10,color:"rgba(255,255,255,0.35)",marginTop:3}},"Note du match"));})(),
+					          playerSheet.stats.games?.rating&&(()=>{const r=parseFloat(playerSheet.stats.games.rating);const rc=r>=8?"#4CAF50":r>=7?"#FFC107":"#F44336";return React.createElement("div",{style:{background:"#eef0f5",borderRadius:10,padding:12,textAlign:"center",marginBottom:8}},React.createElement("div",{style:{fontFamily:"'Barlow Condensed',sans-serif",fontSize:28,fontWeight:800,color:rc}},[r.toFixed(1)]),React.createElement("div",{style:{fontSize:10,color:"rgba(15,17,23,.38)",marginTop:3}},"Note du match"));})(),
 					          React.createElement("div",{style:{display:"grid",gridTemplateColumns:"repeat(3,1fr)",gap:8}},
 					            [{val:playerSheet.stats.games?.minutes??"-",lbl:"Minutes"},
 					             {val:playerSheet.stats.goals?.total??0,lbl:"Buts"},
 					             {val:playerSheet.stats.goals?.assists??0,lbl:"Passes D"},
 					             {val:playerSheet.stats.shots?.on??0,lbl:"Tirs"},
-					             {val:playerSheet.stats.cards?.yellow??0,lbl:"🟨",color:"#e8a838"},
-					             {val:playerSheet.stats.cards?.red??0,lbl:"🟥",color:"#ef5350"},
+					             {val:playerSheet.stats.cards?.yellow??0,lbl:"🟨",color:"#00c170"},
+					             {val:playerSheet.stats.cards?.red??0,lbl:"🟥",color:"#e53935"},
 					            ].map(({val,lbl,color})=>
-					              React.createElement("div",{key:lbl,style:{background:"#2e3347",borderRadius:10,padding:10,textAlign:"center"}},
+					              React.createElement("div",{key:lbl,style:{background:"#eef0f5",borderRadius:10,padding:10,textAlign:"center"}},
 					                React.createElement("div",{style:{fontFamily:"'Barlow Condensed',sans-serif",fontSize:20,fontWeight:800,color:color||"#FF6B4A"}},[val]),
-					                React.createElement("div",{style:{fontSize:10,color:"rgba(255,255,255,0.35)",marginTop:3}},[lbl])
+					                React.createElement("div",{style:{fontSize:10,color:"rgba(15,17,23,.38)",marginTop:3}},[lbl])
 					              )
 					            )
 					          )
-					        ):React.createElement("div",{style:{textAlign:"center",color:"rgba(255,255,255,0.35)",fontSize:12,padding:12}},"Statistiques non disponibles")
+					        ):React.createElement("div",{style:{textAlign:"center",color:"rgba(15,17,23,.38)",fontSize:12,padding:12}},"Statistiques non disponibles")
 					      )
 					    ):null
 					  );
