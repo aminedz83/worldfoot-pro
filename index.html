@@ -67,7 +67,7 @@
 			// Service Worker avec support notifications
 			if ("serviceWorker" in navigator) {
 				const sw = `
-    const C='wf-pro-v16';
+    const C='wf-pro-v17';
     self.addEventListener('install',e=>{e.waitUntil(caches.open(C).then(c=>c.addAll(['./'])).then(()=>self.skipWaiting()));});
     self.addEventListener('activate',e=>{e.waitUntil(caches.keys().then(ks=>Promise.all(ks.filter(k=>k!==C).map(k=>caches.delete(k)))).then(()=>self.clients.claim()));});
     self.addEventListener('push',e=>{
@@ -1681,6 +1681,7 @@
 					  const[playerSheet,setPlayerSheet]=React.useState(null);
 					  const[standings,setStandings]=React.useState([]);
 					  const[venueInfo,setVenueInfo]=React.useState(null);
+					  const[teamStats,setTeamStats]=React.useState({h:null,a:null});
 					  const contentRef=React.useRef(null);
 					
 					  // Extract data
@@ -1727,6 +1728,22 @@
 					      .catch(()=>{});
 					    return()=>{cancelled=true;};
 					  },[fix?.fixture?.venue?.id]);
+
+					  // Fetch team season stats (pour preview pré-match si stats match vides)
+					  React.useEffect(()=>{
+					    const hid=fix?.teams?.home?.id,aid=fix?.teams?.away?.id;
+					    const lid=fix?.league?.id,season=fix?.league?.season;
+					    if(!hid||!aid||!lid||!season)return;
+					    let cancelled=false;
+					    const ttl=86400000; // 24h — stats saison changent peu
+					    Promise.all([
+					      api(`/teams/statistics?team=${hid}&league=${lid}&season=${season}`,ttl).catch(()=>null),
+					      api(`/teams/statistics?team=${aid}&league=${lid}&season=${season}`,ttl).catch(()=>null),
+					    ]).then(([h,a])=>{
+					      if(!cancelled)setTeamStats({h:h??null,a:a??null});
+					    });
+					    return()=>{cancelled=true;};
+					  },[fix?.fixture?.id]);
 
 					  // Reset tab on new fixture
 					  React.useEffect(()=>{
@@ -2837,18 +2854,20 @@
 				    }
 
 				    try{
-				      const sh=cachedFix?.fixture?.status?.short??"NS";
-				      const isLiveNow=LIVE_ST.has(sh);
-				      const isDoneNow=DONE_ST.has(sh);
-				      const matchTTL=isLiveNow?15000:isDoneNow?10800000:21600000;
-				      const detailTTL=isLiveNow?15000:isDoneNow?10800000:3600000;
-
-				      // ── Fixture d'abord (bloquant — on a besoin de hid/aid/fid) ──
-				      const fx=await api(`/fixtures?id=${id}`,matchTTL,sig);
+				      // Fixture toujours re-fetché avec TTL court (30s) — détermine tout le reste
+				      // On invalide aussi le cache si le statut en cache est NS mais la date est passée
+				      const cachedSh=cachedFix?.fixture?.status?.short??"NS";
+				      const cachedDate=cachedFix?.fixture?.date?new Date(cachedFix.fixture.date):null;
+				      const cachedIsNS=NS_ST.has(cachedSh);
+				      const kickoffPassed=cachedDate&&Date.now()>cachedDate.getTime();
+				      if(cachedIsNS&&kickoffPassed) _cache.delete(`/fixtures?id=${id}`);
+				      const fixTTL=30000; // toujours 30s pour avoir le vrai statut
+				      const fx=await api(`/fixtures?id=${id}`,fixTTL,sig);
 				      const fix=fx[0];if(!fix)throw new Error("Match introuvable");
 				      const started=!NS_ST.has(fix.fixture.status.short);
 				      const isLive=LIVE_ST.has(fix.fixture.status.short);
 				      const isDone=DONE_ST.has(fix.fixture.status.short);
+				      const detailTTL=isLive?15000:isDone?10800000:3600000;
 				      const hid=fix.teams.home.id,aid=fix.teams.away.id,fid=fix.fixture.id;
 
 				      // Afficher le header immédiatement avec fix
