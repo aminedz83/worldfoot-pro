@@ -2542,7 +2542,30 @@
 				            })
 				          )
 				        )
-				      )
+				      ),
+				      // ── Légende + départage ──
+				      (()=>{
+				        const zcL=desc=>{const d=(desc??"").toLowerCase();if(d.includes("champions league")||d.includes("ligue des champions")||(d.includes("champions")&&!d.includes("conf")))return{color:"#1a56db",label:"Ligue des Champions"};if(d.includes("europa league")||d.includes("ligue europa"))return{color:"#e53935",label:"UEFA Europa League"};if(d.includes("conference")||d.includes("conf"))return{color:"#f59e0b",label:"Conference League / Qualification"};if(d.includes("promotion"))return{color:"#00c170",label:desc};if(d.includes("releg")||d.includes("relégation"))return{color:"#e53935",label:desc};if(d.includes("playoff")||d.includes("play-off")||d.includes("barrage"))return{color:"#f59e0b",label:desc};if(d.includes("europa"))return{color:"#e53935",label:desc};if(d.includes("qualif"))return{color:"#1a56db",label:desc};return null;};
+				        const seen=new Map();
+				        st.forEach(r=>{if(r?.description&&!seen.has(r.description)){const v=zcL(r.description);if(v)seen.set(r.description,v);}});
+				        const entries=[...seen.values()];
+				        // Dédupliquer par couleur+label
+				        const deduped=[];
+				        const usedColors=new Set();
+				        entries.forEach(e=>{const key=e.color+"|"+e.label;if(!usedColors.has(key)){usedColors.add(key);deduped.push(e);}});
+				        if(!deduped.length)return null;
+				        return React.createElement("div",{style:{padding:"16px 12px 28px",background:"#f7f9fc",borderTop:"1px solid rgba(0,0,0,.06)"}},
+				          React.createElement("div",{style:{display:"flex",flexDirection:"column",gap:6,marginBottom:14}},
+				            deduped.map((e,i)=>React.createElement("div",{key:i,style:{display:"flex",alignItems:"center",gap:10,padding:"10px 12px",background:"#ffffff",borderRadius:10,border:"1px solid rgba(0,0,0,.06)"}},
+				              React.createElement("div",{style:{width:4,alignSelf:"stretch",borderRadius:2,background:e.color,flexShrink:0}}),
+				              React.createElement("span",{style:{fontSize:12,color:"#1a1a2e",fontWeight:500,lineHeight:1.4}},[e.label])
+				            ))
+				          ),
+				          React.createElement("div",{style:{fontSize:11,color:"rgba(17,24,39,.4)",lineHeight:1.7,padding:"0 2px"}},
+				            "Si les équipes terminent à égalité de points à la fin de la saison, les résultats des face-à-face les départageront."
+				          )
+				        );
+				      })()
 				    );
 				  };
 
