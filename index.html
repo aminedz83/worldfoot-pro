@@ -3327,7 +3327,7 @@ function MatchDetailNew({fixtureId,onClose,homeLogo,awayLogo,homeName,awayName})
 						  const load=useCallback(async(silent=false)=>{
 						    if(!silent){setSt("load");setErr("");}else setSpin(true);
 						    try{
-						      const d=await api("/fixtures?date=" + (date) + "&timezone=Europe/Paris",15000);
+						      const d=await api("/fixtures?date=" + (date) + "&timezone=Europe/Paris",hasLive?10000:30000);
 						      setData(d);
 						      if(!silent)setSt("ok");
 						    }
@@ -3345,7 +3345,7 @@ function MatchDetailNew({fixtureId,onClose,homeLogo,awayLogo,homeName,awayName})
 
 						  // Timer adaptatif selon nb matchs live — économie quota
 						  const liveCount=useMemo(()=>data.filter(f=>LIVE_ST.has(f?.fixture?.status?.short)).length,[data]);
-						  const adaptiveInterval=liveCount>=4?15:liveCount>=1?30:60; // 15s/30s/60s
+						  const adaptiveInterval=liveCount>=1?15:60; // 15s si live, 60s sinon
 
 						  useEffect(()=>{
 						    clearInterval(timerRef.current);clearInterval(cdRef.current);
