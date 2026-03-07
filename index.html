@@ -550,7 +550,7 @@ function setLoading(pct) {
 // ═══════════════════════════════════════════════
 const hhmm = function(s) { const d = new Date(s); return String(d.getHours()).padStart(2,'0') + ':' + String(d.getMinutes()).padStart(2,'0'); };
 const ddmm = function(s) { const d = new Date(s); return String(d.getDate()).padStart(2,'0') + '.' + String(d.getMonth()+1).padStart(2,'0') + '.' + d.getFullYear(); };
-const esc  = function(s) { return (s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;'); };
+const esc  = function(s) { if(s==null||s===undefined) return ''; var str=typeof s==='object'?JSON.stringify(s):String(s); return str.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;'); };
 const statVal = function(arr, key) { var r = arr && arr.find(function(s){ return s.type && s.type.toLowerCase()===key.toLowerCase(); }); return r ? r.value : null; };
 
 function getStatusLabel(sh) {
@@ -809,8 +809,8 @@ function renderTimeline() {
     let icon = isGoal&&!isMiss ? (isCSC?'⚽':isPen?'🎯':'⚽') : isMiss?'❌' : isYellow?'🟨' : isRed?'🟥' : isSubst?'🔄' : '📋';
 
     const scoreBadge = (isGoal&&!isMiss) ? '<div class="wfmd-evt-score">' + hScore + '-' + aScore + '</div>' : '';
-    const assist = (!isSubst && e.assist&&e.assist.name) ? '<div class="wfmd-evt-sub">Passeur: ' + esc(e.assist.name) + '</div>' : '';
-    const subtxt = (isSubst && e.assist&&e.assist.name) ? '<div class="wfmd-evt-sub">↑ ' + esc(e.assist.name) + '</div>' : '';
+    const assist = (!isSubst && e.assist&&e.assist.name) ? '<div class="wfmd-evt-sub">Passeur: ' + esc(e.assist&&e.assist.name||'') + '</div>' : '';
+    const subtxt = (isSubst && e.assist&&e.assist.name) ? '<div class="wfmd-evt-sub">↑ ' + esc(e.assist&&e.assist.name||'') + '</div>' : '';
     const penLabel = isPen&&!isMiss ? '<span class="wfmd-tag green">Pen.</span>' : '';
     const cscLabel = isCSC ? '<span class="wfmd-tag red">CSC</span>' : '';
     const missLabel = isMiss ? '<div class="wfmd-evt-sub" style="color:var(--red)">Pénalty manqué</div>' : '';
@@ -856,7 +856,7 @@ function renderMatchInfo() {
   if (!container) return;
 
   let html = '<div class="wfmd-info-card">';
-  html += '<div class="wfmd-info-row"><span class="wfmd-info-icon">🏆</span><span class="wfmd-info-text"><strong>' + esc(l.country) + ' · ' + esc(l.name) + '</strong>' + (l.round ? ' · ' + esc(l.round.replace('Regular Season - ','J')) : '') + '</span></div>';
+  html += '<div class="wfmd-info-row"><span class="wfmd-info-icon">🏆</span><span class="wfmd-info-text"><strong>' + esc(l.country) + ' · ' + esc(l.name) + '</strong>' + (l.round ? ' · ' + esc((l.round||'').replace('Regular Season - ','J')) : '') + '</span></div>';
   html += '<div class="wfmd-info-row"><span class="wfmd-info-icon">📅</span><span class="wfmd-info-text">' + (f.date ? f.date.slice(0,10) : '') + ' · ' + hhmm(f.date) + '</span></div>';
   if (f.venue && f.venue.name) html += '<div class="wfmd-info-row"><span class="wfmd-info-icon">🏟️</span><span class="wfmd-info-text"><strong>' + esc(f.venue.name) + '</strong>' + (f.venue.city ? ', ' + esc(f.venue.city) : '') + '</span></div>';
   if (f.referee) html += '<div class="wfmd-info-row"><span class="wfmd-info-icon">🟡</span><span class="wfmd-info-text">Arbitre: ' + esc(f.referee) + '</span></div>';
