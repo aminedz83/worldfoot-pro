@@ -2438,6 +2438,7 @@
 						            }
 						          }, "❌ Pénalty manqué") : null;
 
+						    // VERSION AMÉLIORÉE DU VAR AVEC MOTIFS EN FRANÇAIS
 						    if(isVar){
 						      let varIcon = "📺";
 						      let varText = "Début vérification VAR";
@@ -2454,6 +2455,47 @@
 						        varText = "VAR annulation";
 						        varColor = "#f44336";
 						        varBg = "rgba(244,67,54,.1)";
+						      } else if(e.detail) {
+						        let detailLower = e.detail.toLowerCase();
+						        
+						        // Motifs en français
+						        if(detailLower.includes("hors-jeu") || detailLower.includes("offside")) {
+						          varText = "VAR · Vérification hors-jeu";
+						          varColor = "#ff9800";
+						          varBg = "rgba(255,152,0,.1)";
+						        } else if(detailLower.includes("faute") || detailLower.includes("foul")) {
+						          varText = "VAR · Vérification faute";
+						          varColor = "#ff9800";
+						          varBg = "rgba(255,152,0,.1)";
+						        } else if(detailLower.includes("main") || detailLower.includes("hand")) {
+						          varText = "VAR · Vérification main";
+						          varColor = "#ff9800";
+						          varBg = "rgba(255,152,0,.1)";
+						        } else if(detailLower.includes("penalty")) {
+						          varText = "VAR · Vérification penalty";
+						          varColor = "#ff9800";
+						          varBg = "rgba(255,152,0,.1)";
+						        } else if(detailLower.includes("simulation") || detailLower.includes("diving") || detailLower.includes("plong")) {
+						          varText = "VAR · Vérification simulation";
+						          varColor = "#ff9800";
+						          varBg = "rgba(255,152,0,.1)";
+						        } else if(detailLower.includes("rouge") || detailLower.includes("red")) {
+						          varText = "VAR · Vérification carton rouge";
+						          varColor = "#ff9800";
+						          varBg = "rgba(255,152,0,.1)";
+						        } else if(detailLower.includes("but") || detailLower.includes("goal")) {
+						          varText = "VAR · Vérification but";
+						          varColor = "#ff9800";
+						          varBg = "rgba(255,152,0,.1)";
+						        } else if(detailLower.includes("hors-jeu de peu") || detailLower.includes("marginal")) {
+						          varText = "VAR · Hors-jeu marginal";
+						          varColor = "#ff9800";
+						          varBg = "rgba(255,152,0,.1)";
+						        } else {
+						          varText = `VAR · Vérification: ${e.detail}`;
+						          varColor = "#ff9800";
+						          varBg = "rgba(255,152,0,.1)";
+						        }
 						      }
 						      
 						      return React.createElement("div", {
@@ -2498,7 +2540,7 @@
 						            fontWeight: 600,
 						            flex: 1
 						          }
-						        }, `VAR · ${varText}`)
+						        }, varText)
 						      );
 						    }
 
