@@ -2438,61 +2438,87 @@
 						            }
 						          }, "❌ Pénalty manqué") : null;
 
-						    // VERSION AMÉLIORÉE DU VAR AVEC MOTIFS EN FRANÇAIS
+						    // NOUVELLE VERSION VAR STYLE FLASHSCORE
 						    if(isVar){
 						      let varIcon = "📺";
-						      let varText = "Début vérification VAR";
-						      let varColor = "#2196f3";
-						      let varBg = "rgba(33,150,243,.1)";
+						      let varText = "";
+						      let varSubText = "";
+						      let varColor = "#ff9800";
+						      let varBg = "rgba(255,152,0,.1)";
 						      
-						      if(e.detail?.includes("confirm")) {
-						        varIcon = "✅";
-						        varText = "VAR confirmé";
-						        varColor = "#4caf50";
-						        varBg = "rgba(76,175,80,.1)";
-						      } else if(e.detail?.includes("annul")) {
-						        varIcon = "❌";
-						        varText = "VAR annulation";
-						        varColor = "#f44336";
-						        varBg = "rgba(244,67,54,.1)";
-						      } else if(e.detail) {
+						      if(e.detail) {
 						        let detailLower = e.detail.toLowerCase();
 						        
-						        // Motifs en français
-						        if(detailLower.includes("hors-jeu") || detailLower.includes("offside")) {
-						          varText = "VAR · Vérification hors-jeu";
+						        // DÉCISIONS FINALES (comme FlashScore)
+						        if(detailLower.includes("but refuse") || detailLower.includes("but refusé") || 
+						           (detailLower.includes("hors-jeu") && detailLower.includes("refus"))) {
+						          varIcon = "❌";
+						          varText = "But Refusé";
+						          varSubText = "hors-jeu";
+						          varColor = "#f44336";
+						          varBg = "rgba(244,67,54,.1)";
+						        }
+						        else if(detailLower.includes("but accorde") || detailLower.includes("but accordé") ||
+						                (detailLower.includes("pas de hors-jeu") && detailLower.includes("but"))) {
+						          varIcon = "✅";
+						          varText = "But Accordé";
+						          varSubText = "pas de hors-jeu";
+						          varColor = "#4caf50";
+						          varBg = "rgba(76,175,80,.1)";
+						        }
+						        else if(detailLower.includes("penalty confirme") || detailLower.includes("penalty confirmé")) {
+						          varIcon = "✅";
+						          varText = "Penalty confirmé";
+						          varColor = "#4caf50";
+						          varBg = "rgba(76,175,80,.1)";
+						        }
+						        else if(detailLower.includes("penalty annule") || detailLower.includes("penalty annulé")) {
+						          varIcon = "❌";
+						          varText = "Penalty annulé";
+						          varColor = "#f44336";
+						          varBg = "rgba(244,67,54,.1)";
+						        }
+						        else if(detailLower.includes("carton rouge annule") || detailLower.includes("carton rouge annulé")) {
+						          varIcon = "❌";
+						          varText = "Carton rouge annulé";
+						          varColor = "#f44336";
+						          varBg = "rgba(244,67,54,.1)";
+						        }
+						        // VÉRIFICATIONS (phase de contrôle)
+						        else if(detailLower.includes("hors-jeu") || detailLower.includes("offside")) {
+						          varText = "Vérification hors-jeu";
 						          varColor = "#ff9800";
 						          varBg = "rgba(255,152,0,.1)";
 						        } else if(detailLower.includes("faute") || detailLower.includes("foul")) {
-						          varText = "VAR · Vérification faute";
+						          varText = "Vérification faute";
 						          varColor = "#ff9800";
 						          varBg = "rgba(255,152,0,.1)";
 						        } else if(detailLower.includes("main") || detailLower.includes("hand")) {
-						          varText = "VAR · Vérification main";
+						          varText = "Vérification main";
 						          varColor = "#ff9800";
 						          varBg = "rgba(255,152,0,.1)";
 						        } else if(detailLower.includes("penalty")) {
-						          varText = "VAR · Vérification penalty";
+						          varText = "Vérification penalty";
 						          varColor = "#ff9800";
 						          varBg = "rgba(255,152,0,.1)";
-						        } else if(detailLower.includes("simulation") || detailLower.includes("diving") || detailLower.includes("plong")) {
-						          varText = "VAR · Vérification simulation";
+						        } else if(detailLower.includes("simulation") || detailLower.includes("diving")) {
+						          varText = "Vérification simulation";
 						          varColor = "#ff9800";
 						          varBg = "rgba(255,152,0,.1)";
 						        } else if(detailLower.includes("rouge") || detailLower.includes("red")) {
-						          varText = "VAR · Vérification carton rouge";
+						          varText = "Vérification carton rouge";
 						          varColor = "#ff9800";
 						          varBg = "rgba(255,152,0,.1)";
 						        } else if(detailLower.includes("but") || detailLower.includes("goal")) {
-						          varText = "VAR · Vérification but";
+						          varText = "Vérification but";
 						          varColor = "#ff9800";
 						          varBg = "rgba(255,152,0,.1)";
 						        } else if(detailLower.includes("hors-jeu de peu") || detailLower.includes("marginal")) {
-						          varText = "VAR · Hors-jeu marginal";
+						          varText = "Hors-jeu marginal";
 						          varColor = "#ff9800";
 						          varBg = "rgba(255,152,0,.1)";
 						        } else {
-						          varText = `VAR · Vérification: ${e.detail}`;
+						          varText = `Vérification: ${e.detail}`;
 						          varColor = "#ff9800";
 						          varBg = "rgba(255,152,0,.1)";
 						        }
@@ -2502,8 +2528,8 @@
 						        key: i,
 						        style: {
 						          display: "flex",
-						          alignItems: "center",
-						          gap: 8,
+						          flexDirection: "column",
+						          gap: 2,
 						          padding: "8px 12px",
 						          background: varBg,
 						          borderRadius: 8,
@@ -2511,36 +2537,54 @@
 						          borderLeft: `3px solid ${varColor}`
 						        }
 						      },
-						        React.createElement("span", {
-						          style: {
-						            fontFamily: "'Barlow Condensed',sans-serif",
-						            fontSize: 12,
-						            fontWeight: 700,
-						            color: "rgba(17,24,39,0.36)",
-						            minWidth: 32
-						          }
-						        }, minStr),
+						        // Première ligne : minute + icône + texte principal
 						        React.createElement("div", {
 						          style: {
-						            width: 28,
-						            height: 28,
-						            borderRadius: "50%",
-						            background: varColor + "20",
 						            display: "flex",
 						            alignItems: "center",
-						            justifyContent: "center",
-						            flexShrink: 0,
-						            fontSize: 14
+						            gap: 8
 						          }
-						        }, varIcon),
-						        React.createElement("span", {
+						        },
+						          React.createElement("span", {
+						            style: {
+						              fontFamily: "'Barlow Condensed',sans-serif",
+						              fontSize: 12,
+						              fontWeight: 700,
+						              color: "rgba(17,24,39,0.36)",
+						              minWidth: 32
+						            }
+						          }, minStr),
+						          React.createElement("div", {
+						            style: {
+						              width: 28,
+						              height: 28,
+						              borderRadius: "50%",
+						              background: varColor + "20",
+						              display: "flex",
+						              alignItems: "center",
+						              justifyContent: "center",
+						              flexShrink: 0,
+						              fontSize: 14
+						            }
+						          }, varIcon),
+						          React.createElement("span", {
+						            style: {
+						              fontSize: 11,
+						              color: varColor,
+						              fontWeight: 600,
+						              flex: 1
+						            }
+						          }, varText)
+						        ),
+						        // Deuxième ligne : sous-titre (ex: "hors-jeu" ou "(Tamari M.)")
+						        varSubText ? React.createElement("div", {
 						          style: {
-						            fontSize: 11,
-						            color: varColor,
-						            fontWeight: 600,
-						            flex: 1
+						            fontSize: 10,
+						            color: "rgba(17,24,39,0.5)",
+						            marginLeft: 68,
+						            marginTop: 2
 						          }
-						        }, varText)
+						        }, varSubText) : null
 						      );
 						    }
 
