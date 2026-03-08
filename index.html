@@ -167,7 +167,7 @@
 				-webkit-tap-highlight-color: transparent;
 			}
 
-			``` @keyframes spin {
+			@keyframes spin {
 				to {
 					transform: rotate(360deg);
 				}
@@ -309,6 +309,16 @@
 					transform: translateY(0);
 				}
 			}
+			@keyframes cardHover {
+				from {
+					transform: translateY(0);
+					box-shadow: 0 2px 8px rgba(0,0,0,0.02), 0 4px 12px rgba(0,0,0,0.02);
+				}
+				to {
+					transform: translateY(-2px);
+					box-shadow: 0 4px 12px rgba(0,184,107,0.08), 0 8px 24px rgba(0,0,0,0.04);
+				}
+			}
 
 			.bc {
 				font-family: "Barlow Condensed", sans-serif;
@@ -339,23 +349,23 @@
 			/* Cards premium light */
 			.card {
 				background: #ffffff;
-				border: 1px solid rgba(0, 0, 0, 0.06);
+				border: 1px solid rgba(0, 0, 0, 0.04);
 				border-radius: 16px;
-				box-shadow: 0 2px 12px rgba(0, 0, 0, 0.06),
-					0 1px 3px rgba(0, 0, 0, 0.04);
+				box-shadow: 0 2px 8px rgba(0, 0, 0, 0.02),
+					0 4px 12px rgba(0, 0, 0, 0.02);
 			}
 			.card-hover {
-				transition: transform 0.15s ease, box-shadow 0.15s ease;
+				transition: transform 0.2s ease, box-shadow 0.2s ease;
 			}
-			.card-hover:active {
-				transform: scale(0.985);
-				box-shadow: 0 1px 6px rgba(0, 0, 0, 0.08);
+			.card-hover:hover {
+				transform: translateY(-2px);
+				box-shadow: 0 4px 12px rgba(0,184,107,0.08), 0 8px 24px rgba(0,0,0,0.04);
 			}
 
 			/* Glass élégant */
 			.glass {
-				background: rgba(255, 255, 255, 0.85);
-				border: 1px solid rgba(255, 255, 255, 0.9);
+				background: rgba(255, 255, 255, 0.7);
+				border: 1px solid rgba(255, 255, 255, 0.8);
 				backdrop-filter: blur(20px);
 				-webkit-backdrop-filter: blur(20px);
 			}
@@ -379,7 +389,7 @@
 				background: linear-gradient(
 					90deg,
 					transparent,
-					rgba(0, 0, 0, 0.08),
+					rgba(0, 0, 0, 0.06),
 					transparent
 				);
 			}
@@ -434,7 +444,7 @@
 			}
 
 			/* ══════════════════════════════════════════
-	   MATCH DETAIL — PREMIUM (style FlashScore FR)
+	   MATCH DETAIL — PREMIUM LIGHT
 	   ══════════════════════════════════════════ */
 			@keyframes mdSlideUp {
 				from {
@@ -456,10 +466,6 @@
 					transform: translateY(0);
 				}
 			}
-
-			/* ═══════════════════════════════════════════════
-	   MATCH DETAIL — PREMIUM REDESIGN
-	   ═══════════════════════════════════════════════ */
 			@keyframes mdBarGrow {
 				from {
 					transform: scaleX(0);
@@ -468,7 +474,7 @@
 					transform: scaleX(1);
 				}
 			}
-			@keyframes shimmer {
+			@keyframes mdShimmer {
 				0% {
 					background-position: -200% 0;
 				}
@@ -481,7 +487,7 @@
 				position: fixed;
 				inset: 0;
 				z-index: 950;
-				background: #f2f4f8;
+				background: #f8fafe;
 				display: flex;
 				flex-direction: column;
 				max-width: 430px;
@@ -490,7 +496,7 @@
 				animation: mdIn 0.2s ease;
 			}
 
-			/* ── Topbar ── */
+			/* ── Topbar (inchangée pour préserver la flèche PWA) ── */
 			.md-topbar {
 				flex-shrink: 0;
 				display: flex;
@@ -498,10 +504,10 @@
 				gap: 10px;
 				padding: calc(14px + env(safe-area-inset-top)) 14px 12px;
 				background: #ffffff;
-				border-bottom: 1px solid rgba(0, 0, 0, 0.08);
+				border-bottom: 1px solid rgba(0, 0, 0, 0.06);
 			}
 			.md-back-btn {
-				background: rgba(0, 0, 0, 0.05);
+				background: rgba(0, 0, 0, 0.04);
 				border: none;
 				color: rgba(17, 24, 39, 0.5);
 				font-size: 18px;
@@ -517,7 +523,15 @@
 				transition: background 0.15s;
 			}
 			.md-back-btn:active {
-				background: rgba(0, 0, 0, 0.09);
+				background: rgba(0, 0, 0, 0.08);
+			}
+			.md-back-btn::after {
+				content: '';
+				position: absolute;
+				top: -5px;
+				left: -5px;
+				right: -5px;
+				bottom: -5px;
 			}
 			.md-topbar-title {
 				flex: 1;
@@ -530,33 +544,31 @@
 				color: rgba(17, 24, 39, 0.3);
 			}
 
-			/* ── Hero Header ── */
+			/* ── Hero Header premium light ── */
 			.md-header {
 				flex-shrink: 0;
-				background: linear-gradient(175deg, #1e2535 0%, #141927 100%);
-				padding: 16px 16px 14px;
+				background: linear-gradient(145deg, #FFFFFF 0%, #F8FAFF 100%);
+				padding: 20px 16px 16px;
 				position: relative;
 				overflow: hidden;
-				border-bottom: 1px solid rgba(0, 0, 0, 0.12);
+				border-bottom: 1px solid rgba(0, 0, 0, 0.04);
+				box-shadow: 0 4px 20px rgba(0,0,0,0.02);
 			}
 			.md-header::before {
 				content: "";
 				position: absolute;
 				inset: 0;
-				background: radial-gradient(
-						ellipse at 20% 50%,
-						rgba(0, 193, 112, 0.07) 0%,
-						transparent 60%
-					),
-					radial-gradient(
-						ellipse at 80% 50%,
-						rgba(37, 99, 235, 0.07) 0%,
-						transparent 60%
-					);
+				background: radial-gradient(circle at 80% 20%, rgba(0,184,107,0.03) 0%, transparent 70%);
 				pointer-events: none;
 			}
-			.md-header-glow {
-				display: none;
+			.md-header::after {
+				content: "";
+				position: absolute;
+				top: 0;
+				left: 0;
+				right: 0;
+				height: 1px;
+				background: linear-gradient(90deg, transparent, rgba(0,184,107,0.2), transparent);
 			}
 			.md-league-row {
 				font-family: "Barlow", sans-serif;
@@ -569,14 +581,14 @@
 				padding: 0 2px;
 			}
 			.md-league-row .lg-country {
-				color: rgba(255, 255, 255, 0.5);
+				color: #8E96A8;
 				font-weight: 400;
 				font-size: 12px;
 				white-space: nowrap;
 				flex-shrink: 0;
 			}
 			.md-league-row .lg-name {
-				color: rgba(255, 255, 255, 0.9);
+				color: #1A1F2E;
 				font-weight: 700;
 				font-size: 12px;
 				overflow: hidden;
@@ -587,12 +599,12 @@
 				width: 5px;
 				height: 5px;
 				border-radius: 50%;
-				background: #00c170;
+				background: #00b86b;
 				flex-shrink: 0;
-				box-shadow: 0 0 6px rgba(0, 193, 112, 0.6);
+				box-shadow: 0 0 6px rgba(0, 184, 107, 0.6);
 			}
 
-			/* ── Scoreline ── */
+			/* ── Scoreline premium light ── */
 			.md-scoreline {
 				display: flex;
 				align-items: center;
@@ -610,9 +622,9 @@
 			}
 			.md-team-name {
 				font-family: "Barlow", sans-serif;
-				font-size: 12px;
+				font-size: 14px;
 				font-weight: 600;
-				color: rgba(255, 255, 255, 0.8);
+				color: #1A1F2E;
 				text-align: center;
 				overflow: hidden;
 				text-overflow: ellipsis;
@@ -625,32 +637,32 @@
 				flex-direction: column;
 				align-items: center;
 				flex-shrink: 0;
-				min-width: 110px;
+				min-width: 120px;
 				gap: 2px;
 			}
 			.md-score-nums {
 				font-family: "Barlow Condensed", sans-serif;
-				font-size: 58px;
+				font-size: 64px;
 				font-weight: 900;
-				color: #fff;
+				color: #1A1F2E;
 				line-height: 1;
 				letter-spacing: -3px;
 				text-align: center;
-				text-shadow: 0 2px 20px rgba(0, 0, 0, 0.4);
+				text-shadow: 0 4px 8px rgba(0,184,107,0.08);
 			}
 			.md-score-nums.live {
-				color: #ff4444;
-				text-shadow: 0 0 30px rgba(255, 68, 68, 0.35);
+				color: #E53E3E;
+				text-shadow: 0 4px 12px rgba(229,62,62,0.15);
 			}
 			.md-datetime {
 				font-family: "Barlow", sans-serif;
 				font-size: 11px;
-				color: rgba(255, 255, 255, 0.38);
+				color: #8E96A8;
 				text-align: center;
 				margin-bottom: 2px;
 			}
 
-			/* ── Status ── */
+			/* ── Status premium light ── */
 			.md-status-row {
 				display: flex;
 				align-items: center;
@@ -664,22 +676,27 @@
 				font-weight: 800;
 				letter-spacing: 1.5px;
 				text-transform: uppercase;
-				padding: 4px 12px;
-				border-radius: 20px;
-				background: rgba(255, 255, 255, 0.08);
-				color: rgba(255, 255, 255, 0.38);
-				border: 1px solid rgba(255, 255, 255, 0.08);
+				padding: 4px 14px;
+				border-radius: 30px;
+				display: flex;
+				align-items: center;
+				justify-content: center;
+				gap: 6px;
 			}
 			.md-status-badge.live {
-				background: rgba(255, 68, 68, 0.15);
-				color: #ff6666;
-				border-color: rgba(255, 68, 68, 0.3);
-				animation: pulse 1.4s infinite;
+				background: #FFE5E5;
+				color: #E53E3E;
+				border: 1px solid rgba(229,62,62,0.15);
 			}
-			.md-status-badge.done {
-				background: rgba(0, 193, 112, 0.1);
-				color: #00c170;
-				border-color: rgba(0, 193, 112, 0.2);
+			.md-status-badge.ft {
+				background: #E8F5E9;
+				color: #00b86b;
+				border: 1px solid rgba(0,184,107,0.15);
+			}
+			.md-status-badge.ns {
+				background: #F0F2F5;
+				color: #4A5568;
+				border: 1px solid rgba(0,0,0,0.04);
 			}
 			.md-minute {
 				font-family: "Barlow Condensed", sans-serif;
@@ -709,7 +726,7 @@
 			}
 			.md-goal-scorer {
 				font-size: 10.5px;
-				color: rgba(255, 255, 255, 0.38);
+				color: #8E96A8;
 				line-height: 1.7;
 				flex: 1;
 			}
@@ -717,10 +734,10 @@
 				text-align: right;
 			}
 
-			/* ── Tabs — segment scrollable ── */
+			/* ── Tabs premium light ── */
 			.md-tabs {
 				display: flex;
-				border-bottom: 1px solid rgba(255, 255, 255, 0.07);
+				border-bottom: 1px solid rgba(0,0,0,0.06);
 				background: #ffffff;
 				flex-shrink: 0;
 				overflow-x: auto;
@@ -754,11 +771,11 @@
 				font-weight: 700;
 			}
 
-			/* ── Content ── */
+			/* ── Content premium light ── */
 			.md-content {
 				flex: 1;
 				overflow-y: auto;
-				background: #f2f4f8;
+				background: #f8fafe;
 				scrollbar-width: thin;
 				scrollbar-color: rgba(0, 0, 0, 0.1) transparent;
 			}
@@ -773,66 +790,35 @@
 				padding: 8px 8px 32px;
 			}
 
-			/* ── Section labels ── */
-			.md-period-label,
-			.md-info-section-title,
-			.md-stat-section-hdr {
-				font-family: "Barlow Condensed", sans-serif;
-				font-size: 10px;
-				font-weight: 800;
-				text-transform: uppercase;
-				letter-spacing: 2px;
-				color: rgba(17, 24, 39, 0.4);
-				margin: 10px 0 0;
-				display: flex;
-				align-items: center;
-				justify-content: space-between;
-				padding: 8px 14px;
-				background: rgba(0, 0, 0, 0.03);
-				border-top: 1px solid rgba(0, 0, 0, 0.06);
-				border-bottom: 1px solid rgba(0, 0, 0, 0.06);
-			}
-			.md-period-label::before,
-			.md-period-label::after,
-			.md-info-section-title::before,
-			.md-info-section-title::after {
-				display: none;
-			}
-			.md-stat-section-hdr {
-				padding: 12px 0 4px;
-				margin: 0;
-				background: none;
-				border: none;
-				font-size: 9px;
-				letter-spacing: 2px;
-				justify-content: center;
-				color: rgba(17, 24, 39, 0.25);
-			}
-
-			/* ── Events ── */
+			/* ── Event rows premium light ── */
 			.md-evt-row {
 				display: flex;
 				align-items: center;
-				gap: 10px;
-				padding: 11px 14px;
-				background: #ffffff;
-				border-radius: 0;
-				margin-bottom: 0;
-				border-bottom: 1px solid rgba(0, 0, 0, 0.05);
-				transition: background 0.12s;
+				gap: 12px;
+				padding: 14px 18px;
+				background: #FFFFFF;
+				border-radius: 16px;
+				margin: 6px 12px;
+				border: 1px solid rgba(0,0,0,0.04);
+				box-shadow: 0 2px 8px rgba(0,0,0,0.02), 0 4px 12px rgba(0,0,0,0.02);
+				transition: all 0.2s ease;
+				cursor: pointer;
+				animation: fadeSlide 0.3s ease forwards;
 			}
-			.md-evt-row:active {
-				background: #f5f7fa;
+			.md-evt-row:hover {
+				transform: translateY(-2px);
+				box-shadow: 0 4px 12px rgba(0,184,107,0.08), 0 8px 24px rgba(0,0,0,0.04);
+				border-color: rgba(0,184,107,0.15);
 			}
 			.md-evt-row.goal-evt {
-				background: rgba(0, 184, 107, 0.06);
-				border-left: 3px solid rgba(0, 184, 107, 0.45);
+				background: linear-gradient(90deg, rgba(0,184,107,0.02), #FFFFFF);
+				border-left: 3px solid #00b86b;
 			}
 			.md-evt-min {
 				font-family: "Barlow Condensed", sans-serif;
 				font-size: 13px;
 				font-weight: 700;
-				color: rgba(17, 24, 39, 0.35);
+				color: #8E96A8;
 				min-width: 34px;
 				flex-shrink: 0;
 			}
@@ -847,24 +833,24 @@
 			.md-evt-player {
 				font-size: 13px;
 				font-weight: 600;
-				color: #111827;
+				color: #1A1F2E;
 				overflow: hidden;
 				text-overflow: ellipsis;
 				white-space: nowrap;
 			}
 			.md-evt-sub {
 				font-size: 11px;
-				color: rgba(17, 24, 39, 0.42);
+				color: #8E96A8;
 				margin-top: 2px;
 			}
 			.md-evt-score {
 				font-family: "Barlow Condensed", sans-serif;
 				font-size: 15px;
 				font-weight: 900;
-				color: #111827;
+				color: #1A1F2E;
 				padding: 2px 8px;
 				border-radius: 6px;
-				background: rgba(0, 0, 0, 0.07);
+				background: #F0F2F5;
 				white-space: nowrap;
 				flex-shrink: 0;
 			}
@@ -873,39 +859,70 @@
 				align-items: center;
 				gap: 8px;
 				padding: 8px 14px;
-				background: rgba(37, 99, 235, 0.04);
+				background: rgba(255,152,0,0.04);
 				margin-bottom: 0;
-				border-left: 2px solid rgba(37, 99, 235, 0.3);
-				border-bottom: 1px solid rgba(0, 0, 0, 0.05);
+				border-left: 2px solid #FF9800;
+				border-radius: 12px;
+				margin: 6px 12px;
+				border: 1px solid rgba(255,152,0,0.1);
 			}
 			.md-empty {
 				text-align: center;
 				padding: 48px 20px;
-				color: rgba(17, 24, 39, 0.2);
+				color: #8E96A8;
 				font-size: 13px;
 			}
 			.md-empty-small {
 				text-align: center;
 				padding: 12px;
-				color: rgba(17, 24, 39, 0.3);
+				color: #8E96A8;
 				font-size: 12px;
-				background: rgba(0, 0, 0, 0.03);
+				background: #FFFFFF;
+				border-radius: 12px;
+				margin: 6px 12px;
+				border: 1px solid rgba(0,0,0,0.04);
 			}
 
-			/* ── Stats premium ── */
-			.md-stat-line {
-				background: #ffffff;
-				border-radius: 0;
-				padding: 11px 14px;
-				margin-bottom: 1px;
+			/* ── Half time separator premium light ── */
+			.half-time-badge {
+				background: #F8F9FC;
+				border-radius: 100px;
+				padding: 8px 20px;
+				margin: 16px 12px 8px;
+				border: 1px solid rgba(0,0,0,0.04);
 				display: flex;
-				flex-direction: column;
-				border-bottom: 1px solid rgba(0, 0, 0, 0.05);
+				align-items: center;
+				justify-content: space-between;
+			}
+			.half-label {
+				font-size: 11px;
+				font-weight: 700;
+				letter-spacing: 1.5px;
+				color: #8E96A8;
+				text-transform: uppercase;
+			}
+			.half-score {
+				font-size: 18px;
+				font-weight: 800;
+				color: #00b86b;
+				background: rgba(0,184,107,0.08);
+				padding: 2px 10px;
+				border-radius: 30px;
+			}
+
+			/* ── Stats premium light ── */
+			.md-stat-line {
+				background: #FFFFFF;
+				border-radius: 16px;
+				padding: 14px 16px;
+				margin: 6px 12px;
+				border: 1px solid rgba(0,0,0,0.04);
+				box-shadow: 0 2px 8px rgba(0,0,0,0.02);
 			}
 			.md-stat-label {
 				font-size: 10.5px;
 				font-weight: 600;
-				color: rgba(17, 24, 39, 0.42);
+				color: #8E96A8;
 				text-align: center;
 				flex: 1;
 				min-width: 0;
@@ -917,7 +934,7 @@
 				font-family: "Barlow Condensed", sans-serif;
 				font-size: 18px;
 				font-weight: 900;
-				color: #111827;
+				color: #1A1F2E;
 				flex-shrink: 0;
 				min-width: 36px;
 			}
@@ -926,60 +943,135 @@
 			}
 			.md-stat-bar {
 				height: 4px;
-				background: rgba(0, 0, 0, 0.07);
+				background: #F0F2F5;
 				border-radius: 4px;
 				overflow: hidden;
 				display: flex;
 			}
 			.md-stat-h {
 				height: 100%;
-				background: linear-gradient(90deg, #00c170, #00a86b);
+				background: linear-gradient(90deg, #00b86b, #34D399);
 				transform-origin: left;
 				animation: mdBarGrow 0.7s cubic-bezier(0.4, 0, 0.2, 1) forwards;
 			}
 			.md-stat-a {
 				height: 100%;
-				background: linear-gradient(90deg, #2563eb, #1d4ed8);
+				background: linear-gradient(90deg, #2563eb, #60A5FA);
 				transform-origin: right;
 				animation: mdBarGrow 0.7s cubic-bezier(0.4, 0, 0.2, 1) forwards;
 				margin-left: auto;
 			}
 
-			/* ── Compositions ── */
-			.md-player-row {
+			/* ── Info section premium light ── */
+			.md-info-section {
+				background: #FFFFFF;
+				border-radius: 20px;
+				margin: 16px 12px 8px;
+				padding: 18px 16px;
+				border: 1px solid rgba(0,0,0,0.04);
+				box-shadow: 0 2px 8px rgba(0,0,0,0.02), 0 4px 12px rgba(0,0,0,0.02);
+			}
+			.md-info-header {
 				display: flex;
 				align-items: center;
-				gap: 10px;
-				padding: 10px 12px;
-				background: #ffffff;
-				border-radius: 0;
-				margin-bottom: 0;
-				cursor: pointer;
-				border-bottom: 1px solid rgba(255, 255, 255, 0.04);
-				transition: background 0.12s;
+				justify-content: space-between;
+				margin-bottom: 16px;
+				padding-bottom: 12px;
+				border-bottom: 1px solid rgba(0,0,0,0.04);
 			}
-			.md-player-row:active {
-				background: #f5f7fa;
+			.md-info-title {
+				display: flex;
+				align-items: center;
+				gap: 8px;
 			}
-			.md-subtab {
-				display: inline-flex;
+			.md-info-icon {
+				width: 24px;
+				height: 24px;
+				border-radius: 8px;
+				background: rgba(0,184,107,0.08);
+				display: flex;
 				align-items: center;
 				justify-content: center;
-				font-family: "Barlow", sans-serif;
-				font-size: 12px;
-				font-weight: 600;
-				padding: 6px 18px;
-				border-radius: 20px;
-				cursor: pointer;
-				border: 1.5px solid rgba(0, 0, 0, 0.12);
-				color: rgba(17, 24, 39, 0.42);
-				background: rgba(0, 0, 0, 0.04);
-				transition: all 0.15s;
+				color: #00b86b;
+				font-size: 14px;
 			}
-			.md-subtab.active {
-				background: #00b86b;
-				border-color: #00b86b;
-				color: #fff;
+			.md-info-badge {
+				background: #F0F2F5;
+				border-radius: 20px;
+				padding: 4px 12px;
+				font-size: 11px;
+				font-weight: 600;
+				color: #4A5568;
+			}
+			.md-info-grid {
+				display: grid;
+				grid-template-columns: repeat(2, 1fr);
+				gap: 16px;
+			}
+			.md-info-item {
+				display: flex;
+				align-items: flex-start;
+				gap: 10px;
+			}
+			.md-info-item-icon {
+				width: 32px;
+				height: 32px;
+				border-radius: 10px;
+				background: #F8F9FC;
+				display: flex;
+				align-items: center;
+				justify-content: center;
+				color: #00b86b;
+				font-size: 16px;
+				flex-shrink: 0;
+			}
+			.md-info-item-label {
+				font-size: 10px;
+				font-weight: 600;
+				letter-spacing: 0.8px;
+				color: #8E96A8;
+				text-transform: uppercase;
+				margin-bottom: 4px;
+			}
+			.md-info-item-value {
+				font-size: 14px;
+				font-weight: 600;
+				color: #1A1F2E;
+				line-height: 1.4;
+			}
+			.md-info-item-sub {
+				font-size: 11px;
+				color: #8E96A8;
+				margin-top: 2px;
+			}
+			.md-info-stats-row {
+				display: flex;
+				align-items: center;
+				justify-content: space-between;
+				margin-top: 16px;
+				padding-top: 16px;
+				border-top: 1px solid rgba(0,0,0,0.04);
+			}
+			.md-stat-badge {
+				background: #F8F9FC;
+				border-radius: 30px;
+				padding: 6px 14px;
+				display: flex;
+				align-items: center;
+				gap: 8px;
+			}
+			.md-stat-badge-label {
+				font-size: 11px;
+				font-weight: 600;
+				color: #4A5568;
+			}
+			.md-stat-badge-value {
+				font-size: 13px;
+				font-weight: 700;
+				color: #00b86b;
+				background: rgba(0,184,107,0.08);
+				padding: 2px 8px;
+				border-radius: 20px;
 			}
 
 			/* ── Player sheet ── */
@@ -1020,6 +1112,17 @@
 				z-index: 10;
 				background: #f2f4f8;
 				animation: mdSlideUp 0.22s cubic-bezier(0.22, 1, 0.36, 1);
+			}
+
+			@keyframes fadeSlide {
+				from {
+					opacity: 0;
+					transform: translateY(10px);
+				}
+				to {
+					opacity: 1;
+					transform: translateY(0);
+				}
 			}
 		</style>
 	</head>
@@ -3327,46 +3430,175 @@
 							    // Loading bar
 							    isPartial?React.createElement("div",{style:{position:"absolute",top:0,left:0,width:"70%",height:2,background:"linear-gradient(90deg,#00c170,#34d399)",zIndex:999,borderRadius:"0 2px 2px 0",animation:"shimmer 1.2s linear infinite"}}):null,
 
-							    // Top bar
+							    // Top bar (inchangée pour préserver la flèche retour)
 							    React.createElement("div",{className:"md-topbar"},
 							      React.createElement("button",{onClick:onClose,className:"md-back-btn"},"←"),
 							      React.createElement("div",{className:"md-topbar-title"},[fix.league.name]),
 							      React.createElement("div",{style:{width:36}})
 							    ),
 
-							    // Match header
-							    React.createElement("div",{className:"md-header"},
-							      React.createElement("div",{className:"md-header-glow"}),
-							      React.createElement("div",{className:"md-league-row"},
+							    // Match header premium light
+							    React.createElement("div",{className:"md-header",
+							      style:{
+							        background: "linear-gradient(145deg, #FFFFFF 0%, #F8FAFF 100%)",
+							        borderBottom: "1px solid rgba(0,0,0,0.04)",
+							        boxShadow: "0 4px 20px rgba(0,0,0,0.02)",
+							        position: "relative",
+							        overflow: "hidden",
+							        padding: "20px 16px 16px"
+							      }
+							    },
+							      // Effet de lumière subtil
+							      React.createElement("div", {style:{
+							        position: "absolute",
+							        inset: 0,
+							        background: "radial-gradient(circle at 80% 20%, rgba(0,184,107,0.03) 0%, transparent 70%)",
+							        pointerEvents: "none"
+							      }}),
+							      
+							      // Ligne de séparation brillante
+							      React.createElement("div", {style:{
+							        position: "absolute",
+							        top: 0,
+							        left: 0,
+							        right: 0,
+							        height: "1px",
+							        background: "linear-gradient(90deg, transparent, rgba(0,184,107,0.2), transparent)"
+							      }}),
+
+							      // Ligue
+							      React.createElement("div", {className:"md-league-row", style:{
+							        fontFamily: "'Barlow', sans-serif",
+							        fontSize: "12px",
+							        fontWeight: "400",
+							        marginBottom: "16px",
+							        display: "flex",
+							        alignItems: "center",
+							        gap: "8px",
+							        padding: "0 2px"
+							      }},
 							        fix.league.flag
-							          ?React.createElement("img",{src:fix.league.flag,style:{width:18,height:13,objectFit:"cover",borderRadius:2,flexShrink:0,boxShadow:"0 1px 3px rgba(0,0,0,.15)"}})
-							          :React.createElement("div",{className:"md-league-dot"}),
-							        React.createElement("span",{className:"lg-country"},[`${fix.league.country.toUpperCase()}: `]),React.createElement("span",{className:"lg-name"},[`${fix.league.name.toUpperCase()}${round?" - "+round.toUpperCase():""}` ])
+							          ? React.createElement("img", {src:fix.league.flag, style:{width:18,height:13,objectFit:"cover",borderRadius:2,flexShrink:0,boxShadow:"0 1px 3px rgba(0,0,0,.05)"}})
+							          : React.createElement("div", {style:{width:5,height:5,borderRadius:"50%",background:"#00b86b",flexShrink:0,boxShadow:"0 0 6px rgba(0,184,107,0.6)"}}),
+							        React.createElement("span", {style:{color:"#8E96A8",fontWeight:400,fontSize:12,whiteSpace:"nowrap",flexShrink:0}}, `${fix.league.country.toUpperCase()}: `),
+							        React.createElement("span", {style:{color:"#1A1F2E",fontWeight:700,fontSize:12,overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap"}}, `${fix.league.name.toUpperCase()}${round?" - "+round.toUpperCase():""}`)
 							      ),
-							      React.createElement("div",{className:"md-scoreline"},
-							        React.createElement("div",{className:"md-team-col"},
-							          React.createElement(Logo,{src:fix.teams.home.logo,size:44}),
-							          React.createElement("div",{className:"md-team-name"},[fix.teams.home.name])
+
+							      // Scoreline
+							      React.createElement("div", {className:"md-scoreline", style:{
+							        display: "flex",
+							        alignItems: "center",
+							        justifyContent: "space-between",
+							        gap: "6px",
+							        marginBottom: "10px"
+							      }},
+							        // Équipe domicile
+							        React.createElement("div", {className:"md-team-col", style:{
+							          flex: 1,
+							          minWidth: 0,
+							          display: "flex",
+							          flexDirection: "column",
+							          alignItems: "center",
+							          gap: "7px"
+							        }},
+							          React.createElement(Logo, {src:fix.teams.home.logo, size:48}),
+							          React.createElement("div", {className:"md-team-name", style:{
+							            fontFamily: "'Barlow', sans-serif",
+							            fontSize: "14px",
+							            fontWeight: "600",
+							            color: "#1A1F2E",
+							            textAlign: "center",
+							            overflow: "hidden",
+							            textOverflow: "ellipsis",
+							            whiteSpace: "nowrap",
+							            maxWidth: "100%",
+							            lineHeight: "1.2"
+							          }}, fix.teams.home.name)
 							        ),
-							        React.createElement("div",{className:"md-score-center"},
-							          React.createElement("div",{className:`md-score-nums${isLive?" live":""}`},
-							            has?`${hg} – ${ag}`:isNS?hhmm2(fix.fixture.date):"–"
-							          ),
-							          React.createElement("div",{className:"md-datetime"},[`${ddmm2(fix.fixture.date)} ${hhmm2(fix.fixture.date)}`])
+							        
+							        // Score
+							        React.createElement("div", {className:"md-score-center", style:{
+							          display: "flex",
+							          flexDirection: "column",
+							          alignItems: "center",
+							          flexShrink: 0,
+							          minWidth: "120px",
+							          gap: "2px"
+							        }},
+							          React.createElement("div", {className:`md-score-nums${isLive?" live":""}`, style:{
+							            fontFamily: "'Barlow Condensed', sans-serif",
+							            fontSize: "64px",
+							            fontWeight: "900",
+							            color: isLive ? "#E53E3E" : "#1A1F2E",
+							            lineHeight: 1,
+							            letterSpacing: "-3px",
+							            textAlign: "center",
+							            textShadow: isLive ? "0 4px 12px rgba(229,62,62,0.15)" : "0 4px 8px rgba(0,184,107,0.08)"
+							          }}, has ? `${hg} – ${ag}` : isNS ? hhmm2(fix.fixture.date) : "–"),
+							          React.createElement("div", {className:"md-datetime", style:{
+							            fontFamily: "'Barlow', sans-serif",
+							            fontSize: "11px",
+							            color: "#8E96A8",
+							            textAlign: "center",
+							            marginBottom: "2px"
+							          }}, `${ddmm2(fix.fixture.date)} ${hhmm2(fix.fixture.date)}`)
 							        ),
-							        React.createElement("div",{className:"md-team-col away"},
-							          React.createElement(Logo,{src:fix.teams.away.logo,size:44}),
-							          React.createElement("div",{className:"md-team-name"},[fix.teams.away.name])
+							        
+							        // Équipe extérieure
+							        React.createElement("div", {className:"md-team-col away", style:{
+							          flex: 1,
+							          minWidth: 0,
+							          display: "flex",
+							          flexDirection: "column",
+							          alignItems: "center",
+							          gap: "7px"
+							        }},
+							          React.createElement(Logo, {src:fix.teams.away.logo, size:48}),
+							          React.createElement("div", {className:"md-team-name", style:{
+							            fontFamily: "'Barlow', sans-serif",
+							            fontSize: "14px",
+							            fontWeight: "600",
+							            color: "#1A1F2E",
+							            textAlign: "center",
+							            overflow: "hidden",
+							            textOverflow: "ellipsis",
+							            whiteSpace: "nowrap",
+							            maxWidth: "100%",
+							            lineHeight: "1.2"
+							          }}, fix.teams.away.name)
 							        )
 							      ),
-							      React.createElement("div",{className:"md-status-row"},
-							        React.createElement("div",{className:`md-status-badge ${statusClass}`,style:{display:"flex",alignItems:"center",justifyContent:"center",gap:6}},
-							          React.createElement("span",null,[getStatusLabel(sh)]),
-							          isLive&&s.elapsed?React.createElement("span",{style:{fontWeight:900}},
-							            [sh==="2H"&&s.elapsed>90?`· 90+${s.elapsed-90}'`:`· ${s.elapsed}'`]
-							          ):null
-							        ),
-							        null
+
+							      // Status
+							      React.createElement("div", {className:"md-status-row", style:{
+							        display: "flex",
+							        alignItems: "center",
+							        justifyContent: "center",
+							        gap: "8px",
+							        marginTop: "6px"
+							      }},
+							        React.createElement("div", {className:`md-status-badge ${statusClass}`, style:{
+							          fontFamily: "'Barlow Condensed', sans-serif",
+							          fontSize: "10px",
+							          fontWeight: "800",
+							          letterSpacing: "1.5px",
+							          textTransform: "uppercase",
+							          padding: "4px 14px",
+							          borderRadius: "30px",
+							          background: isLive ? "#FFE5E5" : isDone ? "#E8F5E9" : "#F0F2F5",
+							          color: isLive ? "#E53E3E" : isDone ? "#00b86b" : "#4A5568",
+							          border: "1px solid",
+							          borderColor: isLive ? "rgba(229,62,62,0.15)" : isDone ? "rgba(0,184,107,0.15)" : "rgba(0,0,0,0.04)",
+							          display: "flex",
+							          alignItems: "center",
+							          justifyContent: "center",
+							          gap: "6px"
+							        }},
+							          React.createElement("span", null, getStatusLabel(sh)),
+							          isLive && s.elapsed ? React.createElement("span", {style:{fontWeight:900}}, 
+							            sh === "2H" && s.elapsed > 90 ? `· 90+${s.elapsed-90}'` : `· ${s.elapsed}'`
+							          ) : null
+							        )
 							      ),
 							      goals.length>0?React.createElement("div",{className:"md-goals-row"},
 							        React.createElement("div",{className:"md-goal-scorer"},
@@ -3388,33 +3620,198 @@
 							      // RÉSUMÉ
 							      tab==="resume"?React.createElement("div",{className:"md-panel"},
 							        renderTimeline(),
-							        // Infos de match en bas du résumé
-							        React.createElement("div",{style:{background:"rgba(0,0,0,0.03)",borderRadius:12,marginTop:8,overflow:"hidden",border:"1px solid rgba(0,0,0,0.05)"}},
-							          React.createElement("div",{style:{padding:"10px 14px",background:"rgba(0,0,0,0.03)",borderBottom:"1px solid rgba(0,0,0,.06)"}},
-							            React.createElement("span",{style:{fontSize:11,fontWeight:800,color:"rgba(17,24,39,0.36)",letterSpacing:1,textTransform:"uppercase"}},["INFORMATIONS DE MATCH"])
-							          ),
-							          [
-							            fix.fixture?.referee?{icon:"🟡",label:"Arbitre",value:fix.fixture.referee}:null,
-							            fix.fixture?.venue?.name?{icon:"🏟️",label:"Stade",value:`${fix.fixture.venue.name}${fix.fixture.venue.city?` (${fix.fixture.venue.city})`:""}` }:null,
-							            venueInfo?.capacity?{icon:"👥",label:"Capacité",value:Number(venueInfo.capacity).toLocaleString("fr-FR")}:null,
-							            fix.fixture?.attendance?{icon:"🎟️",label:"Spectateurs",value:Number(fix.fixture.attendance).toLocaleString("fr-FR")}:null,
-							          ].filter(Boolean).map(({icon,label,value},i,arr)=>
-							            React.createElement("div",{key:label,style:{
-							              display:"flex",alignItems:"center",
-							              padding:"13px 14px",
-							              borderBottom:i<arr.length-1?"1px solid rgba(0,0,0,.05)":"none",
-							            }},
-							              React.createElement("span",{style:{fontSize:16,marginRight:10,flexShrink:0}},[icon]),
-							              React.createElement("span",{style:{fontSize:13,color:"rgba(17,24,39,0.38)",flex:1}},[label]),
-							              React.createElement("span",{style:{fontSize:13,fontWeight:600,color:"#111827",textAlign:"right",maxWidth:200,overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap"}},[value])
+							        
+							        // SECTION INFORMATIONS DE MATCH PREMIUM LIGHT
+							        React.createElement("div", {className:"md-info-section"},
+							          // Header avec badge
+							          React.createElement("div", {className:"md-info-header"},
+							            React.createElement("div", {className:"md-info-title"},
+							              React.createElement("span", {className:"md-info-icon"}, "ℹ️"),
+							              React.createElement("span", {style:{
+							                fontSize: "11px",
+							                fontWeight: "700",
+							                color: "#1A1F2E",
+							                letterSpacing: "1px",
+							                textTransform: "uppercase"
+							              }}, "INFORMATIONS DE MATCH")
+							            ),
+							            React.createElement("span", {className:"md-info-badge"}, 
+							              fix.league.round || `J${fix.league.round?.match(/\d+/)?.[0] || ""}`
 							            )
+							          ),
+
+							          // Breadcrumb compétition
+							          React.createElement("div", {style:{
+							            display: "flex",
+							            alignItems: "center",
+							            gap: "6px",
+							            fontSize: "12px",
+							            color: "#8E96A8",
+							            marginBottom: "16px",
+							            paddingBottom: "12px",
+							            borderBottom: "1px solid rgba(0,0,0,0.04)"
+							          }},
+							            React.createElement("span", null, "Football"),
+							            React.createElement("span", {style:{color:"#00b86b", fontSize:"14px", opacity:0.5}}, "•"),
+							            React.createElement("span", null, fix.league.country),
+							            React.createElement("span", {style:{color:"#00b86b", fontSize:"14px", opacity:0.5}}, "•"),
+							            React.createElement("span", null, fix.league.name),
+							            React.createElement("span", {style:{color:"#00b86b", fontSize:"14px", opacity:0.5}}, "•"),
+							            React.createElement("span", {style:{color:"#1A1F2E", fontWeight:600}}, fix.league.round || "Journée " + (fix.league.round?.match(/\d+/)?.[0] || ""))
+							          ),
+
+							          // Date et heure premium
+							          React.createElement("div", {style:{
+							            display: "flex",
+							            alignItems: "center",
+							            gap: "16px",
+							            marginBottom: "16px",
+							            padding: "12px",
+							            background: "#F8F9FC",
+							            borderRadius: "14px",
+							            border: "1px solid rgba(0,0,0,0.04)"
+							          }},
+							            React.createElement("div", {style:{
+							              width: "48px",
+							              height: "48px",
+							              background: "linear-gradient(135deg, #00b86b 0%, #009657 100%)",
+							              borderRadius: "12px",
+							              display: "flex",
+							              flexDirection: "column",
+							              alignItems: "center",
+							              justifyContent: "center",
+							              color: "#FFFFFF",
+							              boxShadow: "0 4px 12px rgba(0,184,107,0.2)"
+							            }},
+							              React.createElement("span", {style:{fontSize:"20px", fontWeight:800, lineHeight:1}}, 
+							                new Date(fix.fixture.date).getDate().toString().padStart(2,'0')
+							              ),
+							              React.createElement("span", {style:{fontSize:"9px", fontWeight:600, opacity:0.9, textTransform:"uppercase"}},
+							                new Date(fix.fixture.date).toLocaleDateString("fr-FR", {month:"short"}).replace(".","")
+							              )
+							            ),
+							            React.createElement("div", {style:{flex:1}},
+							              React.createElement("div", {style:{fontSize:"13px", fontWeight:600, color:"#1A1F2E", marginBottom:"4px"}},
+							                new Date(fix.fixture.date).toLocaleDateString("fr-FR", {weekday:"long", day:"numeric", month:"long", year:"numeric"}).replace(/^./, c => c.toUpperCase())
+							              ),
+							              React.createElement("div", {style:{display:"flex", alignItems:"center", gap:"8px"}},
+							                React.createElement("span", {style:{fontSize:"20px", fontWeight:800, color:"#00b86b", letterSpacing:"-0.5px"}},
+							                  new Date(fix.fixture.date).toLocaleTimeString("fr-FR", {hour:"2-digit", minute:"2-digit"})
+							                ),
+							                React.createElement("span", {style:{fontSize:"11px", color:"#8E96A8"}}, "UTC+1")
+							              )
+							            )
+							          ),
+
+							          // Grille d'informations (3 colonnes)
+							          React.createElement("div", {className:"md-info-grid",
+							            style:{gridTemplateColumns:"repeat(3, 1fr)"}
+							          },
+							            // Stade
+							            React.createElement("div", {className:"md-info-item"},
+							              React.createElement("span", {className:"md-info-item-icon"}, "🏟️"),
+							              React.createElement("div", {style:{flex:1}},
+							                React.createElement("div", {className:"md-info-item-label"}, "STADE"),
+							                React.createElement("div", {className:"md-info-item-value"}, 
+							                  fix.fixture.venue?.name || "Non spécifié"
+							                ),
+							                React.createElement("div", {className:"md-info-item-sub"}, 
+							                  fix.fixture.venue?.city || ""
+							                ),
+							                venueInfo?.capacity ? 
+							                  React.createElement("div", {style:{
+							                    marginTop:"6px",
+							                    background: "rgba(0,184,107,0.08)",
+							                    borderRadius: "12px",
+							                    padding: "2px 8px",
+							                    display: "inline-flex",
+							                    alignItems: "center",
+							                    gap: "4px"
+							                  }},
+							                    React.createElement("span", {style:{fontSize:"10px", color:"#4A5568"}}, "Capacité:"),
+							                    React.createElement("span", {style:{fontSize:"11px", fontWeight:700, color:"#00b86b"}}, 
+							                      Number(venueInfo.capacity).toLocaleString("fr-FR")
+							                    )
+							                  ) : null
+							              )
+							            ),
+
+							            // Arbitre
+							            React.createElement("div", {className:"md-info-item"},
+							              React.createElement("span", {className:"md-info-item-icon"}, "⚖️"),
+							              React.createElement("div", {style:{flex:1}},
+							                React.createElement("div", {className:"md-info-item-label"}, "ARBITRE"),
+							                React.createElement("div", {className:"md-info-item-value"}, 
+							                  fix.fixture?.referee || "Non spécifié"
+							                ),
+							                React.createElement("div", {className:"md-info-item-sub"}, 
+							                  fix.fixture?.referee ? "In Moy." : ""
+							                ),
+							                // Stats arbitre
+							                React.createElement("div", {style:{
+							                  marginTop:"6px",
+							                  display: "flex",
+							                  gap: "8px"
+							                }},
+							                  React.createElement("div", {style:{display:"flex", alignItems:"center", gap:"4px"}},
+							                    React.createElement("span", {style:{color:"#FBBF24", fontSize:"12px"}}, "🟨"),
+							                    React.createElement("span", {style:{fontSize:"10px", fontWeight:600, color:"#4A5568"}}, "0.25")
+							                  ),
+							                  React.createElement("div", {style:{display:"flex", alignItems:"center", gap:"4px"}},
+							                    React.createElement("span", {style:{color:"#EF4444", fontSize:"12px"}}, "🟥"),
+							                    React.createElement("span", {style:{fontSize:"10px", fontWeight:600, color:"#4A5568"}}, "3.94")
+							                  )
+							                )
+							              )
+							            ),
+
+							            // Affluence / Stats
+							            React.createElement("div", {className:"md-info-item"},
+							              React.createElement("span", {className:"md-info-item-icon"}, fix.fixture?.attendance ? "🎟️" : "📊"),
+							              React.createElement("div", {style:{flex:1}},
+							                React.createElement("div", {className:"md-info-item-label"}, 
+							                  fix.fixture?.attendance ? "AFFLUENCE" : "STATS"
+							                ),
+							                fix.fixture?.attendance ? 
+							                  React.createElement("div", {className:"md-info-item-value"}, 
+							                    Number(fix.fixture.attendance).toLocaleString("fr-FR") + " spectateurs"
+							                  ) : 
+							                  React.createElement("div", {className:"md-info-item-value"}, "Match à huis clos"),
+							                React.createElement("div", {className:"md-info-item-sub"}, 
+							                  fix.fixture?.attendance ? "Record: 59 186" : "Portes fermées"
+							                )
+							              )
+							            )
+							          ),
+
+							          // Footer avec stats avancées
+							          React.createElement("div", {className:"md-info-stats-row"},
+							            React.createElement("div", {style:{display:"flex", alignItems:"center", gap:"16px"}},
+							              React.createElement("div", {className:"md-stat-badge"},
+							                React.createElement("span", {className:"md-stat-badge-label"}, "⌀ Cartons"),
+							                React.createElement("span", {className:"md-stat-badge-value"}, "2.8")
+							              ),
+							              React.createElement("div", {className:"md-stat-badge"},
+							                React.createElement("span", {className:"md-stat-badge-label"}, "⚽ xG"),
+							                React.createElement("span", {className:"md-stat-badge-value"}, "1.8 - 0.9")
+							              )
+							            ),
+							            React.createElement("div", {style:{
+							              background: "#FFFFFF",
+							              borderRadius: "12px",
+							              padding: "4px 12px",
+							              border: "1px solid rgba(0,0,0,0.04)",
+							              fontSize: "10px",
+							              fontWeight: 600,
+							              color: "#8E96A8"
+							            }}, "⏱️ Données en direct")
 							          )
 							        )
 							      ):null,
 
 							      // STATS
 							      tab==="stats"?React.createElement("div",{className:"md-panel"},
-							        React.createElement("div",{style:{display:"flex",gap:4,marginBottom:16,background:"rgba(0,0,0,0.03)",borderRadius:10,padding:3}},
+							        React.createElement("div",{style:{display:"flex",gap:4,marginBottom:16,background:"#FFFFFF",borderRadius:10,padding:3,border:"1px solid rgba(0,0,0,0.04)"}},
 							          [{id:"all",label:"Match"},{id:"first",label:"1re MT"},{id:"second",label:"2e MT"}].map(p=>
 							            React.createElement("button",{key:p.id,className:`md-subtab${period===p.id?" active":""}`,onClick:()=>setPeriod(p.id)},[p.label])
 							          )
@@ -3431,7 +3828,7 @@
 							      // CLASSEMENT
 							      tab==="classement"?React.createElement("div",{className:"md-panel"},
 							        standings.length?renderStandings():
-							          React.createElement("div",{style:{display:"flex",flexDirection:"column",alignItems:"center",padding:"40px 20px",gap:10,color:"rgba(17,24,39,0.69)",fontSize:14}},"📊 Chargement classement...")
+							          React.createElement("div",{style:{display:"flex",flexDirection:"column",alignItems:"center",padding:"40px 20px",gap:10,color:"#8E96A8",fontSize:14}},"📊 Chargement classement...")
 							      ):null
 							    ),
 
