@@ -4588,10 +4588,17 @@ function MatchDetail({state,onClose}){
       ):null,
 
       tab==="compos"?React.createElement("div",{className:"md-panel"},
-        React.createElement("div",{style:{display:"flex",gap:6,marginBottom:10}},
-          React.createElement("button",{className:`md-subtab${compoView==="terrain"?" active":""}`,onClick:()=>setCompoView("terrain")},"⚽ Terrain"),
-          React.createElement("button",{className:`md-subtab${compoView==="liste"?" active":""}`,onClick:()=>setCompoView("liste")},"📋 Liste")
-        ),
+  React.createElement(ComposPanel, {
+    lineups: lineups,
+    players: players,
+    homeTeam: fix?.teams?.home,
+    awayTeam: fix?.teams?.away,
+    isPartial: isPartial,
+    fix: fix,
+    events: events,
+    injuries: injuries
+  })
+):null,
         compoView==="terrain"
           ? renderTerrainFlash(fix, hLu, aLu, players, events, hid, aid, has, hg, ag)
           : renderListeFlash(fix, hLu, aLu, players, events, injuries, hid, aid)
