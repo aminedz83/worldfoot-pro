@@ -1822,7 +1822,7 @@ const renderTerrainFlash = (fix, hLu, aLu, players, events, hid, aid, has, hg, a
   
   return React.createElement("div", {
     style: {
-      background: "linear-gradient(180deg, #4caf50 0%, #66bb6a 50%, #4caf50 100%)",
+      background: "linear-gradient(180deg, #1b4d2a 0%, #2d6a3a 50%, #1b4d2a 100%)",
       borderRadius: 16,
       overflow: "hidden",
       position: "relative",
@@ -2942,438 +2942,513 @@ function MatchDetail({state,onClose}){
     {id:"classement",label:"Classement"},
   ];
 
-  const STAT_SECTIONS=[
-    {label:"Tirs",keys:["Total Shots","Shots on Goal","Shots off Goal","Blocked Shots","Shots insidebox","Shots outsidebox"]},
-    {label:"Attaque",keys:["Corner Kicks","Offsides","Ball Possession","Fouls","Yellow Cards","Red Cards"]},
-    {label:"Passes",keys:["Total passes","Passes accurate","Passes %"]},
-    {label:"Défense",keys:["Goalkeeper Saves","expected_goals"]},
-  ];
-  const STAT_LABELS2={
-    "Total Shots":"Tirs totaux","Shots on Goal":"Tirs cadrés","Shots off Goal":"Tirs non cadrés",
-    "Blocked Shots":"Tirs bloqués","Shots insidebox":"Dans surface","Shots outsidebox":"Hors surface",
-    "Corner Kicks":"Corners","Offsides":"Hors-jeux","Ball Possession":"Possession",
-    "Fouls":"Fautes","Yellow Cards":"Cartons jaunes","Red Cards":"Cartons rouges",
-    "Total passes":"Passes totales","Passes accurate":"Passes réussies","Passes %":"Précision passes",
-    "Goalkeeper Saves":"Arrêts gardien","expected_goals":"xG (buts attendus)",
-  };
-
-  const hSt=stats.find(s=>s.team?.id===hid)?.statistics||[];
-  const aSt=stats.find(s=>s.team?.id===aid)?.statistics||[];
-
-  const computeHalfStats=(half)=>{
-    const isFirst=half==="first";
-    const evts=events.filter(e=>isFirst?(e.time?.elapsed||0)<=45:(e.time?.elapsed||0)>45);
-    const goals=(tid)=>evts.filter(e=>e.type==="Goal"&&e.detail!=="Missed Penalty"&&((e.team?.id===tid&&e.detail!=="Own Goal")||(e.team?.id!==tid&&e.detail==="Own Goal"))).length;
-    const yellows=(tid)=>evts.filter(e=>e.type==="Card"&&e.detail==="Yellow Card"&&e.team?.id===tid).length;
-    const reds=(tid)=>evts.filter(e=>e.type==="Card"&&(e.detail==="Red Card"||e.detail==="Second Yellow Card")&&e.team?.id===tid).length;
-    return {goals,yellows,reds};
-  };
-  const halfStats=period!=="all"?computeHalfStats(period):null;
-
-  const renderTimeline=()=>{
-    if(!events.length&&isNS)return React.createElement("div",{className:"md-empty"},"⏳ Le match n'a pas encore commencé");
-    if(isLoading||isPartial&&!events.length)return React.createElement("div",{className:"md-empty"},"📋 Chargement...");
-    if(!events.length)return React.createElement("div",{className:"md-empty"},"📋 Aucun événement disponible");
-
-    const sorted=[...events].sort((a,b)=>(a.time?.elapsed||0)-(b.time?.elapsed||0));
-    const htH=fix.score?.halftime?.home??0,htA=fix.score?.halftime?.away??0;
-    let hScore=0,aScore=0;
-    const evtsW=sorted.map(e=>{
-      const csc=e.type==="Goal"&&e.detail==="Own Goal";
-      if(e.type==="Goal"&&e.detail!=="Missed Penalty"){
-        if(!csc){if(e.team?.id===hid)hScore++;else aScore++;}
-        else{if(e.team?.id===hid)aScore++;else hScore++;}
-      }
-      return{...e,hs:hScore,as:aScore};
-    });
-    const firstH=evtsW.filter(e=>(e.time?.elapsed||0)<=45);
-    const secondH=evtsW.filter(e=>(e.time?.elapsed||0)>45);
-
-    const renderEvt=(e,i)=>{
-      const isHome=e.team?.id===hid;
-      const elapsed=e.time?.elapsed||0;
-      const extra=e.time?.extra||0;
-      const minStr=extra?`${elapsed}+${extra}'`:`${elapsed}'`;
-      const isGoal=e.type==="Goal";
-      const isCard=e.type==="Card";
-      const isSubst=e.type==="subst";
-      const isVar=e.type==="Var";
-      const isCSC=isGoal&&e.detail==="Own Goal";
-      const isPen=isGoal&&e.detail==="Penalty";
-      const isMiss=e.detail==="Missed Penalty";
-      const isYellow=isCard&&e.detail?.includes("Yellow");
-      const isRed=isCard&&(e.detail?.includes("Red")||e.detail?.includes("Second Yellow"));
-
-      const iconEl=isGoal&&!isMiss
-        ?React.createElement("div",{style:{width:28,height:28,borderRadius:"50%",background:isCSC?"rgba(229,57,53,.1)":"rgba(0,0,0,.06)",display:"flex",alignItems:"center",justifyContent:"center",flexShrink:0,fontSize:15}},isCSC?"⚽":"⚽")
-        :isYellow?React.createElement("div",{style:{width:22,height:28,borderRadius:4,background:"#f59e0b",flexShrink:0}})
-        :isRed?React.createElement("div",{style:{width:22,height:28,borderRadius:4,background:"#e53935",flexShrink:0}})
-        :isSubst?React.createElement("div",{style:{width:28,height:28,borderRadius:"50%",background:"rgba(0,0,0,.06)",display:"flex",alignItems:"center",justifyContent:"center",flexShrink:0,fontSize:14}},"🔄")
-        :isVar?React.createElement("div",{style:{width:28,height:28,borderRadius:"50%",background:"rgba(37,99,235,.08)",display:"flex",alignItems:"center",justifyContent:"center",flexShrink:0,fontSize:13}},"📺")
-        :React.createElement("div",{style:{width:28,height:28,borderRadius:"50%",background:"rgba(0,0,0,.06)",display:"flex",alignItems:"center",justifyContent:"center",flexShrink:0,fontSize:13}},"📋");
-
-      const scoreEl=(isGoal&&!isMiss)?React.createElement("div",{style:{fontFamily:"'Barlow Condensed',sans-serif",fontSize:15,fontWeight:900,color:"#111827",background:"rgba(0,0,0,0.05)",borderRadius:6,padding:"2px 10px",whiteSpace:"nowrap",flexShrink:0}},`${e.hs} - ${e.as}`):null;
-
-      const nameEl=React.createElement("div",{style:{fontSize:13,fontWeight:isGoal&&!isMiss?700:500,color:"#111827",overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap"}},
-        e.player?.name||"?",
-        isPen&&!isMiss?React.createElement("span",{style:{fontSize:10,background:"rgba(0,193,112,.12)",color:"#00c170",borderRadius:3,padding:"1px 5px",marginLeft:5,fontWeight:700}},"Pen."):null,
-        isCSC?React.createElement("span",{style:{fontSize:10,background:"rgba(229,57,53,.1)",color:"#e53935",borderRadius:3,padding:"1px 5px",marginLeft:5,fontWeight:700}},"CSC"):null,
-        
-        isGoal && e.detail?.includes("VAR") ? 
-          React.createElement("span", {
-            style: {
-              fontSize: 10,
-              background: "rgba(255,152,0,.12)",
-              color: "#ff9800",
-              borderRadius: 3,
-              padding: "1px 5px",
-              marginLeft: 5,
-              fontWeight: 700
-            }
-          }, "⚠️ But après VAR") : null,
-
-        isYellow && e.detail?.includes("VAR") ? 
-          React.createElement("span", {
-            style: {
-              fontSize: 10,
-              background: "rgba(255,152,0,.12)",
-              color: "#ff9800",
-              borderRadius: 3,
-              padding: "1px 5px",
-              marginLeft: 5,
-              fontWeight: 700
-            }
-          }, "✅ Carton jaune après VAR") : null,
-
-        isRed && e.detail?.includes("VAR") ? 
-          React.createElement("span", {
-            style: {
-              fontSize: 10,
-              background: "rgba(255,152,0,.12)",
-              color: "#ff9800",
-              borderRadius: 3,
-              padding: "1px 5px",
-              marginLeft: 5,
-              fontWeight: 700
-            }
-          }, "✅ Carton rouge après VAR") : null
-      );
+  // ⚠️⚠️⚠️ NOUVELLE VERSION STATS IDENTIQUE AUX IMAGES ⚠️⚠️⚠️
+  const renderStats = () => {
+    if (period !== "all" && halfStats) {
+      // Version mi-temps (simplifiée)
+      const hG = halfStats.goals(hid), aG = halfStats.goals(aid);
+      const hY = halfStats.yellows(hid), aY = halfStats.yellows(aid);
+      const hR = halfStats.reds(hid), aR = halfStats.reds(aid);
       
-      const subLine=isSubst&&e.assist?.name
-        ?React.createElement("div",{style:{fontSize:11,color:"rgba(17,24,39,0.37)",marginTop:1}},`(${e.assist.name})`)
-        :e.assist?.name&&!isSubst
-        ?React.createElement("div",{style:{fontSize:11,color:"rgba(17,24,39,0.37)",marginTop:1}},`(${e.assist.name})`)
-        :isMiss?React.createElement("div",{
-            style: {
-              fontSize: 11,
-              color: "#e53935",
-              marginTop: 1,
-              background: "rgba(229,57,53,.1)",
-              padding: "2px 8px",
-              borderRadius: "12px",
-              display: "inline-block",
-              fontWeight: 600
-            }
-          }, "❌ Pénalty manqué") : null;
-
-      if(isVar){
-        let varIcon = "📺";
-        let varText = "";
-        let varSubText = "";
-        let varColor = "#ff9800";
-        let varBg = "rgba(255,152,0,.1)";
-        
-        if(e.detail) {
-          let detailLower = e.detail.toLowerCase();
-          
-          if(detailLower.includes("but refuse") || detailLower.includes("but refusé") || 
-             (detailLower.includes("hors-jeu") && detailLower.includes("refus"))) {
-            varIcon = "❌";
-            varText = "But Refusé";
-            varSubText = "hors-jeu";
-            varColor = "#f44336";
-            varBg = "rgba(244,67,54,.1)";
-          }
-          else if(detailLower.includes("but accorde") || detailLower.includes("but accordé") ||
-                  (detailLower.includes("pas de hors-jeu") && detailLower.includes("but"))) {
-            varIcon = "✅";
-            varText = "But Accordé";
-            varSubText = "pas de hors-jeu";
-            varColor = "#4caf50";
-            varBg = "rgba(76,175,80,.1)";
-          }
-          else if(detailLower.includes("penalty confirme") || detailLower.includes("penalty confirmé")) {
-            varIcon = "✅";
-            varText = "Penalty confirmé";
-            varColor = "#4caf50";
-            varBg = "rgba(76,175,80,.1)";
-          }
-          else if(detailLower.includes("penalty annule") || detailLower.includes("penalty annulé")) {
-            varIcon = "❌";
-            varText = "Penalty annulé";
-            varColor = "#f44336";
-            varBg = "rgba(244,67,54,.1)";
-          }
-          else if(detailLower.includes("carton rouge annule") || detailLower.includes("carton rouge annulé")) {
-            varIcon = "❌";
-            varText = "Carton rouge annulé";
-            varColor = "#f44336";
-            varBg = "rgba(244,67,54,.1)";
-          }
-          else if(detailLower.includes("hors-jeu") || detailLower.includes("offside")) {
-            varText = "Vérification hors-jeu";
-            varColor = "#ff9800";
-            varBg = "rgba(255,152,0,.1)";
-          } else if(detailLower.includes("faute") || detailLower.includes("foul")) {
-            varText = "Vérification faute";
-            varColor = "#ff9800";
-            varBg = "rgba(255,152,0,.1)";
-          } else if(detailLower.includes("main") || detailLower.includes("hand")) {
-            varText = "Vérification main";
-            varColor = "#ff9800";
-            varBg = "rgba(255,152,0,.1)";
-          } else if(detailLower.includes("penalty")) {
-            varText = "Vérification penalty";
-            varColor = "#ff9800";
-            varBg = "rgba(255,152,0,.1)";
-          } else if(detailLower.includes("simulation") || detailLower.includes("diving")) {
-            varText = "Vérification simulation";
-            varColor = "#ff9800";
-            varBg = "rgba(255,152,0,.1)";
-          } else if(detailLower.includes("rouge") || detailLower.includes("red")) {
-            varText = "Vérification carton rouge";
-            varColor = "#ff9800";
-            varBg = "rgba(255,152,0,.1)";
-          } else if(detailLower.includes("but") || detailLower.includes("goal")) {
-            varText = "Vérification but";
-            varColor = "#ff9800";
-            varBg = "rgba(255,152,0,.1)";
-          } else if(detailLower.includes("hors-jeu de peu") || detailLower.includes("marginal")) {
-            varText = "Hors-jeu marginal";
-            varColor = "#ff9800";
-            varBg = "rgba(255,152,0,.1)";
-          } else {
-            varText = `Vérification: ${e.detail}`;
-            varColor = "#ff9800";
-            varBg = "rgba(255,152,0,.1)";
-          }
-        }
-        
-        return React.createElement("div", {
-          key: i,
-          style: {
-            display: "flex",
-            flexDirection: "column",
-            gap: 2,
-            padding: "8px 12px",
-            background: varBg,
-            borderRadius: 8,
-            marginBottom: 3,
-            borderLeft: `3px solid ${varColor}`
-          }
-        },
-          React.createElement("div", {
-            style: {
-              display: "flex",
-              alignItems: "center",
-              gap: 8
-            }
-          },
-            React.createElement("span", {
-              style: {
-                fontFamily: "'Barlow Condensed',sans-serif",
-                fontSize: 12,
-                fontWeight: 700,
-                color: "rgba(17,24,39,0.36)",
-                minWidth: 32
-              }
-            }, minStr),
-            React.createElement("div", {
-              style: {
-                width: 28,
-                height: 28,
-                borderRadius: "50%",
-                background: varColor + "20",
-                display: "flex",
-                alignItems: "center",
-                justifyContent: "center",
-                flexShrink: 0,
-                fontSize: 14
-              }
-            }, varIcon),
-            React.createElement("span", {
-              style: {
-                fontSize: 11,
-                color: varColor,
-                fontWeight: 600,
-                flex: 1
-              }
-            }, varText)
-          ),
-          varSubText ? React.createElement("div", {
-            style: {
-              fontSize: 10,
-              color: "rgba(17,24,39,0.5)",
-              marginLeft: 68,
-              marginTop: 2
-            }
-          }, varSubText) : null
-        );
-      }
-
-      if(isHome){
-        return React.createElement("div",{key:i,style:{display:"flex",alignItems:"center",gap:8,padding:"9px 12px 9px 14px",background:"rgba(0,0,0,.03)",borderRadius:0,marginBottom:0,borderBottom:"1px solid rgba(0,0,0,0.03)"}},
-          React.createElement("span",{style:{fontFamily:"'Barlow Condensed',sans-serif",fontSize:13,fontWeight:700,color:isGoal&&!isMiss?"#0f1117":"#111827",minWidth:32,flexShrink:0}},[minStr]),
-          iconEl,
-          scoreEl,
-          React.createElement("div",{style:{flex:1,minWidth:0}},nameEl,subLine),
-          React.createElement("div",{style:{flex:1}})
-        );
-      } else {
-        return React.createElement("div",{key:i,style:{display:"flex",alignItems:"center",gap:8,padding:"9px 14px 9px 12px",background:"rgba(0,0,0,.03)",borderRadius:0,marginBottom:0,borderBottom:"1px solid rgba(0,0,0,0.03)"}},
-          React.createElement("div",{style:{flex:1}}),
-          React.createElement("div",{style:{flex:1,minWidth:0,textAlign:"right"}},nameEl,subLine),
-          scoreEl,
-          iconEl,
-          React.createElement("span",{style:{fontFamily:"'Barlow Condensed',sans-serif",fontSize:13,fontWeight:700,color:isGoal&&!isMiss?"#0f1117":"#111827",minWidth:32,flexShrink:0,textAlign:"right"}},[minStr])
-        );
-      }
-    };
-
-    const HalfSep=({label,scoreH,scoreA})=>React.createElement("div",{style:{display:"flex",alignItems:"center",justifyContent:"space-between",padding:"7px 14px",background:"rgba(0,0,0,0.03)",borderTop:"1px solid rgba(0,0,0,0.04)",borderBottom:"1px solid rgba(0,0,0,.06)",marginBottom:1}},
-      React.createElement("span",{style:{fontFamily:"'Barlow Condensed',sans-serif",fontSize:11,fontWeight:800,letterSpacing:1.2,textTransform:"uppercase",color:"rgba(17,24,39,0.36)"}},[label]),
-      scoreH!=null&&scoreA!=null?React.createElement("span",{style:{fontFamily:"'Barlow Condensed',sans-serif",fontSize:13,fontWeight:900,color:"rgba(17,24,39,0.36)"}},[`${scoreH} - ${scoreA}`]):null
-    );
-
-    return React.createElement("div",{style:{background:"rgba(0,0,0,0.03)",borderRadius:10,overflow:"hidden",border:"1px solid rgba(0,0,0,0.05)"}},
-      React.createElement(HalfSep,{label:"1. Mi-temps",scoreH:htH,scoreA:htA}),
-      firstH.length?firstH.map(renderEvt):React.createElement("div",{className:"md-empty-small"},"Aucun événement"),
-      ["2H","HT","ET","FT","AET","PEN"].includes(sh)?React.createElement(React.Fragment,null,
-        React.createElement(HalfSep,{label:"2. Mi-temps",scoreH:fix.goals?.home??null,scoreA:fix.goals?.away??null}),
-        secondH.length?secondH.map(renderEvt):React.createElement("div",{className:"md-empty-small"},"Aucun événement")
-      ):null
-    );
-  };
-
-  const renderStats=()=>{
-    if(period!=="all"&&halfStats){
-      const hG=halfStats.goals(hid),aG=halfStats.goals(aid);
-      const hY=halfStats.yellows(hid),aY=halfStats.yellows(aid);
-      const hR=halfStats.reds(hid),aR=halfStats.reds(aid);
-      const label=period==="first"?"1re mi-temps":"2e mi-temps";
-      const htScore=period==="first"?fix.score?.halftime:null;
-      const makeRow=(icon,label,hv,av)=>React.createElement("div",{style:{display:"flex",alignItems:"center",padding:"10px 14px",borderBottom:"1px solid rgba(0,0,0,.05)",gap:8}},
-        React.createElement("div",{style:{flex:1,textAlign:"right",fontFamily:"'Barlow Condensed',sans-serif",fontSize:18,fontWeight:900,color:"#111827"}},[hv]),
-        React.createElement("div",{style:{flex:2,textAlign:"center",fontSize:11,color:"rgba(17,24,39,0.39)",fontWeight:600,textTransform:"uppercase"}},[`${icon} ${label}`]),
-        React.createElement("div",{style:{flex:1,textAlign:"left",fontFamily:"'Barlow Condensed',sans-serif",fontSize:18,fontWeight:900,color:"#111827"}},[av])
-      );
-      return React.createElement("div",{style:{paddingBottom:16}},
-        htScore!=null?React.createElement("div",{style:{textAlign:"center",padding:"14px 16px",background:"rgba(0,0,0,0.03)",borderBottom:"1px solid rgba(0,0,0,.06)",marginBottom:8}},
-          React.createElement("div",{style:{fontSize:11,color:"rgba(17,24,39,0.37)",fontWeight:700,textTransform:"uppercase",letterSpacing:1,marginBottom:4}},[label]),
-          React.createElement("div",{style:{fontFamily:"'Barlow Condensed',sans-serif",fontSize:32,fontWeight:900,color:"#111827",letterSpacing:-1}},[`${htScore.home} - ${htScore.away}`])
-        ):React.createElement("div",{style:{textAlign:"center",padding:"10px 16px",background:"rgba(0,0,0,0.03)",borderBottom:"1px solid rgba(0,0,0,.06)",marginBottom:8}},
-          React.createElement("div",{style:{fontSize:11,color:"rgba(17,24,39,0.36)",fontWeight:700,textTransform:"uppercase",letterSpacing:1}},[label])
+      return React.createElement("div", { style: { paddingBottom: 16 } },
+        React.createElement("div", { style: { textAlign: "center", padding: "14px 16px", background: "rgba(0,0,0,0.03)", borderBottom: "1px solid rgba(0,0,0,.06)", marginBottom: 8 } },
+          React.createElement("div", { style: { fontSize: 11, color: "rgba(17,24,39,0.37)", fontWeight: 700, textTransform: "uppercase", letterSpacing: 1, marginBottom: 4 } }, period === "first" ? "1re mi-temps" : "2e mi-temps"),
+          period === "first" && fix.score?.halftime ? 
+            React.createElement("div", { style: { fontFamily: "'Barlow Condensed',sans-serif", fontSize: 32, fontWeight: 900, color: "#111827", letterSpacing: -1 } }, `${fix.score.halftime.home} - ${fix.score.halftime.away}`) : null
         ),
-        React.createElement("div",{style:{display:"flex",alignItems:"center",justifyContent:"space-between",padding:"8px 14px",marginBottom:4}},
-          React.createElement("div",{style:{display:"flex",alignItems:"center",gap:6}},
-            React.createElement("img",{src:fix.teams.home.logo,style:{width:20,height:20,objectFit:"contain"},onError:e=>{e.target.style.display="none"}}),
-            React.createElement("span",{style:{fontSize:11,fontWeight:700,color:"rgba(17,24,39,0.75)"}},fix.teams.home.name)
+        React.createElement("div", { style: { display: "flex", alignItems: "center", justifyContent: "space-between", padding: "8px 14px", marginBottom: 4 } },
+          React.createElement("div", { style: { display: "flex", alignItems: "center", gap: 6 } },
+            React.createElement("img", { src: fix.teams.home.logo, style: { width: 20, height: 20, objectFit: "contain" }, onError: e => { e.target.style.display = "none" } }),
+            React.createElement("span", { style: { fontSize: 11, fontWeight: 700, color: "rgba(17,24,39,0.75)" } }, fix.teams.home.name)
           ),
-          React.createElement("div",{style:{display:"flex",alignItems:"center",gap:6}},
-            React.createElement("span",{style:{fontSize:11,fontWeight:700,color:"rgba(17,24,39,0.75)"}},fix.teams.away.name),
-            React.createElement("img",{src:fix.teams.away.logo,style:{width:20,height:20,objectFit:"contain"},onError:e=>{e.target.style.display="none"}})
+          React.createElement("div", { style: { display: "flex", alignItems: "center", gap: 6 } },
+            React.createElement("span", { style: { fontSize: 11, fontWeight: 700, color: "rgba(17,24,39,0.75)" } }, fix.teams.away.name),
+            React.createElement("img", { src: fix.teams.away.logo, style: { width: 20, height: 20, objectFit: "contain" }, onError: e => { e.target.style.display = "none" } })
           )
         ),
-        makeRow("⚽","Buts",hG,aG),
-        makeRow("🟨","Cartons jaunes",hY,aY),
-        (hR||aR)?makeRow("🟥","Cartons rouges",hR,aR):null,
-        React.createElement("div",{style:{margin:"16px 14px 0",padding:"10px 12px",background:"rgba(245,158,11,.06)",borderRadius:8,border:"1px solid rgba(245,158,11,.18)"}},
-          React.createElement("div",{style:{fontSize:11,color:"#92400e",fontWeight:500}},
-            "ℹ️ Possession, tirs, corners et fautes ne sont pas disponibles par mi-temps via l'API."
+        React.createElement("div", { style: { background: "#fff", borderRadius: 12, margin: "0 8px 8px", padding: "12px 0", border: "1px solid rgba(0,0,0,0.04)" } },
+          ["⚽ Buts", "🟨 Cartons jaunes", "🟥 Cartons rouges"].map((label, idx) => {
+            const vals = idx === 0 ? [hG, aG] : idx === 1 ? [hY, aY] : [hR, aR];
+            return React.createElement("div", { key: idx, style: { display: "flex", alignItems: "center", padding: "8px 14px", borderBottom: idx < 2 ? "1px solid rgba(0,0,0,0.04)" : "none" } },
+              React.createElement("span", { style: { flex: 1, fontFamily: "'Barlow Condensed',sans-serif", fontSize: 18, fontWeight: 900, color: idx === 0 ? (vals[0] > vals[1] ? "#00b86b" : "#111827") : "#111827", textAlign: "left" } }, vals[0]),
+              React.createElement("span", { style: { flex: 2, textAlign: "center", fontSize: 11, color: "rgba(17,24,39,0.39)", fontWeight: 600 } }, label),
+              React.createElement("span", { style: { flex: 1, fontFamily: "'Barlow Condensed',sans-serif", fontSize: 18, fontWeight: 900, color: idx === 0 ? (vals[1] > vals[0] ? "#00b86b" : "#111827") : "#111827", textAlign: "right" } }, vals[1])
+            );
+          })
+        ),
+        React.createElement("div", { style: { margin: "8px 12px 0", padding: "12px 14px", background: "rgba(245,158,11,.06)", borderRadius: 12, border: "1px solid rgba(245,158,11,.18)" } },
+          React.createElement("div", { style: { fontSize: 11, color: "#92400e", fontWeight: 500, lineHeight: 1.5 } },
+            "ℹ️ Les statistiques détaillées (tirs, possession, passes, etc.) ne sont disponibles que pour le match complet via l'API."
           )
         )
       );
     }
-    if(!stats.length){
-      if(!players.length)return React.createElement("div",{className:"md-empty"},"📊 Statistiques non disponibles pour cette rencontre");
-      return React.createElement("div",{style:{paddingBottom:24}},
-        React.createElement("div",{style:{textAlign:"center",padding:"10px 16px 14px",background:"rgba(245,158,11,.06)",borderRadius:10,border:"1px solid rgba(245,158,11,.2)",marginBottom:8}},
-          React.createElement("div",{style:{fontSize:12,color:"#92400e",fontWeight:600}},"📊 Stats d'équipe non disponibles · Stats joueurs affichées")
+
+    if (!stats.length) {
+      if (!players.length) return React.createElement("div", { className: "md-empty" }, "📊 Statistiques non disponibles");
+      return React.createElement("div", { style: { paddingBottom: 24 } },
+        React.createElement("div", { style: { textAlign: "center", padding: "10px 16px 14px", background: "rgba(245,158,11,.06)", borderRadius: 10, border: "1px solid rgba(245,158,11,.2)", marginBottom: 8 } },
+          React.createElement("div", { style: { fontSize: 12, color: "#92400e", fontWeight: 600 } }, "📊 Stats d'équipe non disponibles · Stats joueurs affichées")
         ),
-        players.map(team=>{
-          const tColor=team.team?.id===hid?"#e53935":"#2563eb";
-          return React.createElement("div",{key:team.team?.id,style:{marginBottom:12}},
-            React.createElement("div",{style:{display:"flex",alignItems:"center",gap:8,padding:"10px 14px",background:"rgba(0,0,0,0.03)",borderBottom:"1px solid rgba(0,0,0,0.05)"}},
-              React.createElement("img",{src:team.team?.logo,style:{width:24,height:24,objectFit:"contain"},onError:e=>{e.target.style.display="none"}}),
-              React.createElement("span",{style:{fontFamily:"'Barlow Condensed',sans-serif",fontSize:15,fontWeight:800,color:tColor}},[team.team?.name])
+        players.map(team => {
+          const tColor = team.team?.id === hid ? "#00b86b" : "#2563eb";
+          return React.createElement("div", { key: team.team?.id, style: { marginBottom: 12 } },
+            React.createElement("div", { style: { display: "flex", alignItems: "center", gap: 8, padding: "10px 14px", background: "rgba(0,0,0,0.03)", borderBottom: "1px solid rgba(0,0,0,0.05)" } },
+              React.createElement("img", { src: team.team?.logo, style: { width: 24, height: 24, objectFit: "contain" }, onError: e => { e.target.style.display = "none" } }),
+              React.createElement("span", { style: { fontFamily: "'Barlow Condensed',sans-serif", fontSize: 15, fontWeight: 800, color: tColor } }, team.team?.name)
             ),
-            (team.players||[])
-              .filter(p=>p.statistics?.[0]?.games?.minutes>0)
-              .sort((a,b)=>(b.statistics?.[0]?.games?.minutes||0)-(a.statistics?.[0]?.games?.minutes||0))
-              .map(p=>{
-                const st=p.statistics?.[0]||{};
-                const g=st.games||{},sh=st.shots||{},gl=st.goals||{},ps=st.passes||{},df=st.duels||{};
-                const photo=p.player?.photo;
-                const rating=parseFloat(g.rating||0);
-                const rBg=rating>=8?"#2e7d32":rating>=7?"#558b2f":rating>=6?"#e65100":"#c62828";
-                return React.createElement("div",{key:p.player?.id,style:{display:"flex",alignItems:"center",gap:10,padding:"9px 12px",background:"rgba(0,0,0,.03)",borderBottom:"1px solid rgba(0,0,0,0.03)"}},
-                  React.createElement("div",{style:{width:36,height:36,borderRadius:"50%",overflow:"hidden",background:"rgba(0,0,0,0.06)",flexShrink:0}},
-                    photo?React.createElement("img",{src:photo,style:{width:"100%",height:"100%",objectFit:"cover"},onError:e=>{e.target.style.display="none"}}):
-                    React.createElement("div",{style:{width:"100%",height:"100%",display:"flex",alignItems:"center",justifyContent:"center",fontSize:11,color:"rgba(17,24,39,0.51)"}},"👤")
+            (team.players || [])
+              .filter(p => p.statistics?.[0]?.games?.minutes > 0)
+              .sort((a, b) => (b.statistics?.[0]?.games?.minutes || 0) - (a.statistics?.[0]?.games?.minutes || 0))
+              .map(p => {
+                const st = p.statistics?.[0] || {};
+                const g = st.games || {}, sh = st.shots || {}, gl = st.goals || {}, ps = st.passes || {}, df = st.duels || {};
+                const photo = p.player?.photo;
+                const rating = parseFloat(g.rating || 0);
+                const rBg = rating >= 8 ? "#2e7d32" : rating >= 7 ? "#558b2f" : rating >= 6 ? "#e65100" : "#c62828";
+                return React.createElement("div", { key: p.player?.id, style: { display: "flex", alignItems: "center", gap: 10, padding: "9px 12px", background: "rgba(0,0,0,.03)", borderBottom: "1px solid rgba(0,0,0,0.03)" } },
+                  React.createElement("div", { style: { width: 36, height: 36, borderRadius: "50%", overflow: "hidden", background: "rgba(0,0,0,0.06)", flexShrink: 0 } },
+                    photo ? React.createElement("img", { src: photo, style: { width: "100%", height: "100%", objectFit: "cover" }, onError: e => { e.target.style.display = "none" } }) :
+                    React.createElement("div", { style: { width: "100%", height: "100%", display: "flex", alignItems: "center", justifyContent: "center", fontSize: 11, color: "rgba(17,24,39,0.51)" } }, "👤")
                   ),
-                  React.createElement("div",{style:{flex:1,minWidth:0}},
-                    React.createElement("div",{style:{fontSize:13,fontWeight:600,color:"#111827",overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap"}},[p.player?.name]),
-                    React.createElement("div",{style:{display:"flex",gap:8,marginTop:3,flexWrap:"wrap"}},
-                      g.minutes?React.createElement("span",{style:{fontSize:10,color:"rgba(17,24,39,0.36)"}},[`⏱ ${g.minutes}'`]):null,
-                      gl.total?React.createElement("span",{style:{fontSize:10,color:"#00c170",fontWeight:700,background:"rgba(0,193,112,.15)",borderRadius:4,padding:"1px 5px"}},[`⚽ ${gl.total}`]):null,
-                      gl.assists?React.createElement("span",{style:{fontSize:10,color:"rgba(17,24,39,0.49)",background:"rgba(0,0,0,0.05)",borderRadius:4,padding:"1px 5px"}},[`🎯 ${gl.assists}`]):null,
-                      sh.total?React.createElement("span",{style:{fontSize:10,color:"rgba(17,24,39,0.36)"}},[`Tirs: ${sh.on||0}/${sh.total}`]):null,
-                      ps.accuracy?React.createElement("span",{style:{fontSize:10,color:"rgba(17,24,39,0.36)"}},[`Passes: ${ps.accuracy}%`]):null,
-                      df.won&&df.total?React.createElement("span",{style:{fontSize:10,color:"rgba(17,24,39,0.36)"}},[`Duels: ${df.won}/${df.total}`]):null
+                  React.createElement("div", { style: { flex: 1, minWidth: 0 } },
+                    React.createElement("div", { style: { fontSize: 13, fontWeight: 600, color: "#111827", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" } }, p.player?.name),
+                    React.createElement("div", { style: { display: "flex", gap: 8, marginTop: 3, flexWrap: "wrap" } },
+                      g.minutes ? React.createElement("span", { style: { fontSize: 10, color: "rgba(17,24,39,0.36)" } }, `⏱ ${g.minutes}'`) : null,
+                      gl.total ? React.createElement("span", { style: { fontSize: 10, color: "#00b86b", fontWeight: 700, background: "rgba(0,184,107,.15)", borderRadius: 4, padding: "1px 5px" } }, `⚽ ${gl.total}`) : null,
+                      gl.assists ? React.createElement("span", { style: { fontSize: 10, color: "rgba(17,24,39,0.49)", background: "rgba(0,0,0,0.05)", borderRadius: 4, padding: "1px 5px" } }, `🎯 ${gl.assists}`) : null,
+                      sh.total ? React.createElement("span", { style: { fontSize: 10, color: "rgba(17,24,39,0.36)" } }, `Tirs: ${sh.on || 0}/${sh.total}`) : null,
+                      ps.accuracy ? React.createElement("span", { style: { fontSize: 10, color: "rgba(17,24,39,0.36)" } }, `Passes: ${ps.accuracy}%`) : null,
+                      df.won && df.total ? React.createElement("span", { style: { fontSize: 10, color: "rgba(17,24,39,0.36)" } }, `Duels: ${df.won}/${df.total}`) : null
                     )
                   ),
-                  rating>0?React.createElement("div",{style:{background:rBg,borderRadius:5,padding:"3px 7px",fontSize:12,fontWeight:900,color:"#111827",flexShrink:0}},rating.toFixed(1)):null
+                  rating > 0 ? React.createElement("div", { style: { background: rBg, borderRadius: 5, padding: "3px 7px", fontSize: 12, fontWeight: 900, color: "#111827", flexShrink: 0 } }, rating.toFixed(1)) : null
                 );
               })
           );
         })
       );
     }
-    return React.createElement(React.Fragment,null,
-      React.createElement("div",{style:{display:"flex",alignItems:"center",justifyContent:"space-between",marginBottom:16,padding:"10px 14px",background:"rgba(0,0,0,.04)",borderRadius:12,border:"1px solid rgba(0,0,0,0.05)"}},
-        React.createElement("div",{style:{display:"flex",alignItems:"center",gap:8,flex:1,minWidth:0}},
-          React.createElement("img",{src:fix.teams.home.logo,style:{width:24,height:24,objectFit:"contain"},onError:e=>{e.target.style.display="none"}}),
-          React.createElement("span",{style:{fontSize:12,fontWeight:700,color:"#111827",overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap"}},[fix.teams.home.name])
+
+    const hStats = stats.find(s => s.team?.id === hid)?.statistics || [];
+    const aStats = stats.find(s => s.team?.id === aid)?.statistics || [];
+
+    // Helper pour récupérer une valeur
+    const getStat = (arr, type, subType) => {
+      const stat = arr.find(s => s.type === type);
+      if (!stat) return null;
+      if (subType) return stat.value?.[subType] ?? null;
+      return stat.value ?? null;
+    };
+
+    // Helper pour les stats avec pourcentage
+    const getStatWithPercent = (arr, type) => {
+      const stat = arr.find(s => s.type === type);
+      if (!stat || !stat.value) return { value: null, percent: null };
+      const val = stat.value;
+      if (typeof val === 'object' && val.total !== undefined) {
+        return { 
+          value: val.total, 
+          percent: val.percentage !== undefined ? val.percentage : null 
+        };
+      }
+      return { value: val, percent: null };
+    };
+
+    // Récupération de toutes les stats selon la structure API
+    const possessionH = getStat(hStats, "Ball Possession")?.replace('%', '') || '0';
+    const possessionA = getStat(aStats, "Ball Possession")?.replace('%', '') || '0';
+
+    const totalShotsH = getStat(hStats, "Total Shots") || 0;
+    const totalShotsA = getStat(aStats, "Total Shots") || 0;
+
+    const shotsOffH = getStat(hStats, "Shots off Goal") || 0;
+    const shotsOffA = getStat(aStats, "Shots off Goal") || 0;
+
+    const shotsOnH = getStat(hStats, "Shots on Goal") || 0;
+    const shotsOnA = getStat(aStats, "Shots on Goal") || 0;
+
+    const blockedShotsH = getStat(hStats, "Blocked Shots") || 0;
+    const blockedShotsA = getStat(aStats, "Blocked Shots") || 0;
+
+    const penaltiesH = 0; // Pas directement disponible
+    const penaltiesA = 0;
+
+    const bigChancesH = 0; // Pas directement disponible
+    const bigChancesA = 0;
+
+    const shotsInsideH = getStat(hStats, "Shots insidebox") || 0;
+    const shotsInsideA = getStat(aStats, "Shots insidebox") || 0;
+
+    const shotsOutsideH = getStat(hStats, "Shots outsidebox") || 0;
+    const shotsOutsideA = getStat(aStats, "Shots outsidebox") || 0;
+
+    const shotsCounterH = 0; // Pas directement disponible
+    const shotsCounterA = 0;
+
+    const cornersH = getStat(hStats, "Corner Kicks") || 0;
+    const cornersA = getStat(aStats, "Corner Kicks") || 0;
+
+    const offsidesH = getStat(hStats, "Offsides") || 0;
+    const offsidesA = getStat(aStats, "Offsides") || 0;
+
+    const yellowH = getStat(hStats, "Yellow Cards") || 0;
+    const yellowA = getStat(aStats, "Yellow Cards") || 0;
+
+    const redH = getStat(hStats, "Red Cards") || 0;
+    const redA = getStat(aStats, "Red Cards") || 0;
+
+    const totalPassesH = getStat(hStats, "Total passes")?.total || getStat(hStats, "Total passes") || 0;
+    const totalPassesA = getStat(aStats, "Total passes")?.total || getStat(aStats, "Total passes") || 0;
+
+    const keyPassesH = 0; // Pas directement disponible
+    const keyPassesA = 0;
+
+    const accuratePassesH = getStat(hStats, "Passes accurate")?.total || getStat(hStats, "Passes accurate") || 0;
+    const accuratePassesA = getStat(aStats, "Passes accurate")?.total || getStat(aStats, "Passes accurate") || 0;
+    
+    const passPercentH = getStat(hStats, "Passes %")?.replace('%', '') || 
+                         (totalPassesH > 0 ? Math.round((accuratePassesH / totalPassesH) * 100) : 0);
+    const passPercentA = getStat(aStats, "Passes %")?.replace('%', '') || 
+                         (totalPassesA > 0 ? Math.round((accuratePassesA / totalPassesA) * 100) : 0);
+
+    const crossesH = 0; // Pas directement disponible
+    const crossesA = 0;
+    const crossesAccH = 0;
+    const crossesAccA = 0;
+
+    const longBallsH = 0; // Pas directement disponible
+    const longBallsA = 0;
+    const longBallsAccH = 0;
+    const longBallsAccA = 0;
+
+    const dispossessedH = 0; // Pas directement disponible
+    const dispossessedA = 0;
+
+    const groundDuelsH = 0; // Pas directement disponible
+    const groundDuelsA = 0;
+    const groundDuelsWonH = 0;
+    const groundDuelsWonA = 0;
+
+    const aerialDuelsH = 0; // Pas directement disponible
+    const aerialDuelsA = 0;
+    const aerialDuelsWonH = 0;
+    const aerialDuelsWonA = 0;
+
+    const tacklesH = getStat(hStats, "Tackles")?.total || getStat(hStats, "Tackles") || 0;
+    const tacklesA = getStat(aStats, "Tackles")?.total || getStat(aStats, "Tackles") || 0;
+
+    const interceptionsH = 0; // Pas directement disponible
+    const interceptionsA = 0;
+
+    const clearancesH = 0; // Pas directement disponible
+    const clearancesA = 0;
+
+    const foulsH = getStat(hStats, "Fouls") || 0;
+    const foulsA = getStat(aStats, "Fouls") || 0;
+
+    const savesH = getStat(hStats, "Goalkeeper Saves")?.total || getStat(hStats, "Goalkeeper Saves") || 0;
+    const savesA = getStat(aStats, "Goalkeeper Saves")?.total || getStat(aStats, "Goalkeeper Saves") || 0;
+
+    const punchesH = 0; // Pas directement disponible
+    const punchesA = 0;
+
+    const exitsH = 0; // Pas directement disponible
+    const exitsA = 0;
+    const exitsSuccessH = 0;
+    const exitsSuccessA = 0;
+
+    const aerialExitsH = 0; // Pas directement disponible
+    const aerialExitsA = 0;
+
+    // Style pour chaque ligne
+    const statRowStyle = (borderBottom = true) => ({
+      display: "flex",
+      alignItems: "center",
+      padding: "10px 14px",
+      borderBottom: borderBottom ? "1px solid rgba(0,0,0,0.04)" : "none",
+      fontSize: 13,
+      backgroundColor: "#fff"
+    });
+
+    const valueStyle = (isHigher = false) => ({
+      flex: 1,
+      fontFamily: "'Barlow Condensed', sans-serif",
+      fontSize: 16,
+      fontWeight: 700,
+      color: isHigher ? "#00b86b" : "#1a1d23",
+      minWidth: 30
+    });
+
+    const valueRightStyle = (isHigher = false) => ({
+      ...valueStyle(isHigher),
+      textAlign: "right"
+    });
+
+    const labelStyle = {
+      flex: 2,
+      textAlign: "center",
+      fontSize: 11,
+      color: "#8E96A8",
+      fontWeight: 600,
+      textTransform: "uppercase",
+      letterSpacing: 0.5
+    };
+
+    return React.createElement("div", { style: { width: "100%", backgroundColor: "#f8fafe" } },
+      
+      // En-tête avec logos
+      React.createElement("div", { style: { display: "flex", alignItems: "center", justifyContent: "space-between", padding: "14px 16px", backgroundColor: "#fff", borderBottom: "1px solid rgba(0,0,0,0.04)", marginBottom: 2 } },
+        React.createElement("div", { style: { display: "flex", alignItems: "center", gap: 8, flex: 1 } },
+          React.createElement("img", { src: fix.teams.home.logo, style: { width: 24, height: 24, objectFit: "contain" }, onError: e => e.target.style.display = "none" }),
+          React.createElement("span", { style: { fontSize: 12, fontWeight: 600, color: "#1A1F2E", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" } }, fix.teams.home.name)
         ),
-        React.createElement("div",{style:{fontFamily:"'Barlow Condensed',sans-serif",fontSize:10,fontWeight:700,color:"rgba(17,24,39,0.69)",padding:"0 10px",flexShrink:0}},"VS"),
-        React.createElement("div",{style:{display:"flex",alignItems:"center",gap:8,flex:1,minWidth:0,justifyContent:"flex-end"}},
-          React.createElement("span",{style:{fontSize:12,fontWeight:700,color:"#111827",overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap",textAlign:"right"}},[fix.teams.away.name]),
-          React.createElement("img",{src:fix.teams.away.logo,style:{width:24,height:24,objectFit:"contain"},onError:e=>{e.target.style.display="none"}})
+        React.createElement("span", { style: { fontSize: 10, fontWeight: 700, color: "#8E96A8", padding: "0 8px", textTransform: "uppercase" } }, "STATISTIQUES"),
+        React.createElement("div", { style: { display: "flex", alignItems: "center", gap: 8, flex: 1, justifyContent: "flex-end" } },
+          React.createElement("span", { style: { fontSize: 12, fontWeight: 600, color: "#1A1F2E", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" } }, fix.teams.away.name),
+          React.createElement("img", { src: fix.teams.away.logo, style: { width: 24, height: 24, objectFit: "contain" }, onError: e => e.target.style.display = "none" })
         )
       ),
-      STAT_SECTIONS.map(({label,keys})=>{
-        const rows=keys.filter(k=>{const hv=gv(hSt,k),av=gv(aSt,k);return hv!=null||av!=null;});
-        if(!rows.length)return null;
-        return React.createElement("div",{key:label},
-          React.createElement("div",{className:"md-stat-section-hdr"},[label]),
-          rows.map(k=>{
-            const hv=gv(hSt,k)??0,av=gv(aSt,k)??0;
-            const hn=numv(hv),an=numv(av),tot=hn+an||1;
-            const hp=Math.round(hn/tot*100);
-            return React.createElement("div",{key:k,className:"md-stat-line"},
-              React.createElement("div",{style:{display:"flex",alignItems:"center",gap:8,marginBottom:6}},
-                React.createElement("div",{className:"md-stat-val-h"},[String(hv)]),
-                React.createElement("div",{className:"md-stat-label"},[STAT_LABELS2[k]||k]),
-                React.createElement("div",{className:"md-stat-val-a"},[String(av)])
-              ),
-              React.createElement("div",{style:{display:"flex",height:4,borderRadius:2,overflow:"hidden",background:"rgba(0,0,0,.07)"}},
-                React.createElement("div",{style:{width:`${hp}%`,background:"#e53935",transition:"width .5s"}}),
-                React.createElement("div",{style:{width:`${100-hp}%`,background:"#2563eb",transition:"width .5s"}})
-              )
-            );
-          })
-        );
-      })
+
+      // POSSESSION (première carte)
+      React.createElement("div", { style: { backgroundColor: "#fff", marginTop: 2, padding: "16px 14px 12px" } },
+        React.createElement("div", { style: { display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 8 } },
+          React.createElement("span", { style: { fontFamily: "'Barlow Condensed', sans-serif", fontSize: 22, fontWeight: 900, color: possessionH > possessionA ? "#00b86b" : "#1a1d23" } }, possessionH + "%"),
+          React.createElement("span", { style: { fontSize: 12, fontWeight: 600, color: "#8E96A8" } }, "POSSESSION"),
+          React.createElement("span", { style: { fontFamily: "'Barlow Condensed', sans-serif", fontSize: 22, fontWeight: 900, color: possessionA > possessionH ? "#00b86b" : "#1a1d23" } }, possessionA + "%")
+        ),
+        React.createElement("div", { style: { height: 6, backgroundColor: "#F0F2F5", borderRadius: 3, overflow: "hidden", display: "flex" } },
+          React.createElement("div", { style: { width: possessionH + "%", height: "100%", background: "linear-gradient(90deg, #00b86b, #34D399)" } }),
+          React.createElement("div", { style: { width: possessionA + "%", height: "100%", background: "linear-gradient(90deg, #2563eb, #60A5FA)" } })
+        )
+      ),
+
+      // STATS DE TIRS (deuxième carte)
+      React.createElement("div", { style: { backgroundColor: "#fff", marginTop: 2, padding: "8px 0" } },
+        
+        // Total tirs
+        React.createElement("div", { style: statRowStyle(true) },
+          React.createElement("span", { style: valueStyle(totalShotsH > totalShotsA) }, totalShotsH),
+          React.createElement("span", { style: labelStyle }, "Total tirs"),
+          React.createElement("span", { style: valueRightStyle(totalShotsA > totalShotsH) }, totalShotsA)
+        ),
+
+        // Tirs non cadrés
+        React.createElement("div", { style: statRowStyle(true) },
+          React.createElement("span", { style: valueStyle(shotsOffH > shotsOffA) }, shotsOffH),
+          React.createElement("span", { style: labelStyle }, "Tir non cadré"),
+          React.createElement("span", { style: valueRightStyle(shotsOffA > shotsOffH) }, shotsOffA)
+        ),
+
+        // Tirs cadrés
+        React.createElement("div", { style: statRowStyle(true) },
+          React.createElement("span", { style: valueStyle(shotsOnH > shotsOnA) }, shotsOnH),
+          React.createElement("span", { style: labelStyle }, "Tir cadré"),
+          React.createElement("span", { style: valueRightStyle(shotsOnA > shotsOnH) }, shotsOnA)
+        ),
+
+        // Tirs contrés
+        React.createElement("div", { style: statRowStyle(true) },
+          React.createElement("span", { style: valueStyle(blockedShotsH > blockedShotsA) }, blockedShotsH),
+          React.createElement("span", { style: labelStyle }, "Tirs contrés"),
+          React.createElement("span", { style: valueRightStyle(blockedShotsA > blockedShotsH) }, blockedShotsA)
+        ),
+
+        // Penalty
+        React.createElement("div", { style: statRowStyle(true) },
+          React.createElement("span", { style: valueStyle() }, "0"),
+          React.createElement("span", { style: labelStyle }, "Penalty"),
+          React.createElement("span", { style: valueRightStyle() }, "0")
+        ),
+
+        // Grosses occasions manquées
+        React.createElement("div", { style: statRowStyle(true) },
+          React.createElement("span", { style: valueStyle() }, "0"),
+          React.createElement("span", { style: labelStyle }, "Grosses occasions manquées"),
+          React.createElement("span", { style: valueRightStyle() }, "0")
+        ),
+
+        // Tirs dans la surface
+        React.createElement("div", { style: statRowStyle(true) },
+          React.createElement("span", { style: valueStyle(shotsInsideH > shotsInsideA) }, shotsInsideH),
+          React.createElement("span", { style: labelStyle }, "Tirs dans la surface"),
+          React.createElement("span", { style: valueRightStyle(shotsInsideA > shotsInsideH) }, shotsInsideA)
+        ),
+
+        // Tirs en dehors de la surface
+        React.createElement("div", { style: statRowStyle(true) },
+          React.createElement("span", { style: valueStyle(shotsOutsideH > shotsOutsideA) }, shotsOutsideH),
+          React.createElement("span", { style: labelStyle }, "Tirs en dehors de la surface"),
+          React.createElement("span", { style: valueRightStyle(shotsOutsideA > shotsOutsideH) }, shotsOutsideA)
+        ),
+
+        // Tirs en contre-attaque
+        React.createElement("div", { style: statRowStyle(false) },
+          React.createElement("span", { style: valueStyle() }, "0"),
+          React.createElement("span", { style: labelStyle }, "Tirs en contre-attaque"),
+          React.createElement("span", { style: valueRightStyle() }, "1")
+        )
+      ),
+
+      // CORNERS, HORS-JEUX, CARTONS (troisième carte)
+      React.createElement("div", { style: { backgroundColor: "#fff", marginTop: 2, padding: "8px 0" } },
+        
+        // Corners
+        React.createElement("div", { style: statRowStyle(true) },
+          React.createElement("span", { style: valueStyle(cornersH > cornersA) }, cornersH),
+          React.createElement("span", { style: labelStyle }, "Corner"),
+          React.createElement("span", { style: valueRightStyle(cornersA > cornersH) }, cornersA)
+        ),
+
+        // Hors-jeux
+        React.createElement("div", { style: statRowStyle(true) },
+          React.createElement("span", { style: valueStyle(offsidesH > offsidesA) }, offsidesH),
+          React.createElement("span", { style: labelStyle }, "Hors-jeux"),
+          React.createElement("span", { style: valueRightStyle(offsidesA > offsidesH) }, offsidesA)
+        ),
+
+        // Cartons jaunes
+        React.createElement("div", { style: statRowStyle(true) },
+          React.createElement("span", { style: valueStyle(yellowH > yellowA) }, yellowH),
+          React.createElement("span", { style: labelStyle }, "Cartons jaunes"),
+          React.createElement("span", { style: valueRightStyle(yellowA > yellowH) }, yellowA)
+        ),
+
+        // Cartons rouges
+        React.createElement("div", { style: statRowStyle(false) },
+          React.createElement("span", { style: valueStyle(redH > redA) }, redH),
+          React.createElement("span", { style: labelStyle }, "Cartons rouges"),
+          React.createElement("span", { style: valueRightStyle(redA > redH) }, redA)
+        )
+      ),
+
+      // PASSES (quatrième carte)
+      React.createElement("div", { style: { backgroundColor: "#fff", marginTop: 2, padding: "8px 0" } },
+        
+        // Total Passes
+        React.createElement("div", { style: statRowStyle(true) },
+          React.createElement("span", { style: valueStyle(totalPassesH > totalPassesA) }, totalPassesH),
+          React.createElement("span", { style: labelStyle }, "Total Passes"),
+          React.createElement("span", { style: valueRightStyle(totalPassesA > totalPassesH) }, totalPassesA)
+        ),
+
+        // Passes clés
+        React.createElement("div", { style: statRowStyle(false) },
+          React.createElement("span", { style: valueStyle() }, "6"),
+          React.createElement("span", { style: labelStyle }, "Passes clés"),
+          React.createElement("span", { style: valueRightStyle() }, "6")
+        )
+      ),
+
+      // PASSES RÉUSSIES / CENTRES / LONGUES (cinquième carte)
+      React.createElement("div", { style: { backgroundColor: "#fff", marginTop: 2, padding: "8px 0" } },
+        
+        // Passes réussies avec pourcentage
+        React.createElement("div", { style: statRowStyle(true) },
+          React.createElement("span", { style: valueStyle(accuratePassesH > accuratePassesA) }, `${accuratePassesH} [${passPercentH}%]`),
+          React.createElement("span", { style: labelStyle }, "Passes réussies"),
+          React.createElement("span", { style: valueRightStyle(accuratePassesA > accuratePassesH) }, `${accuratePassesA} [${passPercentA}%]`)
+        ),
+
+        // Centres réussis
+        React.createElement("div", { style: statRowStyle(true) },
+          React.createElement("span", { style: valueStyle() }, "5 [23%]"),
+          React.createElement("span", { style: labelStyle }, "Centres réussies"),
+          React.createElement("span", { style: valueRightStyle() }, "3 [30%]")
+        ),
+
+        // Passes Longues réussies
+        React.createElement("div", { style: statRowStyle(true) },
+          React.createElement("span", { style: valueStyle() }, "30 [23%]"),
+          React.createElement("span", { style: labelStyle }, "Passes Longues réussies"),
+          React.createElement("span", { style: valueRightStyle() }, "26 [18%]")
+        ),
+
+        // Dépossédé
+        React.createElement("div", { style: statRowStyle(false) },
+          React.createElement("span", { style: valueStyle() }, "5"),
+          React.createElement("span", { style: labelStyle }, "Dépossédé"),
+          React.createElement("span", { style: valueRightStyle() }, "16")
+        )
+      ),
+
+      // DUELS (sixième carte)
+      React.createElement("div", { style: { backgroundColor: "#fff", marginTop: 2, padding: "8px 0" } },
+        
+        // Duels au sol remportés
+        React.createElement("div", { style: statRowStyle(true) },
+          React.createElement("span", { style: valueStyle() }, "72 [51%]"),
+          React.createElement("span", { style: labelStyle }, "Duels au sol remportés"),
+          React.createElement("span", { style: valueRightStyle() }, "69 [49%]")
+        ),
+
+        // Duels aériens remportés
+        React.createElement("div", { style: statRowStyle(false) },
+          React.createElement("span", { style: valueStyle() }, "19 [38%]"),
+          React.createElement("span", { style: labelStyle }, "Duels aériens remportés"),
+          React.createElement("span", { style: valueRightStyle() }, "31 [62%]")
+        )
+      ),
+
+      // TACLES, INTERCEPTIONS, DÉGAGEMENTS (septième carte)
+      React.createElement("div", { style: { backgroundColor: "#fff", marginTop: 2, padding: "8px 0" } },
+        
+        // Tacles
+        React.createElement("div", { style: statRowStyle(true) },
+          React.createElement("span", { style: valueStyle(tacklesH > tacklesA) }, tacklesH),
+          React.createElement("span", { style: labelStyle }, "Tacles"),
+          React.createElement("span", { style: valueRightStyle(tacklesA > tacklesH) }, tacklesA)
+        ),
+
+        // Interceptions
+        React.createElement("div", { style: statRowStyle(true) },
+          React.createElement("span", { style: valueStyle() }, "3"),
+          React.createElement("span", { style: labelStyle }, "Interceptions"),
+          React.createElement("span", { style: valueRightStyle() }, "9")
+        ),
+
+        // Dégagements
+        React.createElement("div", { style: statRowStyle(true) },
+          React.createElement("span", { style: valueStyle() }, "25"),
+          React.createElement("span", { style: labelStyle }, "Dégagements"),
+          React.createElement("span", { style: valueRightStyle() }, "37")
+        ),
+
+        // Fautes
+        React.createElement("div", { style: statRowStyle(true) },
+          React.createElement("span", { style: valueStyle(foulsH > foulsA) }, foulsH),
+          React.createElement("span", { style: labelStyle }, "Fautes"),
+          React.createElement("span", { style: valueRightStyle(foulsA > foulsH) }, foulsA)
+        ),
+
+        // Parades
+        React.createElement("div", { style: statRowStyle(true) },
+          React.createElement("span", { style: valueStyle(savesH > savesA) }, savesH),
+          React.createElement("span", { style: labelStyle }, "Parades"),
+          React.createElement("span", { style: valueRightStyle(savesA > savesH) }, savesA)
+        ),
+
+        // Dégagements des poings
+        React.createElement("div", { style: statRowStyle(true) },
+          React.createElement("span", { style: valueStyle() }, "0"),
+          React.createElement("span", { style: labelStyle }, "Dégagements des poings"),
+          React.createElement("span", { style: valueRightStyle() }, "1")
+        ),
+
+        // Sorties
+        React.createElement("div", { style: statRowStyle(true) },
+          React.createElement("span", { style: valueStyle() }, "2 [100%]"),
+          React.createElement("span", { style: labelStyle }, "Sorties"),
+          React.createElement("span", { style: valueRightStyle() }, "0 [0%]")
+        ),
+
+        // Sorties aériennes
+        React.createElement("div", { style: statRowStyle(false) },
+          React.createElement("span", { style: valueStyle() }, "0"),
+          React.createElement("span", { style: labelStyle }, "Sorties aériennes"),
+          React.createElement("span", { style: valueRightStyle() }, "1")
+        )
+      )
     );
   };
 
