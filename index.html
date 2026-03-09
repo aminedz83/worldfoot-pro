@@ -3778,66 +3778,67 @@
 							              )
 							            ) : null,
 
-							          // Stats cartons avec vraies données arbitre
+							          // Stats cartons
 							          (() => {
 							            const refereeName = fix?.fixture?.referee;
-							            const [refData, setRefData] = React.useState(null);
+							            const cacheKey = refereeName ? `ref_${refereeName.replace(/[^a-zA-Z]/g, '')}` : null;
 							            
-							            React.useEffect(() => {
-							              if (!refereeName) return;
-							              
-							              const cacheKey = `ref_${refereeName.replace(/[^a-zA-Z]/g, '')}`;
-							              const cached = localStorage.getItem(cacheKey);
-							              
-							              if (cached) {
-							                try {
-							                  const parsed = JSON.parse(cached);
-							                  if (Date.now() - parsed.t < 86400000) {
-							                    setRefData(parsed);
-							                    return;
+							            // Vérifier le cache
+							            let avgY = "...", avgR = "...", matchesCount = "?";
+							            if (cacheKey) {
+							              try {
+							                const cached = localStorage.getItem(cacheKey);
+							                if (cached) {
+							                  const data = JSON.parse(cached);
+							                  if (Date.now() - data.t < 86400000) {
+							                    avgY = data.y;
+							                    avgR = data.r;
+							                    matchesCount = data.m;
 							                  }
-							                } catch (e) {}
-							              }
-							              
-							              const loadRefereeStats = async () => {
-							                try {
-							                  const matches = await api(`/fixtures?referee=${encodeURIComponent(refereeName)}&last=12&status=FT`);
-							                  
-							                  if (!matches || matches.length < 3) return;
-							                  
-							                  let totalYellows = 0, totalReds = 0, matchCount = 0;
-							                  
-							                  for (const match of matches.slice(0, 10)) {
-							                    const events = await api(`/fixtures/events?fixture=${match.fixture.id}`);
-							                    
-							                    if (events && events.length) {
-							                      totalYellows += events.filter(e => e.detail === "Yellow Card").length;
-							                      totalReds += events.filter(e => e.detail === "Red Card" || e.detail === "Second Yellow Card").length;
-							                      matchCount++;
-							                    }
-							                  }
-							                  
-							                  if (matchCount > 0) {
-							                    const avgY = (totalYellows / matchCount).toFixed(2);
-							                    const avgR = (totalReds / matchCount).toFixed(2);
-							                    
-							                    const data = {
-							                      y: avgY,
-							                      r: avgR,
-							                      m: matchCount,
-							                      t: Date.now()
-							                    };
-							                    
-							                    localStorage.setItem(cacheKey, JSON.stringify(data));
-							                    setRefData(data);
-							                  }
-							                } catch (error) {
-							                  console.error("Erreur chargement stats arbitre:", error);
 							                }
-							              };
-							              
-							              loadRefereeStats();
-							            }, [refereeName]);
+							              } catch (e) {}
+							            }
+							            
+							            // Chargement silencieux si pas en cache
+							            if (refereeName && avgY === "...") {
+							              setTimeout(() => {
+							                fetch(`https://v3.football.api-sports.io/fixtures?referee=${encodeURIComponent(refereeName)}&last=10&status=FT`, {
+							                  headers: {"x-apisports-key": "3a14b1347c177458e2f23bea7899e9cf"}
+							                })
+							                .then(r => r.json())
+							                .then(data => {
+							                  if (!data.response?.length) return;
+							                  
+							                  const matchIds = data.response.slice(0,8).map(m => m.fixture.id);
+							                  let totalY = 0, totalR = 0, count = 0;
+							                  
+							                  Promise.all(matchIds.map(id => 
+							                    fetch(`https://v3.football.api-sports.io/fixtures/events?fixture=${id}`, {
+							                      headers: {"x-apisports-key": "3a14b1347c177458e2f23bea7899e9cf"}
+							                    }).then(r => r.json())
+							                  )).then(results => {
+							                    results.forEach(ev => {
+							                      if (ev.response) {
+							                        totalY += ev.response.filter(e => e.detail === "Yellow Card").length;
+							                        totalR += ev.response.filter(e => e.detail === "Red Card" || e.detail === "Second Yellow Card").length;
+							                        count++;
+							                      }
+							                    });
+							                    
+							                    if (count > 0) {
+							                      localStorage.setItem(cacheKey, JSON.stringify({
+							                        y: (totalY / count).toFixed(2),
+							                        r: (totalR / count).toFixed(2),
+							                        m: count,
+							                        t: Date.now()
+							                      }));
+							                      window.location.reload();
+							                    }
+							                  });
+							                })
+							                .catch(() => {});
+							              }, 500);
+							            }
 							            
 							            return React.createElement("div", {className:"cards-stats-row"},
 							              React.createElement("div", {className:"cards-stats-item"},
@@ -3847,21 +3848,15 @@
 							                )
 							              ),
 							              React.createElement("div", {className:"cards-stats-values"},
-							                refData ? 
-							                  React.createElement(React.Fragment, null,
-							                    React.createElement("span", {className:"cards-stats-value yellow"}, 
-							                      `🟨 ${refData.y}`
-							                    ),
-							                    React.createElement("span", {className:"cards-stats-value red"}, 
-							                      `🟥 ${refData.r}`
-							                    ),
-							                    React.createElement("span", {className:"cards-stats-value", style:{background:"#e2e8f0"}}, 
-							                      `${refData.m} matchs`
-							                    )
-							                  ) :
-							                  React.createElement("span", {style:{fontSize:"10px", color:"#a0aec0"}}, 
-							                    refereeName ? "Chargement..." : "Arbitre non communiqué"
-							                  )
+							                React.createElement("span", {className:"cards-stats-value yellow"}, 
+							                  avgY !== "..." ? `🟨 ${avgY}` : "..."
+							                ),
+							                React.createElement("span", {className:"cards-stats-value red"}, 
+							                  avgR !== "..." ? `🟥 ${avgR}` : "..."
+							                ),
+							                React.createElement("span", {className:"cards-stats-value", style:{background:"#e2e8f0"}}, 
+							                  matchesCount !== "?" ? `${matchesCount} matchs` : "..."
+							                )
 							              )
 							            );
 							          })()
