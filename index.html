@@ -1,179 +1,146 @@
 <!DOCTYPE html>
 <html lang="fr">
 <head>
-    <meta charset="UTF-8" />
-    <meta name="viewport" content="width=device-width,initial-scale=1.0,viewport-fit=cover" />
-    <meta name="theme-color" content="#00b86b" />
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>WorldFoot Pro</title>
-    
     <style>
         * {
             margin: 0;
             padding: 0;
             box-sizing: border-box;
-            font-family: system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
         }
         
         body {
             background: #f5f5f5;
-            height: 100vh;
-            display: flex;
-            justify-content: center;
-            align-items: center;
         }
         
-        #root {
-            width: 100%;
+        #app {
             max-width: 430px;
-            height: 100vh;
+            margin: 0 auto;
             background: white;
+            min-height: 100vh;
             box-shadow: 0 0 20px rgba(0,0,0,0.1);
-            display: flex;
-            flex-direction: column;
-            overflow: hidden;
         }
         
-        /* Header */
         .header {
-            background: linear-gradient(135deg, #00b86b, #009657);
-            padding: 50px 20px 20px;
+            background: #00b86b;
             color: white;
+            padding: 60px 20px 20px;
         }
         
         .header h1 {
-            font-size: 24px;
+            font-size: 28px;
             font-weight: 800;
-            letter-spacing: -0.5px;
         }
         
         .header p {
             font-size: 12px;
-            opacity: 0.8;
-            margin-top: 4px;
+            opacity: 0.9;
+            margin-top: 5px;
         }
         
-        /* Tabs */
         .tabs {
             display: flex;
             overflow-x: auto;
             background: white;
-            border-bottom: 1px solid #f0f0f0;
-            scrollbar-width: none;
+            border-bottom: 1px solid #eee;
         }
         
-        .tabs button {
-            padding: 14px 16px;
+        .tab {
+            padding: 15px 20px;
             font-size: 14px;
             font-weight: 600;
-            background: none;
-            border: none;
-            border-bottom: 2px solid transparent;
             color: #888;
             cursor: pointer;
             white-space: nowrap;
+            border-bottom: 2px solid transparent;
         }
         
-        .tabs button.active {
+        .tab.active {
             color: #00b86b;
             border-bottom-color: #00b86b;
         }
         
-        /* Content */
         .content {
-            flex: 1;
-            overflow-y: auto;
-            padding: 16px;
-            background: #fafafa;
+            padding: 20px;
         }
         
-        /* Match Card */
         .match-card {
             background: white;
-            border-radius: 16px;
-            padding: 16px;
-            margin-bottom: 12px;
+            border-radius: 12px;
+            padding: 15px;
+            margin-bottom: 15px;
             box-shadow: 0 2px 8px rgba(0,0,0,0.05);
             border: 1px solid #f0f0f0;
         }
         
-        .league-info {
+        .league {
             display: flex;
             align-items: center;
-            gap: 8px;
-            margin-bottom: 12px;
-            padding-bottom: 8px;
+            gap: 10px;
+            margin-bottom: 15px;
+            padding-bottom: 10px;
             border-bottom: 1px solid #f0f0f0;
-        }
-        
-        .league-flag {
-            width: 24px;
-            height: 24px;
-            background: #f0f0f0;
-            border-radius: 50%;
-        }
-        
-        .league-name {
+            color: #666;
             font-size: 13px;
             font-weight: 600;
-            color: #333;
         }
         
-        .match-row {
+        .match {
             display: flex;
             align-items: center;
-            gap: 12px;
-            padding: 8px 0;
+            margin-bottom: 10px;
+            cursor: pointer;
         }
         
-        .match-time {
-            width: 45px;
+        .time {
+            width: 50px;
             font-size: 13px;
             font-weight: 600;
             color: #00b86b;
         }
         
-        .match-teams {
+        .teams {
             flex: 1;
         }
         
-        .team {
+        .team-row {
             display: flex;
             align-items: center;
-            gap: 8px;
-            margin: 4px 0;
-        }
-        
-        .team-logo {
-            width: 20px;
-            height: 20px;
-            background: #f0f0f0;
-            border-radius: 50%;
+            margin: 5px 0;
         }
         
         .team-name {
             flex: 1;
             font-size: 14px;
-            color: #333;
         }
         
-        .team-score {
-            font-size: 15px;
+        .score {
             font-weight: 700;
-            color: #333;
+            margin-left: 10px;
         }
         
-        .live-badge {
+        .live {
             background: #ff3b30;
             color: white;
             font-size: 11px;
             font-weight: 700;
-            padding: 4px 8px;
+            padding: 3px 8px;
             border-radius: 20px;
-            margin-left: 8px;
+            margin-left: 10px;
+        }
+        
+        .placeholder {
+            text-align: center;
+            padding: 50px 20px;
+            color: #999;
+            font-size: 15px;
         }
         
         /* Match Detail */
-        .match-detail {
+        .detail-view {
             position: fixed;
             top: 0;
             left: 0;
@@ -181,105 +148,87 @@
             bottom: 0;
             background: white;
             z-index: 1000;
-            display: flex;
-            flex-direction: column;
-            animation: slideUp 0.3s ease;
-        }
-        
-        @keyframes slideUp {
-            from { transform: translateY(100%); }
-            to { transform: translateY(0); }
+            overflow-y: auto;
         }
         
         .detail-header {
-            background: linear-gradient(145deg, #00b86b, #009657);
-            padding: 50px 20px 20px;
+            background: #00b86b;
             color: white;
+            padding: 50px 20px 20px;
         }
         
-        .back-btn {
-            background: rgba(255,255,255,0.2);
+        .back-button {
+            background: none;
             border: none;
             color: white;
-            font-size: 20px;
-            width: 40px;
-            height: 40px;
-            border-radius: 10px;
+            font-size: 24px;
             margin-bottom: 20px;
             cursor: pointer;
         }
         
-        .score-board {
+        .big-score {
             display: flex;
             align-items: center;
             justify-content: space-between;
             text-align: center;
+            margin: 20px 0;
         }
         
-        .team-large {
+        .big-score .team {
             flex: 1;
         }
         
-        .team-large .logo {
-            width: 60px;
-            height: 60px;
+        .big-score .team .logo {
+            width: 50px;
+            height: 50px;
             background: rgba(255,255,255,0.2);
             border-radius: 50%;
-            margin: 0 auto 8px;
+            margin: 0 auto 10px;
         }
         
-        .team-large .name {
-            font-size: 16px;
-            font-weight: 600;
-        }
-        
-        .score-large {
-            font-size: 48px;
-            font-weight: 900;
-            font-family: monospace;
+        .big-score .score {
+            font-size: 40px;
+            font-weight: 800;
             padding: 0 20px;
         }
         
-        .status-badge {
+        .status {
             display: inline-block;
-            padding: 6px 16px;
             background: rgba(255,255,255,0.2);
+            padding: 5px 15px;
             border-radius: 30px;
             font-size: 12px;
             font-weight: 600;
-            margin-top: 12px;
         }
         
         .detail-content {
-            flex: 1;
-            overflow-y: auto;
             padding: 20px;
         }
         
-        .events-title {
+        .section-title {
             font-size: 14px;
             font-weight: 700;
             color: #666;
-            margin-bottom: 12px;
+            margin: 20px 0 10px;
         }
         
-        .event-item {
+        .event {
             display: flex;
             align-items: center;
-            gap: 12px;
-            padding: 12px 0;
+            gap: 10px;
+            padding: 10px 0;
             border-bottom: 1px solid #f0f0f0;
         }
         
         .event-minute {
+            width: 40px;
             font-weight: 700;
             color: #00b86b;
-            min-width: 40px;
         }
         
         .event-icon {
-            font-size: 18px;
             width: 30px;
+            font-size: 16px;
         }
         
         .event-desc {
@@ -288,50 +237,35 @@
         
         .event-player {
             font-weight: 600;
-            color: #333;
         }
         
         .event-detail {
             font-size: 12px;
             color: #999;
-            margin-top: 2px;
-        }
-        
-        .event-score {
-            font-weight: 700;
-            color: #333;
         }
         
         .big-chance {
             background: rgba(255, 59, 48, 0.1);
             border-left: 3px solid #ff3b30;
-            padding-left: 12px;
-            animation: pulse-red 1.5s infinite;
+            padding-left: 15px;
+            animation: pulse 1.5s infinite;
         }
         
-        @keyframes pulse-red {
+        @keyframes pulse {
             0% { background: rgba(255, 59, 48, 0.1); }
-            50% { background: rgba(255, 59, 48, 0.3); }
+            50% { background: rgba(255, 59, 48, 0.2); }
             100% { background: rgba(255, 59, 48, 0.1); }
-        }
-        
-        /* Stats */
-        .stats-card {
-            background: #f8f8f8;
-            border-radius: 16px;
-            padding: 16px;
-            margin: 16px 0;
         }
         
         .stat-row {
             display: flex;
             align-items: center;
-            padding: 8px 0;
+            padding: 10px 0;
         }
         
         .stat-value {
             font-weight: 700;
-            min-width: 40px;
+            min-width: 50px;
         }
         
         .stat-label {
@@ -343,11 +277,11 @@
         
         .stat-bar {
             height: 6px;
-            background: #e0e0e0;
+            background: #eee;
             border-radius: 3px;
             overflow: hidden;
             display: flex;
-            margin: 8px 0;
+            margin: 5px 0;
         }
         
         .bar-home {
@@ -362,310 +296,271 @@
     </style>
 </head>
 <body>
-    <div id="root"></div>
+    <div id="app"></div>
 
     <script>
-        (function() {
-            const root = document.getElementById('root');
-            
-            // Données simulées pour éviter les appels API
-            const MOCK_MATCHES = [
-                {
-                    id: 1,
-                    league: { id: 1, name: "Ligue 1 Pro", country: "Algérie", logo: null },
-                    fixture: { 
-                        date: new Date().toISOString(), 
-                        status: { short: "1H", elapsed: 23 },
-                        venue: { name: "Stade du 5 Juillet" }
-                    },
-                    teams: {
-                        home: { id: 918, name: "JS Kabylie", logo: null },
-                        away: { id: 906, name: "MC Alger", logo: null }
-                    },
-                    goals: { home: 1, away: 0 }
-                },
-                {
-                    id: 2,
-                    league: { id: 1, name: "Ligue 1 Pro", country: "Algérie", logo: null },
-                    fixture: { 
-                        date: new Date().toISOString(), 
-                        status: { short: "FT", elapsed: 90 }
-                    },
-                    teams: {
-                        home: { id: 904, name: "CR Belouizdad", logo: null },
-                        away: { id: 905, name: "ES Sétif", logo: null }
-                    },
-                    goals: { home: 2, away: 1 }
-                },
-                {
-                    id: 3,
-                    league: { id: 39, name: "Premier League", country: "Angleterre", logo: null },
-                    fixture: { 
-                        date: new Date().toISOString(), 
-                        status: { short: "2H", elapsed: 67 }
-                    },
-                    teams: {
-                        home: { id: 40, name: "Liverpool", logo: null },
-                        away: { id: 42, name: "Arsenal", logo: null }
-                    },
-                    goals: { home: 2, away: 2 }
-                }
-            ];
-            
-            const MOCK_EVENTS = [
-                { time: { elapsed: 12 }, type: "Goal", player: { name: "Boudebouz" }, detail: "Penalty", homeScore: 1, awayScore: 0 },
-                { time: { elapsed: 23 }, type: "Card", player: { name: "Benlamri" }, detail: "Yellow Card" },
-                { time: { elapsed: 31 }, type: "Big Chance", player: { name: "Belaïli" }, detail: "Big chance missed" },
-                { time: { elapsed: 45 }, type: "subst", player: { name: "Slimani" }, assist: { name: "Mahrez" } },
-                { time: { elapsed: 52 }, type: "Goal", player: { name: "Mahrez" }, detail: "Goal", homeScore: 1, awayScore: 1 },
-                { time: { elapsed: 67 }, type: "Hit Woodwork", player: { name: "Benzia" }, detail: "Hit woodwork" },
-                { time: { elapsed: 78 }, type: "Card", player: { name: "Zedadka" }, detail: "Red Card" },
-                { time: { elapsed: 84 }, type: "Var", detail: "Goal cancelled - offside" }
-            ];
-            
-            const MOCK_STATS = [
-                { team: { id: 918 }, statistics: [
-                    { type: "Ball Possession", value: "55%" },
-                    { type: "Total Shots", value: 14 },
-                    { type: "Shots on Goal", value: 5 },
-                    { type: "Corner Kicks", value: 6 }
-                ]},
-                { team: { id: 906 }, statistics: [
-                    { type: "Ball Possession", value: "45%" },
-                    { type: "Total Shots", value: 9 },
-                    { type: "Shots on Goal", value: 3 },
-                    { type: "Corner Kicks", value: 4 }
-                ]}
-            ];
-            
-            // ============================================
-            // COMPOSANTS SIMPLIFIÉS
-            // ============================================
-            
-            // Écran principal
-            function MainScreen() {
-                const [activeTab, setActiveTab] = React.useState('scores');
-                const [selectedMatch, setSelectedMatch] = React.useState(null);
-                
-                const tabs = [
-                    { id: 'scores', label: 'SCORES' },
-                    { id: 'standings', label: 'CLASSEMENT' },
-                    { id: 'scorers', label: 'BUTEURS' },
-                    { id: 'calendar', label: 'CALENDRIER' },
-                    { id: 'transfers', label: 'TRANSFERTS' },
-                    { id: 'actu', label: 'ACTUALITÉS' },
-                    { id: 'results', label: 'RÉSULTATS' },
-                    { id: 'jsk', label: 'JSK' }
-                ];
-                
-                if (selectedMatch) {
-                    return React.createElement(MatchDetail, {
-                        matchId: selectedMatch,
-                        onClose: () => setSelectedMatch(null)
-                    });
-                }
-                
-                return React.createElement('div', { style: { height: '100%', display: 'flex', flexDirection: 'column' } },
-                    // Header
-                    React.createElement('div', { className: 'header' },
-                        React.createElement('h1', null, 'WORLDFOOT'),
-                        React.createElement('p', null, 'PRO · LIVE · BY AMINE')
-                    ),
-                    
-                    // Tabs
-                    React.createElement('div', { className: 'tabs' },
-                        tabs.map(tab => 
-                            React.createElement('button', {
-                                key: tab.id,
-                                className: activeTab === tab.id ? 'active' : '',
-                                onClick: () => setActiveTab(tab.id)
-                            }, tab.label)
-                        )
-                    ),
-                    
-                    // Content
-                    React.createElement('div', { className: 'content' },
-                        activeTab === 'scores' && React.createElement(ScoresList, { 
-                            matches: MOCK_MATCHES,
-                            onSelectMatch: setSelectedMatch
-                        }),
-                        activeTab !== 'scores' && React.createElement('div', { style: { textAlign: 'center', padding: 40, color: '#999' } },
-                            tabContent[activeTab] || 'Bientôt disponible'
-                        )
-                    )
-                );
+        // Données de test
+        const matches = [
+            {
+                id: 1,
+                league: "Ligue 1 Pro",
+                home: "JS Kabylie",
+                away: "MC Alger",
+                homeScore: 1,
+                awayScore: 0,
+                time: "67'",
+                status: "live",
+                minute: 67
+            },
+            {
+                id: 2,
+                league: "Ligue 1 Pro",
+                home: "CR Belouizdad",
+                away: "ES Sétif",
+                homeScore: 2,
+                awayScore: 1,
+                time: "FT",
+                status: "ft"
+            },
+            {
+                id: 3,
+                league: "Premier League",
+                home: "Liverpool",
+                away: "Arsenal",
+                homeScore: 2,
+                awayScore: 2,
+                time: "78'",
+                status: "live",
+                minute: 78
+            },
+            {
+                id: 4,
+                league: "La Liga",
+                home: "Real Madrid",
+                away: "Barcelona",
+                homeScore: 0,
+                awayScore: 0,
+                time: "20:45",
+                status: "upcoming"
             }
+        ];
+        
+        // Événements du match JS Kabylie vs MC Alger
+        const events = [
+            { minute: 12, type: "goal", player: "Boudebouz", score: "1-0" },
+            { minute: 23, type: "yellow", player: "Benlamri" },
+            { minute: 31, type: "bigchance", player: "Belaïli", description: "Tir sur la barre" },
+            { minute: 45, type: "substitution", player: "Slimani", detail: "remplace Bounedjah" },
+            { minute: 52, type: "goal", player: "Mahrez", score: "1-1" },
+            { minute: 67, type: "bigchance", player: "Benzia", description: "Occasion manquée" },
+            { minute: 78, type: "red", player: "Zedadka" },
+            { minute: 84, type: "var", description: "But refusé - hors-jeu" }
+        ];
+        
+        // Stats du match
+        const stats = {
+            possession: [55, 45],
+            shots: [14, 9],
+            shotsOnTarget: [5, 3],
+            corners: [6, 4]
+        };
+        
+        let currentView = 'main';
+        let selectedMatch = null;
+        
+        function render() {
+            if (currentView === 'main') {
+                renderMain();
+            } else {
+                renderDetail();
+            }
+        }
+        
+        function renderMain() {
+            const app = document.getElementById('app');
             
-            const tabContent = {
-                standings: 'Classement - Bientôt disponible',
-                scorers: 'Buteurs - Bientôt disponible',
-                calendar: 'Calendrier - Bientôt disponible',
-                transfers: 'Transferts - Bientôt disponible',
-                actu: 'Actualités - Bientôt disponible',
-                results: 'Résultats - Bientôt disponible',
-                jsk: 'JS Kabylie - Bientôt disponible'
-            };
+            let html = `
+                <div class="header">
+                    <h1>WORLDFOOT</h1>
+                    <p>PRO · LIVE · BY AMINE</p>
+                </div>
+                
+                <div class="tabs">
+                    <div class="tab active" onclick="switchTab('scores')">SCORES</div>
+                    <div class="tab" onclick="switchTab('standings')">CLASSEMENT</div>
+                    <div class="tab" onclick="switchTab('scorers')">BUTEURS</div>
+                    <div class="tab" onclick="switchTab('calendar')">CALENDRIER</div>
+                    <div class="tab" onclick="switchTab('transfers')">TRANSFERTS</div>
+                    <div class="tab" onclick="switchTab('actu')">ACTUALITÉS</div>
+                    <div class="tab" onclick="switchTab('results')">RÉSULTATS</div>
+                    <div class="tab" onclick="switchTab('jsk')">JSK</div>
+                </div>
+                
+                <div class="content" id="tab-content">
+            `;
             
-            // Liste des scores
-            function ScoresList({ matches, onSelectMatch }) {
-                // Grouper par ligue
-                const groups = {};
-                matches.forEach(m => {
-                    const leagueId = m.league.id;
-                    if (!groups[leagueId]) {
-                        groups[leagueId] = { ...m.league, matches: [] };
-                    }
-                    groups[leagueId].matches.push(m);
+            // Afficher les scores par défaut
+            const leagues = {};
+            matches.forEach(m => {
+                if (!leagues[m.league]) leagues[m.league] = [];
+                leagues[m.league].push(m);
+            });
+            
+            for (const [leagueName, leagueMatches] of Object.entries(leagues)) {
+                html += `<div class="match-card">`;
+                html += `<div class="league">${leagueName}</div>`;
+                
+                leagueMatches.forEach(m => {
+                    const liveBadge = m.status === 'live' ? '<span class="live">LIVE</span>' : '';
+                    
+                    html += `
+                        <div class="match" onclick="openMatch(${m.id})">
+                            <div class="time">${m.time}</div>
+                            <div class="teams">
+                                <div class="team-row">
+                                    <span class="team-name">${m.home}</span>
+                                    <span class="score">${m.homeScore}</span>
+                                </div>
+                                <div class="team-row">
+                                    <span class="team-name">${m.away}</span>
+                                    <span class="score">${m.awayScore}</span>
+                                </div>
+                            </div>
+                            ${liveBadge}
+                        </div>
+                    `;
                 });
                 
-                return React.createElement('div', null,
-                    Object.values(groups).map(league => 
-                        React.createElement('div', { key: league.id, className: 'match-card' },
-                            React.createElement('div', { className: 'league-info' },
-                                React.createElement('div', { className: 'league-flag' }),
-                                React.createElement('span', { className: 'league-name' }, league.name)
-                            ),
-                            league.matches.map(match => {
-                                const isLive = ['1H','2H','ET','BT','P'].includes(match.fixture.status.short);
-                                const timeDisplay = isLive ? match.fixture.status.elapsed + "'" : 
-                                                   match.fixture.status.short === 'FT' ? 'FT' : 
-                                                   new Date(match.fixture.date).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
-                                
-                                return React.createElement('div', {
-                                    key: match.id,
-                                    className: 'match-row',
-                                    onClick: () => onSelectMatch(match.id),
-                                    style: { cursor: 'pointer' }
-                                },
-                                    React.createElement('div', { className: 'match-time' }, timeDisplay),
-                                    React.createElement('div', { className: 'match-teams' },
-                                        React.createElement('div', { className: 'team' },
-                                            React.createElement('div', { className: 'team-logo' }),
-                                            React.createElement('span', { className: 'team-name' }, match.teams.home.name),
-                                            React.createElement('span', { className: 'team-score' }, match.goals.home ?? '-')
-                                        ),
-                                        React.createElement('div', { className: 'team' },
-                                            React.createElement('div', { className: 'team-logo' }),
-                                            React.createElement('span', { className: 'team-name' }, match.teams.away.name),
-                                            React.createElement('span', { className: 'team-score' }, match.goals.away ?? '-')
-                                        )
-                                    ),
-                                    isLive && React.createElement('span', { className: 'live-badge' }, 'LIVE')
-                                );
-                            })
-                        )
-                    )
-                );
+                html += `</div>`;
             }
             
-            // Détail du match
-            function MatchDetail({ matchId, onClose }) {
-                const match = MOCK_MATCHES.find(m => m.id === matchId) || MOCK_MATCHES[0];
-                const isLive = ['1H','2H','ET','BT','P'].includes(match.fixture.status.short);
-                
-                return React.createElement('div', { className: 'match-detail' },
-                    React.createElement('div', { className: 'detail-header' },
-                        React.createElement('button', { className: 'back-btn', onClick: onClose }, '←'),
-                        React.createElement('div', { className: 'score-board' },
-                            React.createElement('div', { className: 'team-large' },
-                                React.createElement('div', { className: 'logo' }),
-                                React.createElement('div', { className: 'name' }, match.teams.home.name)
-                            ),
-                            React.createElement('div', { className: 'score-large' },
-                                match.goals.home + ' - ' + match.goals.away
-                            ),
-                            React.createElement('div', { className: 'team-large' },
-                                React.createElement('div', { className: 'logo' }),
-                                React.createElement('div', { className: 'name' }, match.teams.away.name)
-                            )
-                        ),
-                        React.createElement('div', { style: { textAlign: 'center' } },
-                            React.createElement('span', { className: 'status-badge' },
-                                isLive ? match.fixture.status.elapsed + "'" : 
-                                match.fixture.status.short === 'FT' ? 'Terminé' : 
-                                new Date(match.fixture.date).toLocaleString()
-                            )
-                        )
-                    ),
-                    
-                    React.createElement('div', { className: 'detail-content' },
-                        // Événements
-                        React.createElement('div', { className: 'events-title' }, 'ÉVÉNEMENTS'),
-                        MOCK_EVENTS.map((event, i) => {
-                            const isBigChance = event.type === 'Big Chance' || 
-                                                event.type === 'Hit Woodwork' ||
-                                                event.detail?.includes('Big chance');
-                            
-                            let icon = '⚽';
-                            if (event.type === 'Card') icon = event.detail?.includes('Yellow') ? '🟨' : '🟥';
-                            else if (event.type === 'subst') icon = '🔄';
-                            else if (event.type === 'Var') icon = '📺';
-                            else if (isBigChance) icon = '⚡';
-                            
-                            return React.createElement('div', {
-                                key: i,
-                                className: `event-item ${isBigChance ? 'big-chance' : ''}`
-                            },
-                                React.createElement('div', { className: 'event-minute' }, event.time.elapsed + "'"),
-                                React.createElement('div', { className: 'event-icon' }, icon),
-                                React.createElement('div', { className: 'event-desc' },
-                                    React.createElement('div', { className: 'event-player' },
-                                        isBigChance ? 'GROSSE OCCASION!' : (event.player?.name || 'Joueur')
-                                    ),
-                                    event.assist && React.createElement('div', { className: 'event-detail' },
-                                        'passe: ' + event.assist.name
-                                    ),
-                                    event.detail && !isBigChance && React.createElement('div', { className: 'event-detail' },
-                                        event.detail
-                                    )
-                                ),
-                                event.homeScore !== undefined && React.createElement('div', { className: 'event-score' },
-                                    event.homeScore + ' - ' + event.awayScore
-                                )
-                            );
-                        }),
+            html += `</div>`;
+            
+            app.innerHTML = html;
+        }
+        
+        function renderDetail() {
+            const match = matches.find(m => m.id === selectedMatch) || matches[0];
+            
+            let html = `
+                <div class="detail-view">
+                    <div class="detail-header">
+                        <button class="back-button" onclick="goBack()">←</button>
                         
-                        // Stats
-                        React.createElement('div', { className: 'stats-card' },
-                            MOCK_STATS.map((stat, i) => {
-                                if (i === 0) {
-                                    const homeStats = stat.statistics;
-                                    const awayStats = MOCK_STATS[1].statistics;
-                                    
-                                    const getVal = (arr, type) => {
-                                        const s = arr.find(s => s.type === type);
-                                        return s?.value || 0;
-                                    };
-                                    
-                                    const possessionH = parseInt(String(getVal(homeStats, 'Ball Possession')).replace('%', '')) || 0;
-                                    const possessionA = parseInt(String(getVal(awayStats, 'Ball Possession')).replace('%', '')) || 0;
-                                    
-                                    return React.createElement('div', { key: i },
-                                        React.createElement('div', { className: 'stat-row' },
-                                            React.createElement('span', { className: 'stat-value' }, possessionH + '%'),
-                                            React.createElement('span', { className: 'stat-label' }, 'POSSESSION'),
-                                            React.createElement('span', { className: 'stat-value' }, possessionA + '%')
-                                        ),
-                                        React.createElement('div', { className: 'stat-bar' },
-                                            React.createElement('div', { className: 'bar-home', style: { width: possessionH + '%' } }),
-                                            React.createElement('div', { className: 'bar-away', style: { width: possessionA + '%' } })
-                                        )
-                                    );
-                                }
-                                return null;
-                            })
-                        )
-                    )
-                );
-            }
+                        <div class="big-score">
+                            <div class="team">
+                                <div class="logo"></div>
+                                <div>${match.home}</div>
+                            </div>
+                            <div class="score">${match.homeScore} - ${match.awayScore}</div>
+                            <div class="team">
+                                <div class="logo"></div>
+                                <div>${match.away}</div>
+                            </div>
+                        </div>
+                        
+                        <div style="text-align: center;">
+                            <span class="status">${match.status === 'live' ? match.minute + "'" : match.time}</span>
+                        </div>
+                    </div>
+                    
+                    <div class="detail-content">
+                        <div class="section-title">ÉVÉNEMENTS</div>
+            `;
             
-            // Lancement de l'application
-            ReactDOM.createRoot(root).render(React.createElement(MainScreen, null));
-        })();
+            events.forEach(e => {
+                const isBigChance = e.type === 'bigchance';
+                let icon = '⚽';
+                if (e.type === 'yellow') icon = '🟨';
+                else if (e.type === 'red') icon = '🟥';
+                else if (e.type === 'substitution') icon = '🔄';
+                else if (e.type === 'var') icon = '📺';
+                else if (isBigChance) icon = '⚡';
+                
+                const extraClass = isBigChance ? 'big-chance' : '';
+                const displayText = isBigChance ? 'GROSSE OCCASION!' : e.player;
+                
+                html += `
+                    <div class="event ${extraClass}">
+                        <div class="event-minute">${e.minute}'</div>
+                        <div class="event-icon">${icon}</div>
+                        <div class="event-desc">
+                            <div class="event-player">${displayText}</div>
+                            ${e.description ? `<div class="event-detail">${e.description}</div>` : ''}
+                            ${e.detail ? `<div class="event-detail">${e.detail}</div>` : ''}
+                        </div>
+                        ${e.score ? `<div class="event-score">${e.score}</div>` : ''}
+                    </div>
+                `;
+            });
+            
+            html += `
+                        <div class="section-title">STATISTIQUES</div>
+                        
+                        <div class="stat-row">
+                            <span class="stat-value">${stats.possession[0]}%</span>
+                            <span class="stat-label">POSSESSION</span>
+                            <span class="stat-value">${stats.possession[1]}%</span>
+                        </div>
+                        <div class="stat-bar">
+                            <div class="bar-home" style="width: ${stats.possession[0]}%"></div>
+                            <div class="bar-away" style="width: ${stats.possession[1]}%"></div>
+                        </div>
+                        
+                        <div class="stat-row">
+                            <span class="stat-value">${stats.shots[0]}</span>
+                            <span class="stat-label">TIRS</span>
+                            <span class="stat-value">${stats.shots[1]}</span>
+                        </div>
+                        
+                        <div class="stat-row">
+                            <span class="stat-value">${stats.shotsOnTarget[0]}</span>
+                            <span class="stat-label">CADRÉS</span>
+                            <span class="stat-value">${stats.shotsOnTarget[1]}</span>
+                        </div>
+                        
+                        <div class="stat-row">
+                            <span class="stat-value">${stats.corners[0]}</span>
+                            <span class="stat-label">CORNERS</span>
+                            <span class="stat-value">${stats.corners[1]}</span>
+                        </div>
+                    </div>
+                </div>
+            `;
+            
+            document.getElementById('app').innerHTML = html;
+        }
+        
+        // Fonctions globales
+        window.switchTab = function(tab) {
+            const tabs = document.querySelectorAll('.tab');
+            tabs.forEach(t => t.classList.remove('active'));
+            event.target.classList.add('active');
+            
+            if (tab !== 'scores') {
+                document.getElementById('tab-content').innerHTML = `
+                    <div class="placeholder">
+                        ${tab.charAt(0).toUpperCase() + tab.slice(1)} - Bientôt disponible
+                    </div>
+                `;
+            } else {
+                renderMain();
+            }
+        };
+        
+        window.openMatch = function(id) {
+            selectedMatch = id;
+            currentView = 'detail';
+            render();
+        };
+        
+        window.goBack = function() {
+            currentView = 'main';
+            render();
+        };
+        
+        // Lancement
+        render();
     </script>
-    
-    <!-- React et React DOM -->
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/react/18.2.0/umd/react.production.min.js"></script>
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/react-dom/18.2.0/umd/react-dom.production.min.js"></script>
 </body>
 </html>
