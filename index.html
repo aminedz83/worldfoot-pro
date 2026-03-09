@@ -483,21 +483,22 @@
 				}
 			}
 
+			/* Structure de base corrigée */
 			.md-overlay {
-   position: fixed;
-   inset: 0;
-   z-index: 950;
-   background: #f8fafe;
-   display: flex;
-   flex-direction: column;
-   max-width: 430px;
-   margin: 0 auto;
-   overflow-y: auto;  /* ← Changé de 'hidden' à 'auto' */
-  -webkit-overflow-scrolling: touch; /* Pour un scroll fluide sur iOS */
-   animation: mdIn 0.2s ease;
-  }
+				position: fixed;
+				inset: 0;
+				z-index: 950;
+				background: #f8fafe;
+				display: flex;
+				flex-direction: column;
+				max-width: 430px;
+				margin: 0 auto;
+				overflow-y: auto;
+				-webkit-overflow-scrolling: touch;
+				animation: mdIn 0.2s ease;
+			}
 
-			/* ── Topbar (inchangée pour préserver la flèche PWA) ── */
+			/* Topbar inchangée pour préserver la flèche PWA */
 			.md-topbar {
 				flex-shrink: 0;
 				display: flex;
@@ -506,6 +507,9 @@
 				padding: calc(14px + env(safe-area-inset-top)) 14px 12px;
 				background: #ffffff;
 				border-bottom: 1px solid rgba(0, 0, 0, 0.06);
+				position: sticky;
+				top: 0;
+				z-index: 100;
 			}
 			.md-back-btn {
 				background: rgba(0, 0, 0, 0.04);
@@ -522,6 +526,7 @@
 				justify-content: center;
 				border-radius: 10px;
 				transition: background 0.15s;
+				position: relative;
 			}
 			.md-back-btn:active {
 				background: rgba(0, 0, 0, 0.08);
@@ -545,7 +550,7 @@
 				color: rgba(17, 24, 39, 0.3);
 			}
 
-			/* ── Hero Header premium light ── */
+			/* Hero Header premium light */
 			.md-header {
 				flex-shrink: 0;
 				background: linear-gradient(145deg, #FFFFFF 0%, #F8FAFF 100%);
@@ -605,7 +610,7 @@
 				box-shadow: 0 0 6px rgba(0, 184, 107, 0.6);
 			}
 
-			/* ── Scoreline premium light ── */
+			/* Scoreline premium light */
 			.md-scoreline {
 				display: flex;
 				align-items: center;
@@ -663,7 +668,7 @@
 				margin-bottom: 2px;
 			}
 
-			/* ── Status premium light ── */
+			/* Status premium light */
 			.md-status-row {
 				display: flex;
 				align-items: center;
@@ -735,7 +740,7 @@
 				text-align: right;
 			}
 
-			/* ── Tabs premium light ── */
+			/* Tabs premium light */
 			.md-tabs {
 				display: flex;
 				border-bottom: 1px solid rgba(0,0,0,0.06);
@@ -744,6 +749,9 @@
 				overflow-x: auto;
 				scrollbar-width: none;
 				-webkit-overflow-scrolling: touch;
+				position: sticky;
+				top: 68px;
+				z-index: 99;
 			}
 			.md-tabs::-webkit-scrollbar {
 				display: none;
@@ -772,13 +780,13 @@
 				font-weight: 700;
 			}
 
-			/* ── Content premium light ── */
+			/* Content premium light */
 			.md-content {
-  flex: 1 1 auto;  /* ← S'assurer qu'il prend l'espace restant */
-  overflow-y: auto;
-  background: #f8fafe;
-  -webkit-overflow-scrolling: touch;
-  }
+				flex: 1;
+				overflow-y: auto;
+				background: #f8fafe;
+				-webkit-overflow-scrolling: touch;
+			}
 			.md-content::-webkit-scrollbar {
 				width: 3px;
 			}
@@ -790,7 +798,7 @@
 				padding: 8px 8px 32px;
 			}
 
-			/* ── Event rows premium light ── */
+			/* Event rows premium light */
 			.md-evt-row {
 				display: flex;
 				align-items: center;
@@ -883,7 +891,7 @@
 				border: 1px solid rgba(0,0,0,0.04);
 			}
 
-			/* ── Half time separator premium light ── */
+			/* Half time separator premium light */
 			.half-time-badge {
 				background: #F8F9FC;
 				border-radius: 100px;
@@ -910,7 +918,7 @@
 				border-radius: 30px;
 			}
 
-			/* ── Stats premium light ── */
+			/* Stats premium light */
 			.md-stat-line {
 				background: #FFFFFF;
 				border-radius: 16px;
@@ -962,58 +970,93 @@
 				margin-left: auto;
 			}
 
-			/* ── Info section premium light ── */
+			/* Info section premium light - RESTRUCTURÉ */
 			.md-info-section {
 				background: #FFFFFF;
 				border-radius: 20px;
-				margin: 16px 12px 8px;
-				padding: 18px 16px;
+				margin: 12px 12px 8px;
+				padding: 16px;
 				border: 1px solid rgba(0,0,0,0.04);
 				box-shadow: 0 2px 8px rgba(0,0,0,0.02), 0 4px 12px rgba(0,0,0,0.02);
 			}
-			.md-info-header {
+			.competition-breadcrumb {
 				display: flex;
 				align-items: center;
-				justify-content: space-between;
-				margin-bottom: 16px;
-				padding-bottom: 12px;
+				flex-wrap: wrap;
+				gap: 4px;
+				font-size: 11px;
+				color: #8E96A8;
+				margin-bottom: 12px;
+				padding-bottom: 8px;
 				border-bottom: 1px solid rgba(0,0,0,0.04);
 			}
-			.md-info-title {
+			.competition-breadcrumb .flag-icon {
+				width: 16px;
+				height: 12px;
+				border-radius: 2px;
+				object-fit: cover;
+				margin-right: 4px;
+			}
+			.competition-breadcrumb .separator {
+				color: #00b86b;
+				opacity: 0.5;
+				margin: 0 2px;
+			}
+			.competition-breadcrumb .current {
+				color: #1A1F2E;
+				font-weight: 600;
+			}
+			.datetime-row {
 				display: flex;
 				align-items: center;
-				gap: 8px;
+				gap: 10px;
+				margin-bottom: 16px;
+				background: #F8F9FC;
+				border-radius: 12px;
+				padding: 10px 12px;
 			}
-			.md-info-icon {
-				width: 24px;
-				height: 24px;
-				border-radius: 8px;
-				background: rgba(0,184,107,0.08);
+			.datetime-icon {
+				width: 36px;
+				height: 36px;
+				background: #00b86b;
+				border-radius: 10px;
 				display: flex;
+				flex-direction: column;
 				align-items: center;
 				justify-content: center;
-				color: #00b86b;
-				font-size: 14px;
+				color: white;
+				font-weight: 700;
+				line-height: 1;
 			}
-			.md-info-badge {
-				background: #F0F2F5;
-				border-radius: 20px;
-				padding: 4px 12px;
-				font-size: 11px;
+			.datetime-icon .day {
+				font-size: 16px;
+			}
+			.datetime-icon .month {
+				font-size: 9px;
+				opacity: 0.9;
+				text-transform: uppercase;
+			}
+			.datetime-text {
+				flex: 1;
+			}
+			.datetime-text .full-date {
+				font-size: 13px;
 				font-weight: 600;
-				color: #4A5568;
+				color: #1A1F2E;
+				margin-bottom: 2px;
 			}
-			.md-info-grid {
-				display: grid;
-				grid-template-columns: repeat(2, 1fr);
-				gap: 16px;
+			.datetime-text .time {
+				font-size: 15px;
+				font-weight: 700;
+				color: #00b86b;
 			}
-			.md-info-item {
+			.info-block {
 				display: flex;
 				align-items: flex-start;
-				gap: 10px;
+				gap: 12px;
+				margin-bottom: 12px;
 			}
-			.md-info-item-icon {
+			.info-icon {
 				width: 32px;
 				height: 32px;
 				border-radius: 10px;
@@ -1021,60 +1064,100 @@
 				display: flex;
 				align-items: center;
 				justify-content: center;
-				color: #00b86b;
 				font-size: 16px;
 				flex-shrink: 0;
 			}
-			.md-info-item-label {
-				font-size: 10px;
-				font-weight: 600;
-				letter-spacing: 0.8px;
-				color: #8E96A8;
-				text-transform: uppercase;
-				margin-bottom: 4px;
+			.info-content {
+				flex: 1;
 			}
-			.md-info-item-value {
+			.info-main {
+				display: flex;
+				align-items: center;
+				gap: 6px;
+				flex-wrap: wrap;
+			}
+			.info-main .flag-small {
+				width: 18px;
+				height: 13px;
+				border-radius: 2px;
+				object-fit: cover;
+			}
+			.info-main .main-text {
 				font-size: 14px;
 				font-weight: 600;
 				color: #1A1F2E;
-				line-height: 1.4;
 			}
-			.md-info-item-sub {
+			.info-secondary {
 				font-size: 11px;
 				color: #8E96A8;
 				margin-top: 2px;
+				display: flex;
+				align-items: center;
+				gap: 4px;
 			}
-			.md-info-stats-row {
+			.cards-stats-row {
 				display: flex;
 				align-items: center;
 				justify-content: space-between;
-				margin-top: 16px;
-				padding-top: 16px;
+				margin-top: 12px;
+				padding-top: 12px;
 				border-top: 1px solid rgba(0,0,0,0.04);
 			}
-			.md-stat-badge {
-				background: #F8F9FC;
-				border-radius: 30px;
-				padding: 6px 14px;
+			.cards-stats-item {
 				display: flex;
 				align-items: center;
 				gap: 8px;
 			}
-			.md-stat-badge-label {
+			.cards-stats-icon {
+				width: 28px;
+				height: 28px;
+				background: #F8F9FC;
+				border-radius: 8px;
+				display: flex;
+				align-items: center;
+				justify-content: center;
+				font-size: 14px;
+			}
+			.cards-stats-values {
+				display: flex;
+				gap: 6px;
+			}
+			.cards-stats-value {
+				font-size: 13px;
+				font-weight: 700;
+				padding: 2px 6px;
+				border-radius: 6px;
+			}
+			.cards-stats-value.yellow {
+				background: rgba(251,191,36,0.1);
+				color: #FBBF24;
+			}
+			.cards-stats-value.red {
+				background: rgba(239,68,68,0.1);
+				color: #EF4444;
+			}
+			.capacity-badge {
+				background: #F8F9FC;
+				border-radius: 30px;
+				padding: 6px 12px;
+				display: inline-flex;
+				align-items: center;
+				gap: 6px;
+			}
+			.capacity-badge .label {
 				font-size: 11px;
-				font-weight: 600;
 				color: #4A5568;
 			}
-			.md-stat-badge-value {
+			.capacity-badge .value {
 				font-size: 13px;
 				font-weight: 700;
 				color: #00b86b;
 				background: rgba(0,184,107,0.08);
-				padding: 2px 8px;
+				padding: 2px 6px;
 				border-radius: 20px;
 			}
 
-			/* ── Player sheet ── */
+			/* Player sheet */
 			.md-player-sheet-bg {
 				position: absolute;
 				inset: 0;
@@ -3621,190 +3704,90 @@
 							      tab==="resume"?React.createElement("div",{className:"md-panel"},
 							        renderTimeline(),
 							        
-							        // SECTION INFORMATIONS DE MATCH PREMIUM LIGHT
+							        // SECTION INFORMATIONS DE MATCH PREMIUM LIGHT - RESTRUCTURÉE
 							        React.createElement("div", {className:"md-info-section"},
-							          // Header avec badge
-							          React.createElement("div", {className:"md-info-header"},
-							            React.createElement("div", {className:"md-info-title"},
-							              React.createElement("span", {className:"md-info-icon"}, "ℹ️"),
-							              React.createElement("span", {style:{
-							                fontSize: "11px",
-							                fontWeight: "700",
-							                color: "#1A1F2E",
-							                letterSpacing: "1px",
-							                textTransform: "uppercase"
-							              }}, "INFORMATIONS DE MATCH")
-							            ),
-							            React.createElement("span", {className:"md-info-badge"}, 
-							              fix.league.round || `J${fix.league.round?.match(/\d+/)?.[0] || ""}`
-							            )
-							          ),
-
-							          // Breadcrumb compétition
-							          React.createElement("div", {style:{
-							            display: "flex",
-							            alignItems: "center",
-							            gap: "6px",
-							            fontSize: "12px",
-							            color: "#8E96A8",
-							            marginBottom: "16px",
-							            paddingBottom: "12px",
-							            borderBottom: "1px solid rgba(0,0,0,0.04)"
-							          }},
+							          
+							          // Breadcrumb compétition avec drapeau
+							          React.createElement("div", {className:"competition-breadcrumb"},
+							            fix.league.flag ? 
+							              React.createElement("img", {src:fix.league.flag, className:"flag-icon"}) : 
+							              React.createElement("span", {style:{fontSize:"14px"}}, "🌍"),
 							            React.createElement("span", null, "Football"),
-							            React.createElement("span", {style:{color:"#00b86b", fontSize:"14px", opacity:0.5}}, "•"),
+							            React.createElement("span", {className:"separator"}, "•"),
 							            React.createElement("span", null, fix.league.country),
-							            React.createElement("span", {style:{color:"#00b86b", fontSize:"14px", opacity:0.5}}, "•"),
+							            React.createElement("span", {className:"separator"}, "•"),
 							            React.createElement("span", null, fix.league.name),
-							            React.createElement("span", {style:{color:"#00b86b", fontSize:"14px", opacity:0.5}}, "•"),
-							            React.createElement("span", {style:{color:"#1A1F2E", fontWeight:600}}, fix.league.round || "Journée " + (fix.league.round?.match(/\d+/)?.[0] || ""))
+							            React.createElement("span", {className:"separator"}, "•"),
+							            React.createElement("span", {className:"current"}, fix.league.round || `J${fix.league.round?.match(/\d+/)?.[0] || ""}`)
 							          ),
 
 							          // Date et heure premium
-							          React.createElement("div", {style:{
-							            display: "flex",
-							            alignItems: "center",
-							            gap: "16px",
-							            marginBottom: "16px",
-							            padding: "12px",
-							            background: "#F8F9FC",
-							            borderRadius: "14px",
-							            border: "1px solid rgba(0,0,0,0.04)"
-							          }},
-							            React.createElement("div", {style:{
-							              width: "48px",
-							              height: "48px",
-							              background: "linear-gradient(135deg, #00b86b 0%, #009657 100%)",
-							              borderRadius: "12px",
-							              display: "flex",
-							              flexDirection: "column",
-							              alignItems: "center",
-							              justifyContent: "center",
-							              color: "#FFFFFF",
-							              boxShadow: "0 4px 12px rgba(0,184,107,0.2)"
-							            }},
-							              React.createElement("span", {style:{fontSize:"20px", fontWeight:800, lineHeight:1}}, 
-							                new Date(fix.fixture.date).getDate().toString().padStart(2,'0')
-							              ),
-							              React.createElement("span", {style:{fontSize:"9px", fontWeight:600, opacity:0.9, textTransform:"uppercase"}},
+							          React.createElement("div", {className:"datetime-row"},
+							            React.createElement("div", {className:"datetime-icon"},
+							              React.createElement("span", {className:"day"}, new Date(fix.fixture.date).getDate()),
+							              React.createElement("span", {className:"month"}, 
 							                new Date(fix.fixture.date).toLocaleDateString("fr-FR", {month:"short"}).replace(".","")
 							              )
 							            ),
-							            React.createElement("div", {style:{flex:1}},
-							              React.createElement("div", {style:{fontSize:"13px", fontWeight:600, color:"#1A1F2E", marginBottom:"4px"}},
+							            React.createElement("div", {className:"datetime-text"},
+							              React.createElement("div", {className:"full-date"},
 							                new Date(fix.fixture.date).toLocaleDateString("fr-FR", {weekday:"long", day:"numeric", month:"long", year:"numeric"}).replace(/^./, c => c.toUpperCase())
 							              ),
-							              React.createElement("div", {style:{display:"flex", alignItems:"center", gap:"8px"}},
-							                React.createElement("span", {style:{fontSize:"20px", fontWeight:800, color:"#00b86b", letterSpacing:"-0.5px"}},
-							                  new Date(fix.fixture.date).toLocaleTimeString("fr-FR", {hour:"2-digit", minute:"2-digit"})
-							                ),
-							                React.createElement("span", {style:{fontSize:"11px", color:"#8E96A8"}}, "UTC+1")
+							              React.createElement("div", {className:"time"},
+							                new Date(fix.fixture.date).toLocaleTimeString("fr-FR", {hour:"2-digit", minute:"2-digit"}) + " UTC+1"
 							              )
 							            )
 							          ),
 
-							          // Grille d'informations (3 colonnes)
-							          React.createElement("div", {className:"md-info-grid",
-							            style:{gridTemplateColumns:"repeat(3, 1fr)"}
-							          },
-							            // Stade
-							            React.createElement("div", {className:"md-info-item"},
-							              React.createElement("span", {className:"md-info-item-icon"}, "🏟️"),
-							              React.createElement("div", {style:{flex:1}},
-							                React.createElement("div", {className:"md-info-item-label"}, "STADE"),
-							                React.createElement("div", {className:"md-info-item-value"}, 
-							                  fix.fixture.venue?.name || "Non spécifié"
-							                ),
-							                React.createElement("div", {className:"md-info-item-sub"}, 
-							                  fix.fixture.venue?.city || ""
-							                ),
+							          // Stade avec drapeau
+							          React.createElement("div", {className:"info-block"},
+							            React.createElement("div", {className:"info-icon"}, "🏟️"),
+							            React.createElement("div", {className:"info-content"},
+							              React.createElement("div", {className:"info-main"},
+							                React.createElement("span", {className:"main-text"}, fix.fixture.venue?.name || "Non spécifié"),
+							                fix.fixture.venue?.city ? 
+							                  React.createElement("img", {src: `https://flagcdn.com/w20/${fix.league.country === "France" ? "fr" : fix.league.country === "Italy" ? "it" : fix.league.country === "Spain" ? "es" : fix.league.country === "England" ? "gb" : "xx"}.png`, className:"flag-small", onError:(e)=>e.target.style.display="none"}) : null
+							              ),
+							              React.createElement("div", {className:"info-secondary"},
+							                fix.fixture.venue?.city ? 
+							                  React.createElement(React.Fragment, null,
+							                    React.createElement("img", {src: `https://flagcdn.com/w20/${fix.league.country === "France" ? "fr" : fix.league.country === "Italy" ? "it" : fix.league.country === "Spain" ? "es" : fix.league.country === "England" ? "gb" : "xx"}.png`, className:"flag-small", style:{marginRight:"4px"}, onError:(e)=>e.target.style.display="none"}),
+							                    fix.fixture.venue.city
+							                  ) : null,
 							                venueInfo?.capacity ? 
-							                  React.createElement("div", {style:{
-							                    marginTop:"6px",
-							                    background: "rgba(0,184,107,0.08)",
-							                    borderRadius: "12px",
-							                    padding: "2px 8px",
-							                    display: "inline-flex",
-							                    alignItems: "center",
-							                    gap: "4px"
-							                  }},
-							                    React.createElement("span", {style:{fontSize:"10px", color:"#4A5568"}}, "Capacité:"),
-							                    React.createElement("span", {style:{fontSize:"11px", fontWeight:700, color:"#00b86b"}}, 
-							                      Number(venueInfo.capacity).toLocaleString("fr-FR")
+							                  React.createElement("span", {style:{marginLeft: fix.fixture.venue?.city ? "8px" : 0}}, 
+							                    React.createElement("span", {className:"capacity-badge", style:{marginLeft:0}},
+							                      React.createElement("span", {className:"label"}, "Capacité"),
+							                      React.createElement("span", {className:"value"}, Number(venueInfo.capacity).toLocaleString("fr-FR"))
 							                    )
 							                  ) : null
 							              )
-							            ),
-
-							            // Arbitre
-							            React.createElement("div", {className:"md-info-item"},
-							              React.createElement("span", {className:"md-info-item-icon"}, "⚖️"),
-							              React.createElement("div", {style:{flex:1}},
-							                React.createElement("div", {className:"md-info-item-label"}, "ARBITRE"),
-							                React.createElement("div", {className:"md-info-item-value"}, 
-							                  fix.fixture?.referee || "Non spécifié"
-							                ),
-							                React.createElement("div", {className:"md-info-item-sub"}, 
-							                  fix.fixture?.referee ? "In Moy." : ""
-							                ),
-							                // Stats arbitre
-							                React.createElement("div", {style:{
-							                  marginTop:"6px",
-							                  display: "flex",
-							                  gap: "8px"
-							                }},
-							                  React.createElement("div", {style:{display:"flex", alignItems:"center", gap:"4px"}},
-							                    React.createElement("span", {style:{color:"#FBBF24", fontSize:"12px"}}, "🟨"),
-							                    React.createElement("span", {style:{fontSize:"10px", fontWeight:600, color:"#4A5568"}}, "0.25")
-							                  ),
-							                  React.createElement("div", {style:{display:"flex", alignItems:"center", gap:"4px"}},
-							                    React.createElement("span", {style:{color:"#EF4444", fontSize:"12px"}}, "🟥"),
-							                    React.createElement("span", {style:{fontSize:"10px", fontWeight:600, color:"#4A5568"}}, "3.94")
-							                  )
-							                )
-							              )
-							            ),
-
-							            // Affluence / Stats
-							            React.createElement("div", {className:"md-info-item"},
-							              React.createElement("span", {className:"md-info-item-icon"}, fix.fixture?.attendance ? "🎟️" : "📊"),
-							              React.createElement("div", {style:{flex:1}},
-							                React.createElement("div", {className:"md-info-item-label"}, 
-							                  fix.fixture?.attendance ? "AFFLUENCE" : "STATS"
-							                ),
-							                fix.fixture?.attendance ? 
-							                  React.createElement("div", {className:"md-info-item-value"}, 
-							                    Number(fix.fixture.attendance).toLocaleString("fr-FR") + " spectateurs"
-							                  ) : 
-							                  React.createElement("div", {className:"md-info-item-value"}, "Match à huis clos"),
-							                React.createElement("div", {className:"md-info-item-sub"}, 
-							                  fix.fixture?.attendance ? "Record: 59 186" : "Portes fermées"
-							                )
-							              )
 							            )
 							          ),
 
-							          // Footer avec stats avancées
-							          React.createElement("div", {className:"md-info-stats-row"},
-							            React.createElement("div", {style:{display:"flex", alignItems:"center", gap:"16px"}},
-							              React.createElement("div", {className:"md-stat-badge"},
-							                React.createElement("span", {className:"md-stat-badge-label"}, "⌀ Cartons"),
-							                React.createElement("span", {className:"md-stat-badge-value"}, "2.8")
-							              ),
-							              React.createElement("div", {className:"md-stat-badge"},
-							                React.createElement("span", {className:"md-stat-badge-label"}, "⚽ xG"),
-							                React.createElement("span", {className:"md-stat-badge-value"}, "1.8 - 0.9")
+							          // Arbitre avec drapeau
+							          fix.fixture?.referee ? 
+							            React.createElement("div", {className:"info-block", style:{marginBottom:"8px"}},
+							              React.createElement("div", {className:"info-icon"}, "⚖️"),
+							              React.createElement("div", {className:"info-content"},
+							                React.createElement("div", {className:"info-main"},
+							                  React.createElement("span", {className:"main-text"}, fix.fixture.referee),
+							                  React.createElement("img", {src: "https://flagcdn.com/w20/fr.png", className:"flag-small", onError:(e)=>e.target.style.display="none"})
+							                ),
+							                React.createElement("div", {className:"info-secondary"}, "In Moy.")
 							              )
+							            ) : null,
+
+							          // Stats cartons
+							          React.createElement("div", {className:"cards-stats-row"},
+							            React.createElement("div", {className:"cards-stats-item"},
+							              React.createElement("div", {className:"cards-stats-icon"}, "📊"),
+							              React.createElement("span", {style:{fontSize:"11px", color:"#4A5568"}}, "Moy. cartons")
 							            ),
-							            React.createElement("div", {style:{
-							              background: "#FFFFFF",
-							              borderRadius: "12px",
-							              padding: "4px 12px",
-							              border: "1px solid rgba(0,0,0,0.04)",
-							              fontSize: "10px",
-							              fontWeight: 600,
-							              color: "#8E96A8"
-							            }}, "⏱️ Données en direct")
+							            React.createElement("div", {className:"cards-stats-values"},
+							              React.createElement("span", {className:"cards-stats-value yellow"}, "0.25"),
+							              React.createElement("span", {className:"cards-stats-value red"}, "3.94")
+							            )
 							          )
 							        )
 							      ):null,
