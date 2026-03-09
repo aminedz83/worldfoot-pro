@@ -1398,7 +1398,7 @@
 						  {id:11, name:"Copa Sudamericana",country:"Amer. Sud", flag:"🌎",region:"Ameriques",  isCup:true,hasGroups:true,hasKnockout:true},
 						  //
 						  // 🌍 Afrique du Nord
-						  {id:186,name:"Ligue Pro 1",      country:"Algérie",   flag:"🇩🇿",region:"Afrique"},
+						  {id:186,name:"Ligue 1 Pro",      country:"Algérie",   flag:"🇩🇿",region:"Afrique"},
 						  {id:200,name:"Botola Pro",       country:"Maroc",     flag:"🇲🇦",region:"Afrique"},
 						  {id:233,name:"Premier League",   country:"Égypte",    flag:"🇪🇬",region:"Afrique"},
 						  {id:202,name:"Ligue 1 Pro",      country:"Tunisie",   flag:"🇹🇳",region:"Afrique"},
@@ -3778,17 +3778,93 @@
 							              )
 							            ) : null,
 
-							          // Stats cartons
-							          React.createElement("div", {className:"cards-stats-row"},
-							            React.createElement("div", {className:"cards-stats-item"},
-							              React.createElement("div", {className:"cards-stats-icon"}, "📊"),
-							              React.createElement("span", {style:{fontSize:"11px", color:"#4A5568"}}, "Moy. cartons")
-							            ),
-							            React.createElement("div", {className:"cards-stats-values"},
-							              React.createElement("span", {className:"cards-stats-value yellow"}, "0.25"),
-							              React.createElement("span", {className:"cards-stats-value red"}, "3.94")
-							            )
-							          )
+							          // Stats cartons avec vraies données arbitre
+							          (() => {
+							            const refereeName = fix?.fixture?.referee;
+							            const [refData, setRefData] = React.useState(null);
+							            
+							            React.useEffect(() => {
+							              if (!refereeName) return;
+							              
+							              const cacheKey = `ref_${refereeName.replace(/[^a-zA-Z]/g, '')}`;
+							              const cached = localStorage.getItem(cacheKey);
+							              
+							              if (cached) {
+							                try {
+							                  const parsed = JSON.parse(cached);
+							                  if (Date.now() - parsed.t < 86400000) {
+							                    setRefData(parsed);
+							                    return;
+							                  }
+							                } catch (e) {}
+							              }
+							              
+							              const loadRefereeStats = async () => {
+							                try {
+							                  const matches = await api(`/fixtures?referee=${encodeURIComponent(refereeName)}&last=12&status=FT`);
+							                  
+							                  if (!matches || matches.length < 3) return;
+							                  
+							                  let totalYellows = 0, totalReds = 0, matchCount = 0;
+							                  
+							                  for (const match of matches.slice(0, 10)) {
+							                    const events = await api(`/fixtures/events?fixture=${match.fixture.id}`);
+							                    
+							                    if (events && events.length) {
+							                      totalYellows += events.filter(e => e.detail === "Yellow Card").length;
+							                      totalReds += events.filter(e => e.detail === "Red Card" || e.detail === "Second Yellow Card").length;
+							                      matchCount++;
+							                    }
+							                  }
+							                  
+							                  if (matchCount > 0) {
+							                    const avgY = (totalYellows / matchCount).toFixed(2);
+							                    const avgR = (totalReds / matchCount).toFixed(2);
+							                    
+							                    const data = {
+							                      y: avgY,
+							                      r: avgR,
+							                      m: matchCount,
+							                      t: Date.now()
+							                    };
+							                    
+							                    localStorage.setItem(cacheKey, JSON.stringify(data));
+							                    setRefData(data);
+							                  }
+							                } catch (error) {
+							                  console.error("Erreur chargement stats arbitre:", error);
+							                }
+							              };
+							              
+							              loadRefereeStats();
+							            }, [refereeName]);
+							            
+							            return React.createElement("div", {className:"cards-stats-row"},
+							              React.createElement("div", {className:"cards-stats-item"},
+							                React.createElement("div", {className:"cards-stats-icon"}, "⚖️"),
+							                React.createElement("span", {style:{fontSize:"11px", color:"#4A5568"}}, 
+							                  refereeName ? refereeName.split(',')[0] : "Arbitre"
+							                )
+							              ),
+							              React.createElement("div", {className:"cards-stats-values"},
+							                refData ? 
+							                  React.createElement(React.Fragment, null,
+							                    React.createElement("span", {className:"cards-stats-value yellow"}, 
+							                      `🟨 ${refData.y}`
+							                    ),
+							                    React.createElement("span", {className:"cards-stats-value red"}, 
+							                      `🟥 ${refData.r}`
+							                    ),
+							                    React.createElement("span", {className:"cards-stats-value", style:{background:"#e2e8f0"}}, 
+							                      `${refData.m} matchs`
+							                    )
+							                  ) :
+							                  React.createElement("span", {style:{fontSize:"10px", color:"#a0aec0"}}, 
+							                    refereeName ? "Chargement..." : "Arbitre non communiqué"
+							                  )
+							              )
+							            );
+							          })()
 							        )
 							      ):null,
 
