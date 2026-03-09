@@ -3069,70 +3069,100 @@ function PlayersStatsPanel({players,homeTeam,awayTeam}){
 }
 
 // MODULE COMPOSITIONS
-function ComposPanel({lineups,players,homeTeam,awayTeam,isPartial}){
+function ComposPanel({lineups,players,homeTeam,awayTeam,isPartial, fix, events, injuries}){
   const[view,setView]=useState("pitch");
-  const[pitchFilter,setPitchFilter]=useState("rating");
-  const hLu=lineups.find(l=>l.team?.id===homeTeam?.id);
-  const aLu=lineups.find(l=>l.team?.id===awayTeam?.id);
-  const hPh=players.find(t=>t.team?.id===homeTeam?.id)?.players??[];
-  const aPh=players.find(t=>t.team?.id===awayTeam?.id)?.players??[];
-  const ph=(tp,pid)=>tp.find(p=>p.player?.id===pid)?.player?.photo;
+  const hLu=lineups?.find(l=>l.team?.id===homeTeam?.id);
+  const aLu=lineups?.find(l=>l.team?.id===awayTeam?.id);
 
-  if(!hLu&&!aLu) return<div style={{textAlign:"center",padding:"44px 20px",color:T.t3,display:"flex",flexDirection:"column",alignItems:"center",gap:12}}>
-    {isPartial
-      ?<><Spin s={24}/><span style={{fontSize:13}}>Chargement compositions...</span></>
-      :<><div style={{fontSize:36}}>📋</div><div style={{fontSize:13}}>Compositions non disponibles</div></>
-    }
-  </div>;
+  if(!hLu && !aLu) {
+    return React.createElement("div", {
+      style: {
+        textAlign: "center",
+        padding: "44px 20px",
+        color: T.t3,
+        display: "flex",
+        flexDirection: "column",
+        alignItems: "center",
+        gap: 12
+      }
+    },
+      isPartial
+        ? React.createElement(React.Fragment, null,
+            React.createElement(Spin, { s: 24 }),
+            React.createElement("span", { style: { fontSize: 13 } }, "Chargement compositions...")
+          )
+        : React.createElement(React.Fragment, null,
+            React.createElement("div", { style: { fontSize: 36 } }, "📋"),
+            React.createElement("div", { style: { fontSize: 13 } }, "Compositions non disponibles")
+          )
+    );
+  }
 
-  const Plr=({p,tp,tc})=><div style={{display:"flex",alignItems:"center",padding:"9px 16px",borderBottom:`1px solid ${T.line}11`,gap:11}}>
-    <span style={{fontSize:11,fontWeight:700,color:T.t4,width:22,textAlign:"center",flexShrink:0}}>{p.player?.number}</span>
-    <Avatar src={ph(tp,p.player?.id)} size={36} ring={tc}/>
-    <div style={{flex:1,minWidth:0}}>
-      <div style={{fontSize:13,color:T.t1,fontWeight:500,overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap"}}>{p.player?.name}</div>
-    </div>
-    {p.player?.pos&&<span style={{fontSize:9,fontWeight:800,color:tc,background:tc+"22",padding:"2px 7px",borderRadius:4,flexShrink:0}}>{p.player.pos}</span>}
-  </div>;
-
-  return<div>
-    <div style={{background:"#fff",borderBottom:"1px solid rgba(0,0,0,.07)"}}>
-      <div style={{display:"flex",gap:6,padding:"10px 14px 8px"}}>
-        <div style={{display:"flex",background:"#f0f1f5",borderRadius:10,padding:3,gap:2,flex:1}}>
-          {[["pitch","⚽ Schéma"],["list","📋 Listes"]].map(([v,lb])=><button key={v} onClick={()=>setView(v)} style={{flex:1,background:view===v?"#00c170":"rgba(255,255,255,.06)",border:"none",color:view===v?"#fff":"rgba(255,255,255,.4)",borderRadius:8,padding:"8px",fontSize:12,fontWeight:view===v?700:500,cursor:"pointer",transition:"all .15s"}}>{lb}</button>)}
-        </div>
-      </div>
-    </div>
-
-    {view==="pitch"&&
-      // Utiliser la nouvelle vue terrain FlashScore
-      renderTerrainFlash(
-        {teams:{home:homeTeam,away:awayTeam}},
-        hLu,
-        aLu,
-        players,
-        [],
-        homeTeam?.id,
-        awayTeam?.id,
-        false,
-        null,
-        null
-      )
-    }
-
-    {view==="list"&&
-      // Utiliser la nouvelle vue liste FlashScore
-      renderListeFlash(
-        {teams:{home:homeTeam,away:awayTeam}},
-        hLu,
-        aLu,
-        players,
-        [],
-        [],
-        homeTeam?.id,
-        awayTeam?.id
-      )
-    }
-  </div>;
+  return React.createElement("div", { style: { width: "100%" } },
+    // Toggle boutons
+    React.createElement("div", {
+      style: {
+        display: "flex",
+        gap: 6,
+        marginBottom: 10,
+        padding: "0 12px"
+      }
+    },
+      React.createElement("button", {
+        onClick: () => setView("pitch"),
+        style: {
+          flex: 1,
+          padding: "8px 0",
+          background: view === "pitch" ? "#00b86b" : "#f0f2f5",
+          border: "none",
+          borderRadius: 8,
+          color: view === "pitch" ? "#fff" : "#666",
+          fontSize: 12,
+          fontWeight: view === "pitch" ? 700 : 500,
+          cursor: "pointer"
+        }
+      }, "⚽ Terrain"),
+      React.createElement("button", {
+        onClick: () => setView("list"),
+        style: {
+          flex: 1,
+          padding: "8px 0",
+          background: view === "list" ? "#00b86b" : "#f0f2f5",
+          border: "none",
+          borderRadius: 8,
+          color: view === "list" ? "#fff" : "#666",
+          fontSize: 12,
+          fontWeight: view === "list" ? 700 : 500,
+          cursor: "pointer"
+        }
+      }, "📋 Liste")
+    ),
+    
+    // Affichage selon la vue
+    view === "pitch"
+      ? renderTerrainFlash(
+          { teams: { home: homeTeam, away: awayTeam } },
+          hLu,
+          aLu,
+          players || [],
+          events || [],
+          homeTeam?.id,
+          awayTeam?.id,
+          false,
+          null,
+          null
+        )
+      : renderListeFlash(
+          { teams: { home: homeTeam, away: awayTeam } },
+          hLu,
+          aLu,
+          players || [],
+          events || [],
+          injuries || [],
+          homeTeam?.id,
+          awayTeam?.id
+        )
+  );
 }
 
 //
