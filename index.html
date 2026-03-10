@@ -4701,8 +4701,7 @@ function ScoresTab({favs,onFav}){
     if(q.trim()){const s=q.toLowerCase();list=list.filter(f=>f.teams.home.name.toLowerCase().includes(s)||f.teams.away.name.toLowerCase().includes(s)||f.league.name.toLowerCase().includes(s));}
     if(favOnly)list=list.filter(f=>favs.has(f.fixture.id));
     
-    // ✅ FILTRE POUR VOIR QUE LES MATCHS LIVE
-    // Décommente la ligne ci-dessous pour activer le filtre live
+    // ✅ FILTRE POUR VOIR QUE LES MATCHS LIVE - DÉCOMMENTE POUR ACTIVER
     // list = list.filter(f => LIVE_ST.has(f.fixture.status.short));
     
     const map={};
@@ -4838,7 +4837,7 @@ function ScoresTab({favs,onFav}){
         style: { border: "1px solid " + T.line, color: T.t3, borderRadius: 10, padding: "8px 10px", fontSize: 12, cursor: "pointer", background: "none", flexShrink: 0 }
       }, "✕") : null
     ),
-    // ✅ SUPPRESSION DE LA BARRE GRISE - Le paddingBottom est maintenant géré par la div principale
+    // ✅ BARRE GRISE SUPPRIMÉE - plus de paddingBottom
     React.createElement("div", { style: { flex: 1, overflowY: "auto" } },
       st === "load" ? React.createElement(SkRows, null)
       : st === "err" ? React.createElement("div", { style: { textAlign: "center", padding: "52px 24px" } },
@@ -5145,8 +5144,8 @@ function App(){
       scr === "actu" ? React.createElement(ActuTab, null) : null,
       scr === "results" ? React.createElement(ResultsTab, null) : null,
       scr === "jsk" ? React.createElement(JSKTab, null) : null
-    ),
-    React.createElement("div", { style: { height: "env(safe-area-inset-bottom)", background: T.bg0, flexShrink: 0 } })
+    )
+    // ✅ BARRE GRISE SUPPRIMÉE - cette ligne a été enlevée
   );
 }
 
