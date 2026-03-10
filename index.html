@@ -1298,6 +1298,11 @@
 		</script>
 
 		<script type="text/plain" id="jsx-source">
+
+// ============================================
+// CODE ORIGINAL RESTAURÉ AVEC TOUS LES ONGLETS
+// ============================================
+
 const {useState,useEffect,useCallback,useRef,useMemo}=React;
 
 // ── IDs des clubs algériens (MIS À JOUR) ──────────────────────────────
@@ -2159,7 +2164,6 @@ const renderListeFlash = (fix, hLu, aLu, players, events, injuries, hid, aid) =>
   const homeAbsent = getAbsentPlayers(hid);
   const awayAbsent = getAbsentPlayers(aid);
 
-  // ✅ STYLES CORRIGÉS POUR ÉVITER LE DÉCALAGE
   return React.createElement("div", {
     style: {
       padding: "8px 4px 20px",
@@ -2941,9 +2945,9 @@ function LeagueBlock({group,onOpen,favs,onFav}){
   );
 }
 
-//
+// ============================================
 // MATCH DETAIL (avec stats améliorées et VAR)
-//
+// ============================================
 function MatchDetailWrapper({state,onClose}){
   if(!state)return null;
   return React.createElement(MatchDetail,{state,onClose});
@@ -3372,45 +3376,38 @@ function MatchDetail({state,onClose}){
     );
   };
 
-  // ✅ NOUVELLE VERSION STATS AMÉLIORÉE AVEC BARRES DE PROGRESSION
+  // ========== STATS AMÉLIORÉES ==========
   const renderStats = () => {
-    // ✅ SÉCURITÉ MAXIMALE - Vérification que tout existe
     if (!fix || !fix.teams || !fix.teams.home || !fix.teams.away) {
       return React.createElement("div", { 
         style: { 
           padding: 40, 
           textAlign: "center", 
           color: "#8E96A8",
-          fontSize: 14,
-          fontFamily: "Barlow, sans-serif"
+          fontSize: 14
         } 
       }, "📊 Statistiques non disponibles");
     }
 
-    // ✅ Protection contre stats undefined
     const safeStats = stats || [];
     const hStats = safeStats.find(s => s?.team?.id === fix.teams.home?.id)?.statistics || [];
     const aStats = safeStats.find(s => s?.team?.id === fix.teams.away?.id)?.statistics || [];
 
-    // ✅ Helper ultra sécurisé pour récupérer les stats
     const getStat = (arr, type) => {
       try {
         if (!Array.isArray(arr)) return 0;
         const stat = arr.find(s => s && s.type === type);
         if (!stat) return 0;
-        
-        // Gestion des différents formats de valeur
         const val = stat.value;
         if (typeof val === 'object' && val !== null) {
           return val.total || 0;
         }
         return val || 0;
-      } catch (e) {
+      } catch {
         return 0;
       }
     };
 
-    // ✅ Helper pour les pourcentages
     const getPercentStat = (arr, type) => {
       try {
         const val = getStat(arr, type);
@@ -3423,7 +3420,6 @@ function MatchDetail({state,onClose}){
       }
     };
 
-    // ✅ Récupération de TOUTES les stats avec fallbacks sécurisés
     const possessionH = getPercentStat(hStats, "Ball Possession");
     const possessionA = getPercentStat(aStats, "Ball Possession");
     
@@ -3475,71 +3471,6 @@ function MatchDetail({state,onClose}){
     const savesH = parseInt(getStat(hStats, "Goalkeeper Saves")) || 0;
     const savesA = parseInt(getStat(aStats, "Goalkeeper Saves")) || 0;
 
-    // ✅ Fonction pour générer les barres de progression
-    const renderProgressBar = (homeValue, awayValue, homeColor = "#00b86b", awayColor = "#2563eb") => {
-      const total = homeValue + awayValue;
-      const homePercent = total > 0 ? (homeValue / total) * 100 : 50;
-      const awayPercent = 100 - homePercent;
-      
-      return React.createElement("div", { 
-        style: { 
-          display: "flex",
-          alignItems: "center",
-          gap: 8,
-          marginTop: 4,
-          marginBottom: 12
-        } 
-      },
-        React.createElement("span", { 
-          style: { 
-            fontFamily: "'Barlow Condensed', sans-serif",
-            fontSize: 14,
-            fontWeight: 700,
-            color: homeValue > awayValue ? homeColor : "#666",
-            minWidth: 35
-          } 
-        }, homeValue),
-        React.createElement("div", { 
-          style: { 
-            flex: 1,
-            height: 6,
-            backgroundColor: "#F0F2F5",
-            borderRadius: 3,
-            overflow: "hidden",
-            display: "flex"
-          } 
-        },
-          React.createElement("div", { 
-            style: { 
-              width: homePercent + "%",
-              height: "100%",
-              background: homeColor,
-              transition: "width 0.5s ease"
-            } 
-          }),
-          React.createElement("div", { 
-            style: { 
-              width: awayPercent + "%",
-              height: "100%",
-              background: awayColor,
-              transition: "width 0.5s ease"
-            } 
-          })
-        ),
-        React.createElement("span", { 
-          style: { 
-            fontFamily: "'Barlow Condensed', sans-serif",
-            fontSize: 14,
-            fontWeight: 700,
-            color: awayValue > homeValue ? awayColor : "#666",
-            minWidth: 35,
-            textAlign: "right"
-          } 
-        }, awayValue)
-      );
-    };
-
-    // ✅ Fonction pour générer les 🥅 avec barres
     const renderGoalBars = (value, color = "#00b86b", max = null) => {
       const num = parseInt(value) || 0;
       const maxVal = max !== null ? parseInt(max) : Math.max(num, 1);
@@ -3576,7 +3507,6 @@ function MatchDetail({state,onClose}){
       );
     };
 
-    // ✅ Style pour chaque ligne
     const statRowStyle = {
       display: "flex",
       alignItems: "center",
@@ -3625,7 +3555,6 @@ function MatchDetail({state,onClose}){
       padding: "0 8px"
     };
 
-    // ✅ Retour du composant avec TOUTES les cartes
     return React.createElement("div", { 
       style: { 
         width: "100%", 
@@ -3721,7 +3650,6 @@ function MatchDetail({state,onClose}){
           border: "1px solid rgba(0,0,0,0.04)"
         } 
       },
-        // En-tête de carte
         React.createElement("div", { 
           style: { 
             padding: "12px 16px", 
@@ -3740,7 +3668,6 @@ function MatchDetail({state,onClose}){
           }, "ATTAQUE")
         ),
         
-        // Total tirs avec barre
         React.createElement("div", { style: statRowStyle },
           React.createElement("div", { style: valueLeftStyle(totalShotsH > totalShotsA) },
             totalShotsH,
@@ -3753,7 +3680,6 @@ function MatchDetail({state,onClose}){
           )
         ),
 
-        // Tirs non cadrés avec barre
         React.createElement("div", { style: statRowStyle },
           React.createElement("div", { style: valueLeftStyle(shotsOffH > shotsOffA) },
             shotsOffH,
@@ -3766,7 +3692,6 @@ function MatchDetail({state,onClose}){
           )
         ),
 
-        // Tirs cadrés avec barre
         React.createElement("div", { style: statRowStyle },
           React.createElement("div", { style: valueLeftStyle(shotsOnH > shotsOnA) },
             shotsOnH,
@@ -3779,7 +3704,6 @@ function MatchDetail({state,onClose}){
           )
         ),
 
-        // Tirs contrés avec barre
         React.createElement("div", { style: statRowStyle },
           React.createElement("div", { style: valueLeftStyle(blockedShotsH > blockedShotsA) },
             blockedShotsH,
@@ -3792,21 +3716,18 @@ function MatchDetail({state,onClose}){
           )
         ),
 
-        // Penalty
         React.createElement("div", { style: statRowStyle },
           React.createElement("div", { style: valueLeftStyle() }, "0"),
           React.createElement("span", { style: labelStyle }, "Penalty"),
           React.createElement("div", { style: valueRightStyle() }, "0")
         ),
 
-        // Grosses occasions manquées
         React.createElement("div", { style: statRowStyle },
           React.createElement("div", { style: valueLeftStyle() }, "0"),
           React.createElement("span", { style: labelStyle }, "Grosses occasions manquées"),
           React.createElement("div", { style: valueRightStyle() }, "0")
         ),
 
-        // Tirs dans la surface avec barre
         React.createElement("div", { style: statRowStyle },
           React.createElement("div", { style: valueLeftStyle(shotsInsideH > shotsInsideA) },
             shotsInsideH,
@@ -3819,7 +3740,6 @@ function MatchDetail({state,onClose}){
           )
         ),
 
-        // Tirs en dehors de la surface avec barre
         React.createElement("div", { style: { ...statRowStyle, borderBottom: "none" } },
           React.createElement("div", { style: valueLeftStyle(shotsOutsideH > shotsOutsideA) },
             shotsOutsideH,
@@ -3862,7 +3782,6 @@ function MatchDetail({state,onClose}){
           }, "COUPS DE PIED ARRÊTÉS")
         ),
         
-        // Corners avec barre
         React.createElement("div", { style: statRowStyle },
           React.createElement("div", { style: valueLeftStyle(cornersH > cornersA) },
             cornersH,
@@ -3875,7 +3794,6 @@ function MatchDetail({state,onClose}){
           )
         ),
 
-        // Hors-jeux avec barre
         React.createElement("div", { style: statRowStyle },
           React.createElement("div", { style: valueLeftStyle(offsidesH > offsidesA) },
             offsidesH,
@@ -3888,14 +3806,12 @@ function MatchDetail({state,onClose}){
           )
         ),
 
-        // Cartons jaunes
         React.createElement("div", { style: statRowStyle },
           React.createElement("div", { style: valueLeftStyle(yellowH > yellowA) }, yellowH),
           React.createElement("span", { style: labelStyle }, "Cartons jaunes"),
           React.createElement("div", { style: valueRightStyle(yellowA > yellowH) }, yellowA)
         ),
 
-        // Cartons rouges
         React.createElement("div", { style: { ...statRowStyle, borderBottom: "none" } },
           React.createElement("div", { style: valueLeftStyle(redH > redA) }, redH),
           React.createElement("span", { style: labelStyle }, "Cartons rouges"),
@@ -3932,14 +3848,12 @@ function MatchDetail({state,onClose}){
           }, "DISTRIBUTION")
         ),
         
-        // Total passes
         React.createElement("div", { style: statRowStyle },
           React.createElement("span", { style: valueLeftStyle(totalPassesH > totalPassesA) }, totalPassesH),
           React.createElement("span", { style: labelStyle }, "Total Passes"),
           React.createElement("span", { style: valueRightStyle(totalPassesA > totalPassesH) }, totalPassesA)
         ),
 
-        // Passes réussies avec pourcentage
         React.createElement("div", { style: { ...statRowStyle, borderBottom: "none" } },
           React.createElement("span", { style: valueLeftStyle(accuratePassesH > accuratePassesA) }, 
             `${accuratePassesH} (${passPercentH}%)`
@@ -3980,21 +3894,18 @@ function MatchDetail({state,onClose}){
           }, "DÉFENSE")
         ),
         
-        // Tacles
         React.createElement("div", { style: statRowStyle },
           React.createElement("span", { style: valueLeftStyle(tacklesH > tacklesA) }, tacklesH),
           React.createElement("span", { style: labelStyle }, "Tacles"),
           React.createElement("span", { style: valueRightStyle(tacklesA > tacklesH) }, tacklesA)
         ),
 
-        // Fautes
         React.createElement("div", { style: statRowStyle },
           React.createElement("span", { style: valueLeftStyle(foulsH > foulsA) }, foulsH),
           React.createElement("span", { style: labelStyle }, "Fautes"),
           React.createElement("span", { style: valueRightStyle(foulsA > foulsH) }, foulsA)
         ),
 
-        // Arrêts du gardien avec barre
         React.createElement("div", { style: { ...statRowStyle, borderBottom: "none" } },
           React.createElement("div", { style: valueLeftStyle(savesH > savesA) },
             savesH,
@@ -4037,14 +3948,12 @@ function MatchDetail({state,onClose}){
           }, "DISCIPLINE")
         ),
         
-        // Cartons jaunes
         React.createElement("div", { style: statRowStyle },
           React.createElement("span", { style: valueLeftStyle(yellowH > yellowA) }, yellowH),
           React.createElement("span", { style: labelStyle }, "Cartons jaunes"),
           React.createElement("span", { style: valueRightStyle(yellowA > yellowH) }, yellowA)
         ),
 
-        // Cartons rouges
         React.createElement("div", { style: { ...statRowStyle, borderBottom: "none" } },
           React.createElement("span", { style: valueLeftStyle(redH > redA) }, redH),
           React.createElement("span", { style: labelStyle }, "Cartons rouges"),
@@ -4701,7 +4610,9 @@ function MatchDetail({state,onClose}){
   );
 }
 
-// ── SCORES TAB ──────────────────
+// ============================================
+// ONGLET SCORES
+// ============================================
 function ScoresTab({favs,onFav}){
   const[date,setDate]=useState(today()),[data,setData]=useState([]),[st,setSt]=useState("load"),[err,setErr]=useState("");
   const[detail,setDet]=useState(null),[q,setQ]=useState(""),[lg,setLg]=useState(null),[favOnly,setFO]=useState(false);
@@ -5042,24 +4953,27 @@ function ScoresTab({favs,onFav}){
   );
 }
 
-// ========== ONGLET CLASSEMENT (StandingsTab) ==========
+// ============================================
+// ONGLET CLASSEMENT (StandingsTab) - RESTAURÉ
+// ============================================
 function StandingsTab() {
   const [lid, setLid] = useState(39);
   const [season, setSeason] = useState(CUR_SEASON);
-  const [data, setData] = useState([]);
+  const [standings, setStandings] = useState([]);
   const [status, setStatus] = useState("load");
+  const [showConfig, setShowConfig] = useState(false);
+  
+  const league = LEAGUES.find(l => l.id === lid) || LEAGUES[0];
   
   useEffect(() => {
     let mounted = true;
     setStatus("load");
     
     api(`/standings?league=${lid}&season=${season}`, 3600000)
-      .then(res => {
-        if (mounted && res && res.length > 0) {
-          setData(res);
-          setStatus("ok");
-        } else if (mounted) {
-          setStatus("empty");
+      .then(data => {
+        if (mounted) {
+          setStandings(data || []);
+          setStatus(data?.length ? "ok" : "empty");
         }
       })
       .catch(() => {
@@ -5069,112 +4983,192 @@ function StandingsTab() {
     return () => { mounted = false; };
   }, [lid, season]);
   
-  const league = LEAGUES.find(l => l.id === lid) || LEAGUES[0];
+  const SEL = {
+    width: "100%",
+    background: T.bg2,
+    border: `1px solid ${T.bg4}`,
+    color: T.t1,
+    borderRadius: 8,
+    padding: "10px 13px",
+    fontSize: 13,
+    outline: "none",
+    cursor: "pointer"
+  };
   
-  return React.createElement("div", { style: { padding: "16px", height: "100%", overflowY: "auto" } },
-    React.createElement("div", { style: { marginBottom: "16px", display: "flex", gap: "8px", alignItems: "center" } },
-      React.createElement("select", {
-        value: lid,
-        onChange: e => setLid(Number(e.target.value)),
-        style: { flex: 2, padding: "8px", borderRadius: "8px", border: "1px solid #ddd" }
+  return React.createElement("div", { style: { height: "100%", display: "flex", flexDirection: "column", overflow: "hidden" } },
+    // Header
+    React.createElement("div", { style: { padding: "12px 16px", borderBottom: `1px solid ${T.line}`, background: T.bg1, flexShrink: 0 } },
+      React.createElement("div", {
+        onClick: () => setShowConfig(true),
+        style: {
+          display: "flex",
+          alignItems: "center",
+          gap: 12,
+          background: "#fff",
+          padding: "0 14px",
+          cursor: "pointer",
+          height: 56,
+          borderRadius: 12,
+          border: `1px solid ${T.line}`,
+          boxShadow: T.shadowSm
+        }
       },
-        REGIONS.map(region => 
-          React.createElement("optgroup", { key: region, label: region },
-            LEAGUES.filter(l => l.region === region).map(l =>
-              React.createElement("option", { key: l.id, value: l.id }, `${l.flag} ${l.name}`)
-            )
+        React.createElement("div", { style: { width: 34, height: 34, display: "flex", alignItems: "center", justifyContent: "center", fontSize: 22, background: T.bg2, borderRadius: 8 } },
+          league?.flag || "🏆"
+        ),
+        React.createElement("div", { style: { flex: 1, minWidth: 0 } },
+          React.createElement("div", { className: "bc", style: { fontSize: 15, fontWeight: 800, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" } },
+            league?.name || "—"
+          ),
+          React.createElement("div", { style: { fontSize: 11, color: T.t3, marginTop: 2 } },
+            `Saison ${season}/${season+1}`
           )
-        )
-      ),
-      React.createElement("select", {
-        value: season,
-        onChange: e => setSeason(Number(e.target.value)),
-        style: { flex: 1, padding: "8px", borderRadius: "8px", border: "1px solid #ddd" }
-      },
-        SEASONS.map(y => 
-          React.createElement("option", { key: y, value: y }, `${y}/${y+1}`)
+        ),
+        React.createElement("div", { style: { background: T.red, borderRadius: 8, padding: "4px 10px" } },
+          React.createElement("span", { style: { fontSize: 11, color: "#fff", fontWeight: 700 } }, "⚙️")
         )
       )
     ),
     
-    status === "load" && React.createElement("div", { style: { textAlign: "center", padding: "40px" } },
-      React.createElement(Spin, null),
-      React.createElement("div", { style: { marginTop: "12px", color: T.t3 } }, "Chargement...")
-    ),
-    
-    status === "err" && React.createElement("div", { style: { textAlign: "center", padding: "40px", color: T.t3 } },
-      "Erreur de chargement"
-    ),
-    
-    status === "empty" && React.createElement("div", { style: { textAlign: "center", padding: "40px", color: T.t3 } },
-      "Aucun classement disponible"
-    ),
-    
-    status === "ok" && React.createElement("div", null,
-      data.map((item, idx) => {
-        const standings = item.league?.standings;
-        if (!standings) return null;
-        
-        return React.createElement("div", { key: idx, style: { marginBottom: "20px" } },
-          React.createElement("div", { style: { padding: "8px 12px", background: T.bg2, borderRadius: "8px", marginBottom: "8px", fontWeight: "bold" } },
-            `${item.league.name} - ${item.league.country}`
-          ),
-          React.createElement("table", { style: { width: "100%", borderCollapse: "collapse" } },
-            React.createElement("thead", null,
-              React.createElement("tr", { style: { background: T.bg3, fontSize: "12px" } },
-                React.createElement("th", { style: { padding: "8px 4px", textAlign: "center" } }, "#"),
-                React.createElement("th", { style: { padding: "8px 4px", textAlign: "left" } }, "Équipe"),
-                React.createElement("th", { style: { padding: "8px 4px", textAlign: "center" } }, "MJ"),
-                React.createElement("th", { style: { padding: "8px 4px", textAlign: "center" } }, "G"),
-                React.createElement("th", { style: { padding: "8px 4px", textAlign: "center" } }, "N"),
-                React.createElement("th", { style: { padding: "8px 4px", textAlign: "center" } }, "P"),
-                React.createElement("th", { style: { padding: "8px 4px", textAlign: "center" } }, "BP"),
-                React.createElement("th", { style: { padding: "8px 4px", textAlign: "center" } }, "BC"),
-                React.createElement("th", { style: { padding: "8px 4px", textAlign: "center" } }, "Pts")
+    // Liste des classements
+    React.createElement("div", { style: { flex: 1, overflowY: "auto", padding: "12px" } },
+      status === "load" && React.createElement("div", { style: { textAlign: "center", padding: "40px" } },
+        React.createElement(Spin, null),
+        React.createElement("div", { style: { marginTop: 12, color: T.t3 } }, "Chargement...")
+      ),
+      
+      status === "err" && React.createElement("div", { style: { textAlign: "center", padding: "40px", color: T.t3 } },
+        "Erreur de chargement"
+      ),
+      
+      status === "empty" && React.createElement("div", { style: { textAlign: "center", padding: "40px", color: T.t3 } },
+        "Aucun classement disponible"
+      ),
+      
+      status === "ok" && standings.map((item, idx) => {
+        const groups = item.league?.standings || [];
+        return React.createElement("div", { key: idx, style: { marginBottom: 20 } },
+          groups.map((group, groupIdx) => {
+            const rows = Array.isArray(group) ? group : [group];
+            const groupName = rows[0]?.group;
+            
+            return React.createElement("div", { key: groupIdx },
+              groupName && React.createElement("div", { style: {
+                padding: "8px 12px",
+                background: "rgba(0,184,107,0.1)",
+                borderLeft: "4px solid #00b86b",
+                marginBottom: 8,
+                fontWeight: "bold",
+                fontSize: 13
+              } },
+                groupName
+              ),
+              React.createElement("table", { style: { width: "100%", borderCollapse: "collapse", fontSize: 12 } },
+                React.createElement("thead", null,
+                  React.createElement("tr", { style: { background: T.bg3, fontSize: 10 } },
+                    React.createElement("th", { style: { padding: "8px 4px", textAlign: "center" } }, "#"),
+                    React.createElement("th", { style: { padding: "8px 4px", textAlign: "left" } }, "Équipe"),
+                    React.createElement("th", { style: { padding: "8px 4px", textAlign: "center" } }, "MJ"),
+                    React.createElement("th", { style: { padding: "8px 4px", textAlign: "center" } }, "V"),
+                    React.createElement("th", { style: { padding: "8px 4px", textAlign: "center" } }, "N"),
+                    React.createElement("th", { style: { padding: "8px 4px", textAlign: "center" } }, "D"),
+                    React.createElement("th", { style: { padding: "8px 4px", textAlign: "center" } }, "BP"),
+                    React.createElement("th", { style: { padding: "8px 4px", textAlign: "center" } }, "BC"),
+                    React.createElement("th", { style: { padding: "8px 4px", textAlign: "center" } }, "Pts")
+                  )
+                ),
+                React.createElement("tbody", null,
+                  rows.map((row, rowIdx) => {
+                    if (!row) return null;
+                    const isJsk = row.team?.id === 918;
+                    return React.createElement("tr", {
+                      key: rowIdx,
+                      style: {
+                        borderBottom: `1px solid ${T.line}`,
+                        background: isJsk ? "rgba(0,184,107,0.1)" : "transparent"
+                      }
+                    },
+                      React.createElement("td", { style: { padding: "8px 4px", textAlign: "center", fontWeight: "bold" } }, row.rank),
+                      React.createElement("td", { style: { padding: "8px 4px", display: "flex", alignItems: "center", gap: 8 } },
+                        React.createElement(Logo, { src: row.team?.logo, size: 18 }),
+                        React.createElement("span", { style: { fontWeight: isJsk ? 700 : 400 } }, row.team?.name)
+                      ),
+                      React.createElement("td", { style: { padding: "8px 4px", textAlign: "center" } }, row.all?.played || 0),
+                      React.createElement("td", { style: { padding: "8px 4px", textAlign: "center", color: "#00b86b" } }, row.all?.win || 0),
+                      React.createElement("td", { style: { padding: "8px 4px", textAlign: "center" } }, row.all?.draw || 0),
+                      React.createElement("td", { style: { padding: "8px 4px", textAlign: "center", color: "#e53935" } }, row.all?.lose || 0),
+                      React.createElement("td", { style: { padding: "8px 4px", textAlign: "center" } }, row.all?.goals?.for || 0),
+                      React.createElement("td", { style: { padding: "8px 4px", textAlign: "center" } }, row.all?.goals?.against || 0),
+                      React.createElement("td", { style: { padding: "8px 4px", textAlign: "center", fontWeight: "bold", color: "#00b86b" } }, row.points)
+                    );
+                  })
+                )
               )
-            ),
-            React.createElement("tbody", null,
-              standings.map((groupStandings, groupIdx) => {
-                const isGroup = Array.isArray(groupStandings);
-                const rows = isGroup ? groupStandings : [groupStandings];
-                
-                return rows.map((row, rowIdx) => {
-                  if (!row) return null;
-                  return React.createElement("tr", {
-                    key: `${groupIdx}-${rowIdx}`,
-                    style: {
-                      borderBottom: "1px solid #eee",
-                      background: row.team?.id === 918 ? "rgba(0,184,107,0.1)" : "transparent"
-                    }
-                  },
-                    React.createElement("td", { style: { padding: "8px 4px", textAlign: "center" } }, row.rank),
-                    React.createElement("td", { style: { padding: "8px 4px", display: "flex", alignItems: "center", gap: "8px" } },
-                      React.createElement(Logo, { src: row.team?.logo, size: 20 }),
-                      React.createElement("span", null, row.team?.name)
-                    ),
-                    React.createElement("td", { style: { padding: "8px 4px", textAlign: "center" } }, row.all?.played || 0),
-                    React.createElement("td", { style: { padding: "8px 4px", textAlign: "center", color: "#00b86b" } }, row.all?.win || 0),
-                    React.createElement("td", { style: { padding: "8px 4px", textAlign: "center", color: "#888" } }, row.all?.draw || 0),
-                    React.createElement("td", { style: { padding: "8px 4px", textAlign: "center", color: "#e53935" } }, row.all?.lose || 0),
-                    React.createElement("td", { style: { padding: "8px 4px", textAlign: "center" } }, row.all?.goals?.for || 0),
-                    React.createElement("td", { style: { padding: "8px 4px", textAlign: "center" } }, row.all?.goals?.against || 0),
-                    React.createElement("td", { style: { padding: "8px 4px", textAlign: "center", fontWeight: "bold", color: "#00b86b" } }, row.points)
-                  );
-                });
-              })
-            )
-          )
+            );
+          })
         );
       })
+    ),
+    
+    // Sheet de configuration
+    React.createElement(Sheet, { open: showConfig, onClose: () => setShowConfig(false) },
+      React.createElement("div", { style: { padding: "16px" } },
+        React.createElement("div", { style: { fontSize: 16, fontWeight: 700, marginBottom: 16 } }, "Configuration")
+      ),
+      React.createElement("div", { style: { padding: "0 16px 24px", display: "flex", flexDirection: "column", gap: 16 } },
+        React.createElement("div", null,
+          React.createElement("div", { style: { fontSize: 10, fontWeight: 700, color: T.t3, marginBottom: 8 } }, "COMPÉTITION"),
+          React.createElement("select", {
+            value: lid,
+            onChange: e => setLid(Number(e.target.value)),
+            style: SEL
+          },
+            REGIONS.map(region => 
+              React.createElement("optgroup", { key: region, label: region },
+                LEAGUES.filter(l => l.region === region).map(l =>
+                  React.createElement("option", { key: l.id, value: l.id }, `${l.flag} ${l.name}`)
+                )
+              )
+            )
+          )
+        ),
+        React.createElement("div", null,
+          React.createElement("div", { style: { fontSize: 10, fontWeight: 700, color: T.t3, marginBottom: 8 } }, "SAISON"),
+          React.createElement("select", {
+            value: season,
+            onChange: e => setSeason(Number(e.target.value)),
+            style: SEL
+          },
+            SEASONS.map(y => 
+              React.createElement("option", { key: y, value: y }, `${y}/${y+1}`)
+            )
+          )
+        ),
+        React.createElement("button", {
+          onClick: () => setShowConfig(false),
+          style: {
+            background: T.redG,
+            border: "none",
+            color: "#fff",
+            borderRadius: 12,
+            padding: "14px",
+            fontSize: 14,
+            fontWeight: 700,
+            cursor: "pointer"
+          }
+        }, "Appliquer")
+      )
     )
   );
 }
 
-// ========== ONGLET BUTEURS (ScorersTab) ==========
+// ============================================
+// ONGLET BUTEURS (ScorersTab) - RESTAURÉ
+// ============================================
 function ScorersTab() {
   const [lid, setLid] = useState(39);
   const [season, setSeason] = useState(CUR_SEASON);
-  const [type, setType] = useState("scorers"); // scorers ou assists
+  const [type, setType] = useState("scorers");
   const [data, setData] = useState([]);
   const [status, setStatus] = useState("load");
   
@@ -5182,7 +5176,7 @@ function ScorersTab() {
     let mounted = true;
     setStatus("load");
     
-    const path = type === "assists" 
+    const path = type === "assists"
       ? `/players/topassists?league=${lid}&season=${season}`
       : `/players/topscorers?league=${lid}&season=${season}`;
     
@@ -5200,38 +5194,52 @@ function ScorersTab() {
     return () => { mounted = false; };
   }, [lid, season, type]);
   
-  return React.createElement("div", { style: { padding: "16px", height: "100%", overflowY: "auto" } },
-    React.createElement("div", { style: { marginBottom: "16px", display: "flex", gap: "8px", flexWrap: "wrap" } },
-      React.createElement("div", { style: { display: "flex", gap: "4px", background: T.bg2, borderRadius: "8px", padding: "4px" } },
+  const SEL = {
+    background: T.bg2,
+    border: `1px solid ${T.bg4}`,
+    color: T.t1,
+    borderRadius: 8,
+    padding: "8px 11px",
+    fontSize: 12,
+    fontWeight: 600,
+    outline: "none",
+    cursor: "pointer"
+  };
+  
+  return React.createElement("div", { style: { height: "100%", display: "flex", flexDirection: "column", overflow: "hidden" } },
+    React.createElement("div", { style: { padding: "12px", borderBottom: `1px solid ${T.line}`, display: "flex", gap: 8, flexShrink: 0, background: T.bg1 } },
+      React.createElement("div", { style: { display: "flex", background: T.bg3, borderRadius: 10, padding: 3 } },
         React.createElement("button", {
           onClick: () => setType("scorers"),
           style: {
             padding: "8px 16px",
-            borderRadius: "6px",
+            borderRadius: 8,
             border: "none",
             background: type === "scorers" ? T.red : "transparent",
-            color: type === "scorers" ? "#fff" : T.t2,
-            cursor: "pointer",
-            fontWeight: type === "scorers" ? "bold" : "normal"
+            color: type === "scorers" ? "#fff" : T.t3,
+            fontWeight: type === "scorers" ? 700 : 500,
+            fontSize: 12,
+            cursor: "pointer"
           }
-        }, "⚽ Buteurs"),
+        }, "⚽ Buts"),
         React.createElement("button", {
           onClick: () => setType("assists"),
           style: {
             padding: "8px 16px",
-            borderRadius: "6px",
+            borderRadius: 8,
             border: "none",
             background: type === "assists" ? T.red : "transparent",
-            color: type === "assists" ? "#fff" : T.t2,
-            cursor: "pointer",
-            fontWeight: type === "assists" ? "bold" : "normal"
+            color: type === "assists" ? "#fff" : T.t3,
+            fontWeight: type === "assists" ? 700 : 500,
+            fontSize: 12,
+            cursor: "pointer"
           }
-        }, "🎯 Passeurs")
+        }, "🎯 Passes")
       ),
       React.createElement("select", {
         value: lid,
         onChange: e => setLid(Number(e.target.value)),
-        style: { flex: 1, padding: "8px", borderRadius: "8px", border: "1px solid #ddd" }
+        style: { ...SEL, flex: 1 }
       },
         REGIONS.map(region => 
           React.createElement("optgroup", { key: region, label: region },
@@ -5244,63 +5252,72 @@ function ScorersTab() {
       React.createElement("select", {
         value: season,
         onChange: e => setSeason(Number(e.target.value)),
-        style: { width: "100px", padding: "8px", borderRadius: "8px", border: "1px solid #ddd" }
+        style: { ...SEL, width: 100 }
       },
         SEASONS.map(y => 
-          React.createElement("option", { key: y, value: y }, `${y}/${y+1}`)
+          React.createElement("option", { key: y, value: y }, `${y}`)
         )
       )
     ),
     
-    status === "load" && React.createElement("div", { style: { textAlign: "center", padding: "40px" } },
-      React.createElement(Spin, null),
-      React.createElement("div", { style: { marginTop: "12px", color: T.t3 } }, "Chargement...")
-    ),
-    
-    status === "err" && React.createElement("div", { style: { textAlign: "center", padding: "40px", color: T.t3 } },
-      "Erreur de chargement"
-    ),
-    
-    status === "empty" && React.createElement("div", { style: { textAlign: "center", padding: "40px", color: T.t3 } },
-      "Aucune donnée disponible"
-    ),
-    
-    status === "ok" && React.createElement("div", null,
-      data.slice(0, 30).map((item, idx) => {
+    React.createElement("div", { style: { flex: 1, overflowY: "auto" } },
+      status === "load" && React.createElement("div", { style: { textAlign: "center", padding: 40 } },
+        React.createElement(Spin, null)
+      ),
+      
+      status === "err" && React.createElement("div", { style: { textAlign: "center", padding: 40, color: T.t3 } },
+        "Erreur de chargement"
+      ),
+      
+      status === "empty" && React.createElement("div", { style: { textAlign: "center", padding: 40, color: T.t3 } },
+        "Aucune donnée disponible"
+      ),
+      
+      status === "ok" && data.slice(0, 30).map((item, idx) => {
         const player = item.player;
         const stats = item.statistics?.[0] || {};
         const value = type === "assists" ? (stats.goals?.assists || 0) : (stats.goals?.total || 0);
         const team = stats.team;
+        
+        const medal = idx === 0 ? "🥇" : idx === 1 ? "🥈" : idx === 2 ? "🥉" : null;
+        const medalColor = idx === 0 ? T.gold : idx === 1 ? "#c0c0c0" : idx === 2 ? "#cd7f32" : T.bg4;
         
         return React.createElement("div", {
           key: player?.id || idx,
           style: {
             display: "flex",
             alignItems: "center",
-            padding: "12px",
-            borderBottom: "1px solid #eee",
-            background: idx === 0 ? "rgba(255,215,0,0.1)" : idx === 1 ? "rgba(192,192,192,0.1)" : idx === 2 ? "rgba(205,127,50,0.1)" : "transparent"
+            gap: 12,
+            padding: "12px 14px",
+            borderBottom: `1px solid ${T.line}`,
+            borderLeft: idx < 3 ? `3px solid ${medalColor}` : "3px solid transparent",
+            background: idx < 3 ? `rgba(${idx === 0 ? "255,215,0" : idx === 1 ? "192,192,192" : "205,127,50"},0.05)` : "transparent"
           }
         },
-          React.createElement("div", { style: { width: "40px", fontSize: "18px", fontWeight: "bold", textAlign: "center" } },
-            idx === 0 ? "🥇" : idx === 1 ? "🥈" : idx === 2 ? "🥉" : `${idx+1}`
+          React.createElement("div", { className: "bc", style: { width: 40, textAlign: "center", fontSize: 20 } },
+            medal || `${idx+1}`
           ),
-          React.createElement(Avatar, { src: player?.photo, size: 44 }),
-          React.createElement("div", { style: { flex: 1, marginLeft: "12px" } },
-            React.createElement("div", { style: { fontSize: "15px", fontWeight: "bold" } }, player?.name),
-            React.createElement("div", { style: { fontSize: "12px", color: T.t3 } },
-              team?.name,
-              player?.nationality ? ` · ${player.nationality}` : ""
+          React.createElement(Avatar, { src: player?.photo, size: 44, ring: medalColor }),
+          React.createElement("div", { style: { flex: 1, minWidth: 0 } },
+            React.createElement("div", { className: "bc", style: { fontSize: 15, fontWeight: 700, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" } },
+              player?.name
+            ),
+            React.createElement("div", { style: { display: "flex", alignItems: "center", gap: 6, marginTop: 4 } },
+              team && React.createElement(Logo, { src: team.logo, size: 14 }),
+              React.createElement("span", { style: { fontSize: 11, color: T.t3 } }, team?.name),
+              player?.nationality && React.createElement("span", { style: { fontSize: 11, color: T.t3 } }, `· ${player.nationality}`)
             )
           ),
-          React.createElement("div", { style: { fontSize: "28px", fontWeight: "bold", color: T.red } }, value)
+          React.createElement("div", { className: "bc", style: { fontSize: 28, fontWeight: 900, color: T.red } }, value)
         );
       })
     )
   );
 }
 
-// ========== ONGLET CALENDRIER (CalendarTab) ==========
+// ============================================
+// ONGLET CALENDRIER (CalendarTab) - RESTAURÉ
+// ============================================
 function CalendarTab({ favs, onFav }) {
   const [lid, setLid] = useState(39);
   const [season, setSeason] = useState(CUR_SEASON);
@@ -5331,6 +5348,18 @@ function CalendarTab({ favs, onFav }) {
     return () => { mounted = false; };
   }, [lid, season]);
   
+  const SEL = {
+    background: T.bg2,
+    border: `1px solid ${T.bg4}`,
+    color: T.t1,
+    borderRadius: 8,
+    padding: "8px 11px",
+    fontSize: 12,
+    fontWeight: 600,
+    outline: "none",
+    cursor: "pointer"
+  };
+  
   const groupedByDate = {};
   data.forEach(match => {
     const date = match.fixture.date.slice(0, 10);
@@ -5340,12 +5369,12 @@ function CalendarTab({ favs, onFav }) {
   
   const sortedDates = Object.keys(groupedByDate).sort();
   
-  return React.createElement("div", { style: { height: "100%", display: "flex", flexDirection: "column" } },
-    React.createElement("div", { style: { padding: "12px", borderBottom: "1px solid #eee", display: "flex", gap: "8px" } },
+  return React.createElement("div", { style: { height: "100%", display: "flex", flexDirection: "column", overflow: "hidden" } },
+    React.createElement("div", { style: { padding: "12px", borderBottom: `1px solid ${T.line}`, display: "flex", gap: 8, flexShrink: 0, background: T.bg1 } },
       React.createElement("select", {
         value: lid,
         onChange: e => setLid(Number(e.target.value)),
-        style: { flex: 2, padding: "8px", borderRadius: "8px", border: "1px solid #ddd" }
+        style: { ...SEL, flex: 2 }
       },
         REGIONS.map(region => 
           React.createElement("optgroup", { key: region, label: region },
@@ -5358,30 +5387,30 @@ function CalendarTab({ favs, onFav }) {
       React.createElement("select", {
         value: season,
         onChange: e => setSeason(Number(e.target.value)),
-        style: { width: "100px", padding: "8px", borderRadius: "8px", border: "1px solid #ddd" }
+        style: { ...SEL, width: 100 }
       },
         SEASONS.map(y => 
-          React.createElement("option", { key: y, value: y }, `${y}/${y+1}`)
+          React.createElement("option", { key: y, value: y }, `${y}`)
         )
       )
     ),
     
     React.createElement("div", { style: { flex: 1, overflowY: "auto" } },
-      status === "load" && React.createElement("div", { style: { textAlign: "center", padding: "40px" } },
+      status === "load" && React.createElement("div", { style: { textAlign: "center", padding: 40 } },
         React.createElement(Spin, null)
       ),
       
-      status === "err" && React.createElement("div", { style: { textAlign: "center", padding: "40px", color: T.t3 } },
+      status === "err" && React.createElement("div", { style: { textAlign: "center", padding: 40, color: T.t3 } },
         "Erreur de chargement"
       ),
       
-      status === "empty" && React.createElement("div", { style: { textAlign: "center", padding: "40px", color: T.t3 } },
+      status === "empty" && React.createElement("div", { style: { textAlign: "center", padding: 40, color: T.t3 } },
         "Aucun match à venir"
       ),
       
       status === "ok" && sortedDates.map(date => 
         React.createElement("div", { key: date },
-          React.createElement("div", { style: { padding: "8px 12px", background: T.bg2, fontWeight: "bold", fontSize: "13px" } },
+          React.createElement("div", { style: { padding: "8px 12px", background: T.bg2, fontWeight: "bold", fontSize: 13 } },
             DL(date)
           ),
           groupedByDate[date].map(match => {
@@ -5393,19 +5422,19 @@ function CalendarTab({ favs, onFav }) {
                 display: "flex",
                 alignItems: "center",
                 padding: "12px",
-                borderBottom: "1px solid #eee",
+                borderBottom: `1px solid ${T.line}`,
                 cursor: "pointer"
               }
             },
-              React.createElement("div", { style: { width: "50px", fontSize: "13px", color: T.blue } },
+              React.createElement("div", { style: { width: 50, fontSize: 13, color: T.blue } },
                 hhmm(match.fixture.date)
               ),
               React.createElement("div", { style: { flex: 1 } },
-                React.createElement("div", { style: { display: "flex", alignItems: "center", gap: "8px" } },
+                React.createElement("div", { style: { display: "flex", alignItems: "center", gap: 8, marginBottom: 4 } },
                   React.createElement(Logo, { src: match.teams.home.logo, size: 16 }),
                   React.createElement("span", { style: { flex: 1 } }, match.teams.home.name)
                 ),
-                React.createElement("div", { style: { display: "flex", alignItems: "center", gap: "8px", marginTop: "4px" } },
+                React.createElement("div", { style: { display: "flex", alignItems: "center", gap: 8 } },
                   React.createElement(Logo, { src: match.teams.away.logo, size: 16 }),
                   React.createElement("span", { style: { flex: 1 } }, match.teams.away.name)
                 )
@@ -5415,10 +5444,10 @@ function CalendarTab({ favs, onFav }) {
                 style: {
                   background: "none",
                   border: "none",
-                  fontSize: "20px",
+                  fontSize: 20,
                   color: isFav ? T.gold : T.t4,
                   cursor: "pointer",
-                  padding: "8px"
+                  padding: 8
                 }
               }, isFav ? "★" : "☆")
             );
@@ -5434,204 +5463,316 @@ function CalendarTab({ favs, onFav }) {
   );
 }
 
-// ========== ONGLET TRANSFERTS (TransfersTab) ==========
+// ============================================
+// ONGLET TRANSFERTS (TransfersTab) - RESTAURÉ
+// ============================================
+const SB_KEY = "sb_publishable_IS9q0rpm-NFpEm_jNoKTTA_q_xX4-0m";
+
+async function sbGet(table) {
+  try {
+    const url = `https://iqeqlsxjiklygywjirqs.supabase.co/rest/v1/${table}?order=published_at.desc&limit=30`;
+    const res = await fetch(url, {
+      headers: {
+        "apikey": SB_KEY,
+        "Authorization": `Bearer ${SB_KEY}`
+      }
+    });
+    return await res.json();
+  } catch {
+    return [];
+  }
+}
+
+function AfricaTransferCard({ t, onOpen }) {
+  const SOURCE_COLORS = {
+    "Dzfoot": "#00883a",
+    "El Heddaf": "#c8002d",
+    "MarocSport": "#c8002d",
+    "KingFut": "#1a1a2e",
+    "BBC Afrique": "#bb1919",
+    "FootMercato": "#ff6b00"
+  };
+  
+  const srcColor = SOURCE_COLORS[t.source_name] || T.red;
+  const date = t.published_at ? new Date(t.published_at).toLocaleDateString("fr-FR", { day: "2-digit", month: "short" }) : "";
+  const countryFlags = { "Algérie": "🇩🇿", "Maroc": "🇲🇦", "Tunisie": "🇹🇳", "Égypte": "🇪🇬" };
+  const flag = countryFlags[t.country] || "🌍";
+  
+  return React.createElement("div", {
+    onClick: () => onOpen(t.source_url),
+    style: {
+      margin: "0 10px 10px",
+      background: "#fff",
+      borderRadius: 14,
+      boxShadow: T.shadowSm,
+      borderLeft: `4px solid ${srcColor}`,
+      overflow: "hidden",
+      cursor: "pointer"
+    }
+  },
+    React.createElement("div", { style: { display: "flex", alignItems: "center", gap: 8, padding: "10px 14px 8px" } },
+      React.createElement("div", { style: { background: srcColor, borderRadius: 6, padding: "2px 8px" } },
+        React.createElement("span", { style: { fontSize: 10, fontWeight: 900, color: "#fff" } }, t.source_name)
+      ),
+      React.createElement("span", { style: { fontSize: 11, color: T.t3 } }, `${flag} ${t.country}`),
+      React.createElement("span", { style: { marginLeft: "auto", fontSize: 11, color: T.t3 } }, date)
+    ),
+    React.createElement("div", { style: { padding: "0 14px 12px" } },
+      React.createElement("div", { style: { fontSize: 14, fontWeight: 700, marginBottom: 6 } }, t.player_name),
+      React.createElement("div", { style: { display: "flex", alignItems: "center", gap: 6 } },
+        React.createElement("span", { style: { background: "rgba(0,184,107,0.1)", color: T.red, borderRadius: 20, padding: "3px 10px", fontSize: 10, fontWeight: 800 } },
+          t.transfer_type || "Mercato"
+        )
+      )
+    )
+  );
+}
+
 function TransfersTab() {
   const [data, setData] = useState([]);
   const [status, setStatus] = useState("load");
   const [filter, setFilter] = useState("all");
+  const [selectedUrl, setSelectedUrl] = useState(null);
   
   useEffect(() => {
     let mounted = true;
     setStatus("load");
     
-    // Simuler des données de transfert pour l'exemple
-    setTimeout(() => {
-      if (mounted) {
-        setData([
-          {
-            id: 1,
-            player_name: "Belaïli",
-            source_name: "DZFoot",
-            source_url: "#",
-            country: "Algérie",
-            published_at: new Date().toISOString(),
-            transfer_type: "Transfert"
-          },
-          {
-            id: 2,
-            player_name: "Mahrez",
-            source_name: "BBC",
-            source_url: "#",
-            country: "Algérie",
-            published_at: new Date(Date.now() - 86400000).toISOString(),
-            transfer_type: "Rumeur"
-          }
-        ]);
-        setStatus("ok");
-      }
-    }, 1000);
+    sbGet("transfers_africa")
+      .then(res => {
+        if (mounted) {
+          setData(res || []);
+          setStatus(res?.length ? "ok" : "empty");
+        }
+      })
+      .catch(() => {
+        if (mounted) setStatus("err");
+      });
     
     return () => { mounted = false; };
   }, []);
   
-  const filteredData = filter === "all" ? data : data.filter(t => t.country === filter);
+  const countries = ["all", "Algérie", "Maroc", "Tunisie", "Égypte"];
+  const filtered = filter === "all" ? data : data.filter(t => t.country === filter);
+  const flags = { "all": "🌍", "Algérie": "🇩🇿", "Maroc": "🇲🇦", "Tunisie": "🇹🇳", "Égypte": "🇪🇬" };
   
-  return React.createElement("div", { style: { height: "100%", display: "flex", flexDirection: "column" } },
-    React.createElement("div", { style: { padding: "12px", borderBottom: "1px solid #eee" } },
-      React.createElement("div", { style: { display: "flex", gap: "8px", overflowX: "auto" } },
-        ["all", "Algérie", "Maroc", "Tunisie", "Égypte"].map(c => 
+  if (selectedUrl) {
+    return React.createElement("div", { style: { height: "100%", display: "flex", flexDirection: "column" } },
+      React.createElement("div", { style: { padding: "12px", background: T.red, display: "flex", alignItems: "center", gap: 12 } },
+        React.createElement("button", {
+          onClick: () => setSelectedUrl(null),
+          style: { background: "rgba(255,255,255,0.2)", border: "none", color: "#fff", padding: "8px 16px", borderRadius: 8, cursor: "pointer" }
+        }, "← Retour"),
+        React.createElement("span", { style: { color: "#fff", fontWeight: 700 } }, "Article")
+      ),
+      React.createElement("iframe", {
+        src: selectedUrl,
+        style: { flex: 1, border: "none", width: "100%" }
+      })
+    );
+  }
+  
+  return React.createElement("div", { style: { height: "100%", display: "flex", flexDirection: "column", overflow: "hidden" } },
+    React.createElement("div", { style: { padding: "12px", borderBottom: `1px solid ${T.line}`, flexShrink: 0, background: T.bg1 } },
+      React.createElement("div", { style: { display: "flex", gap: 6, overflowX: "auto", paddingBottom: 2 } },
+        countries.map(c => 
           React.createElement("button", {
             key: c,
             onClick: () => setFilter(c),
             style: {
               padding: "6px 12px",
-              borderRadius: "20px",
+              borderRadius: 20,
               border: "none",
               background: filter === c ? T.red : T.bg2,
               color: filter === c ? "#fff" : T.t2,
+              fontSize: 11,
+              fontWeight: filter === c ? 700 : 500,
               cursor: "pointer",
               whiteSpace: "nowrap"
             }
-          }, c === "all" ? "Tous" : c)
+          }, `${flags[c]} ${c === "all" ? "Tous" : c}`)
         )
       )
     ),
     
-    React.createElement("div", { style: { flex: 1, overflowY: "auto" } },
-      status === "load" && React.createElement("div", { style: { textAlign: "center", padding: "40px" } },
+    React.createElement("div", { style: { flex: 1, overflowY: "auto", paddingTop: 8 } },
+      status === "load" && React.createElement("div", { style: { textAlign: "center", padding: 40 } },
         React.createElement(Spin, null)
       ),
       
-      status === "ok" && filteredData.map(item =>
-        React.createElement("div", {
-          key: item.id,
-          style: {
-            padding: "16px",
-            borderBottom: "1px solid #eee",
-            cursor: "pointer"
-          },
-          onClick: () => window.open(item.source_url, "_blank")
-        },
-          React.createElement("div", { style: { display: "flex", alignItems: "center", gap: "8px", marginBottom: "4px" } },
-            React.createElement("span", { style: { background: T.bg2, padding: "2px 8px", borderRadius: "4px", fontSize: "11px", fontWeight: "bold" } },
-              item.source_name
-            ),
-            React.createElement("span", { style: { fontSize: "11px", color: T.t3 } },
-              new Date(item.published_at).toLocaleDateString()
-            )
-          ),
-          React.createElement("div", { style: { fontSize: "15px", fontWeight: "bold" } },
-            item.player_name
-          ),
-          React.createElement("div", { style: { fontSize: "12px", color: T.t2, marginTop: "4px" } },
-            item.transfer_type
-          )
-        )
+      status === "err" && React.createElement("div", { style: { textAlign: "center", padding: 40, color: T.t3 } },
+        "Erreur de chargement"
+      ),
+      
+      status === "empty" && React.createElement("div", { style: { textAlign: "center", padding: 40, color: T.t3 } },
+        "Aucun transfert disponible"
+      ),
+      
+      status === "ok" && filtered.map(t => 
+        React.createElement(AfricaTransferCard, {
+          key: t.id,
+          t: t,
+          onOpen: setSelectedUrl
+        })
       )
     )
   );
 }
 
-// ========== ONGLET ACTUALITÉS (ActuTab) ==========
+// ============================================
+// ONGLET ACTUALITÉS (ActuTab) - RESTAURÉ
+// ============================================
 function ActuTab() {
   const [data, setData] = useState([]);
   const [status, setStatus] = useState("load");
   const [view, setView] = useState("afrique");
+  const [selected, setSelected] = useState(null);
   
   useEffect(() => {
     let mounted = true;
     setStatus("load");
     
-    // Simuler des données d'actualités
-    setTimeout(() => {
-      if (mounted) {
-        setData([
-          {
-            id: 1,
-            title: "JSK : Belaïli de retour ?",
-            source: "DZFoot",
-            link: "#",
-            image: null,
-            published_at: new Date().toISOString()
-          },
-          {
-            id: 2,
-            title: "Ligue 1 : Programme de la 20e journée",
-            source: "But Football",
-            link: "#",
-            image: null,
-            published_at: new Date(Date.now() - 3600000).toISOString()
-          }
-        ]);
-        setStatus("ok");
+    fetch("https://iqeqlsxjiklygywjirqs.supabase.co/rest/v1/transfers_feed?order=published_at.desc&limit=30", {
+      headers: {
+        "apikey": SB_KEY,
+        "Authorization": `Bearer ${SB_KEY}`
       }
-    }, 1000);
+    })
+      .then(r => r.json())
+      .then(res => {
+        if (mounted) {
+          setData(res || []);
+          setStatus(res?.length ? "ok" : "empty");
+        }
+      })
+      .catch(() => {
+        if (mounted) setStatus("err");
+      });
     
     return () => { mounted = false; };
   }, []);
   
-  const filteredData = view === "afrique" 
-    ? data.filter(item => item.source === "DZFoot")
-    : data.filter(item => item.source === "But Football");
+  const getFiltered = () => {
+    if (view === "afrique") {
+      return data.filter(item => {
+        if (item.source !== "DZFoot") return false;
+        const title = (item.title || "").toLowerCase();
+        return ["algérie", "algerie", "jsk", "kabylie", "mca", "usma", "crb"].some(k => title.includes(k));
+      });
+    }
+    if (view === "europe") {
+      return data.filter(item => item.source === "But Football");
+    }
+    return data;
+  };
   
-  return React.createElement("div", { style: { height: "100%", display: "flex", flexDirection: "column" } },
-    React.createElement("div", { style: { padding: "12px", borderBottom: "1px solid #eee" } },
-      React.createElement("div", { style: { display: "flex", gap: "8px", background: T.bg2, borderRadius: "8px", padding: "4px" } },
+  const filtered = getFiltered();
+  const VIEWS = [
+    { id: "afrique", icon: "🇩🇿", label: "Algérie", color: T.red },
+    { id: "europe", icon: "🏆", label: "Europe", color: "#1877f2" }
+  ];
+  const currentView = VIEWS.find(v => v.id === view) || VIEWS[0];
+  
+  if (selected) {
+    return React.createElement("div", { style: { height: "100%", display: "flex", flexDirection: "column" } },
+      React.createElement("div", { style: { padding: "12px", background: currentView.color, display: "flex", alignItems: "center", gap: 12 } },
         React.createElement("button", {
-          onClick: () => setView("afrique"),
+          onClick: () => setSelected(null),
+          style: { background: "rgba(255,255,255,0.2)", border: "none", color: "#fff", padding: "8px 16px", borderRadius: 8, cursor: "pointer" }
+        }, "← Retour"),
+        React.createElement("span", { style: { color: "#fff", fontWeight: 700 } }, selected.source)
+      ),
+      React.createElement("div", { style: { flex: 1, overflowY: "auto", padding: "16px" } },
+        selected.image && React.createElement("img", {
+          src: selected.image,
+          style: { width: "100%", borderRadius: 12, marginBottom: 16 }
+        }),
+        React.createElement("div", { style: { fontSize: 18, fontWeight: 700, marginBottom: 16 } }, selected.title),
+        React.createElement("a", {
+          href: selected.link,
+          target: "_blank",
           style: {
-            flex: 1,
-            padding: "8px",
-            borderRadius: "6px",
-            border: "none",
-            background: view === "afrique" ? T.red : "transparent",
-            color: view === "afrique" ? "#fff" : T.t2,
-            cursor: "pointer"
+            display: "inline-block",
+            padding: "12px 24px",
+            background: currentView.color,
+            color: "#fff",
+            textDecoration: "none",
+            borderRadius: 8,
+            fontWeight: 700
           }
-        }, "🌍 Afrique"),
-        React.createElement("button", {
-          onClick: () => setView("europe"),
-          style: {
-            flex: 1,
-            padding: "8px",
-            borderRadius: "6px",
-            border: "none",
-            background: view === "europe" ? T.red : "transparent",
-            color: view === "europe" ? "#fff" : T.t2,
-            cursor: "pointer"
-          }
-        }, "🏆 Europe")
+        }, "Lire l'article complet →")
+      )
+    );
+  }
+  
+  return React.createElement("div", { style: { height: "100%", display: "flex", flexDirection: "column", overflow: "hidden" } },
+    React.createElement("div", { style: { padding: "16px", background: "linear-gradient(160deg,#1a1d23,#0f1117)", color: "#fff", flexShrink: 0 } },
+      React.createElement("div", { style: { fontSize: 20, fontWeight: 900, marginBottom: 12 } }, "Actualités"),
+      React.createElement("div", { style: { display: "flex", gap: 8 } },
+        VIEWS.map(v => 
+          React.createElement("button", {
+            key: v.id,
+            onClick: () => setView(v.id),
+            style: {
+              flex: 1,
+              padding: "10px",
+              borderRadius: 10,
+              border: "none",
+              background: view === v.id ? v.color : "rgba(255,255,255,0.1)",
+              color: "#fff",
+              fontSize: 12,
+              fontWeight: view === v.id ? 700 : 500,
+              cursor: "pointer",
+              display: "flex",
+              alignItems: "center",
+              justifyContent: "center",
+              gap: 6
+            }
+          }, v.icon, v.label)
+        )
       )
     ),
     
     React.createElement("div", { style: { flex: 1, overflowY: "auto", padding: "12px" } },
-      status === "load" && React.createElement("div", { style: { textAlign: "center", padding: "40px" } },
+      status === "load" && React.createElement("div", { style: { textAlign: "center", padding: 40 } },
         React.createElement(Spin, null)
       ),
       
-      status === "ok" && filteredData.map(item =>
+      status === "err" && React.createElement("div", { style: { textAlign: "center", padding: 40, color: T.t3 } },
+        "Erreur de chargement"
+      ),
+      
+      status === "empty" && React.createElement("div", { style: { textAlign: "center", padding: 40, color: T.t3 } },
+        "Aucune actualité disponible"
+      ),
+      
+      status === "ok" && filtered.map(item => 
         React.createElement("div", {
           key: item.id,
+          onClick: () => setSelected(item),
           style: {
-            marginBottom: "12px",
-            padding: "12px",
+            marginBottom: 12,
             background: "#fff",
-            borderRadius: "12px",
-            boxShadow: "0 2px 8px rgba(0,0,0,0.05)",
+            borderRadius: 12,
+            overflow: "hidden",
+            boxShadow: T.shadowSm,
             cursor: "pointer"
-          },
-          onClick: () => window.open(item.link, "_blank")
+          }
         },
-          React.createElement("div", { style: { display: "flex", alignItems: "center", gap: "8px", marginBottom: "8px" } },
-            React.createElement("span", { style: { background: T.bg2, padding: "2px 8px", borderRadius: "4px", fontSize: "11px", fontWeight: "bold" } },
-              item.source
+          item.image && React.createElement("img", {
+            src: item.image,
+            style: { width: "100%", height: 160, objectFit: "cover" }
+          }),
+          React.createElement("div", { style: { padding: "12px" } },
+            React.createElement("div", { style: { display: "flex", alignItems: "center", gap: 8, marginBottom: 8 } },
+              React.createElement("span", { style: { background: currentView.color, color: "#fff", padding: "2px 8px", borderRadius: 4, fontSize: 10, fontWeight: 700 } },
+                item.source
+              ),
+              React.createElement("span", { style: { fontSize: 10, color: T.t3 } },
+                new Date(item.published_at).toLocaleDateString()
+              )
             ),
-            React.createElement("span", { style: { fontSize: "11px", color: T.t3 } },
-              new Date(item.published_at).toLocaleDateString()
-            )
-          ),
-          React.createElement("div", { style: { fontSize: "14px", fontWeight: "bold" } },
-            item.title
+            React.createElement("div", { style: { fontSize: 14, fontWeight: 700, lineHeight: 1.4 } }, item.title)
           )
         )
       )
@@ -5639,7 +5780,9 @@ function ActuTab() {
   );
 }
 
-// ========== ONGLET RÉSULTATS (ResultsTab) ==========
+// ============================================
+// ONGLET RÉSULTATS (ResultsTab) - RESTAURÉ
+// ============================================
 function ResultsTab() {
   const [lid, setLid] = useState(39);
   const [season, setSeason] = useState(CUR_SEASON);
@@ -5647,6 +5790,9 @@ function ResultsTab() {
   const [selectedRound, setSelectedRound] = useState("");
   const [matches, setMatches] = useState([]);
   const [status, setStatus] = useState("load");
+  const [showConfig, setShowConfig] = useState(false);
+  
+  const league = LEAGUES.find(l => l.id === lid) || LEAGUES[0];
   
   useEffect(() => {
     let mounted = true;
@@ -5656,7 +5802,8 @@ function ResultsTab() {
         if (mounted) {
           setRounds(res || []);
           if (res && res.length > 0) {
-            setSelectedRound(res[Math.floor(res.length / 2)]);
+            const mid = Math.floor(res.length / 2);
+            setSelectedRound(res[mid]);
           }
         }
       });
@@ -5684,44 +5831,59 @@ function ResultsTab() {
     return () => { mounted = false; };
   }, [selectedRound, lid, season]);
   
-  return React.createElement("div", { style: { height: "100%", display: "flex", flexDirection: "column" } },
-    React.createElement("div", { style: { padding: "12px", borderBottom: "1px solid #eee" } },
-      React.createElement("div", { style: { display: "flex", gap: "8px", marginBottom: "8px" } },
-        React.createElement("select", {
-          value: lid,
-          onChange: e => setLid(Number(e.target.value)),
-          style: { flex: 2, padding: "8px", borderRadius: "8px", border: "1px solid #ddd" }
-        },
-          REGIONS.map(region => 
-            React.createElement("optgroup", { key: region, label: region },
-              LEAGUES.filter(l => l.region === region).map(l =>
-                React.createElement("option", { key: l.id, value: l.id }, `${l.flag} ${l.name}`)
-              )
-            )
-          )
+  const SEL = {
+    background: T.bg2,
+    border: `1px solid ${T.bg4}`,
+    color: T.t1,
+    borderRadius: 8,
+    padding: "10px 13px",
+    fontSize: 13,
+    outline: "none",
+    cursor: "pointer"
+  };
+  
+  return React.createElement("div", { style: { height: "100%", display: "flex", flexDirection: "column", overflow: "hidden" } },
+    React.createElement("div", { style: { padding: "12px", borderBottom: `1px solid ${T.line}`, background: T.bg1, flexShrink: 0 } },
+      React.createElement("div", {
+        onClick: () => setShowConfig(true),
+        style: {
+          display: "flex",
+          alignItems: "center",
+          gap: 12,
+          background: "#fff",
+          padding: "0 14px",
+          cursor: "pointer",
+          height: 56,
+          borderRadius: 12,
+          border: `1px solid ${T.line}`,
+          marginBottom: 12
+        }
+      },
+        React.createElement("div", { style: { width: 34, height: 34, display: "flex", alignItems: "center", justifyContent: "center", fontSize: 22, background: T.bg2, borderRadius: 8 } },
+          league?.flag || "🏆"
         ),
-        React.createElement("select", {
-          value: season,
-          onChange: e => setSeason(Number(e.target.value)),
-          style: { width: "100px", padding: "8px", borderRadius: "8px", border: "1px solid #ddd" }
-        },
-          SEASONS.map(y => 
-            React.createElement("option", { key: y, value: y }, `${y}/${y+1}`)
-          )
+        React.createElement("div", { style: { flex: 1, minWidth: 0 } },
+          React.createElement("div", { className: "bc", style: { fontSize: 15, fontWeight: 800 } }, league?.name || "—"),
+          React.createElement("div", { style: { fontSize: 11, color: T.t3 } }, `Saison ${season}/${season+1}`)
+        ),
+        React.createElement("div", { style: { background: T.red, borderRadius: 8, padding: "4px 10px" } },
+          React.createElement("span", { style: { fontSize: 11, color: "#fff", fontWeight: 700 } }, "⚙️")
         )
       ),
       
-      React.createElement("div", { style: { display: "flex", gap: "8px", overflowX: "auto" } },
+      rounds.length > 0 && React.createElement("div", { style: { display: "flex", gap: 6, overflowX: "auto", paddingBottom: 2 } },
         rounds.slice(0, 10).map(round =>
           React.createElement("button", {
             key: round,
             onClick: () => setSelectedRound(round),
             style: {
-              padding: "6px 12px",
-              borderRadius: "20px",
+              padding: "8px 14px",
+              borderRadius: 20,
               border: "none",
               background: selectedRound === round ? T.red : T.bg2,
               color: selectedRound === round ? "#fff" : T.t2,
+              fontSize: 11,
+              fontWeight: selectedRound === round ? 700 : 500,
               cursor: "pointer",
               whiteSpace: "nowrap"
             }
@@ -5731,15 +5893,15 @@ function ResultsTab() {
     ),
     
     React.createElement("div", { style: { flex: 1, overflowY: "auto", padding: "12px" } },
-      status === "load" && React.createElement("div", { style: { textAlign: "center", padding: "40px" } },
+      status === "load" && React.createElement("div", { style: { textAlign: "center", padding: 40 } },
         React.createElement(Spin, null)
       ),
       
-      status === "err" && React.createElement("div", { style: { textAlign: "center", padding: "40px", color: T.t3 } },
+      status === "err" && React.createElement("div", { style: { textAlign: "center", padding: 40, color: T.t3 } },
         "Erreur de chargement"
       ),
       
-      status === "empty" && React.createElement("div", { style: { textAlign: "center", padding: "40px", color: T.t3 } },
+      status === "empty" && React.createElement("div", { style: { textAlign: "center", padding: 40, color: T.t3 } },
         "Aucun résultat pour cette journée"
       ),
       
@@ -5750,156 +5912,283 @@ function ResultsTab() {
         const ag = match.goals.away ?? 0;
         const status = match.fixture.status.short;
         const isFinished = DONE_ST.has(status);
+        const isLive = LIVE_ST.has(status);
         
         return React.createElement("div", {
           key: match.fixture.id,
           style: {
-            marginBottom: "8px",
+            marginBottom: 8,
             padding: "12px",
             background: "#fff",
-            borderRadius: "12px",
-            boxShadow: "0 2px 8px rgba(0,0,0,0.05)"
+            borderRadius: 12,
+            boxShadow: T.shadowSm,
+            border: isLive ? `1px solid ${T.red}` : "none"
           }
         },
-          React.createElement("div", { style: { display: "flex", alignItems: "center", gap: "12px" } },
-            React.createElement("div", { style: { width: "60px", fontSize: "13px", color: T.t3 } },
-              new Date(match.fixture.date).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })
+          React.createElement("div", { style: { display: "flex", alignItems: "center", gap: 12 } },
+            React.createElement("div", { style: { width: 50, fontSize: 12, color: isLive ? T.red : T.blue } },
+              isLive ? `${match.fixture.status.elapsed}'` : hhmm(match.fixture.date)
             ),
             React.createElement("div", { style: { flex: 1 } },
-              React.createElement("div", { style: { display: "flex", alignItems: "center", gap: "8px", marginBottom: "4px" } },
-                React.createElement(Logo, { src: home.logo, size: 20 }),
+              React.createElement("div", { style: { display: "flex", alignItems: "center", gap: 8, marginBottom: 4 } },
+                React.createElement(Logo, { src: home.logo, size: 16 }),
                 React.createElement("span", { style: { flex: 1 } }, home.name),
-                React.createElement("span", { style: { fontWeight: "bold", fontSize: "16px" } }, isFinished ? hg : "-")
+                React.createElement("span", { style: { fontWeight: 700, fontSize: 16 } }, isFinished || isLive ? hg : "-")
               ),
-              React.createElement("div", { style: { display: "flex", alignItems: "center", gap: "8px" } },
-                React.createElement(Logo, { src: away.logo, size: 20 }),
+              React.createElement("div", { style: { display: "flex", alignItems: "center", gap: 8 } },
+                React.createElement(Logo, { src: away.logo, size: 16 }),
                 React.createElement("span", { style: { flex: 1 } }, away.name),
-                React.createElement("span", { style: { fontWeight: "bold", fontSize: "16px" } }, isFinished ? ag : "-")
+                React.createElement("span", { style: { fontWeight: 700, fontSize: 16 } }, isFinished || isLive ? ag : "-")
               )
-            )
+            ),
+            isLive && React.createElement("div", { className: "live-dot" })
           )
         );
       })
+    ),
+    
+    React.createElement(Sheet, { open: showConfig, onClose: () => setShowConfig(false) },
+      React.createElement("div", { style: { padding: "16px" } },
+        React.createElement("div", { style: { fontSize: 16, fontWeight: 700, marginBottom: 16 } }, "Configuration")
+      ),
+      React.createElement("div", { style: { padding: "0 16px 24px", display: "flex", flexDirection: "column", gap: 16 } },
+        React.createElement("div", null,
+          React.createElement("div", { style: { fontSize: 10, fontWeight: 700, color: T.t3, marginBottom: 8 } }, "COMPÉTITION"),
+          React.createElement("select", {
+            value: lid,
+            onChange: e => setLid(Number(e.target.value)),
+            style: SEL
+          },
+            REGIONS.map(region => 
+              React.createElement("optgroup", { key: region, label: region },
+                LEAGUES.filter(l => l.region === region).map(l =>
+                  React.createElement("option", { key: l.id, value: l.id }, `${l.flag} ${l.name}`)
+                )
+              )
+            )
+          )
+        ),
+        React.createElement("div", null,
+          React.createElement("div", { style: { fontSize: 10, fontWeight: 700, color: T.t3, marginBottom: 8 } }, "SAISON"),
+          React.createElement("select", {
+            value: season,
+            onChange: e => setSeason(Number(e.target.value)),
+            style: SEL
+          },
+            SEASONS.map(y => 
+              React.createElement("option", { key: y, value: y }, `${y}/${y+1}`)
+            )
+          )
+        ),
+        React.createElement("button", {
+          onClick: () => setShowConfig(false),
+          style: {
+            background: T.redG,
+            border: "none",
+            color: "#fff",
+            borderRadius: 12,
+            padding: "14px",
+            fontSize: 14,
+            fontWeight: 700,
+            cursor: "pointer"
+          }
+        }, "Appliquer")
+      )
     )
   );
 }
 
-// ========== ONGLET JSK (JSKTab) ==========
+// ============================================
+// ONGLET JSK (JSKTab) - RESTAURÉ
+// ============================================
+const JSK_GREEN = "#006B3C";
+const JSK_YELLOW = "#FFD700";
+const JSK_LOGO = "https://i.imgur.com/TkG4iVH_d.webp?maxwidth=760&fidelity=grand";
+
+function JSKCard({ article, onOpen }) {
+  const sourceColors = {
+    "DZFoot": "#00883a",
+    "Competition.dz": "#c8002d",
+    "Google News": "#1a73e8"
+  };
+  const color = sourceColors[article.source] || JSK_GREEN;
+  
+  return React.createElement("div", {
+    onClick: () => onOpen(article),
+    style: {
+      margin: "0 12px 10px",
+      background: "#fff",
+      borderRadius: 14,
+      overflow: "hidden",
+      boxShadow: T.shadowSm,
+      cursor: "pointer",
+      display: "flex"
+    }
+  },
+    React.createElement("div", { style: { width: 88, height: 88, background: JSK_GREEN, display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0 } },
+      React.createElement("img", {
+        src: article.image || JSK_LOGO,
+        style: { width: "100%", height: "100%", objectFit: "cover" },
+        onError: e => { e.target.src = JSK_LOGO; e.target.style.objectFit = "contain"; }
+      })
+    ),
+    React.createElement("div", { style: { flex: 1, padding: "10px 12px", display: "flex", flexDirection: "column", justifyContent: "space-between" } },
+      React.createElement("div", { style: { fontSize: 13, fontWeight: 700, lineHeight: 1.35, display: "-webkit-box", WebkitLineClamp: 3, overflow: "hidden" } },
+        article.title
+      ),
+      React.createElement("div", { style: { display: "flex", alignItems: "center", gap: 6, marginTop: 6 } },
+        React.createElement("div", { style: { background: color, borderRadius: 5, padding: "2px 7px" } },
+          React.createElement("span", { style: { fontSize: 9, fontWeight: 900, color: "#fff" } }, article.source)
+        ),
+        React.createElement("span", { style: { fontSize: 10, color: T.t3 } }, article.date)
+      )
+    )
+  );
+}
+
 function JSKTab() {
   const [articles, setArticles] = useState([]);
   const [status, setStatus] = useState("load");
   const [selected, setSelected] = useState(null);
+  const [view, setView] = useState("actualites"); // actualites ou une
   
   useEffect(() => {
     let mounted = true;
     setStatus("load");
     
-    // Simuler des articles JSK
-    setTimeout(() => {
-      if (mounted) {
-        setArticles([
-          {
-            id: 1,
-            title: "JS Kabylie : Belaïli proche d'un retour ?",
-            source: "DZFoot",
-            link: "#",
-            image: null,
-            date: new Date().toISOString()
-          },
-          {
-            id: 2,
-            title: "Mercato : La JSK vise un attaquant nigérian",
-            source: "Competition",
-            link: "#",
-            image: null,
-            date: new Date(Date.now() - 86400000).toISOString()
-          }
-        ]);
-        setStatus("ok");
-      }
-    }, 1000);
+    fetch("https://iqeqlsxjiklygywjirqs.supabase.co/functions/v1/jsk-news")
+      .then(r => r.json())
+      .then(data => {
+        if (mounted && data && data.items) {
+          setArticles(data.items);
+          setStatus(data.items.length ? "ok" : "empty");
+        }
+      })
+      .catch(() => {
+        if (mounted) setStatus("err");
+      });
     
     return () => { mounted = false; };
   }, []);
   
   if (selected) {
     return React.createElement("div", { style: { height: "100%", display: "flex", flexDirection: "column" } },
-      React.createElement("div", { style: { padding: "12px", background: "#006B3C", color: "#fff", display: "flex", alignItems: "center", gap: "12px" } },
+      React.createElement("div", { style: { padding: "12px", background: JSK_GREEN, display: "flex", alignItems: "center", gap: 12 } },
         React.createElement("button", {
           onClick: () => setSelected(null),
-          style: { background: "rgba(255,255,255,0.2)", border: "none", color: "#fff", padding: "8px 16px", borderRadius: "8px", cursor: "pointer" }
+          style: { background: "rgba(255,255,255,0.2)", border: "none", color: "#fff", padding: "8px 16px", borderRadius: 8, cursor: "pointer" }
         }, "← Retour"),
-        React.createElement("span", { style: { fontWeight: "bold" } }, "JS Kabylie")
+        React.createElement("img", { src: JSK_LOGO, style: { width: 28, height: 28, borderRadius: "50%", border: `2px solid ${JSK_YELLOW}` } }),
+        React.createElement("span", { style: { color: "#fff", fontWeight: 700 } }, "JS Kabylie")
       ),
-      React.createElement("div", { style: { flex: 1, overflowY: "auto", padding: "16px" } },
-        React.createElement("div", { style: { fontSize: "18px", fontWeight: "bold", marginBottom: "16px" } }, selected.title),
-        React.createElement("div", { style: { marginBottom: "16px" } },
-          React.createElement("span", { style: { background: T.bg2, padding: "4px 8px", borderRadius: "4px", fontSize: "12px" } }, selected.source)
+      React.createElement("div", { style: { flex: 1, overflowY: "auto" } },
+        React.createElement("div", { style: { width: "100%", height: 200, background: JSK_GREEN, position: "relative" } },
+          React.createElement("img", {
+            src: selected.image || JSK_LOGO,
+            style: { width: "100%", height: "100%", objectFit: "cover", opacity: 0.9 }
+          }),
+          React.createElement("div", { style: { position: "absolute", bottom: 12, left: 14, display: "flex", alignItems: "center", gap: 6 } },
+            React.createElement("div", { style: { background: JSK_GREEN, borderRadius: 6, padding: "3px 10px" } },
+              React.createElement("span", { style: { fontSize: 10, fontWeight: 900, color: "#fff" } }, selected.source)
+            ),
+            React.createElement("span", { style: { fontSize: 10, color: "rgba(255,255,255,0.7)" } }, selected.date)
+          )
         ),
-        React.createElement("a", {
-          href: selected.link,
-          target: "_blank",
-          style: {
-            display: "inline-block",
-            padding: "12px 24px",
-            background: "#006B3C",
-            color: "#fff",
-            textDecoration: "none",
-            borderRadius: "8px",
-            fontWeight: "bold"
-          }
-        }, "Lire l'article complet →")
+        React.createElement("div", { style: { padding: "20px 16px" } },
+          React.createElement("div", { style: { fontSize: 18, fontWeight: 700, marginBottom: 20 } }, selected.title),
+          React.createElement("div", { style: { display: "flex", justifyContent: "center", marginBottom: 20 } },
+            React.createElement("a", {
+              href: selected.link,
+              target: "_blank",
+              style: {
+                display: "inline-flex",
+                alignItems: "center",
+                gap: 10,
+                background: JSK_GREEN,
+                color: "#fff",
+                textDecoration: "none",
+                borderRadius: 16,
+                padding: "12px 24px",
+                fontWeight: 700
+              }
+            }, "Lire l'article complet →")
+          )
+        )
       )
     );
   }
   
-  return React.createElement("div", { style: { height: "100%", display: "flex", flexDirection: "column" } },
-    React.createElement("div", { style: { padding: "16px", background: "linear-gradient(135deg,#006B3C,#004d2a)", color: "#fff" } },
-      React.createElement("div", { style: { display: "flex", alignItems: "center", gap: "12px" } },
-        React.createElement("div", { style: { width: "50px", height: "50px", borderRadius: "50%", background: "#FFD700", display: "flex", alignItems: "center", justifyContent: "center", fontSize: "24px" } }, "K"),
+  return React.createElement("div", { style: { height: "100%", display: "flex", flexDirection: "column", overflow: "hidden" } },
+    React.createElement("div", { style: { background: `linear-gradient(160deg,${JSK_GREEN},#004d2a)`, padding: "16px", flexShrink: 0 } },
+      React.createElement("div", { style: { display: "flex", alignItems: "center", gap: 12, marginBottom: 12 } },
+        React.createElement("img", { src: JSK_LOGO, style: { width: 48, height: 48, borderRadius: "50%", border: `2px solid ${JSK_YELLOW}` } }),
         React.createElement("div", null,
-          React.createElement("div", { style: { fontSize: "20px", fontWeight: "bold" } }, "JS Kabylie"),
-          React.createElement("div", { style: { fontSize: "12px", opacity: 0.8 } }, "Actualités · Interviews · Rumeurs")
+          React.createElement("div", { className: "bc", style: { fontSize: 20, fontWeight: 900, color: "#fff" } }, "JS Kabylie"),
+          React.createElement("div", { style: { fontSize: 10, color: JSK_YELLOW, fontWeight: 700 } }, "Actualités · Interviews · Rumeurs")
         )
+      ),
+      
+      React.createElement("div", { style: { display: "flex", gap: 8, background: "rgba(0,0,0,0.2)", borderRadius: 14, padding: 3 } },
+        React.createElement("button", {
+          onClick: () => setView("actualites"),
+          style: {
+            flex: 1,
+            padding: "8px",
+            borderRadius: 12,
+            border: "none",
+            background: view === "actualites" ? "rgba(255,255,255,0.2)" : "transparent",
+            color: "#fff",
+            fontSize: 11,
+            fontWeight: view === "actualites" ? 700 : 500,
+            cursor: "pointer"
+          }
+        }, "📱 Actualités"),
+        React.createElement("button", {
+          onClick: () => setView("une"),
+          style: {
+            flex: 1,
+            padding: "8px",
+            borderRadius: 12,
+            border: "none",
+            background: view === "une" ? "rgba(255,255,255,0.2)" : "transparent",
+            color: "#fff",
+            fontSize: 11,
+            fontWeight: view === "une" ? 700 : 500,
+            cursor: "pointer"
+          }
+        }, "📰 La Une")
       )
     ),
     
-    React.createElement("div", { style: { flex: 1, overflowY: "auto", padding: "12px" } },
-      status === "load" && React.createElement("div", { style: { textAlign: "center", padding: "40px" } },
-        React.createElement(Spin, null)
+    React.createElement("div", { style: { flex: 1, overflowY: "auto", paddingTop: 12 } },
+      view === "actualites" && (
+        status === "load" ? React.createElement("div", { style: { textAlign: "center", padding: 40 } },
+          React.createElement(Spin, null)
+        ) :
+        status === "err" ? React.createElement("div", { style: { textAlign: "center", padding: 40, color: T.t3 } },
+          "Erreur de chargement"
+        ) :
+        status === "empty" ? React.createElement("div", { style: { textAlign: "center", padding: 40, color: T.t3 } },
+          "Aucune actualité disponible"
+        ) :
+        articles.map((a, i) => 
+          React.createElement(JSKCard, { key: i, article: a, onOpen: setSelected })
+        )
       ),
       
-      status === "ok" && articles.map(article =>
-        React.createElement("div", {
-          key: article.id,
-          onClick: () => setSelected(article),
-          style: {
-            marginBottom: "12px",
-            padding: "12px",
-            background: "#fff",
-            borderRadius: "12px",
-            boxShadow: "0 2px 8px rgba(0,0,0,0.05)",
-            cursor: "pointer"
-          }
-        },
-          React.createElement("div", { style: { display: "flex", alignItems: "center", gap: "8px", marginBottom: "8px" } },
-            React.createElement("span", { style: { background: "#006B3C", color: "#fff", padding: "2px 8px", borderRadius: "4px", fontSize: "11px", fontWeight: "bold" } },
-              article.source
-            ),
-            React.createElement("span", { style: { fontSize: "11px", color: T.t3 } },
-              new Date(article.date).toLocaleDateString()
-            )
-          ),
-          React.createElement("div", { style: { fontSize: "14px", fontWeight: "bold" } },
-            article.title
-          )
+      view === "une" && React.createElement("div", { style: { padding: "12px" } },
+        React.createElement("div", { style: { background: "#fff", borderRadius: 16, padding: 20, textAlign: "center" } },
+          React.createElement("div", { style: { fontSize: 40, marginBottom: 12 } }, "📰"),
+          React.createElement("div", { style: { fontSize: 14, color: T.t2 } }, "La Une - Bientôt disponible")
         )
       )
     )
   );
 }
 
-// ========== APP PRINCIPALE ==========
+// ============================================
+// APP PRINCIPALE
+// ============================================
 function App() {
   const [currentTab, setCurrentTab] = useState(() => {
     try { return sessionStorage.getItem("wf_last_tab") || "scores"; }
@@ -5934,6 +6223,13 @@ function App() {
     });
   }, []);
   
+  const [notifPerm, setNotifPerm] = useState(typeof Notification !== "undefined" ? Notification.permission : "denied");
+  
+  const requestNotif = useCallback(() => {
+    if (typeof Notification === "undefined") return;
+    Notification.requestPermission().then(p => setNotifPerm(p));
+  }, []);
+  
   const tabs = [
     { id: "scores", label: "SCORES" },
     { id: "standings", label: "CLASSEMENT" },
@@ -5966,9 +6262,18 @@ function App() {
       background: "linear-gradient(135deg, #00b86b, #009657)",
       color: "#fff"
     } },
-      React.createElement("div", { style: { display: "flex", alignItems: "center", gap: "8px" } },
-        React.createElement("span", { style: { fontSize: "24px", fontWeight: "bold", fontFamily: "'Barlow Condensed', sans-serif" } }, "WORLDFOOT"),
-        React.createElement("span", { style: { fontSize: "12px", opacity: 0.8 } }, "PRO · LIVE · BY AMINE")
+      React.createElement("div", { style: { display: "flex", alignItems: "center", justifyContent: "space-between" } },
+        React.createElement("div", { style: { display: "flex", alignItems: "center", gap: 8 } },
+          React.createElement("span", { style: { fontSize: 24, fontWeight: 900, fontFamily: "'Barlow Condensed', sans-serif" } }, "WORLDFOOT"),
+          React.createElement("span", { style: { fontSize: 10, opacity: 0.8 } }, "PRO · LIVE · BY AMINE")
+        ),
+        React.createElement("div", { style: { display: "flex", alignItems: "center", gap: 8 } },
+          notifPerm !== "granted" && React.createElement("button", {
+            onClick: requestNotif,
+            style: { background: "rgba(255,255,255,0.2)", border: "none", color: "#fff", padding: "4px 8px", borderRadius: 6, fontSize: 11, cursor: "pointer" }
+          }, "🔔 Activer"),
+          React.createElement("div", { className: "live-dot" })
+        )
       )
     ),
     
