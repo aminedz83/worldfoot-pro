@@ -1300,7 +1300,7 @@
 		<script type="text/plain" id="jsx-source">
 
 // ============================================
-// CODE ORIGINAL RESTAURÉ AVEC TOUS LES ONGLETS
+// CODE COMPLET AVEC HEADER RESTAURÉ
 // ============================================
 
 const {useState,useEffect,useCallback,useRef,useMemo}=React;
@@ -6187,7 +6187,7 @@ function JSKTab() {
 }
 
 // ============================================
-// APP PRINCIPALE
+// APP PRINCIPALE AVEC HEADER RESTAURÉ
 // ============================================
 function App() {
   const [currentTab, setCurrentTab] = useState(() => {
@@ -6225,11 +6225,6 @@ function App() {
   
   const [notifPerm, setNotifPerm] = useState(typeof Notification !== "undefined" ? Notification.permission : "denied");
   
-  const requestNotif = useCallback(() => {
-    if (typeof Notification === "undefined") return;
-    Notification.requestPermission().then(p => setNotifPerm(p));
-  }, []);
-  
   const tabs = [
     { id: "scores", label: "SCORES" },
     { id: "standings", label: "CLASSEMENT" },
@@ -6256,24 +6251,44 @@ function App() {
   };
   
   return React.createElement("div", { style: { height: "100%", display: "flex", flexDirection: "column", background: T.bg0 } },
+    // ✅ HEADER RESTAURÉ EXACTEMENT COMME SUR L'IMAGE
     React.createElement("div", { style: {
-      padding: "12px 16px",
-      paddingTop: "calc(12px + env(safe-area-inset-top))",
+      padding: "16px 16px 8px",
+      paddingTop: "calc(16px + env(safe-area-inset-top))",
       background: "linear-gradient(135deg, #00b86b, #009657)",
       color: "#fff"
     } },
-      React.createElement("div", { style: { display: "flex", alignItems: "center", justifyContent: "space-between" } },
+      // Première ligne : WORLDFOOT + LIVE + compteur + déconnexion
+      React.createElement("div", { style: { display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 4 } },
+        React.createElement("span", { style: { fontSize: 24, fontWeight: 900, fontFamily: "'Barlow Condensed', sans-serif", letterSpacing: -0.5 } }, "WORLDFOOT"),
         React.createElement("div", { style: { display: "flex", alignItems: "center", gap: 8 } },
-          React.createElement("span", { style: { fontSize: 24, fontWeight: 900, fontFamily: "'Barlow Condensed', sans-serif" } }, "WORLDFOOT"),
-          React.createElement("span", { style: { fontSize: 10, opacity: 0.8 } }, "PRO · LIVE · BY AMINE")
-        ),
-        React.createElement("div", { style: { display: "flex", alignItems: "center", gap: 8 } },
-          notifPerm !== "granted" && React.createElement("button", {
-            onClick: requestNotif,
-            style: { background: "rgba(255,255,255,0.2)", border: "none", color: "#fff", padding: "4px 8px", borderRadius: 6, fontSize: 11, cursor: "pointer" }
-          }, "🔔 Activer"),
-          React.createElement("div", { className: "live-dot" })
+          React.createElement("div", { style: { display: "flex", alignItems: "center", gap: 4, background: "rgba(255,255,255,0.15)", borderRadius: 20, padding: "4px 8px" } },
+            React.createElement("div", { className: "live-dot" }),
+            React.createElement("span", { style: { fontSize: 10, fontWeight: 700, color: "#fff" } }, "LIVE")
+          ),
+          React.createElement("div", { style: { background: "rgba(0,0,0,0.2)", borderRadius: 10, padding: "4px 8px" } },
+            React.createElement("span", { style: { fontSize: 9, color: "rgba(255,255,255,0.7)" } },
+              _apiCallsToday, React.createElement("span", { style: { opacity: 0.5 } }, "/7.5k")
+            )
+          ),
+          React.createElement("button", {
+            onClick: () => { localStorage.removeItem("wf_auth"); window.location.href = "login.html"; },
+            style: {
+              background: "rgba(255,255,255,0.1)",
+              border: "1px solid rgba(255,255,255,0.2)",
+              borderRadius: 8,
+              padding: "4px 8px",
+              color: "#fff",
+              fontSize: 14,
+              cursor: "pointer"
+            }
+          }, "⏻")
         )
+      ),
+      
+      // Deuxième ligne : PRO·LIVE·BY AMINE
+      React.createElement("div", { style: { fontSize: 10, color: "rgba(255,255,255,0.7)", marginBottom: 12 } },
+        "PRO·LIVE·BY AMINE"
       )
     ),
     
