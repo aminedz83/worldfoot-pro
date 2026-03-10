@@ -1,5 +1,4 @@
-<<!DOCTYPE html>
-
+<!DOCTYPE html>
 <html lang="fr">
 	<head>
 		<meta charset="UTF-8" />
@@ -1300,7 +1299,7 @@
 		<script type="text/plain" id="jsx-source">
 
 // ============================================
-// CODE COMPLET AVEC HEADER RESTAURÉ
+// CODE COMPLET AVEC HEADER RESTAURÉ ET TERRAIN PREMIUM
 // ============================================
 
 const {useState,useEffect,useCallback,useRef,useMemo}=React;
@@ -1871,7 +1870,7 @@ const organizePlayersByLine = (players, formation) => {
   return result;
 };
 
-// ── VUE TERRAIN FLASHSCORE AMÉLIORÉE ───────────────────────────
+// ── VUE TERRAIN FLASHSCORE AMÉLIORÉE AVEC SVG PREMIUM ───────────────────────────
 const renderTerrainFlash = (fix, hLu, aLu, players, events, hid, aid, has, hg, ag) => {
   if (!hLu && !aLu) return null;
   
@@ -1905,29 +1904,59 @@ const renderTerrainFlash = (fix, hLu, aLu, players, events, hid, aid, has, hg, a
     return events.filter(e => e.player?.id === playerId || e.assist?.id === playerId);
   };
   
+  // ✅ TERRAIN PREMIUM ULTRA RÉALISTE (STYLE FLASHSCORE)
   return React.createElement("div", {
     style: {
       background: "linear-gradient(180deg, #2d6a3a 0%, #1b4d2a 50%, #2d6a3a 100%)",
       borderRadius: 16,
       overflow: "hidden",
       position: "relative",
-      border: "1px solid rgba(255,255,255,0.2)",
-      boxShadow: "0 8px 24px rgba(0,0,0,0.3)",
+      border: "1px solid rgba(255,255,255,0.15)",
+      boxShadow: "0 8px 24px rgba(0,0,0,0.3), inset 0 1px 2px rgba(255,255,255,0.1)",
       marginBottom: 16
     }
   },
+    // ✅ SVG TERRAIN PREMIUM AVEC TOUTES LES LIGNES
     React.createElement("svg", {
       style: { position: "absolute", inset: 0, width: "100%", height: "100%", pointerEvents: "none" },
       viewBox: "0 0 320 580",
       preserveAspectRatio: "none"
     },
-      React.createElement("rect", { x: 0, y: 0, width: 320, height: 580, fill: "rgba(0,0,0,0.1)" }),
-      React.createElement("rect", { x: 16, y: 12, width: 288, height: 556, fill: "none", stroke: "rgba(255,255,255,0.3)", strokeWidth: 1.5 }),
-      React.createElement("line", { x1: 16, y1: 290, x2: 304, y2: 290, stroke: "rgba(255,255,255,0.3)", strokeWidth: 1.5 }),
-      React.createElement("circle", { cx: 160, cy: 290, r: 42, fill: "none", stroke: "rgba(255,255,255,0.3)", strokeWidth: 1.5 }),
-      React.createElement("circle", { cx: 160, cy: 290, r: 3, fill: "rgba(255,255,255,0.7)" })
+      // Fond plus naturel
+      React.createElement("rect", { x: 0, y: 0, width: 320, height: 580, fill: "rgba(0,40,0,0.2)" }),
+      
+      // Lignes principales (plus épaisses)
+      React.createElement("rect", { x: 16, y: 12, width: 288, height: 556, fill: "none", stroke: "rgba(255,255,255,0.4)", strokeWidth: 2 }),
+      React.createElement("line", { x1: 16, y1: 290, x2: 304, y2: 290, stroke: "rgba(255,255,255,0.4)", strokeWidth: 2 }),
+      
+      // Cercle central avec effet de brillance
+      React.createElement("circle", { cx: 160, cy: 290, r: 42, fill: "none", stroke: "rgba(255,255,255,0.35)", strokeWidth: 2 }),
+      React.createElement("circle", { cx: 160, cy: 290, r: 3, fill: "rgba(255,255,255,0.8)", filter: "drop-shadow(0 0 4px white)" }),
+      
+      // ✅ SURFACE HOME - avec dégradé subtil
+      React.createElement("rect", { x: 72, y: 12, width: 176, height: 68, fill: "rgba(255,255,255,0.03)", stroke: "rgba(255,255,255,0.35)", strokeWidth: 1.8 }),
+      React.createElement("rect", { x: 112, y: 12, width: 96, height: 32, fill: "rgba(255,255,255,0.05)", stroke: "rgba(255,255,255,0.3)", strokeWidth: 1.5 }),
+      
+      // ✅ SURFACE AWAY
+      React.createElement("rect", { x: 72, y: 500, width: 176, height: 68, fill: "rgba(255,255,255,0.03)", stroke: "rgba(255,255,255,0.35)", strokeWidth: 1.8 }),
+      React.createElement("rect", { x: 112, y: 536, width: 96, height: 32, fill: "rgba(255,255,255,0.05)", stroke: "rgba(255,255,255,0.3)", strokeWidth: 1.5 }),
+      
+      // ✅ POINTS DE PENALTY avec glow
+      React.createElement("circle", { cx: 160, cy: 100, r: 3, fill: "rgba(255,255,255,0.9)", filter: "drop-shadow(0 0 4px white)" }),
+      React.createElement("circle", { cx: 160, cy: 480, r: 3, fill: "rgba(255,255,255,0.9)", filter: "drop-shadow(0 0 4px white)" }),
+      
+      // ✅ ARCS DE CERCLE (effet premium)
+      React.createElement("path", { d: "M 120 80 A 42 42 0 0 0 200 80", fill: "none", stroke: "rgba(255,255,255,0.3)", strokeWidth: 1.8 }),
+      React.createElement("path", { d: "M 120 500 A 42 42 0 0 1 200 500", fill: "none", stroke: "rgba(255,255,255,0.3)", strokeWidth: 1.8 }),
+      
+      // ✅ PETITS DÉTAILS PREMIUM : marques des corners
+      React.createElement("circle", { cx: 28, cy: 24, r: 2, fill: "rgba(255,255,255,0.5)" }),
+      React.createElement("circle", { cx: 292, cy: 24, r: 2, fill: "rgba(255,255,255,0.5)" }),
+      React.createElement("circle", { cx: 28, cy: 556, r: 2, fill: "rgba(255,255,255,0.5)" }),
+      React.createElement("circle", { cx: 292, cy: 556, r: 2, fill: "rgba(255,255,255,0.5)" })
     ),
     
+    // ✅ Header avec logos et score (superposé)
     React.createElement("div", {
       style: {
         position: "relative",
@@ -1953,6 +1982,7 @@ const renderTerrainFlash = (fix, hLu, aLu, players, events, hid, aid, has, hg, a
       )
     ),
     
+    // ✅ Joueurs sur le terrain
     React.createElement("div", {
       style: {
         position: "relative",
@@ -2078,6 +2108,7 @@ const renderTerrainFlash = (fix, hLu, aLu, players, events, hid, aid, has, hg, a
       )
     ),
     
+    // ✅ Footer avec formations
     React.createElement("div", {
       style: {
         position: "relative",
