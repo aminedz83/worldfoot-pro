@@ -190,23 +190,6 @@
 					box-shadow: 0 0 0 8px rgba(229, 57, 53, 0);
 				}
 			}
-			
-			/* ✅ NOUVELLE ANIMATION POUR GROSSE OCCASION */
-			@keyframes pulse-red {
-				0% {
-					background-color: rgba(229, 57, 53, 0.1);
-					border-left-color: #e53935;
-				}
-				50% {
-					background-color: rgba(229, 57, 53, 0.3);
-					border-left-color: #ff1744;
-				}
-				100% {
-					background-color: rgba(229, 57, 53, 0.1);
-					border-left-color: #e53935;
-				}
-			}
-			
 			@keyframes sk {
 				0%,
 				100% {
@@ -839,22 +822,6 @@
 				background: linear-gradient(90deg, rgba(0,184,107,0.02), #FFFFFF);
 				border-left: 3px solid #00b86b;
 			}
-			
-			/* ✅ STYLE POUR GROSSE OCCASION */
-			.md-evt-row.big-chance {
-				background: rgba(229, 57, 53, 0.1);
-				border-left: 3px solid #e53935;
-				animation: pulse-red 1.5s ease-in-out infinite;
-			}
-			.md-evt-row.big-chance .md-evt-icon {
-				color: #e53935;
-			}
-			.md-evt-row.big-chance .md-evt-player {
-				color: #e53935;
-				font-weight: 800;
-				text-transform: uppercase;
-			}
-			
 			.md-evt-min {
 				font-family: "Barlow Condensed", sans-serif;
 				font-size: 13px;
@@ -3008,14 +2975,6 @@ function MatchDetail({state,onClose}){
       const isMiss=e.detail==="Missed Penalty";
       const isYellow=isCard&&e.detail?.includes("Yellow");
       const isRed=isCard&&(e.detail?.includes("Red")||e.detail?.includes("Second Yellow"));
-      
-      // ✅ DÉTECTION GROSSE OCCASION
-      const isBigChance = e.type === "Big Chance" || 
-          e.detail?.includes("Big chance") || 
-          e.detail?.includes("Hit woodwork") ||
-          e.type === "Big Chance Created" || 
-          e.type === "Big Chance Missed" || 
-          e.type === "Hit Woodwork";
 
       const iconEl=isGoal&&!isMiss
         ?React.createElement("div",{style:{width:28,height:28,borderRadius:"50%",background:isCSC?"rgba(229,57,53,.1)":"rgba(0,0,0,.06)",display:"flex",alignItems:"center",justifyContent:"center",flexShrink:0,fontSize:15}},isCSC?"⚽":"⚽")
@@ -3023,13 +2982,12 @@ function MatchDetail({state,onClose}){
         :isRed?React.createElement("div",{style:{width:22,height:28,borderRadius:4,background:"#e53935",flexShrink:0}})
         :isSubst?React.createElement("div",{style:{width:28,height:28,borderRadius:"50%",background:"rgba(0,0,0,.06)",display:"flex",alignItems:"center",justifyContent:"center",flexShrink:0,fontSize:14}},"🔄")
         :isVar?React.createElement("div",{style:{width:28,height:28,borderRadius:"50%",background:"rgba(37,99,235,.08)",display:"flex",alignItems:"center",justifyContent:"center",flexShrink:0,fontSize:13}},"📺")
-        :isBigChance?React.createElement("div",{style:{width:28,height:28,borderRadius:"50%",background:"rgba(229,57,53,.1)",display:"flex",alignItems:"center",justifyContent:"center",flexShrink:0,fontSize:15,color:"#e53935"}},"⚡")
         :React.createElement("div",{style:{width:28,height:28,borderRadius:"50%",background:"rgba(0,0,0,.06)",display:"flex",alignItems:"center",justifyContent:"center",flexShrink:0,fontSize:13}},"📋");
 
       const scoreEl=(isGoal&&!isMiss)?React.createElement("div",{style:{fontFamily:"'Barlow Condensed',sans-serif",fontSize:15,fontWeight:900,color:"#111827",background:"rgba(0,0,0,0.05)",borderRadius:6,padding:"2px 10px",whiteSpace:"nowrap",flexShrink:0}},`${e.hs} - ${e.as}`):null;
 
-      const nameEl=React.createElement("div",{style:{fontSize:13,fontWeight:isGoal&&!isMiss?700:500,color:isBigChance?"#e53935":"#111827",overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap"}},
-        isBigChance ? "GROSSE OCCASION!" : (e.player?.name||"?"),
+      const nameEl=React.createElement("div",{style:{fontSize:13,fontWeight:isGoal&&!isMiss?700:500,color:"#111827",overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap"}},
+        e.player?.name||"?",
         isPen&&!isMiss?React.createElement("span",{style:{fontSize:10,background:"rgba(0,193,112,.12)",color:"#00c170",borderRadius:3,padding:"1px 5px",marginLeft:5,fontWeight:700}},"Pen."):null,
         isCSC?React.createElement("span",{style:{fontSize:10,background:"rgba(229,57,53,.1)",color:"#e53935",borderRadius:3,padding:"1px 5px",marginLeft:5,fontWeight:700}},"CSC"):null,
         
@@ -3235,10 +3193,8 @@ function MatchDetail({state,onClose}){
         );
       }
 
-      const eventClass = isBigChance ? "md-evt-row big-chance" : "md-evt-row";
-
       if(isHome){
-        return React.createElement("div",{key:i, className: eventClass, style:{display:"flex",alignItems:"center",gap:8,padding:"9px 12px 9px 14px",borderRadius:0,marginBottom:0,borderBottom:"1px solid rgba(0,0,0,0.03)"}},
+        return React.createElement("div",{key:i,style:{display:"flex",alignItems:"center",gap:8,padding:"9px 12px 9px 14px",background:"rgba(0,0,0,.03)",borderRadius:0,marginBottom:0,borderBottom:"1px solid rgba(0,0,0,0.03)"}},
           React.createElement("span",{style:{fontFamily:"'Barlow Condensed',sans-serif",fontSize:13,fontWeight:700,color:isGoal&&!isMiss?"#0f1117":"#111827",minWidth:32,flexShrink:0}},[minStr]),
           iconEl,
           scoreEl,
@@ -3246,7 +3202,7 @@ function MatchDetail({state,onClose}){
           React.createElement("div",{style:{flex:1}})
         );
       } else {
-        return React.createElement("div",{key:i, className: eventClass, style:{display:"flex",alignItems:"center",gap:8,padding:"9px 14px 9px 12px",borderRadius:0,marginBottom:0,borderBottom:"1px solid rgba(0,0,0,0.03)"}},
+        return React.createElement("div",{key:i,style:{display:"flex",alignItems:"center",gap:8,padding:"9px 14px 9px 12px",background:"rgba(0,0,0,.03)",borderRadius:0,marginBottom:0,borderBottom:"1px solid rgba(0,0,0,0.03)"}},
           React.createElement("div",{style:{flex:1}}),
           React.createElement("div",{style:{flex:1,minWidth:0,textAlign:"right"}},nameEl,subLine),
           scoreEl,
@@ -4700,10 +4656,6 @@ function ScoresTab({favs,onFav}){
     if(lg)list=list.filter(f=>f.league.id===lg);
     if(q.trim()){const s=q.toLowerCase();list=list.filter(f=>f.teams.home.name.toLowerCase().includes(s)||f.teams.away.name.toLowerCase().includes(s)||f.league.name.toLowerCase().includes(s));}
     if(favOnly)list=list.filter(f=>favs.has(f.fixture.id));
-    
-    // ✅ FILTRE POUR VOIR QUE LES MATCHS LIVE - DÉCOMMENTE POUR ACTIVER
-    // list = list.filter(f => LIVE_ST.has(f.fixture.status.short));
-    
     const map={};
     list.forEach(f=>{if(!map[f.league.id])map[f.league.id]={lg:f.league,matches:[]};map[f.league.id].matches.push(f);});
     return Object.values(map).sort((a,b)=>{
@@ -4837,8 +4789,7 @@ function ScoresTab({favs,onFav}){
         style: { border: "1px solid " + T.line, color: T.t3, borderRadius: 10, padding: "8px 10px", fontSize: 12, cursor: "pointer", background: "none", flexShrink: 0 }
       }, "✕") : null
     ),
-    // ✅ BARRE GRISE SUPPRIMÉE - plus de paddingBottom
-    React.createElement("div", { style: { flex: 1, overflowY: "auto" } },
+    React.createElement("div", { style: { flex: 1, overflowY: "auto", paddingBottom: "env(safe-area-inset-bottom)" } },
       st === "load" ? React.createElement(SkRows, null)
       : st === "err" ? React.createElement("div", { style: { textAlign: "center", padding: "52px 24px" } },
           React.createElement("div", { style: { fontSize: 44, marginBottom: 16 } }, "⚠️"),
@@ -5144,8 +5095,8 @@ function App(){
       scr === "actu" ? React.createElement(ActuTab, null) : null,
       scr === "results" ? React.createElement(ResultsTab, null) : null,
       scr === "jsk" ? React.createElement(JSKTab, null) : null
-    )
-    // ✅ BARRE GRISE SUPPRIMÉE - cette ligne a été enlevée
+    ),
+    React.createElement("div", { style: { height: "env(safe-area-inset-bottom)", background: T.bg0, flexShrink: 0 } })
   );
 }
 
