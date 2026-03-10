@@ -5812,7 +5812,7 @@ function ActuTab() {
 }
 
 // ============================================
-// ONGLET RÉSULTATS (ResultsTab) - RESTAURÉ
+// ONGLET RÉSULTATS (ResultsTab) - AMÉLIORÉ AVEC TOUTES LES JOURNÉES ET NAVIGATION
 // ============================================
 function ResultsTab() {
   const [lid, setLid] = useState(39);
@@ -5902,8 +5902,54 @@ function ResultsTab() {
         )
       ),
       
-      rounds.length > 0 && React.createElement("div", { style: { display: "flex", gap: 6, overflowX: "auto", paddingBottom: 2 } },
-        rounds.slice(0, 10).map(round =>
+      // ✅ Barre de navigation avec flèches et toutes les journées
+      rounds.length > 0 && React.createElement("div", { style: { display: "flex", alignItems: "center", gap: 8, marginBottom: 12 } },
+        React.createElement("button", {
+          onClick: () => {
+            const currentIndex = rounds.indexOf(selectedRound);
+            if (currentIndex > 0) setSelectedRound(rounds[currentIndex - 1]);
+          },
+          style: {
+            width: 36,
+            height: 36,
+            borderRadius: 10,
+            border: `1px solid ${T.line}`,
+            background: "#fff",
+            display: "flex",
+            alignItems: "center",
+            justifyContent: "center",
+            cursor: "pointer",
+            fontSize: 16
+          }
+        }, "←"),
+        
+        React.createElement("div", { style: { flex: 1, textAlign: "center", fontSize: 13, fontWeight: 600 } },
+          selectedRound ? selectedRound.replace("Regular Season - ", "J") : "Sélectionner une journée"
+        ),
+        
+        React.createElement("button", {
+          onClick: () => {
+            const currentIndex = rounds.indexOf(selectedRound);
+            if (currentIndex < rounds.length - 1) setSelectedRound(rounds[currentIndex + 1]);
+          },
+          style: {
+            width: 36,
+            height: 36,
+            borderRadius: 10,
+            border: `1px solid ${T.line}`,
+            background: "#fff",
+            display: "flex",
+            alignItems: "center",
+            justifyContent: "center",
+            cursor: "pointer",
+            fontSize: 16
+          }
+        }, "→")
+      ),
+      
+      // ✅ TOUTES LES JOURNÉES (suppression de la limite à 10)
+      rounds.length > 0 && React.createElement("div", { style: { display: "flex", gap: 6, overflowX: "auto", paddingBottom: 2, paddingRight: 16 } },
+        rounds.map(round =>
           React.createElement("button", {
             key: round,
             onClick: () => setSelectedRound(round),
