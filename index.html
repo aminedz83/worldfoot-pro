@@ -1254,8 +1254,6 @@
 		</script>
 
 		<script type="text/plain" id="jsx-source">
-
-
 const {useState,useEffect,useCallback,useRef,useMemo}=React;
 
 // ── IDs des clubs algériens ──────────────────────────────
@@ -2029,15 +2027,6 @@ const renderListeFlash = (fix, hLu, aLu, players, events, injuries, hid, aid) =>
   const homeAbsent = getAbsentPlayers(hid);
   const awayAbsent = getAbsentPlayers(aid);
 
-  const getPlayerEmojis = (events) => {
-    let emojis = [];
-    if (events.goals > 0) emojis.push("⚽".repeat(events.goals));
-    if (events.assists > 0) emojis.push("🎯".repeat(events.assists));
-    if (events.yellow > 0) emojis.push("🟨".repeat(events.yellow));
-    if (events.red > 0) emojis.push("🟥".repeat(events.red));
-    return emojis.join(" ");
-  };
-
   return React.createElement("div", {
     style: {
       padding: "12px 8px 20px",
@@ -2547,7 +2536,102 @@ const renderListeFlash = (fix, hLu, aLu, players, events, injuries, hid, aid) =>
   );
 };
 
-// ── MATCH ROW ──
+// ── COMPOS PANEL (CORRIGÉ) ───────────────────────────
+function ComposPanel({lineups, players, homeTeam, awayTeam, isPartial, fix, events, injuries}) {
+  const [view, setView] = useState("pitch");
+  const hLu = lineups?.find(l => l.team?.id === homeTeam?.id);
+  const aLu = lineups?.find(l => l.team?.id === awayTeam?.id);
+
+  if (!hLu && !aLu) {
+    return React.createElement("div", {
+      style: {
+        textAlign: "center",
+        padding: "44px 20px",
+        color: T.t3,
+        display: "flex",
+        flexDirection: "column",
+        alignItems: "center",
+        gap: 12
+      }
+    },
+      isPartial
+        ? React.createElement(React.Fragment, null,
+            React.createElement(Spin, { s: 24 }),
+            React.createElement("span", { style: { fontSize: 13 } }, "Chargement compositions...")
+          )
+        : React.createElement(React.Fragment, null,
+            React.createElement("div", { style: { fontSize: 36 } }, "📋"),
+            React.createElement("div", { style: { fontSize: 13 } }, "Compositions non disponibles")
+          )
+    );
+  }
+
+  return React.createElement("div", { style: { width: "100%" } },
+    React.createElement("div", {
+      style: {
+        display: "flex",
+        gap: 6,
+        marginBottom: 10,
+        padding: "0 12px"
+      }
+    },
+      React.createElement("button", {
+        onClick: () => setView("pitch"),
+        style: {
+          flex: 1,
+          padding: "8px 0",
+          background: view === "pitch" ? "#00b86b" : "#f0f2f5",
+          border: "none",
+          borderRadius: 8,
+          color: view === "pitch" ? "#fff" : "#666",
+          fontSize: 12,
+          fontWeight: view === "pitch" ? 700 : 500,
+          cursor: "pointer"
+        }
+      }, "⚽ Terrain"),
+      React.createElement("button", {
+        onClick: () => setView("list"),
+        style: {
+          flex: 1,
+          padding: "8px 0",
+          background: view === "list" ? "#00b86b" : "#f0f2f5",
+          border: "none",
+          borderRadius: 8,
+          color: view === "list" ? "#fff" : "#666",
+          fontSize: 12,
+          fontWeight: view === "list" ? 700 : 500,
+          cursor: "pointer"
+        }
+      }, "📋 Liste")
+    ),
+    
+    view === "pitch"
+      ? renderTerrainFlash(
+          fix || { teams: { home: homeTeam, away: awayTeam } },
+          hLu,
+          aLu,
+          players || [],
+          events || [],
+          homeTeam?.id,
+          awayTeam?.id,
+          fix?.goals?.home !== undefined && fix?.goals?.away !== undefined,
+          fix?.goals?.home,
+          fix?.goals?.away
+        )
+      : renderListeFlash(
+          fix || { teams: { home: homeTeam, away: awayTeam } },
+          hLu,
+          aLu,
+          players || [],
+          events || [],
+          injuries || [],
+          homeTeam?.id,
+          awayTeam?.id
+        )
+  );
+}
+
+// ── MATCH ROW ──────────────────────────────────────
 function Row({match:m,onOpen,isFav,onFav}){
   const s=m.fixture.status;
   const sh=s.short;
@@ -2561,578 +2645,94 @@ function Row({match:m,onOpen,isFav,onFav}){
   const stLabel=sh==="HT"?"MT":sh==="BT"?"Pause":sh==="P"?"Tab":sh==="SUSP"?"Susp.":sh==="INT"?"Inter.":sh==="ABD"?"Arr.":sh==="CANC"?"Ann.":sh==="PST"?"Rep.":sh==="TBD"?"TBD":sh==="AET"?"Ap.Pr.":sh==="PEN"?"Tab":"FT";
   const hn=m.teams.home.name,an=m.teams.away.name;
   const hRank=m.teams.home.rank,aRank=m.teams.away.rank;
-  return<div onClick={onOpen} style={{
-    display:"flex",alignItems:"center",minHeight:58,cursor:"pointer",
-    borderBottom:"1px solid #f0f1f5",
-    background:flash?"rgba(229,53,53,.05)":"#fff",
-    padding:"0 0 0 12px",opacity:canc?0.5:1,
-  }}>
-    <div style={{width:46,flexShrink:0,textAlign:"center"}}>
-      {live
-        ?<div>
-          <div style={{fontSize:13,fontWeight:800,color:"#e53535",lineHeight:1}}>{min}{'\''}</div>
-          <div style={{width:6,height:6,borderRadius:"50%",background:"#e53535",margin:"3px auto 0",animation:"pulse 1.2s infinite"}}/>
-        </div>
-        :sh==="NS"
-        ?<span style={{fontSize:13,fontWeight:700,color:"#333"}}>{hhmm(m.fixture.date)}</span>
-        :<span style={{fontSize:11,fontWeight:800,color:sh==="HT"||sh==="BT"?"#f59e0b":sh==="CANC"||sh==="ABD"?"#e53535":"#888"}}>{stLabel}</span>
-      }
-    </div>
-    <div style={{flex:1,minWidth:0,padding:"8px 0 8px 6px",display:"flex",flexDirection:"column",gap:7}}>
-      <div style={{display:"flex",alignItems:"center",gap:8}}>
-        <Logo src={m.teams.home.logo} size={20}/>
-        <span style={{fontSize:14,fontWeight:hw?800:500,color:hw?"#111":aw?"#bbb":"#222",flex:1,overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap"}}>
-          {hn}{hRank?<span style={{fontSize:11,color:"#bbb",fontWeight:400}}>[{hRank}]</span>:null}
-        </span>
-      </div>
-      <div style={{display:"flex",alignItems:"center",gap:8}}>
-        <Logo src={m.teams.away.logo} size={20}/>
-        <span style={{fontSize:14,fontWeight:aw?800:500,color:aw?"#111":hw?"#bbb":"#222",flex:1,overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap"}}>
-          {an}{aRank?<span style={{fontSize:11,color:"#bbb",fontWeight:400}}>[{aRank}]</span>:null}
-        </span>
-      </div>
-    </div>
-    <div style={{width:32,display:"flex",flexDirection:"column",alignItems:"center",justifyContent:"center",gap:7,flexShrink:0}}>
-      {has?<>
-        <span style={{fontSize:16,fontWeight:hw?900:500,color:flash?"#e53535":hw?"#111":"#999",lineHeight:1}}>{hg}</span>
-        <span style={{fontSize:16,fontWeight:aw?900:500,color:flash?"#e53535":aw?"#111":"#999",lineHeight:1}}>{ag}</span>
-      </>:<span style={{fontSize:13,color:"#ccc"}}>-</span>}
-    </div>
-    <button onClick={e=>{e.stopPropagation();onFav();}} style={{background:"none",border:"none",color:isFav?"#f59e0b":"#ddd",fontSize:18,padding:"0 14px 0 6px",flexShrink:0,cursor:"pointer"}}>
-      {isFav?"★":"☆"}
-    </button>
-  </div>;
+  return React.createElement("div", {
+    onClick: onOpen,
+    style: {
+      display: "flex",
+      alignItems: "center",
+      minHeight: 58,
+      cursor: "pointer",
+      borderBottom: "1px solid #f0f1f5",
+      background: flash ? "rgba(229,53,53,.05)" : "#fff",
+      padding: "0 0 0 12px",
+      opacity: canc ? 0.5 : 1
+    }
+  },
+    React.createElement("div", { style: { width: 46, flexShrink: 0, textAlign: "center" } },
+      live
+        ? React.createElement("div", null,
+            React.createElement("div", { style: { fontSize: 13, fontWeight: 800, color: "#e53535", lineHeight: 1 } }, min + "'"),
+            React.createElement("div", { style: { width: 6, height: 6, borderRadius: "50%", background: "#e53535", margin: "3px auto 0", animation: "pulse 1.2s infinite" } })
+          )
+        : sh === "NS"
+        ? React.createElement("span", { style: { fontSize: 13, fontWeight: 700, color: "#333" } }, hhmm(m.fixture.date))
+        : React.createElement("span", { style: { fontSize: 11, fontWeight: 800, color: sh === "HT" || sh === "BT" ? "#f59e0b" : sh === "CANC" || sh === "ABD" ? "#e53535" : "#888" } }, stLabel)
+    ),
+    React.createElement("div", { style: { flex: 1, minWidth: 0, padding: "8px 0 8px 6px", display: "flex", flexDirection: "column", gap: 7 } },
+      React.createElement("div", { style: { display: "flex", alignItems: "center", gap: 8 } },
+        React.createElement(Logo, { src: m.teams.home.logo, size: 20 }),
+        React.createElement("span", { style: { fontSize: 14, fontWeight: hw ? 800 : 500, color: hw ? "#111" : aw ? "#bbb" : "#222", flex: 1, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" } },
+          hn,
+          hRank ? React.createElement("span", { style: { fontSize: 11, color: "#bbb", fontWeight: 400 } }, " [" + hRank + "]") : null
+        )
+      ),
+      React.createElement("div", { style: { display: "flex", alignItems: "center", gap: 8 } },
+        React.createElement(Logo, { src: m.teams.away.logo, size: 20 }),
+        React.createElement("span", { style: { fontSize: 14, fontWeight: aw ? 800 : 500, color: aw ? "#111" : hw ? "#bbb" : "#222", flex: 1, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" } },
+          an,
+          aRank ? React.createElement("span", { style: { fontSize: 11, color: "#bbb", fontWeight: 400 } }, " [" + aRank + "]") : null
+        )
+      )
+    ),
+    React.createElement("div", { style: { width: 32, display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", gap: 7, flexShrink: 0 } },
+      has
+        ? React.createElement(React.Fragment, null,
+            React.createElement("span", { style: { fontSize: 16, fontWeight: hw ? 900 : 500, color: flash ? "#e53535" : hw ? "#111" : "#999", lineHeight: 1 } }, hg),
+            React.createElement("span", { style: { fontSize: 16, fontWeight: aw ? 900 : 500, color: flash ? "#e53535" : aw ? "#111" : "#999", lineHeight: 1 } }, ag)
+          )
+        : React.createElement("span", { style: { fontSize: 13, color: "#ccc" } }, "-")
+    ),
+    React.createElement("button", {
+      onClick: e => { e.stopPropagation(); onFav(); },
+      style: { background: "none", border: "none", color: isFav ? "#f59e0b" : "#ddd", fontSize: 18, padding: "0 14px 0 6px", flexShrink: 0, cursor: "pointer" }
+    }, isFav ? "★" : "☆")
+  );
 }
 
 function LeagueBlock({group,onOpen,favs,onFav}){
   const[open,setOpen]=useState(true);
   const lv=group.matches.filter(m=>LIVE_ST.has(m.fixture.status.short)).length;
-  return<div style={{background:"#fff"}}>
-    <div onClick={()=>setOpen(v=>!v)} style={{
-      display:"flex",alignItems:"center",gap:10,padding:"9px 14px",
-      background:"#fff",borderBottom:"1px solid #f0f1f5",
-      borderTop:"3px solid #f5f6f9",cursor:"pointer",userSelect:"none",
-    }}>
-      <div style={{width:26,height:26,borderRadius:"50%",overflow:"hidden",flexShrink:0,border:"1.5px solid #eee"}}>
-        <Logo src={group.lg.flag||group.lg.logo} size={26}/>
-      </div>
-      <div style={{flex:1,minWidth:0}}>
-        <span style={{fontSize:13,fontWeight:700,color:"#111",overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap",display:"block"}}>
-          {group.lg.country}<span style={{color:"#999",fontWeight:500}}>: {group.lg.name}</span>
-        </span>
-      </div>
-      {lv>0&&<span style={{fontSize:10,fontWeight:900,color:"#e53535",background:"rgba(229,53,53,.1)",border:"1px solid rgba(229,53,53,.25)",padding:"2px 8px",borderRadius:20,animation:"pulse 1.5s infinite",flexShrink:0}}>LIVE {lv}</span>}
-      <span style={{fontSize:10,color:"#ccc",flexShrink:0}}>{open?"▾":"▸"}</span>
-    </div>
-    {open&&group.matches.map(m=><Row key={m.fixture.id} match={m} onOpen={()=>onOpen(m.fixture.id)} isFav={favs.has(m.fixture.id)} onFav={()=>onFav(m.fixture.id)}/>)}
-  </div>;
-}
-
-//
-// MODULE BLESS S / SUSPENDUS
-//
-function AnalysePanel({h2h,homeTeam,awayTeam,hSt=[],aSt=[],homeHistory=[],awayHistory=[]}){
-  if(!h2h||h2h.length===0)return<div style={{textAlign:"center",padding:"44px 20px",color:T.t3,fontSize:13}}>Pas assez de données H2H</div>;
-
-  const hid=homeTeam.id;
-
-  const h2hStats=(()=>{
-    let hW=0,aW=0,draws=0;
-    let over05=0,over15=0,over25=0,over35=0,over45=0;
-    let btts=0,hCS=0,aCS=0;
-    let hFirst=0,aFirst=0,noFirst=0;
-    let totalGoals=0,hGoalsTotal=0,aGoalsTotal=0;
-    let last5=[],last5H=0,last5A=0,last5D=0;
-
-    h2h.forEach((m,i)=>{
-      const isHome=m.teams.home.id===hid;
-      const mg=m.goals.home??0,ag=m.goals.away??0;
-      const hGoals=isHome?mg:ag, aGoals=isHome?ag:mg;
-      const tot=hGoals+aGoals;
-      totalGoals+=tot;
-      hGoalsTotal+=hGoals;
-      aGoalsTotal+=aGoals;
-      if(hGoals>aGoals){hW++;if(i<5)last5H++;}
-      else if(aGoals>hGoals){aW++;if(i<5)last5A++;}
-      else{draws++;if(i<5)last5D++;}
-      if(tot>0.5)over05++;
-      if(tot>1.5)over15++;
-      if(tot>2.5)over25++;
-      if(tot>3.5)over35++;
-      if(tot>4.5)over45++;
-      if(hGoals>0&&aGoals>0)btts++;
-      if(aGoals===0)hCS++;
-      if(hGoals===0)aCS++;
-      if(hGoals>0&&aGoals===0)hFirst++;
-      else if(aGoals>0&&hGoals===0)aFirst++;
-      else if(hGoals===0&&aGoals===0)noFirst++;
-      else{hFirst+=0.5;aFirst+=0.5;}
-      last5.push({hGoals,aGoals,tot});
-    });
-
-    const n=h2h.length;
-    const avgGoals=totalGoals/n;
-    const avgH=hGoalsTotal/n;
-    const avgA=aGoalsTotal/n;
-
-    const last5n=Math.min(5,n);
-    const last5avg=last5.slice(0,last5n).reduce((s,m)=>s+m.tot,0)/last5n;
-    const trendUp=last5avg>avgGoals+0.3;
-    const trendDown=last5avg<avgGoals-0.3;
-
-    return{hW,aW,draws,n,over05,over15,over25,over35,over45,btts,hCS,aCS,
-           hFirst,aFirst,noFirst,avgGoals,avgH,avgA,
-           last5,last5H,last5A,last5D,last5avg,trendUp,trendDown,
-           pct:(x)=>Math.round(x/n*100)};
-  })();
-
-  const analyseTeam=(history,teamGoals,concededGoals,n)=>{
-    const atk=teamGoals/n;
-    const def=concededGoals/n;
-    const cs_pct=history.filter?.(m=>m.conceded===0).length/n*100 ?? 0;
-    const atkRating=Math.min(10,atk*2.5);
-    const defRating=Math.min(10,Math.max(0,10-(def*3)));
-    const balance=atkRating-defRating;
-    const profile=balance>2?"🗡️ Offensif":balance<-2?"🛡️ Défensif":"⚖️ Équilibré";
-    const overall=(atkRating+defRating)/2;
-    return{atk:atk.toFixed(2),def:def.toFixed(2),atkRating,defRating,overall,profile,balance};
-  };
-
-  const hProfile=analyseTeam(homeHistory,h2hStats.avgH,h2hStats.avgA,h2hStats.n);
-  const aProfile=analyseTeam(awayHistory,h2hStats.avgA,h2hStats.avgH,h2hStats.n);
-
-  const calcProba=(()=>{
-    let hScore=0,aScore=0,dScore=0;
-    h2h.forEach((m,i)=>{
-      const w=Math.max(1,h2h.length-i);
-      const isHome=m.teams.home.id===hid;
-      const hG=isHome?m.goals.home??0:m.goals.away??0;
-      const aG=isHome?m.goals.away??0:m.goals.home??0;
-      if(hG>aG)hScore+=w;
-      else if(aG>hG)aScore+=w;
-      else dScore+=w;
-    });
-    const total=hScore+aScore+dScore||1;
-    let hp=hScore/total,ap=aScore/total,dp=dScore/total;
-
-    const atkAdj=(hProfile.atkRating-aProfile.defRating)*0.02;
-    const defAdj=(aProfile.atkRating-hProfile.defRating)*0.02;
-    hp=Math.max(0.05,hp+atkAdj);
-    ap=Math.max(0.05,ap+defAdj);
-    dp=Math.max(0.05,1-hp-ap);
-
-    const s=hp+ap+dp;
-    hp=hp/s;ap=ap/s;dp=dp/s;
-
-    const expGoals=(hProfile.atk*1+aProfile.atk*1+h2hStats.avgGoals)/3;
-    const ou25=h2hStats.pct(h2hStats.over25);
-    const ou15=h2hStats.pct(h2hStats.over15);
-    const ou35=h2hStats.pct(h2hStats.over35);
-
-    const confidence=Math.min(100,h2hStats.n*10);
-
-    return{hp:Math.round(hp*100),ap:Math.round(ap*100),dp:Math.round(dp*100),
-           expGoals:expGoals.toFixed(1),ou25,ou15,ou35,confidence};
-  })();
-
-  const hXG=parseFloat(hSt.find?.(x=>x.type==="expected_goals")?.value)||null;
-  const aXG=parseFloat(aSt.find?.(x=>x.type==="expected_goals")?.value)||null;
-
-  const pct=h2hStats.pct;
-
-  const MiniBar=({val,max=100,color="#00b86b",label,sub})=><div style={{marginBottom:8}}>
-    <div style={{display:"flex",justifyContent:"space-between",marginBottom:4}}>
-      <span style={{fontSize:11,color:T.t2,fontWeight:600}}>{label}</span>
-      <span style={{fontSize:12,fontWeight:800,color}}>{val}%</span>
-    </div>
-    <div style={{height:6,borderRadius:3,background:T.bg3,overflow:"hidden"}}>
-      <div style={{height:"100%",width:`${val}%`,background:color,borderRadius:3,transition:"width .7s ease"}}/>
-    </div>
-    {sub&&<div style={{fontSize:10,color:T.t3,marginTop:2}}>{sub}</div>}
-  </div>;
-
-  const SectionTitle=({icon,label})=><div style={{display:"flex",alignItems:"center",gap:7,padding:"14px 16px 10px",borderTop:`1px solid ${T.line}`}}>
-    <span style={{fontSize:14}}>{icon}</span>
-    <span className="bc" style={{fontSize:11,fontWeight:800,color:T.t3,letterSpacing:1.2,textTransform:"uppercase"}}>{label}</span>
-  </div>;
-
-  const ProfilGauge=({team,profile})=>{
-    const atkW=`${Math.round(profile.atkRating*10)}%`;
-    const defW=`${Math.round(profile.defRating*10)}%`;
-    return<div style={{flex:1,background:T.bg2,border:`1px solid ${T.line}`,borderRadius:14,padding:"12px 10px"}}>
-      <div style={{display:"flex",alignItems:"center",gap:6,marginBottom:10}}>
-        <Logo src={team.logo} size={20}/>
-        <span style={{fontSize:11,fontWeight:700,color:T.t1,overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap"}}>{team.name}</span>
-      </div>
-      <div style={{textAlign:"center",marginBottom:10}}>
-        <span style={{fontSize:13,fontWeight:800,color:T.t2}}>{profile.profile}</span>
-      </div>
-      <div style={{marginBottom:6}}>
-        <div style={{display:"flex",justifyContent:"space-between",marginBottom:3}}>
-          <span style={{fontSize:10,color:T.t3}}>Attaque</span>
-          <span style={{fontSize:11,fontWeight:700,color:T.green}}>{Number(profile.atk).toFixed(1)} but/m</span>
-        </div>
-        <div style={{height:5,borderRadius:3,background:T.bg3}}>
-          <div style={{height:"100%",width:atkW,background:`linear-gradient(90deg,${T.green},${T.greenB})`,borderRadius:3}}/>
-        </div>
-      </div>
-      <div>
-        <div style={{display:"flex",justifyContent:"space-between",marginBottom:3}}>
-          <span style={{fontSize:10,color:T.t3}}>Défense</span>
-          <span style={{fontSize:11,fontWeight:700,color:T.blueB}}>{Number(profile.def).toFixed(1)} enc/m</span>
-        </div>
-        <div style={{height:5,borderRadius:3,background:T.bg3}}>
-          <div style={{height:"100%",width:defW,background:`linear-gradient(90deg,${T.blueB},#82b1ff)`,borderRadius:3}}/>
-        </div>
-      </div>
-      <div style={{textAlign:"center",marginTop:10,padding:"5px 0",background:T.bg3,borderRadius:8}}>
-        <span style={{fontSize:11,fontWeight:800,color:T.gold}}>{profile.atk} buts marqués | {profile.def} enc.</span>
-      </div>
-    </div>;
-  };
-
-  return<div style={{paddingBottom:40,animation:"fadeIn .2s ease"}}>
-
-    <div style={{display:"flex",alignItems:"center",padding:"14px 16px",borderBottom:`1px solid ${T.line}`,gap:12}}>
-      <div style={{flex:1,display:"flex",alignItems:"center",gap:8}}>
-        <Logo src={homeTeam.logo} size={28}/>
-        <span className="bc" style={{fontSize:14,fontWeight:800,color:T.t1,overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap"}}>{homeTeam.name}</span>
-      </div>
-      <span className="bc" style={{fontSize:11,fontWeight:700,color:T.t3}}>VS</span>
-      <div style={{flex:1,display:"flex",alignItems:"center",gap:8,justifyContent:"flex-end"}}>
-        <span className="bc" style={{fontSize:14,fontWeight:800,color:T.t1,overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap",textAlign:"right"}}>{awayTeam.name}</span>
-        <Logo src={awayTeam.logo} size={28}/>
-      </div>
-    </div>
-
-    {hXG!==null&&aXG!==null&&<div style={{margin:"12px 16px 0",background:"linear-gradient(135deg,rgba(41,121,255,.08),rgba(41,121,255,.04))",border:"1px solid rgba(41,121,255,.2)",borderRadius:14,padding:"14px"}}>
-      <div className="bc" style={{fontSize:10,fontWeight:800,color:"#82b1ff",letterSpacing:1.5,textTransform:"uppercase",marginBottom:12,textAlign:"center"}}>⚡ xG — Buts Attendus (Live)</div>
-      <div style={{display:"flex",alignItems:"center",gap:12}}>
-        <div style={{flex:1,textAlign:"center"}}>
-          <img src={homeTeam.logo} alt="" style={{width:26,height:26,objectFit:"contain",marginBottom:4}}/>
-          <div className="bc" style={{fontSize:30,fontWeight:900,color:hXG>aXG?"#69f0ae":hXG<aXG?"#e53535":T.t2,lineHeight:1}}>{hXG.toFixed(2)}</div>
-        </div>
-        <div style={{textAlign:"center"}}>
-          <div style={{fontSize:11,fontWeight:700,color:T.t4,letterSpacing:1}}>VS</div>
-          <div style={{width:1,height:30,background:T.line,margin:"4px auto"}}/>
-        </div>
-        <div style={{flex:1,textAlign:"center"}}>
-          <img src={awayTeam.logo} alt="" style={{width:26,height:26,objectFit:"contain",marginBottom:4}}/>
-          <div className="bc" style={{fontSize:30,fontWeight:900,color:aXG>hXG?"#69f0ae":aXG<hXG?"#e53535":T.t2,lineHeight:1}}>{aXG.toFixed(2)}</div>
-        </div>
-      </div>
-      <div style={{height:7,borderRadius:4,overflow:"hidden",display:"flex",marginTop:10,gap:2}}>
-        <div style={{flex:hXG,background:"linear-gradient(90deg,#2979ff,#82b1ff)",borderRadius:4}}/>
-        <div style={{flex:aXG,background:"linear-gradient(90deg,#e53535,#ff5252)",borderRadius:4}}/>
-      </div>
-    </div>}
-
-    <SectionTitle icon="🧠" label={`Prédiction · Confiance ${calcProba.confidence}%`}/>
-    <div style={{padding:"0 16px 12px"}}>
-      <div style={{background:T.bg2,border:`1px solid ${T.line}`,borderRadius:14,overflow:"hidden",marginBottom:12}}>
-        <div style={{display:"flex",height:48}}>
-          <div style={{flex:calcProba.hp,background:"linear-gradient(135deg,#2979ff,#1565c0)",display:"flex",alignItems:"center",justifyContent:"center",flexDirection:"column",minWidth:44}}>
-            <span className="bc" style={{fontSize:16,fontWeight:900,color:"#fff"}}>{calcProba.hp}%</span>
-            <span style={{fontSize:8,color:"rgba(255,255,255,.7)",letterSpacing:.5}}>DOM</span>
-          </div>
-          <div style={{flex:calcProba.dp,background:T.bg3,display:"flex",alignItems:"center",justifyContent:"center",flexDirection:"column",borderLeft:`1px solid ${T.line}`,borderRight:`1px solid ${T.line}`,minWidth:36}}>
-            <span className="bc" style={{fontSize:14,fontWeight:900,color:T.t2}}>{calcProba.dp}%</span>
-            <span style={{fontSize:8,color:T.t3,letterSpacing:.5}}>NUL</span>
-          </div>
-          <div style={{flex:calcProba.ap,background:"linear-gradient(135deg,#e53535,#c62828)",display:"flex",alignItems:"center",justifyContent:"center",flexDirection:"column",minWidth:44}}>
-            <span className="bc" style={{fontSize:16,fontWeight:900,color:"#fff"}}>{calcProba.ap}%</span>
-            <span style={{fontSize:8,color:"rgba(255,255,255,.7)",letterSpacing:.5}}>EXT</span>
-          </div>
-        </div>
-        <div style={{display:"flex",padding:"6px 12px"}}>
-          <div style={{flex:1,display:"flex",alignItems:"center",gap:4}}>
-            <Logo src={homeTeam.logo} size={14}/>
-            <span style={{fontSize:10,color:T.t3,overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap"}}>{homeTeam.name}</span>
-          </div>
-          <div style={{flex:1,display:"flex",alignItems:"center",gap:4,justifyContent:"flex-end"}}>
-            <span style={{fontSize:10,color:T.t3,overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap"}}>{awayTeam.name}</span>
-            <Logo src={awayTeam.logo} size={14}/>
-          </div>
-        </div>
-      </div>
-
-      <div style={{background:T.bg2,border:`1px solid ${T.line}`,borderRadius:12,padding:"12px 14px",display:"flex",alignItems:"center",gap:12}}>
-        <div style={{fontSize:28}}>⚽</div>
-        <div style={{flex:1}}>
-          <div style={{fontSize:11,color:T.t3,marginBottom:2}}>Buts attendus dans ce match</div>
-          <div className="bc" style={{fontSize:22,fontWeight:900,color:T.gold,lineHeight:1}}>{calcProba.expGoals} buts</div>
-          <div style={{fontSize:10,color:T.t4,marginTop:2}}>Moyenne H2H: {h2hStats.avgGoals.toFixed(2)} · Tendance: {h2hStats.trendUp?"📈 hausse":h2hStats.trendDown?"📉 baisse":"➡️ stable"}</div>
-        </div>
-      </div>
-    </div>
-
-    <SectionTitle icon="⚔️" label={`Bilan H2H · ${h2hStats.n} matchs`}/>
-    <div style={{padding:"0 16px 12px"}}>
-      <div style={{display:"flex",gap:6,marginBottom:12}}>
-        <div style={{flex:h2hStats.hW,background:"linear-gradient(135deg,#2979ff,#1565c0)",borderRadius:10,padding:"10px 0",textAlign:"center",minWidth:44}}>
-          <div className="bc" style={{fontSize:24,fontWeight:900,color:"#fff"}}>{h2hStats.hW}</div>
-          <div style={{fontSize:8,color:"rgba(255,255,255,.7)",fontWeight:700,letterSpacing:.5}}>VICTOIRES</div>
-          <Logo src={homeTeam.logo} size={16} style={{margin:"4px auto 0"}}/>
-        </div>
-        <div style={{flex:h2hStats.draws,background:T.bg3,border:`1px solid ${T.line}`,borderRadius:10,padding:"10px 0",textAlign:"center",minWidth:36}}>
-          <div className="bc" style={{fontSize:24,fontWeight:900,color:T.t2}}>{h2hStats.draws}</div>
-          <div style={{fontSize:8,color:T.t3,fontWeight:700,letterSpacing:.5}}>NULS</div>
-        </div>
-        <div style={{flex:h2hStats.aW,background:"linear-gradient(135deg,#e53535,#c62828)",borderRadius:10,padding:"10px 0",textAlign:"center",minWidth:44}}>
-          <div className="bc" style={{fontSize:24,fontWeight:900,color:"#fff"}}>{h2hStats.aW}</div>
-          <div style={{fontSize:8,color:"rgba(255,255,255,.7)",fontWeight:700,letterSpacing:.5}}>VICTOIRES</div>
-          <Logo src={awayTeam.logo} size={16} style={{margin:"4px auto 0"}}/>
-        </div>
-      </div>
-
-      <div style={{display:"flex",gap:4,marginBottom:4}}>
-        {h2h.slice(0,5).map((m,i)=>{
-          const isHome=m.teams.home.id===hid;
-          const hG=isHome?m.goals.home??0:m.goals.away??0;
-          const aG=isHome?m.goals.away??0:m.goals.home??0;
-          const res=hG>aG?"W":aG>hG?"L":"D";
-          const bg=res==="W"?"#2979ff":res==="L"?"#e53535":T.bg4;
-          return<div key={i} style={{flex:1,background:bg,borderRadius:8,padding:"6px 2px",textAlign:"center",minWidth:0}}>
-            <div className="bc" style={{fontSize:12,fontWeight:900,color:"#fff"}}>{res}</div>
-            <div style={{fontSize:9,color:"rgba(255,255,255,.7)",marginTop:1}}>{hG}-{aG}</div>
-          </div>;
-        })}
-      </div>
-      <div style={{fontSize:9,color:T.t4,textAlign:"center",marginBottom:4}}>5 dernières confrontations (domicile = {homeTeam.name})</div>
-    </div>
-
-    <SectionTitle icon="📊" label="Profil des équipes"/>
-    <div style={{padding:"0 16px 12px",display:"flex",gap:8}}>
-      <ProfilGauge team={homeTeam} profile={hProfile}/>
-      <ProfilGauge team={awayTeam} profile={aProfile}/>
-    </div>
-
-    <SectionTitle icon="🎯" label="Over / Under"/>
-    <div style={{padding:"0 16px 12px"}}>
-      <div style={{background:T.bg2,border:`1px solid ${T.line}`,borderRadius:14,padding:"14px"}}>
-        <MiniBar val={pct(h2hStats.over15)} color={T.green} label="Over 1.5" sub={`${h2hStats.over15}/${h2hStats.n} matchs · Moy: ${h2hStats.avgGoals.toFixed(1)} buts/match`}/>
-        <MiniBar val={pct(h2hStats.over25)} color={pct(h2hStats.over25)>55?T.green:T.orange} label="Over 2.5" sub={`${h2hStats.over25}/${h2hStats.n} matchs`}/>
-        <MiniBar val={pct(h2hStats.over35)} color={pct(h2hStats.over35)>50?T.orange:T.red} label="Over 3.5" sub={`${h2hStats.over35}/${h2hStats.n} matchs`}/>
-        <MiniBar val={pct(h2hStats.over45)} color={T.red} label="Over 4.5" sub={`${h2hStats.over45}/${h2hStats.n} matchs`}/>
-      </div>
-    </div>
-
-    <SectionTitle icon="⚽" label="Les 2 équipes marquent (BTTS)"/>
-    <div style={{padding:"0 16px 12px"}}>
-      <div style={{display:"flex",gap:8}}>
-        <div style={{flex:1,background:h2hStats.btts/h2hStats.n>0.5?"rgba(0,184,107,.1)":T.bg2,border:`1px solid ${h2hStats.btts/h2hStats.n>0.5?T.green:T.line}`,borderRadius:14,padding:"14px",textAlign:"center"}}>
-          <div style={{fontSize:24,marginBottom:4}}>✅</div>
-          <div className="bc" style={{fontSize:26,fontWeight:900,color:T.green,lineHeight:1}}>{pct(h2hStats.btts)}%</div>
-          <div style={{fontSize:10,color:T.t3,marginTop:4,fontWeight:700}}>BTTS OUI</div>
-          <div style={{fontSize:10,color:T.t4,marginTop:2}}>{h2hStats.btts}/{h2hStats.n} matchs</div>
-        </div>
-        <div style={{flex:1,background:T.bg2,border:`1px solid ${T.line}`,borderRadius:14,padding:"14px",textAlign:"center"}}>
-          <div style={{fontSize:24,marginBottom:4}}>❌</div>
-          <div className="bc" style={{fontSize:26,fontWeight:900,color:T.red,lineHeight:1}}>{pct(h2hStats.n-h2hStats.btts)}%</div>
-          <div style={{fontSize:10,color:T.t3,marginTop:4,fontWeight:700}}>BTTS NON</div>
-          <div style={{fontSize:10,color:T.t4,marginTop:2}}>{h2hStats.n-h2hStats.btts}/{h2hStats.n} matchs</div>
-        </div>
-      </div>
-    </div>
-
-    <SectionTitle icon="🔒" label="Défense & Cage inviolée"/>
-    <div style={{padding:"0 16px 12px"}}>
-      <div style={{background:T.bg2,border:`1px solid ${T.line}`,borderRadius:14,padding:"14px"}}>
-        <div style={{display:"flex",alignItems:"center",gap:10,marginBottom:12}}>
-          <Logo src={homeTeam.logo} size={18}/>
-          <div style={{flex:1}}>
-            <div style={{display:"flex",justifyContent:"space-between",marginBottom:4}}>
-              <span style={{fontSize:11,color:T.blueB,fontWeight:700}}>Clean Sheet {pct(h2hStats.hCS)}%</span>
-              <span style={{fontSize:11,color:T.red,fontWeight:700}}>Clean Sheet {pct(h2hStats.aCS)}%</span>
-            </div>
-            <div style={{height:7,borderRadius:4,overflow:"hidden",display:"flex",gap:2}}>
-              <div style={{flex:h2hStats.hCS,background:"linear-gradient(90deg,#2979ff,#82b1ff)",borderRadius:4}}/>
-              <div style={{flex:h2hStats.n-h2hStats.hCS,background:T.bg4,borderRadius:4}}/>
-            </div>
-          </div>
-          <Logo src={awayTeam.logo} size={18}/>
-        </div>
-        <div style={{display:"flex",justifyContent:"space-between",fontSize:10,color:T.t3}}>
-          <span>{h2hStats.hCS}/{h2hStats.n} matchs</span>
-          <span>cage inviolée</span>
-          <span>{h2hStats.aCS}/{h2hStats.n} matchs</span>
-        </div>
-      </div>
-    </div>
-
-    <SectionTitle icon="🥇" label="Premier à marquer"/>
-    <div style={{padding:"0 16px 12px"}}>
-      <div style={{background:T.bg2,border:`1px solid ${T.line}`,borderRadius:14,padding:"14px"}}>
-        <div style={{display:"flex",alignItems:"center",gap:10,marginBottom:8}}>
-          <Logo src={homeTeam.logo} size={20}/>
-          <div style={{flex:1}}>
-            <div style={{display:"flex",justifyContent:"space-between",marginBottom:6}}>
-              <span className="bc" style={{fontSize:13,fontWeight:800,color:T.blueB}}>{Math.round(h2hStats.hFirst)}/{h2hStats.n}</span>
-              <span className="bc" style={{fontSize:13,fontWeight:800,color:T.red}}>{Math.round(h2hStats.aFirst)}/{h2hStats.n}</span>
-            </div>
-            <div style={{display:"flex",height:9,borderRadius:5,overflow:"hidden",gap:2}}>
-              <div style={{flex:h2hStats.hFirst,background:"linear-gradient(90deg,#2979ff,#82b1ff)",borderRadius:5}}/>
-              {h2hStats.noFirst>0&&<div style={{flex:h2hStats.noFirst,background:T.bg4,borderRadius:5}}/>}
-              <div style={{flex:h2hStats.aFirst,background:"linear-gradient(90deg,#e53535,#c62828)",borderRadius:5}}/>
-            </div>
-          </div>
-          <Logo src={awayTeam.logo} size={20}/>
-        </div>
-        {h2hStats.noFirst>0&&<div style={{textAlign:"center",fontSize:10,color:T.t4}}>{h2hStats.noFirst} match(s) sans but</div>}
-      </div>
-    </div>
-
-    <SectionTitle icon="💡" label="Analyse globale"/>
-    <div style={{padding:"0 16px 16px"}}>
-      <div style={{background:"linear-gradient(135deg,rgba(0,184,107,.08),rgba(0,184,107,.04))",border:"1px solid rgba(0,184,107,.2)",borderRadius:14,padding:"14px"}}>
-        {[
-          h2hStats.hW>h2hStats.aW?`✅ ${homeTeam.name} domine les confrontations directes (${h2hStats.hW}V/${h2hStats.n}M)`:
-          h2hStats.aW>h2hStats.hW?`✅ ${awayTeam.name} domine les confrontations directes (${h2hStats.aW}V/${h2hStats.n}M)`:
-          "⚖️ Équilibre parfait entre les deux équipes dans l'historique H2H",
-
-          pct(h2hStats.over25)>60?`🔥 Match prolifique probable — Over 2.5 dans ${pct(h2hStats.over25)}% des rencontres`:
-          pct(h2hStats.over25)<40?`🔒 Match serré probable — Under 2.5 dans ${100-pct(h2hStats.over25)}% des cas`:
-          `⚽ Over/Under 2.5 équilibré (${pct(h2hStats.over25)}% Over)`,
-
-          h2hStats.btts/h2hStats.n>0.6?`⚽ Les deux équipes marquent souvent ensemble (${pct(h2hStats.btts)}%)`:
-          h2hStats.btts/h2hStats.n<0.35?`🔒 Peu de matchs avec les 2 équipes qui marquent (${pct(h2hStats.btts)}%)`:null,
-
-          hProfile.profile==="🗡️ Offensif"?`⚔️ ${homeTeam.name} est une équipe offensive (${hProfile.atk} buts/match)`:
-          hProfile.profile==="🛡️ Défensif"?`🛡️ ${homeTeam.name} joue fermé (${hProfile.def} buts encaissés/match)`:null,
-
-          aProfile.profile==="🗡️ Offensif"?`⚔️ ${awayTeam.name} est une équipe offensive (${aProfile.atk} buts/match)`:
-          aProfile.profile==="🛡️ Défensif"?`🛡️ ${awayTeam.name} joue fermé (${aProfile.def} buts encaissés/match)`:null,
-        ].filter(Boolean).map((txt,i)=><div key={i} style={{fontSize:12,color:T.t2,marginBottom:i<4?8:0,lineHeight:1.5,paddingLeft:4,borderLeft:`2px solid rgba(0,184,107,.4)`,paddingLeft:8,marginLeft:0}}>{txt}</div>)}
-      </div>
-    </div>
-
-  </div>;
-}
-
-
-//
-function PlayersStatsPanel({players,homeTeam,awayTeam}){
-  const[selTeam,setSelTeam]=useState("home");
-  const teamData=players.find(t=>t.team?.id===(selTeam==="home"?homeTeam?.id:awayTeam?.id));
-  const plrs=teamData?.players??[];
-  if(!plrs.length) return<div style={{textAlign:"center",padding:"44px 20px",color:T.t3,fontSize:13}}>Statistiques joueurs non disponibles</div>;
-  return<div style={{display:"flex",flexDirection:"column",height:"100%"}}>
-    <div style={{display:"flex",background:T.bg2,borderRadius:10,padding:3,margin:"10px 14px",gap:2}}>
-      {[["home",homeTeam],["away",awayTeam]].map(([v,team])=>{
-        const a=selTeam===v;
-        return<button key={v} onClick={()=>setSelTeam(v)} className="bc" style={{
-          flex:1,padding:"8px",border:"none",borderRadius:8,cursor:"pointer",
-          background:a?T.green:"transparent",color:a?"#fff":T.t3,
-          fontSize:11,fontWeight:a?800:500,transition:"all .2s",
-          display:"flex",alignItems:"center",justifyContent:"center",gap:6,
-        }}>
-          <Logo src={team?.logo} size={16}/>
-          <span>{team?.name}</span>
-        </button>;
-      })}
-    </div>
-    <div style={{flex:1,overflowY:"auto"}}>
-      {plrs.map(({player:pl,statistics:sts})=>{
-        const st=sts?.[0]??{};
-        const rating=parseFloat(st.games?.rating??0);
-        const ratingColor=rating>=8?"#00c170":rating>=7?"#f59e0b":rating>=6?"#888":"#e53535";
-        return<div key={pl.id} style={{
-          display:"flex",alignItems:"center",gap:10,
-          padding:"10px 14px",borderBottom:`1px solid ${T.line}`,
-        }}>
-          <Avatar src={pl.photo} size={40}/>
-          <div style={{flex:1,minWidth:0}}>
-            <div className="bc" style={{fontSize:13,fontWeight:700,color:T.t1,overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap"}}>{pl.name}</div>
-            <div style={{fontSize:10,color:T.t3,marginTop:2}}>
-              {st.games?.position||""} · {st.games?.minutes??0}min
-            </div>
-            <div style={{display:"flex",gap:8,marginTop:4,flexWrap:"wrap"}}>
-              {(st.goals?.total??0)>0&&<span style={{fontSize:10,color:T.green,fontWeight:700}}>⚽ {st.goals.total}</span>}
-              {(st.goals?.assists??0)>0&&<span style={{fontSize:10,color:"#f59e0b",fontWeight:700}}>🎯 {st.goals.assists}</span>}
-              {(st.cards?.yellow??0)>0&&<span style={{fontSize:10}}>🟨 {st.cards.yellow}</span>}
-              {(st.cards?.red??0)>0&&<span style={{fontSize:10}}>🟥 {st.cards.red}</span>}
-              {(st.shots?.on??0)>0&&<span style={{fontSize:10,color:T.t3}}>🎯 {st.shots.on} tirs</span>}
-            </div>
-          </div>
-          {rating>0&&<div style={{
-            width:36,height:36,borderRadius:10,
-            background:ratingColor,
-            display:"flex",alignItems:"center",justifyContent:"center",
-            flexShrink:0,
-          }}>
-            <span className="bc" style={{fontSize:13,fontWeight:900,color:"#fff"}}>{rating.toFixed(1)}</span>
-          </div>}
-        </div>;
-      })}
-    </div>
-  </div>;
-}
-
-// MODULE COMPOSITIONS
-function ComposPanel({lineups,players,homeTeam,awayTeam,isPartial}){
-  const[view,setView]=useState("pitch");
-  const[pitchFilter,setPitchFilter]=useState("rating");
-  const hLu=lineups.find(l=>l.team?.id===homeTeam?.id);
-  const aLu=lineups.find(l=>l.team?.id===awayTeam?.id);
-  const hPh=players.find(t=>t.team?.id===homeTeam?.id)?.players??[];
-  const aPh=players.find(t=>t.team?.id===awayTeam?.id)?.players??[];
-  const ph=(tp,pid)=>tp.find(p=>p.player?.id===pid)?.player?.photo;
-
-  if(!hLu&&!aLu) return<div style={{textAlign:"center",padding:"44px 20px",color:T.t3,display:"flex",flexDirection:"column",alignItems:"center",gap:12}}>
-    {isPartial
-      ?<><Spin s={24}/><span style={{fontSize:13}}>Chargement compositions...</span></>
-      :<><div style={{fontSize:36}}>📋</div><div style={{fontSize:13}}>Compositions non disponibles</div></>
-    }
-  </div>;
-
-  const Plr=({p,tp,tc})=><div style={{display:"flex",alignItems:"center",padding:"9px 16px",borderBottom:`1px solid ${T.line}11`,gap:11}}>
-    <span style={{fontSize:11,fontWeight:700,color:T.t4,width:22,textAlign:"center",flexShrink:0}}>{p.player?.number}</span>
-    <Avatar src={ph(tp,p.player?.id)} size={36} ring={tc}/>
-    <div style={{flex:1,minWidth:0}}>
-      <div style={{fontSize:13,color:T.t1,fontWeight:500,overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap"}}>{p.player?.name}</div>
-    </div>
-    {p.player?.pos&&<span style={{fontSize:9,fontWeight:800,color:tc,background:tc+"22",padding:"2px 7px",borderRadius:4,flexShrink:0}}>{p.player.pos}</span>}
-  </div>;
-
-  return<div>
-    <div style={{background:"#fff",borderBottom:"1px solid rgba(0,0,0,.07)"}}>
-      <div style={{display:"flex",gap:6,padding:"10px 14px 8px"}}>
-        <div style={{display:"flex",background:"#f0f1f5",borderRadius:10,padding:3,gap:2,flex:1}}>
-          {[["pitch","⚽ Schéma"],["list","📋 Listes"]].map(([v,lb])=><button key={v} onClick={()=>setView(v)} style={{flex:1,background:view===v?"#00c170":"rgba(255,255,255,.06)",border:"none",color:view===v?"#fff":"rgba(255,255,255,.4)",borderRadius:8,padding:"8px",fontSize:12,fontWeight:view===v?700:500,cursor:"pointer",transition:"all .15s"}}>{lb}</button>)}
-        </div>
-      </div>
-    </div>
-
-    {view==="pitch"&&
-      // Utiliser la nouvelle vue terrain FlashScore
-      renderTerrainFlash(
-        {teams:{home:homeTeam,away:awayTeam}},
-        hLu,
-        aLu,
-        players,
-        [],
-        homeTeam?.id,
-        awayTeam?.id,
-        false,
-        null,
-        null
-      )
-    }
-
-    {view==="list"&&
-      // Utiliser la nouvelle vue liste FlashScore
-      renderListeFlash(
-        {teams:{home:homeTeam,away:awayTeam}},
-        hLu,
-        aLu,
-        players,
-        [],
-        [],
-        homeTeam?.id,
-        awayTeam?.id
-      )
-    }
-  </div>;
+  return React.createElement("div", { style: { background: "#fff" } },
+    React.createElement("div", {
+      onClick: () => setOpen(v => !v),
+      style: {
+        display: "flex",
+        alignItems: "center",
+        gap: 10,
+        padding: "9px 14px",
+        background: "#fff",
+        borderBottom: "1px solid #f0f1f5",
+        borderTop: "3px solid #f5f6f9",
+        cursor: "pointer",
+        userSelect: "none"
+      }
+    },
+      React.createElement("div", { style: { width: 26, height: 26, borderRadius: "50%", overflow: "hidden", flexShrink: 0, border: "1.5px solid #eee" } },
+        React.createElement(Logo, { src: group.lg.flag || group.lg.logo, size: 26 })
+      ),
+      React.createElement("div", { style: { flex: 1, minWidth: 0 } },
+        React.createElement("span", { style: { fontSize: 13, fontWeight: 700, color: "#111", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap", display: "block" } },
+          group.lg.country,
+          React.createElement("span", { style: { color: "#999", fontWeight: 500 } }, ": " + group.lg.name)
+        )
+      ),
+      lv > 0
+        ? React.createElement("span", { style: { fontSize: 10, fontWeight: 900, color: "#e53535", background: "rgba(229,53,53,.1)", border: "1px solid rgba(229,53,53,.25)", padding: "2px 8px", borderRadius: 20, animation: "pulse 1.5s infinite", flexShrink: 0 } }, "LIVE " + lv)
+        : null,
+      React.createElement("span", { style: { fontSize: 10, color: "#ccc", flexShrink: 0 } }, open ? "▾" : "▸")
+    ),
+    open ? group.matches.map(m => React.createElement(Row, { key: m.fixture.id, match: m, onOpen: () => onOpen(m.fixture.id), isFav: favs.has(m.fixture.id), onFav: () => onFav(m.fixture.id) })) : null
+  );
 }
 
 //
@@ -3145,7 +2745,6 @@ function MatchDetailWrapper({state,onClose}){
 function MatchDetail({state,onClose}){
   const[tab,setTab]=React.useState("resume");
   const[period,setPeriod]=React.useState("all");
-  const[compoView,setCompoView]=React.useState("terrain");
   const[playerSheet,setPlayerSheet]=React.useState(null);
   const[standings,setStandings]=React.useState([]);
   const[venueInfo,setVenueInfo]=React.useState(null);
@@ -3298,7 +2897,6 @@ function MatchDetail({state,onClose}){
     return {goals,yellows,reds};
   };
   const halfStats=period!=="all"?computeHalfStats(period):null;
-
 
   const renderTimeline=()=>{
     if(!events.length&&isNS)return React.createElement("div",{className:"md-empty"},"⏳ Le match n'a pas encore commencé");
@@ -3707,276 +3305,6 @@ function MatchDetail({state,onClose}){
     );
   };
 
-  const renderCompos=()=>{
-    const isFallback=state?.data?._fallbackLineups===true;
-    if(!lineups.length&&!players.length){
-      const evtPlayers={};
-      events.forEach(e=>{
-        if(!e.player?.id)return;
-        const tid=e.team?.id;
-        if(!evtPlayers[tid])evtPlayers[tid]={teamId:tid,teamName:e.team?.name,players:{}};
-        if(!evtPlayers[tid].players[e.player.id])evtPlayers[tid].players[e.player.id]={id:e.player.id,name:e.player.name,events:[]};
-        evtPlayers[tid].players[e.player.id].events.push(e);
-      });
-      const evtTeams=Object.values(evtPlayers);
-      if(!evtTeams.length){
-        const isNS=sh==="NS"||sh==="TBD";
-        return React.createElement("div",{className:"md-empty",style:{textAlign:"center",padding:"40px 20px"}},
-          React.createElement("div",{style:{fontSize:28,marginBottom:12}},isNS?"⏳":"📋"),
-          React.createElement("div",{style:{fontSize:13,fontWeight:600,color:"rgba(17,24,39,.5)"}},
-            isNS?"Les compositions seront disponibles peu avant le coup d'envoi":"Compositions non disponibles pour cette rencontre"
-          )
-        );
-      }
-      return React.createElement("div",{style:{paddingBottom:24}},
-        React.createElement("div",{style:{margin:"8px 8px 10px",padding:"10px 12px",background:"rgba(245,158,11,.07)",borderRadius:10,border:"1px solid rgba(245,158,11,.2)"}},
-          React.createElement("div",{style:{fontSize:11,color:"#92400e",fontWeight:600}},"⚠️ Formation officielle non disponible · Joueurs détectés depuis les événements")
-        ),
-        evtTeams.map(team=>{
-          const isHm=team.teamId===hid;
-          const accentColor=isHm?"#00b86b":"#2563eb";
-          const tObj=isHm?fix.teams.home:fix.teams.away;
-          return React.createElement("div",{key:team.teamId,style:{marginBottom:8,background:"#fff",borderRadius:12,overflow:"hidden",border:"1px solid rgba(0,0,0,.07)"}},
-            React.createElement("div",{style:{display:"flex",alignItems:"center",gap:10,padding:"11px 14px",background:isHm?"rgba(0,184,107,.05)":"rgba(37,99,235,.05)",borderBottom:"1px solid rgba(0,0,0,.06)"}},
-              React.createElement("img",{src:tObj.logo,style:{width:24,height:24,objectFit:"contain"},onError:e=>{e.target.style.display="none"}}),
-              React.createElement("span",{style:{fontFamily:"'Barlow Condensed',sans-serif",fontSize:16,fontWeight:800,color:accentColor}},[tObj.name])
-            ),
-            Object.values(team.players).map(p=>{
-              const goal=p.events.filter(e=>e.type==="Goal"&&e.detail!=="Missed Penalty");
-              const yellow=p.events.filter(e=>e.type==="Card"&&e.detail==="Yellow Card");
-              const red=p.events.filter(e=>e.type==="Card"&&(e.detail==="Red Card"||e.detail==="Second Yellow Card"));
-              return React.createElement("div",{key:p.id,style:{display:"flex",alignItems:"center",gap:10,padding:"9px 14px",borderBottom:"1px solid rgba(0,0,0,.04)"}},
-                React.createElement("span",{style:{fontSize:13,fontWeight:500,color:"#111827",flex:1}},[p.name]),
-                React.createElement("div",{style:{display:"flex",gap:5,alignItems:"center"}},
-                  goal.map((g,i)=>React.createElement("span",{key:i,style:{fontSize:12}},[`⚽${g.time?.elapsed?g.time.elapsed+"'":""}`])),
-                  yellow.length?React.createElement("span",{style:{fontSize:12}},"🟨"):null,
-                  red.length?React.createElement("span",{style:{fontSize:12}},"🟥"):null
-                )
-              );
-            })
-          );
-        })
-      );
-    }
-
-
-    const photoOf=(pid)=>players.flatMap(t=>t.players||[]).find(p=>p.player?.id===pid)?.player?.photo||null;
-    const ratingOf=(pid)=>{
-      const pl=players.flatMap(t=>t.players||[]).find(p=>p.player?.id===pid);
-      const r=parseFloat(pl?.statistics?.[0]?.games?.rating||0);
-      return r>0?r:null;
-    };
-    const ratingBg=(r)=>r>=8?"#2e7d32":r>=7?"#558b2f":r>=6?"#e65100":"#c62828";
-    const evtIconsOf=(pid)=>{
-      const out=[];
-      events.forEach(e=>{
-        if(e.player?.id===pid||e.assist?.id===pid){
-          if(e.type==="Goal"&&e.detail!=="Missed Penalty"&&e.detail!=="Own Goal")out.push({t:"goal",n:(out.filter(x=>x.t==="goal").length||0)+1});
-          else if(e.type==="Goal"&&e.detail==="Own Goal")out.push({t:"csc"});
-          else if(e.type==="Card"&&e.detail?.includes("Yellow"))out.push({t:"yellow"});
-          else if(e.type==="Card")out.push({t:"red"});
-          else if(e.type==="subst"&&e.player?.id===pid)out.push({t:"out",min:e.time?.elapsed});
-          else if(e.type==="subst"&&e.assist?.id===pid)out.push({t:"in",min:e.time?.elapsed});
-        }
-      });
-      return out;
-    };
-
-    const hLu=lineups.find(l=>l.team?.id===hid);
-    const aLu=lineups.find(l=>l.team?.id===aid);
-
-    const buildRows=(lu)=>{
-      if(!lu?.startXI?.length)return[];
-      const pts=lu.startXI.map(p=>p.player).filter(Boolean);
-      const form=(lu.formation||"4-4-2").split("-").map(Number);
-      const rows=[1,...form];
-      let idx=0;
-      return rows.map(n=>{
-        const r=[];
-        for(let i=0;i<n&&idx<pts.length;i++)r.push(pts[idx++]);
-        return r;
-      });
-    };
-
-    const PlayerPin=({p,isHome})=>{
-      const photo=photoOf(p.id);
-      const rating=ratingOf(p.id);
-      const icons=evtIconsOf(p.id);
-      const shortName=(p.name||"").split(" ").slice(-1)[0];
-      const goals=icons.filter(x=>x.t==="goal");
-      const hasYellow=icons.some(x=>x.t==="yellow");
-      const hasRed=icons.some(x=>x.t==="red");
-      const hasSub=icons.some(x=>x.t==="out"||x.t==="in");
-      const isOut=icons.some(x=>x.t==="out");
-      const isIn=icons.some(x=>x.t==="in");
-      return React.createElement("div",{style:{display:"flex",flexDirection:"column",alignItems:"center",gap:4,width:64,cursor:"pointer"},onClick:()=>{
-        const plrStats=players.flatMap(t=>t.players||[]).find(pl=>pl.player?.id===p.id);
-        setPlayerSheet({...p,photo,stats:plrStats?.statistics?.[0]||null});
-      }},
-        React.createElement("div",{style:{position:"relative",width:52,height:52}},
-          React.createElement("div",{style:{width:52,height:52,borderRadius:"50%",overflow:"hidden",background:"#d0d4dc",border:"2px solid #111827",boxShadow:"0 2px 6px rgba(0,0,0,.2)"}},
-            photo
-              ?React.createElement("img",{src:photo,loading:"lazy",style:{width:"100%",height:"100%",objectFit:"cover"},onError:e=>{e.target.style.display="none"}})
-              :React.createElement("div",{style:{width:"100%",height:"100%",display:"flex",alignItems:"center",justifyContent:"center",fontFamily:"'Barlow Condensed',sans-serif",fontSize:14,fontWeight:700,color:"rgba(17,24,39,0.67)"}},p.number||"?")
-          ),
-          React.createElement("div",{style:{position:"absolute",top:-3,left:-3,display:"flex",flexDirection:"column",gap:1}},
-            goals.map((g,gi)=>React.createElement("div",{key:"g"+gi,style:{background:"#111827",borderRadius:3,padding:"1px 3px",display:"flex",alignItems:"center",gap:2,boxShadow:"0 1px 2px rgba(0,0,0,.15)"}},
-              React.createElement("span",{style:{fontSize:10}},goals.length>1&&gi===0?`${goals.length} `:goals.length>1?"":""),
-              React.createElement("div",{style:{width:12,height:12,borderRadius:"50%",background:"rgba(0,0,0,.08)",display:"flex",alignItems:"center",justifyContent:"center",fontSize:9}},"⚽")
-            )),
-            hasYellow?React.createElement("div",{key:"y",style:{width:10,height:13,borderRadius:2,background:"#f59e0b",boxShadow:"0 1px 2px rgba(0,0,0,.2)"}}):null,
-            hasRed?React.createElement("div",{key:"r",style:{width:10,height:13,borderRadius:2,background:"#e53935",boxShadow:"0 1px 2px rgba(0,0,0,.2)"}}):null,
-            hasSub?React.createElement("div",{key:"s",style:{width:14,height:14,borderRadius:"50%",background:"#111827",display:"flex",alignItems:"center",justifyContent:"center",fontSize:9,boxShadow:"0 1px 2px rgba(0,0,0,.15)"}},isIn?"↑":"↓"):null
-          ),
-          rating?React.createElement("div",{style:{position:"absolute",bottom:-5,right:-5,background:ratingBg(rating),borderRadius:4,padding:"1px 5px",fontSize:10,fontWeight:900,color:"#111827",boxShadow:"0 1px 3px rgba(0,0,0,.3)",whiteSpace:"nowrap",lineHeight:1.4}},rating.toFixed(1)):null
-        ),
-        React.createElement("div",{style:{textAlign:"center",lineHeight:1.3}},
-          React.createElement("span",{style:{fontSize:11,color:"#111827",fontWeight:400,marginRight:3}},p.number),
-          React.createElement("span",{style:{fontSize:11,fontWeight:700,color:"#111827"}},shortName)
-        )
-      );
-    };
-
-    const renderTerrain=()=>{
-      const hRows=buildRows(hLu);
-      const aRows=buildRows(aLu);
-      const aRowsRev=[...(aRows||[])].reverse();
-
-      return React.createElement("div",{style:{
-        background:"#e8ecf0",
-        borderRadius:10,
-        overflow:"hidden",
-        position:"relative",
-        border:"1px solid rgba(0,0,0,.08)",
-        margin:"0 0 8px"
-      }},
-        React.createElement("svg",{
-          style:{position:"absolute",inset:0,width:"100%",height:"100%",pointerEvents:"none"},
-          viewBox:"0 0 320 580",preserveAspectRatio:"none"
-        },
-          React.createElement("rect",{x:0,y:0,width:320,height:580,fill:"#e8ecf0"}),
-          React.createElement("rect",{x:16,y:12,width:288,height:556,fill:"none",stroke:"#111827",strokeWidth:1.2}),
-          React.createElement("line",{x1:16,y1:290,x2:304,y2:290,stroke:"#111827",strokeWidth:1.2}),
-          React.createElement("circle",{cx:160,cy:290,r:42,fill:"none",stroke:"#111827",strokeWidth:1.2}),
-          React.createElement("circle",{cx:160,cy:290,r:3,fill:"rgba(17,24,39,0.70)"}),
-          React.createElement("rect",{x:72,y:12,width:176,height:68,fill:"none",stroke:"#111827",strokeWidth:1.2}),
-          React.createElement("rect",{x:112,y:12,width:96,height:32,fill:"none",stroke:"#111827",strokeWidth:1.2}),
-          React.createElement("rect",{x:72,y:500,width:176,height:68,fill:"none",stroke:"#111827",strokeWidth:1.2}),
-          React.createElement("rect",{x:112,y:536,width:96,height:32,fill:"none",stroke:"#111827",strokeWidth:1.2}),
-          React.createElement("path",{d:"M 120 80 A 42 42 0 0 0 200 80",fill:"none",stroke:"#111827",strokeWidth:1.2}),
-          React.createElement("path",{d:"M 120 500 A 42 42 0 0 1 200 500",fill:"none",stroke:"#111827",strokeWidth:1.2}),
-          React.createElement("circle",{cx:160,cy:100,r:2.5,fill:"rgba(17,24,39,0.70)"}),
-          React.createElement("circle",{cx:160,cy:480,r:2.5,fill:"rgba(17,24,39,0.70)"})
-        ),
-
-        React.createElement("div",{style:{position:"relative",zIndex:1,paddingTop:10}},
-          hRows.map((row,ri)=>
-            React.createElement("div",{key:"h"+ri,style:{display:"flex",justifyContent:"space-evenly",alignItems:"flex-end",marginBottom:ri===0?22:18,padding:"0 8px"}},
-              row.map((p,pi)=>React.createElement(PlayerPin,{key:p?.id||`h${ri}-${pi}`,p,isHome:true}))
-            )
-          )
-        ),
-
-        React.createElement("div",{style:{height:44,position:"relative",zIndex:1}}),
-
-        React.createElement("div",{style:{position:"relative",zIndex:1,paddingBottom:10}},
-          aRowsRev.map((row,ri)=>
-            React.createElement("div",{key:"a"+ri,style:{display:"flex",justifyContent:"space-evenly",alignItems:"flex-start",marginTop:ri===0?22:18,padding:"0 8px"}},
-              row.map((p,pi)=>React.createElement(PlayerPin,{key:p?.id||`a${ri}-${pi}`,p,isHome:false}))
-            )
-          )
-        )
-      );
-    };
-
-    const renderListe=()=>{
-      const renderTeamBlock=(lu,isHm)=>{
-        if(!lu)return null;
-        const accentColor=isHm?"#00c170":"#2563eb";
-        const renderPl=(p,isSub)=>{
-          if(!p)return null;
-          const photo=photoOf(p.id);
-          const rating=ratingOf(p.id);
-          const icons=evtIconsOf(p.id);
-          const minOut=events.find(e=>e.type==="subst"&&e.player?.id===p.id);
-          const minIn=events.find(e=>e.type==="subst"&&e.assist?.id===p.id);
-          const minShow=isSub?minIn:minOut;
-          return React.createElement("div",{key:p.id,className:"md-player-row",onClick:()=>{
-            const plrStats=players.flatMap(t=>t.players||[]).find(pl=>pl.player?.id===p.id);
-            setPlayerSheet({...p,photo,stats:plrStats?.statistics?.[0]||null});
-          }},
-            React.createElement("div",{style:{fontFamily:"'Barlow Condensed',sans-serif",fontSize:12,fontWeight:700,color:accentColor,minWidth:24,textAlign:"center",opacity:isSub?.55:1}},p.number||"—"),
-            React.createElement("div",{style:{width:34,height:34,borderRadius:"50%",overflow:"hidden",background:"rgba(0,0,0,0.06)",flexShrink:0,opacity:isSub?.65:1}},
-              photo?React.createElement("img",{src:photo,style:{width:"100%",height:"100%",objectFit:"cover"},onError:e=>{e.target.parentNode.innerHTML="👤"}}):
-              React.createElement("div",{style:{width:"100%",height:"100%",display:"flex",alignItems:"center",justifyContent:"center",fontSize:11,color:"rgba(17,24,39,0.51)"}},p.number||"?")
-            ),
-            React.createElement("div",{style:{flex:1,minWidth:0,opacity:isSub?.7:1}},
-              React.createElement("div",{style:{fontSize:13,fontWeight:500,color:"#111827",overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap"}},p.name),
-              p.pos?React.createElement("div",{style:{fontSize:10,color:"rgba(17,24,39,0.67)",marginTop:1}},p.pos):null
-            ),
-            icons.some(x=>x.t==="goal")?React.createElement("span",{style:{fontSize:13,marginRight:2}},"⚽"):null,
-            icons.some(x=>x.t==="yellow")?React.createElement("div",{style:{width:9,height:12,borderRadius:2,background:"#f59e0b",marginRight:2,flexShrink:0}}):null,
-            icons.some(x=>x.t==="red")?React.createElement("div",{style:{width:9,height:12,borderRadius:2,background:"#e53935",marginRight:2,flexShrink:0}}):null,
-            rating?React.createElement("div",{style:{background:ratingBg(rating),borderRadius:5,padding:"2px 7px",fontSize:11,fontWeight:900,color:"#111827",flexShrink:0}},rating.toFixed(1)):null,
-            minShow?React.createElement("div",{style:{fontSize:10,fontWeight:700,color:"rgba(17,24,39,0.71)",flexShrink:0,marginLeft:4}},`${isSub?"↑":"↓"}${minShow.time?.elapsed}'`):null
-          );
-        };
-        return React.createElement("div",{key:lu.team?.id,style:{background:"rgba(0,0,0,0.03)",borderRadius:12,overflow:"hidden",marginBottom:8,border:"1px solid rgba(0,0,0,0.06)"}},
-          React.createElement("div",{style:{background:isHm?"rgba(0,193,112,.06)":"rgba(37,99,235,.06)",borderBottom:"1px solid rgba(0,0,0,0.05)"}},
-            React.createElement("div",{style:{display:"flex",alignItems:"center",gap:10,padding:"11px 14px"}},
-              React.createElement("img",{src:lu.team?.logo,style:{width:28,height:28,objectFit:"contain"},onError:e=>{e.target.style.display="none"}}),
-              React.createElement("div",{style:{flex:1,minWidth:0}},
-                React.createElement("div",{style:{fontFamily:"'Barlow Condensed',sans-serif",fontSize:20,fontWeight:900,color:accentColor,letterSpacing:-.5}},lu.team?.name||"—"),
-                lu.formation?React.createElement("div",{style:{fontSize:11,color:"rgba(17,24,39,0.71)",marginTop:1}},[`Formation: ${lu.formation}`]):null
-              )
-            ),
-            lu.coach?.name?React.createElement("div",{style:{display:"flex",alignItems:"center",gap:8,padding:"7px 14px",borderTop:"1px solid rgba(0,0,0,.04)"}},
-              React.createElement("span",{style:{fontSize:11,color:"rgba(17,24,39,0.69)"}},"🧑‍💼 Entraîneur :"),
-              React.createElement("span",{style:{fontSize:12,fontWeight:600,color:"#111827"}},[lu.coach.name])
-            ):null,
-            (()=>{
-              const teamAbsents=injuries.filter(inj=>inj.team?.id===lu.team?.id);
-              if(!teamAbsents.length)return null;
-              return React.createElement("div",{style:{padding:"7px 14px",borderTop:"1px solid rgba(0,0,0,.04)"}},
-                React.createElement("div",{style:{fontSize:10,fontWeight:700,color:"rgba(17,24,39,0.69)",letterSpacing:1,textTransform:"uppercase",marginBottom:6}},"Absents"),
-                teamAbsents.map(inj=>React.createElement("div",{key:inj.player?.id,style:{display:"flex",alignItems:"center",gap:8,padding:"4px 0"}},
-                  React.createElement("img",{src:inj.player?.photo,loading:"lazy",style:{width:22,height:22,borderRadius:"50%",objectFit:"cover"},onError:e=>{e.target.style.display="none"}}),
-                  React.createElement("span",{style:{fontSize:12,color:"#111827",flex:1}},[inj.player?.name||"—"]),
-                  React.createElement("span",{style:{fontSize:10,color:"#e53935",fontWeight:600}},[inj.reason||inj.player?.reason||inj.player?.type||"—"])
-                ))
-              );
-            })()
-          ),
-          (lu.startXI||[]).map(({player:p})=>renderPl(p,false)),
-          (lu.substitutes||[]).length?React.createElement(React.Fragment,null,
-            React.createElement("div",{style:{fontSize:9,fontWeight:800,letterSpacing:1.5,color:"rgba(17,24,39,0.67)",textTransform:"uppercase",padding:"7px 14px",background:"rgba(0,0,0,.02)"}},"Remplaçants"),
-            (lu.substitutes||[]).map(({player:p})=>renderPl(p,true))
-          ):null
-        );
-      };
-      return React.createElement(React.Fragment,null,
-        renderTeamBlock(hLu,true),
-        renderTeamBlock(aLu,false)
-      );
-    };
-
-    if(isFallback)return React.createElement(React.Fragment,null,
-      React.createElement("div",{style:{margin:"0 0 10px",padding:"9px 12px",background:"rgba(245,158,11,.07)",borderRadius:10,border:"1px solid rgba(245,158,11,.2)"}},
-        React.createElement("div",{style:{fontSize:11,color:"#92400e",fontWeight:600}},"⚠️ Formation officielle non disponible · Joueurs ayant participé")
-      ),
-      renderListe()
-    );
-    return React.createElement(React.Fragment,null,
-      React.createElement("div",{style:{display:"flex",gap:6,marginBottom:10}},
-        React.createElement("button",{className:`md-subtab${compoView==="terrain"?" active":""}`,onClick:()=>setCompoView("terrain")},"⚽ Terrain"),
-        React.createElement("button",{className:`md-subtab${compoView==="liste"?" active":""}`,onClick:()=>setCompoView("liste")},"📋 Liste")
-      ),
-      compoView==="terrain"
-        ? renderTerrain()
-        : renderListe()
-    );
-  };
-
   const renderH2H=()=>{
     if(!h2h.length)return React.createElement("div",{className:"md-empty"},"⚔️ Aucune confrontation disponible");
 
@@ -4161,7 +3489,7 @@ function MatchDetail({state,onClose}){
           React.createElement("tbody",null,
             st.map(r=>{
               const isHm=r.team?.id===hid,isAw=r.team?.id===aid;
-              proj=projH(r);
+              const proj=projH(r);
               const gd=r.goalsDiff;
               const bFor=r.all?.goals?.for??0,bAga=r.all?.goals?.against??0;
               const descC=(d=>{d=((d)??"").toLowerCase();return d.includes("champions league")||d.includes("ligue des champions")||(d.includes("champions")&&!d.includes("conf"))?"#1a56db":d.includes("europa league")||d.includes("ligue europa")?"#e53935":d.includes("conference")||d.includes("conf")?"#f59e0b":d.includes("promotion")?"#00c170":d.includes("releg")||d.includes("relégation")?"#dc2626":d.includes("playoff")||d.includes("play-off")||d.includes("barrage")?"#f59e0b":d.includes("europa")?"#e53935":d.includes("qualif")?"#1a56db":null;})(r.description);
@@ -4558,13 +3886,16 @@ function MatchDetail({state,onClose}){
       ):null,
 
       tab==="compos"?React.createElement("div",{className:"md-panel"},
-        React.createElement("div",{style:{display:"flex",gap:6,marginBottom:10}},
-          React.createElement("button",{className:`md-subtab${compoView==="terrain"?" active":""}`,onClick:()=>setCompoView("terrain")},"⚽ Terrain"),
-          React.createElement("button",{className:`md-subtab${compoView==="liste"?" active":""}`,onClick:()=>setCompoView("liste")},"📋 Liste")
-        ),
-        compoView==="terrain"
-          ? renderTerrainFlash(fix, hLu, aLu, players, events, hid, aid, has, hg, ag)
-          : renderListeFlash(fix, hLu, aLu, players, events, injuries, hid, aid)
+        React.createElement(ComposPanel, {
+          lineups: lineups,
+          players: players,
+          homeTeam: fix?.teams?.home,
+          awayTeam: fix?.teams?.away,
+          isPartial: isPartial,
+          fix: fix,
+          events: events,
+          injuries: injuries
+        })
       ):null,
 
       tab==="h2h"?React.createElement("div",{className:"md-panel"},renderH2H()):null,
@@ -4612,7 +3943,7 @@ function MatchDetail({state,onClose}){
 }
 
 //
-// SCORES TAB
+// SCORES TAB (simplifié pour la longueur)
 //
 function ScoresTab({favs,onFav}){
   const[date,setDate]=useState(today()),[data,setData]=useState([]),[st,setSt]=useState("load"),[err,setErr]=useState("");
@@ -4622,7 +3953,6 @@ function ScoresTab({favs,onFav}){
   const isToday=date===today();
 
   const hasLive=useMemo(()=>data.some(f=>LIVE_ST.has(f?.fixture?.status?.short)),[data]);
-  const liveInterval=15;
 
   const load=useCallback(async(silent=false)=>{
     if(!silent){setSt("load");setErr("");}else setSpin(true);
@@ -4789,86 +4119,174 @@ function ScoresTab({favs,onFav}){
   const dates=useMemo(()=>Array.from({length:15},(_,i)=>{const d=new Date();d.setDate(d.getDate()+i-7);return d.toISOString().slice(0,10);}),[]);
   const DAY=["D","L","M","M","J","V","S"];
 
-  return<div style={{display:"flex",flexDirection:"column",height:"100%",width:"100%",overflow:"hidden"}}>
-    <div style={{display:"flex",alignItems:"center",gap:8,padding:"6px 14px",background:T.bg1,borderBottom:`1px solid ${T.line}`,flexShrink:0,minHeight:44,width:"100%",boxShadow:"inset 0 -1px 0 rgba(255,255,255,.04)"}}>
-      {lv>0?<><div style={{width:8,height:8,borderRadius:"50%",background:T.red,animation:"pulseR 2s infinite",flexShrink:0}}/><span style={{fontSize:11,fontWeight:800,color:T.red}}>{lv} en direct</span></>:st==="ok"?<span style={{fontSize:11,color:T.t3}}>{data.length} matchs</span>:null}
-      {spin&&<Spin s={13}/>}
-      <div style={{flex:1}}/>
-      <button onClick={()=>setFO(v=>!v)} style={{background:favOnly?T.goldL:"none",border:`1px solid ${favOnly?T.gold:T.bg4}`,color:favOnly?T.gold:T.t3,borderRadius:8,padding:"3px 10px",fontSize:11,fontWeight:700,cursor:"pointer"}}>★ Favoris</button>
-      <div onClick={()=>load(true)} style={{display:"flex",alignItems:"center",gap:5,cursor:"pointer",background:T.bg3,border:`1px solid ${T.bg4}`,borderRadius:8,padding:"4px 9px"}}>
-        <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke={spin?T.red:T.t3} strokeWidth="2.5" style={{animation:spin?"spin .65s linear infinite":"none"}}><path d="M1 4v6h6"/><path d="M23 20v-6h-6"/><path d="M20.49 9A9 9 0 0 0 5.64 5.64L1 10m22 4-4.64 4.36A9 9 0 0 1 3.51 15"/></svg>
-        {cd!=null&&!spin&&<span style={{fontSize:10,color:cd<=15?T.red:T.t3,fontWeight:700}}>{cd}s</span>}
-      </div>
-    </div>
-    <div ref={stripRef} style={{display:"flex",gap:5,overflowX:"auto",padding:"10px 14px 10px",background:T.bg0,borderBottom:`1px solid ${T.line}`,flexShrink:0,width:"100%"}}>
-      {dates.map(d=>{const td=d===today(),ac=d===date,dt=new Date(d+"T12:00:00");return<div key={d} data-td={td?"1":"0"} onClick={()=>setDate(d)} style={{
-        display:"flex",flexDirection:"column",alignItems:"center",gap:3,
-        flexShrink:0,cursor:"pointer",width:42,padding:"7px 0",
-        borderRadius:11,transition:"all .15s",
-        background:ac?"linear-gradient(135deg,#e53535,#c62828)":td?T.redL:"transparent",
-        border:`1px solid ${ac?"transparent":td?"rgba(229,53,53,.3)":"transparent"}`,
-        boxShadow:ac?T.shadowRed:"none",
-      }}>
-        <span className="bc" style={{fontSize:9,fontWeight:700,textTransform:"uppercase",letterSpacing:.8,color:ac?"rgba(255,255,255,.8)":td?T.red:T.t4}}>{DAY[dt.getDay()]}</span>
-        <span className="bc" style={{fontSize:18,fontWeight:900,color:ac?"#fff":td?T.red:T.t2,lineHeight:1}}>{dt.getDate()}</span>
-      </div>;})}
-    </div>
-    <div style={{display:"flex",gap:7,padding:"8px 14px",background:T.bg0,borderBottom:`1px solid ${T.line}`,flexShrink:0,width:"100%"}}>
-      <div style={{position:"relative",flex:1}}>
-        <svg style={{position:"absolute",left:10,top:"50%",transform:"translateY(-50%)"}} width="12" height="12" fill="none" stroke={T.t3} strokeWidth="2.5" viewBox="0 0 24 24"><circle cx="11" cy="11" r="8"/><path d="m21 21-4.35-4.35"/></svg>
-        <input value={q} onChange={e=>setQ(e.target.value)} placeholder="Équipe ou compétition..." style={{
-          width:"100%",background:T.bg2,border:`1px solid ${T.line}`,
-          borderRadius:10,padding:"8px 28px 8px 30px",
-          color:T.t1,fontSize:16,outline:"none",transition:"border-color .15s",
-        }}
-        onFocus={e=>e.target.style.borderColor="rgba(229,53,53,.4)"}
-        onBlur={e=>e.target.style.borderColor=T.line}
-        />
-        {q&&<button onClick={()=>setQ("")} style={{position:"absolute",right:8,top:"50%",transform:"translateY(-50%)",background:"none",border:"none",color:T.t3,fontSize:13,cursor:"pointer"}}>✕</button>}
-      </div>
-      <button onClick={()=>setPicker(true)} style={{
-        display:"flex",alignItems:"center",gap:6,
-        background:lg?T.redL:T.bg2,
-        border:`1px solid ${lg?T.red:T.line}`,
-        borderRadius:10,padding:"8px 11px",
-        color:lg?T.red:T.t2,fontSize:12,fontWeight:700,cursor:"pointer",flexShrink:0,
-        transition:"all .15s",
-      }}>
-        {sel?<><span>{sel.flag}</span><span className="bc" style={{fontWeight:700}}>{sel.name}</span></>:<span className="bc" style={{fontWeight:700}}>Ligues</span>}
-        <span style={{fontSize:10,opacity:.6}}>▾</span>
-      </button>
-      {lg&&<button onClick={()=>setLg(null)} style={{border:`1px solid ${T.line}`,color:T.t3,borderRadius:10,padding:"8px 10px",fontSize:12,cursor:"pointer",background:"none",flexShrink:0}}>✕</button>}
-    </div>
-    <div style={{flex:1,overflowY:"auto",paddingBottom:"env(safe-area-inset-bottom)"}}>
-      {st==="load"?<SkRows/>
-      :st==="err"?<div style={{textAlign:"center",padding:"52px 24px"}}><div style={{fontSize:44,marginBottom:16}}>⚠️</div><div style={{fontSize:14,color:T.t2,marginBottom:24,lineHeight:1.5}}>{err}</div><button onClick={()=>load()} style={{background:T.red,border:"none",color:"#fff",borderRadius:10,padding:"12px 28px",fontSize:14,fontWeight:700,cursor:"pointer"}}>Réessayer</button></div>
-      :groups.length===0?<div style={{textAlign:"center",padding:"64px 24px",display:"flex",flexDirection:"column",alignItems:"center",gap:10}}><div style={{fontSize:44,marginBottom:4,opacity:.5}}>📭</div><div className="bc" style={{fontSize:17,fontWeight:800,color:T.t2,letterSpacing:.3}}>Aucun match</div><div style={{fontSize:13,color:T.t4}}>{favOnly?"Aucun favori ce jour":q?"Aucun résultat pour cette recherche":"Pas de matchs programmés ce jour-là"}</div></div>
-      :groups.map(g=><LeagueBlock key={g.lg.id} group={g} onOpen={openMatch} favs={favs} onFav={onFav}/>)}
-    </div>
-    <Sheet open={picker} onClose={()=>setPicker(false)}>
-      <div style={{padding:"4px 16px 14px"}}>
-        <span style={{fontSize:16,fontWeight:700}}>Compétitions</span>
-      </div>
-      <div style={{paddingBottom:40}}>
-        <div onClick={()=>{setLg(null);setPicker(false);}} style={{display:"flex",alignItems:"center",gap:11,padding:"13px 16px",borderBottom:`1px solid ${T.line}`,background:!lg?T.blueL:"none",cursor:"pointer"}}>
-          <span style={{fontSize:22}}>🌍</span><span style={{fontSize:14,fontWeight:600,color:!lg?T.blueB:T.t1}}>Toutes</span>{!lg&&<span style={{marginLeft:"auto",color:T.blueB}}>✓</span>}
-        </div>
-        {REGIONS.map(region=><div key={region}>
-          <div style={{fontSize:10,fontWeight:700,color:T.t3,letterSpacing:1.4,textTransform:"uppercase",padding:"11px 16px 5px",background:T.bg0}}>{region}</div>
-          {LEAGUES.filter(l=>l.region===region).map(l=><div key={l.id} onClick={()=>{setLg(l.id);setPicker(false);}} style={{display:"flex",alignItems:"center",gap:11,padding:"12px 16px",borderBottom:`1px solid ${T.line}`,background:lg===l.id?T.blueL:"none",cursor:"pointer"}}>
-            <span style={{fontSize:20,flexShrink:0}}>{l.flag}</span>
-            <div style={{flex:1}}><div style={{fontSize:14,fontWeight:lg===l.id?700:400,color:lg===l.id?T.blueB:T.t1}}>{l.name}</div><div style={{fontSize:11,color:T.t3}}>{l.country}</div></div>
-            {lg===l.id&&<span style={{color:T.blueB}}>✓</span>}
-          </div>)}
-        </div>)}
-      </div>
-    </Sheet>
-    <MatchDetailWrapper state={detail} onClose={()=>setDet(null)}/>
-  </div>;
+  return React.createElement("div", { style: { display: "flex", flexDirection: "column", height: "100%", width: "100%", overflow: "hidden" } },
+    React.createElement("div", { style: { display: "flex", alignItems: "center", gap: 8, padding: "6px 14px", background: T.bg1, borderBottom: "1px solid " + T.line, flexShrink: 0, minHeight: 44, width: "100%", boxShadow: "inset 0 -1px 0 rgba(255,255,255,.04)" } },
+      lv > 0
+        ? React.createElement(React.Fragment, null,
+            React.createElement("div", { style: { width: 8, height: 8, borderRadius: "50%", background: T.red, animation: "pulseR 2s infinite", flexShrink: 0 } }),
+            React.createElement("span", { style: { fontSize: 11, fontWeight: 800, color: T.red } }, lv + " en direct")
+          )
+        : st === "ok"
+        ? React.createElement("span", { style: { fontSize: 11, color: T.t3 } }, data.length + " matchs")
+        : null,
+      spin ? React.createElement(Spin, { s: 13 }) : null,
+      React.createElement("div", { style: { flex: 1 } }),
+      React.createElement("button", {
+        onClick: () => setFO(v => !v),
+        style: { background: favOnly ? T.goldL : "none", border: "1px solid " + (favOnly ? T.gold : T.bg4), color: favOnly ? T.gold : T.t3, borderRadius: 8, padding: "3px 10px", fontSize: 11, fontWeight: 700, cursor: "pointer" }
+      }, "★ Favoris"),
+      React.createElement("div", {
+        onClick: () => load(true),
+        style: { display: "flex", alignItems: "center", gap: 5, cursor: "pointer", background: T.bg3, border: "1px solid " + T.bg4, borderRadius: 8, padding: "4px 9px" }
+      },
+        React.createElement("svg", { width: 11, height: 11, viewBox: "0 0 24 24", fill: "none", stroke: spin ? T.red : T.t3, strokeWidth: 2.5, style: { animation: spin ? "spin .65s linear infinite" : "none" } },
+          React.createElement("path", { d: "M1 4v6h6" }),
+          React.createElement("path", { d: "M23 20v-6h-6" }),
+          React.createElement("path", { d: "M20.49 9A9 9 0 0 0 5.64 5.64L1 10m22 4-4.64 4.36A9 9 0 0 1 3.51 15" })
+        ),
+        cd != null && !spin ? React.createElement("span", { style: { fontSize: 10, color: cd <= 15 ? T.red : T.t3, fontWeight: 700 } }, cd + "s") : null
+      )
+    ),
+    React.createElement("div", { ref: stripRef, style: { display: "flex", gap: 5, overflowX: "auto", padding: "10px 14px 10px", background: T.bg0, borderBottom: "1px solid " + T.line, flexShrink: 0, width: "100%" } },
+      dates.map(d => {
+        const td = d === today();
+        const ac = d === date;
+        const dt = new Date(d + "T12:00:00");
+        return React.createElement("div", {
+          key: d,
+          "data-td": td ? "1" : "0",
+          onClick: () => setDate(d),
+          style: {
+            display: "flex",
+            flexDirection: "column",
+            alignItems: "center",
+            gap: 3,
+            flexShrink: 0,
+            cursor: "pointer",
+            width: 42,
+            padding: "7px 0",
+            borderRadius: 11,
+            transition: "all .15s",
+            background: ac ? "linear-gradient(135deg,#e53535,#c62828)" : td ? T.redL : "transparent",
+            border: "1px solid " + (ac ? "transparent" : td ? "rgba(229,53,53,.3)" : "transparent"),
+            boxShadow: ac ? T.shadowRed : "none"
+          }
+        },
+          React.createElement("span", { className: "bc", style: { fontSize: 9, fontWeight: 700, textTransform: "uppercase", letterSpacing: 0.8, color: ac ? "rgba(255,255,255,.8)" : td ? T.red : T.t4 } }, DAY[dt.getDay()]),
+          React.createElement("span", { className: "bc", style: { fontSize: 18, fontWeight: 900, color: ac ? "#fff" : td ? T.red : T.t2, lineHeight: 1 } }, dt.getDate())
+        );
+      })
+    ),
+    React.createElement("div", { style: { display: "flex", gap: 7, padding: "8px 14px", background: T.bg0, borderBottom: "1px solid " + T.line, flexShrink: 0, width: "100%" } },
+      React.createElement("div", { style: { position: "relative", flex: 1 } },
+        React.createElement("svg", { style: { position: "absolute", left: 10, top: "50%", transform: "translateY(-50%)" }, width: 12, height: 12, fill: "none", stroke: T.t3, strokeWidth: 2.5, viewBox: "0 0 24 24" },
+          React.createElement("circle", { cx: 11, cy: 11, r: 8 }),
+          React.createElement("path", { d: "m21 21-4.35-4.35" })
+        ),
+        React.createElement("input", {
+          value: q,
+          onChange: e => setQ(e.target.value),
+          placeholder: "Équipe ou compétition...",
+          style: {
+            width: "100%",
+            background: T.bg2,
+            border: "1px solid " + T.line,
+            borderRadius: 10,
+            padding: "8px 28px 8px 30px",
+            color: T.t1,
+            fontSize: 16,
+            outline: "none",
+            transition: "border-color .15s"
+          },
+          onFocus: e => e.target.style.borderColor = "rgba(229,53,53,.4)",
+          onBlur: e => e.target.style.borderColor = T.line
+        }),
+        q ? React.createElement("button", {
+          onClick: () => setQ(""),
+          style: { position: "absolute", right: 8, top: "50%", transform: "translateY(-50%)", background: "none", border: "none", color: T.t3, fontSize: 13, cursor: "pointer" }
+        }, "✕") : null
+      ),
+      React.createElement("button", {
+        onClick: () => setPicker(true),
+        style: {
+          display: "flex",
+          alignItems: "center",
+          gap: 6,
+          background: lg ? T.redL : T.bg2,
+          border: "1px solid " + (lg ? T.red : T.line),
+          borderRadius: 10,
+          padding: "8px 11px",
+          color: lg ? T.red : T.t2,
+          fontSize: 12,
+          fontWeight: 700,
+          cursor: "pointer",
+          flexShrink: 0,
+          transition: "all .15s"
+        }
+      },
+        sel
+          ? React.createElement(React.Fragment, null,
+              React.createElement("span", null, sel.flag),
+              React.createElement("span", { className: "bc", style: { fontWeight: 700 } }, sel.name)
+            )
+          : React.createElement("span", { className: "bc", style: { fontWeight: 700 } }, "Ligues"),
+        React.createElement("span", { style: { fontSize: 10, opacity: 0.6 } }, "▾")
+      ),
+      lg ? React.createElement("button", {
+        onClick: () => setLg(null),
+        style: { border: "1px solid " + T.line, color: T.t3, borderRadius: 10, padding: "8px 10px", fontSize: 12, cursor: "pointer", background: "none", flexShrink: 0 }
+      }, "✕") : null
+    ),
+    React.createElement("div", { style: { flex: 1, overflowY: "auto", paddingBottom: "env(safe-area-inset-bottom)" } },
+      st === "load" ? React.createElement(SkRows, null)
+      : st === "err" ? React.createElement("div", { style: { textAlign: "center", padding: "52px 24px" } },
+          React.createElement("div", { style: { fontSize: 44, marginBottom: 16 } }, "⚠️"),
+          React.createElement("div", { style: { fontSize: 14, color: T.t2, marginBottom: 24, lineHeight: 1.5 } }, err),
+          React.createElement("button", { onClick: () => load(), style: { background: T.red, border: "none", color: "#fff", borderRadius: 10, padding: "12px 28px", fontSize: 14, fontWeight: 700, cursor: "pointer" } }, "Réessayer")
+        )
+      : groups.length === 0 ? React.createElement("div", { style: { textAlign: "center", padding: "64px 24px", display: "flex", flexDirection: "column", alignItems: "center", gap: 10 } },
+          React.createElement("div", { style: { fontSize: 44, marginBottom: 4, opacity: 0.5 } }, "📭"),
+          React.createElement("div", { className: "bc", style: { fontSize: 17, fontWeight: 800, color: T.t2, letterSpacing: 0.3 } }, "Aucun match"),
+          React.createElement("div", { style: { fontSize: 13, color: T.t4 } }, favOnly ? "Aucun favori ce jour" : q ? "Aucun résultat pour cette recherche" : "Pas de matchs programmés ce jour-là")
+        )
+      : groups.map(g => React.createElement(LeagueBlock, { key: g.lg.id, group: g, onOpen: openMatch, favs: favs, onFav: onFav }))
+    ),
+    React.createElement(Sheet, { open: picker, onClose: () => setPicker(false) },
+      React.createElement("div", { style: { padding: "4px 16px 14px" } },
+        React.createElement("span", { style: { fontSize: 16, fontWeight: 700 } }, "Compétitions")
+      ),
+      React.createElement("div", { style: { paddingBottom: 40 } },
+        React.createElement("div", {
+          onClick: () => { setLg(null); setPicker(false); },
+          style: { display: "flex", alignItems: "center", gap: 11, padding: "13px 16px", borderBottom: "1px solid " + T.line, background: !lg ? T.blueL : "none", cursor: "pointer" }
+        },
+          React.createElement("span", { style: { fontSize: 22 } }, "🌍"),
+          React.createElement("span", { style: { fontSize: 14, fontWeight: 600, color: !lg ? T.blueB : T.t1 } }, "Toutes"),
+          !lg ? React.createElement("span", { style: { marginLeft: "auto", color: T.blueB } }, "✓") : null
+        ),
+        REGIONS.map(region => React.createElement("div", { key: region },
+          React.createElement("div", { style: { fontSize: 10, fontWeight: 700, color: T.t3, letterSpacing: 1.4, textTransform: "uppercase", padding: "11px 16px 5px", background: T.bg0 } }, region),
+          LEAGUES.filter(l => l.region === region).map(l => React.createElement("div", {
+            key: l.id,
+            onClick: () => { setLg(l.id); setPicker(false); },
+            style: { display: "flex", alignItems: "center", gap: 11, padding: "12px 16px", borderBottom: "1px solid " + T.line, background: lg === l.id ? T.blueL : "none", cursor: "pointer" }
+          },
+            React.createElement("span", { style: { fontSize: 20, flexShrink: 0 } }, l.flag),
+            React.createElement("div", { style: { flex: 1 } },
+              React.createElement("div", { style: { fontSize: 14, fontWeight: lg === l.id ? 700 : 400, color: lg === l.id ? T.blueB : T.t1 } }, l.name),
+              React.createElement("div", { style: { fontSize: 11, color: T.t3 } }, l.country)
+            ),
+            lg === l.id ? React.createElement("span", { style: { color: T.blueB } }, "✓") : null
+          ))
+        ))
+      )
+    ),
+    React.createElement(MatchDetailWrapper, { state: detail, onClose: () => setDet(null) })
+  );
 }
 
 //
-// STANDINGS TAB (simplifié pour la longueur)
+// STANDINGS TAB (simplifié)
 //
 function StandingsTab(){
   const[lid,setLid]=useState(39),[s,setS]=useState(CUR_SEASON);
@@ -4930,230 +4348,325 @@ function StandingsTab(){
 
   const knockoutRounds=rounds.filter(r=>{const rl=r.toLowerCase();return !rl.includes("group")&&!rl.includes("league phase")&&!rl.includes("qualifying");});
 
-  return<div style={{display:"flex",flexDirection:"column",height:"100%",width:"100%",overflow:"hidden"}}>
-    <div style={{padding:"9px 14px",borderBottom:`1px solid ${T.line}`,flexShrink:0,background:T.bg1,minHeight:74,width:"100%"}}>
-      <div onClick={()=>setCfg(true)} style={{
-        display:"flex",alignItems:"center",gap:12,
-        background:"#fff",
-        padding:"0 14px",cursor:"pointer",height:56,flexShrink:0,
-        transition:"background .15s",
-      }}
-      onMouseEnter={e=>e.currentTarget.style.background="#f5f5f5"}
-      onMouseLeave={e=>e.currentTarget.style.background="#fff"}
-      >
-        <div style={{width:34,height:34,flexShrink:0,display:"flex",alignItems:"center",justifyContent:"center",fontSize:22,background:"rgba(0,0,0,.05)",borderRadius:8}}>{l?.flag??"🏆"}</div>
-        <div style={{flex:1,minWidth:0}}>
-          <div className="bc" style={{fontSize:15,fontWeight:800,overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap",color:"#1a1d23"}}>{l?.name??"—"}</div>
-          <div style={{fontSize:11,color:"#888",marginTop:2}}>Saison {s}/{s+1}</div>
-        </div>
-        <div style={{background:"#00b86b",borderRadius:8,padding:"4px 10px"}}>
-          <span style={{fontSize:11,color:"#fff",fontWeight:700}}>⚙️</span>
-        </div>
-      </div>
-    </div>
+  return React.createElement("div", { style: { display: "flex", flexDirection: "column", height: "100%", width: "100%", overflow: "hidden" } },
+    React.createElement("div", { style: { padding: "9px 14px", borderBottom: "1px solid " + T.line, flexShrink: 0, background: T.bg1, minHeight: 74, width: "100%" } },
+      React.createElement("div", {
+        onClick: () => setCfg(true),
+        style: {
+          display: "flex",
+          alignItems: "center",
+          gap: 12,
+          background: "#fff",
+          padding: "0 14px",
+          cursor: "pointer",
+          height: 56,
+          flexShrink: 0,
+          transition: "background .15s"
+        },
+        onMouseEnter: e => e.currentTarget.style.background = "#f5f5f5",
+        onMouseLeave: e => e.currentTarget.style.background = "#fff"
+      },
+        React.createElement("div", { style: { width: 34, height: 34, flexShrink: 0, display: "flex", alignItems: "center", justifyContent: "center", fontSize: 22, background: "rgba(0,0,0,.05)", borderRadius: 8 } }, l?.flag ?? "🏆"),
+        React.createElement("div", { style: { flex: 1, minWidth: 0 } },
+          React.createElement("div", { className: "bc", style: { fontSize: 15, fontWeight: 800, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap", color: "#1a1d23" } }, l?.name ?? "—"),
+          React.createElement("div", { style: { fontSize: 11, color: "#888", marginTop: 2 } }, "Saison " + s + "/" + (s + 1))
+        ),
+        React.createElement("div", { style: { background: "#00b86b", borderRadius: 8, padding: "4px 10px" } },
+          React.createElement("span", { style: { fontSize: 11, color: "#fff", fontWeight: 700 } }, "⚙️")
+        )
+      )
+    ),
 
-    {isCup&&(hasGroups||hasKnockout)&&<div style={{display:"flex",background:T.bg1,borderBottom:`1px solid ${T.line}`,flexShrink:0,padding:"8px 14px",gap:8,width:"100%"}}>
-      {hasGroups&&<button onClick={()=>setView("standings")} className="bc" style={{flex:1,padding:"8px 4px",background:view==="standings"?"linear-gradient(135deg,#e53535,#c62828)":T.bg3,color:"#fff",border:`1px solid ${view==="standings"?"transparent":T.line}`,borderRadius:10,fontSize:12,fontWeight:800,cursor:"pointer",letterSpacing:.5,boxShadow:view==="standings"?"0 3px 12px rgba(229,53,53,.3)":"none",transition:"all .2s"}}>📊 GROUPES</button>}
-      {hasKnockout&&<button onClick={()=>setView("knockout")} className="bc" style={{flex:1,padding:"8px 4px",background:view==="knockout"?"linear-gradient(135deg,#e53535,#c62828)":T.bg3,color:"#fff",border:`1px solid ${view==="knockout"?"transparent":T.line}`,borderRadius:10,fontSize:12,fontWeight:800,cursor:"pointer",letterSpacing:.5,boxShadow:view==="knockout"?"0 3px 12px rgba(229,53,53,.3)":"none",transition:"all .2s"}}>🏆 ÉLIMIN.</button>}
-    </div>}
+    isCup && (hasGroups || hasKnockout) ? React.createElement("div", { style: { display: "flex", background: T.bg1, borderBottom: "1px solid " + T.line, flexShrink: 0, padding: "8px 14px", gap: 8, width: "100%" } },
+      hasGroups ? React.createElement("button", {
+        onClick: () => setView("standings"),
+        className: "bc",
+        style: {
+          flex: 1,
+          padding: "8px 4px",
+          background: view === "standings" ? "linear-gradient(135deg,#e53535,#c62828)" : T.bg3,
+          color: "#fff",
+          border: "1px solid " + (view === "standings" ? "transparent" : T.line),
+          borderRadius: 10,
+          fontSize: 12,
+          fontWeight: 800,
+          cursor: "pointer",
+          letterSpacing: 0.5,
+          boxShadow: view === "standings" ? "0 3px 12px rgba(229,53,53,.3)" : "none",
+          transition: "all .2s"
+        }
+      }, "📊 GROUPES") : null,
+      hasKnockout ? React.createElement("button", {
+        onClick: () => setView("knockout"),
+        className: "bc",
+        style: {
+          flex: 1,
+          padding: "8px 4px",
+          background: view === "knockout" ? "linear-gradient(135deg,#e53535,#c62828)" : T.bg3,
+          color: "#fff",
+          border: "1px solid " + (view === "knockout" ? "transparent" : T.line),
+          borderRadius: 10,
+          fontSize: 12,
+          fontWeight: 800,
+          cursor: "pointer",
+          letterSpacing: 0.5,
+          boxShadow: view === "knockout" ? "0 3px 12px rgba(229,53,53,.3)" : "none",
+          transition: "all .2s"
+        }
+      }, "🏆 ÉLIMIN.") : null
+    ) : null,
 
-    {view==="standings"&&!isCup&&<div style={{
-      display:"flex",background:"#fff",
-      borderBottom:"1px solid rgba(0,0,0,.08)",
-      flexShrink:0,width:"100%",
-      boxShadow:"0 1px 4px rgba(0,0,0,.04)",
-    }}>
-      {[["all","Overall"],["home","Home"],["away","Away"]].map(([v,lb])=>{
-        const a=viewMode===v;
-        return<button key={v} onClick={()=>setViewMode(v)} className="bc" style={{
-          flex:1,padding:"11px 4px",border:"none",
-          background:a?"#fff":"#f7f7f7",
-          color:a?"#00b86b":"#888",
-          fontSize:11,fontWeight:a?800:500,
-          cursor:"pointer",letterSpacing:.3,
-          borderBottom:a?"2px solid #00b86b":"2px solid transparent",
-          transition:"all .2s",
-        }}>{lb}</button>;
-      })}
-    </div>}
+    view === "standings" && !isCup ? React.createElement("div", {
+      style: {
+        display: "flex",
+        background: "#fff",
+        borderBottom: "1px solid rgba(0,0,0,.08)",
+        flexShrink: 0,
+        width: "100%",
+        boxShadow: "0 1px 4px rgba(0,0,0,.04)"
+      }
+    },
+      [["all", "Overall"], ["home", "Home"], ["away", "Away"]].map(([v, lb]) => {
+        const a = viewMode === v;
+        return React.createElement("button", {
+          key: v,
+          onClick: () => setViewMode(v),
+          className: "bc",
+          style: {
+            flex: 1,
+            padding: "11px 4px",
+            border: "none",
+            background: a ? "#fff" : "#f7f7f7",
+            color: a ? "#00b86b" : "#888",
+            fontSize: 11,
+            fontWeight: a ? 800 : 500,
+            cursor: "pointer",
+            letterSpacing: 0.3,
+            borderBottom: a ? "2px solid #00b86b" : "2px solid transparent",
+            transition: "all .2s"
+          }
+        }, lb);
+      })
+    ) : null,
 
-    <div style={{flex:1,overflowY:"auto",width:"100%"}}>
-      {view==="standings"&&<>
-        {st==="load"&&<div style={{display:"flex",flexDirection:"column",alignItems:"center",gap:14,padding:56}}><Spin s={26}/><span style={{fontSize:13,color:T.t3}}>Chargement...</span></div>}
-        {st==="err"&&<div style={{textAlign:"center",padding:"44px 24px",color:T.t2}}><div style={{fontSize:44,marginBottom:14}}>⚠️</div>{err}</div>}
-        {st==="empty"&&<div style={{textAlign:"center",padding:"52px 24px"}}><div style={{fontSize:44,marginBottom:14}}>📋</div><div style={{fontSize:14,color:T.t2}}>Classement non disponible</div></div>}
-        {(st==="ok"||st==="groups")&&allGroups.map((grp,gi)=>{
-          const grpName=grp[0]?.group;
-          return<div key={gi}>
-            {grpName&&<div style={{
-              padding:"8px 14px",
-              background:"rgba(230,92,0,.06)",
-              borderBottom:"1px solid rgba(230,92,0,.15)",
-              borderTop:gi>0?"1px solid rgba(0,0,0,.06)":"none",
-              borderLeft:"4px solid #00b86b",
-              display:"flex",alignItems:"center",gap:8,
-            }}>
-              <span className="bc" style={{fontSize:11,fontWeight:800,color:"#00b86b",letterSpacing:1.5,textTransform:"uppercase"}}>GROUPE {grpName.replace("Group ","")}</span>
-            </div>}
-            <div style={{
-              display:"flex",alignItems:"center",
-              padding:"6px 10px",
-              borderBottom:"1px solid rgba(0,0,0,.08)",
-              background:"rgba(0,0,0,.03)",
-              position:"sticky",top:0,zIndex:2,
-            }}>
-              <div className="bc" style={{width:22,fontSize:9,fontWeight:700,color:"#aaa",textAlign:"center",flexShrink:0}}>#</div>
-              <div className="bc" style={{flex:1,fontSize:9,fontWeight:700,color:"#aaa",marginLeft:4}}>Équipe</div>
-              <div className="bc" style={{width:22,fontSize:9,fontWeight:700,color:"#aaa",textAlign:"center",flexShrink:0}}>M</div>
-              <div className="bc" style={{width:46,fontSize:9,fontWeight:700,color:"#aaa",textAlign:"center",flexShrink:0}}>Score</div>
-              <div className="bc" style={{width:28,fontSize:9,fontWeight:700,color:"#aaa",textAlign:"center",flexShrink:0}}>Diff</div>
-              <div className="bc" style={{width:32,fontSize:9,fontWeight:800,color:"#1a1d23",textAlign:"center",flexShrink:0}}>Pts</div>
-            </div>
-            {grp.map(r=>{
-              const src=viewMode==="home"?r.home:viewMode==="away"?r.away:r.all;
-              const qColor=zc(r.description);
-              const bp=src?.goals?.for??r.all?.goals?.for??0;
-              const bc=src?.goals?.against??r.all?.goals?.against??0;
-              const gd=r.goalsDiff;
-              const isTop=r.rank<=3;
-              return<div style={{
-                display:"flex",alignItems:"center",
-                padding:"9px 10px",
-                borderBottom:"1px solid rgba(0,0,0,.07)",
-                borderLeft:`4px solid ${qColor}`,
-                background:"#fff",
-                width:"100%",
-              }}>
-                <div className="bc" style={{
-                  width:22,fontSize:12,fontWeight:900,textAlign:"center",flexShrink:0,
-                  color:r.rank===1?"#00b86b":r.rank<=3?"#555":"#999",
-                }}>{r.rank}</div>
-                <div style={{flex:1,display:"flex",alignItems:"center",gap:7,minWidth:0,overflow:"hidden",marginLeft:4}}>
-                  <Logo src={r.team?.logo} size={24}/>
-                  <div style={{minWidth:0,flex:1}}>
-                    <div className="bc" style={{
-                      fontSize:13,fontWeight:isTop?700:500,
-                      color:"#1a1d23",
-                      overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap",
-                    }}>{r.team?.name}</div>
-                    <div style={{display:"flex",gap:2,marginTop:3}}>
-                      {(r.form??"").split("").slice(-5).map((c,i)=><FormDot key={i} c={c}/>)}
-                    </div>
-                  </div>
-                </div>
-                <div className="bc" style={{width:22,textAlign:"center",fontSize:12,color:"#555",flexShrink:0}}>{src?.played??"-"}</div>
-                <div className="bc" style={{
-                  width:46,textAlign:"center",fontSize:12,flexShrink:0,
-                  color:"#444",fontWeight:500,letterSpacing:.3,
-                }}>{bp}:{bc}</div>
-                <div className="bc" style={{
-                  width:28,textAlign:"center",fontSize:12,flexShrink:0,fontWeight:700,
-                  color:gd>0?"#00b86b":gd<0?"#e53535":"#aaa",
-                }}>{gd>0?"+":""}{gd}</div>
-                <div className="bc" style={{
-                  width:32,textAlign:"center",fontSize:16,fontWeight:900,flexShrink:0,
-                  color:isTop?"#00b86b":"#1a1d23",
-                }}>{r.points}</div>
-              </div>;
-            })}
-          </div>;
-        })}
-        {(st==="ok"||st==="groups")&&(()=>{
-          const seen=new Map();
-          allGroups.forEach(grp=>{
-            (Array.isArray(grp)?grp:[grp]).forEach(r=>{
-              const d=r?.description;
-              if(d&&d.trim()&&!seen.has(d)){
-                seen.set(d,zc(d));
+    React.createElement("div", { style: { flex: 1, overflowY: "auto", width: "100%" } },
+      view === "standings" ? React.createElement(React.Fragment, null,
+        st === "load" ? React.createElement("div", { style: { display: "flex", flexDirection: "column", alignItems: "center", gap: 14, padding: 56 } },
+          React.createElement(Spin, { s: 26 }),
+          React.createElement("span", { style: { fontSize: 13, color: T.t3 } }, "Chargement...")
+        ) : null,
+        st === "err" ? React.createElement("div", { style: { textAlign: "center", padding: "44px 24px", color: T.t2 } },
+          React.createElement("div", { style: { fontSize: 44, marginBottom: 14 } }, "⚠️"),
+          err
+        ) : null,
+        st === "empty" ? React.createElement("div", { style: { textAlign: "center", padding: "52px 24px" } },
+          React.createElement("div", { style: { fontSize: 44, marginBottom: 14 } }, "📋"),
+          React.createElement("div", { style: { fontSize: 14, color: T.t2 } }, "Classement non disponible")
+        ) : null,
+        (st === "ok" || st === "groups") ? allGroups.map((grp, gi) => {
+          const grpName = grp[0]?.group;
+          return React.createElement("div", { key: gi },
+            grpName ? React.createElement("div", {
+              style: {
+                padding: "8px 14px",
+                background: "rgba(230,92,0,.06)",
+                borderBottom: "1px solid rgba(230,92,0,.15)",
+                borderTop: gi > 0 ? "1px solid rgba(0,0,0,.06)" : "none",
+                borderLeft: "4px solid #00b86b",
+                display: "flex",
+                alignItems: "center",
+                gap: 8
+              }
+            },
+              React.createElement("span", { className: "bc", style: { fontSize: 11, fontWeight: 800, color: "#00b86b", letterSpacing: 1.5, textTransform: "uppercase" } }, "GROUPE " + grpName.replace("Group ", ""))
+            ) : null,
+            React.createElement("div", {
+              style: {
+                display: "flex",
+                alignItems: "center",
+                padding: "6px 10px",
+                borderBottom: "1px solid rgba(0,0,0,.08)",
+                background: "rgba(0,0,0,.03)",
+                position: "sticky",
+                top: 0,
+                zIndex: 2
+              }
+            },
+              React.createElement("div", { className: "bc", style: { width: 22, fontSize: 9, fontWeight: 700, color: "#aaa", textAlign: "center", flexShrink: 0 } }, "#"),
+              React.createElement("div", { className: "bc", style: { flex: 1, fontSize: 9, fontWeight: 700, color: "#aaa", marginLeft: 4 } }, "Équipe"),
+              React.createElement("div", { className: "bc", style: { width: 22, fontSize: 9, fontWeight: 700, color: "#aaa", textAlign: "center", flexShrink: 0 } }, "M"),
+              React.createElement("div", { className: "bc", style: { width: 46, fontSize: 9, fontWeight: 700, color: "#aaa", textAlign: "center", flexShrink: 0 } }, "Score"),
+              React.createElement("div", { className: "bc", style: { width: 28, fontSize: 9, fontWeight: 700, color: "#aaa", textAlign: "center", flexShrink: 0 } }, "Diff"),
+              React.createElement("div", { className: "bc", style: { width: 32, fontSize: 9, fontWeight: 800, color: "#1a1d23", textAlign: "center", flexShrink: 0 } }, "Pts")
+            ),
+            grp.map(r => {
+              const src = viewMode === "home" ? r.home : viewMode === "away" ? r.away : r.all;
+              const qColor = zc(r.description);
+              const bp = src?.goals?.for ?? r.all?.goals?.for ?? 0;
+              const bc = src?.goals?.against ?? r.all?.goals?.against ?? 0;
+              const gd = r.goalsDiff;
+              const isTop = r.rank <= 3;
+              return React.createElement("div", {
+                key: r.rank + "-" + gi,
+                style: {
+                  display: "flex",
+                  alignItems: "center",
+                  padding: "9px 10px",
+                  borderBottom: "1px solid rgba(0,0,0,.07)",
+                  borderLeft: "4px solid " + qColor,
+                  background: "#fff",
+                  width: "100%"
+                }
+              },
+                React.createElement("div", { className: "bc", style: { width: 22, fontSize: 12, fontWeight: 900, textAlign: "center", flexShrink: 0, color: r.rank === 1 ? "#00b86b" : r.rank <= 3 ? "#555" : "#999" } }, r.rank),
+                React.createElement("div", { style: { flex: 1, display: "flex", alignItems: "center", gap: 7, minWidth: 0, overflow: "hidden", marginLeft: 4 } },
+                  React.createElement(Logo, { src: r.team?.logo, size: 24 }),
+                  React.createElement("div", { style: { minWidth: 0, flex: 1 } },
+                    React.createElement("div", { className: "bc", style: { fontSize: 13, fontWeight: isTop ? 700 : 500, color: "#1a1d23", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" } }, r.team?.name),
+                    React.createElement("div", { style: { display: "flex", gap: 2, marginTop: 3 } },
+                      (r.form ?? "").split("").slice(-5).map((c, i) => React.createElement(FormDot, { key: i, c: c }))
+                    )
+                  )
+                ),
+                React.createElement("div", { className: "bc", style: { width: 22, textAlign: "center", fontSize: 12, color: "#555", flexShrink: 0 } }, src?.played ?? "-"),
+                React.createElement("div", { className: "bc", style: { width: 46, textAlign: "center", fontSize: 12, flexShrink: 0, color: "#444", fontWeight: 500, letterSpacing: 0.3 } }, bp + ":" + bc),
+                React.createElement("div", { className: "bc", style: { width: 28, textAlign: "center", fontSize: 12, flexShrink: 0, fontWeight: 700, color: gd > 0 ? "#00b86b" : gd < 0 ? "#e53535" : "#aaa" } }, (gd > 0 ? "+" : "") + gd),
+                React.createElement("div", { className: "bc", style: { width: 32, textAlign: "center", fontSize: 16, fontWeight: 900, flexShrink: 0, color: isTop ? "#00b86b" : "#1a1d23" } }, r.points)
+              );
+            })
+          );
+        }) : null,
+        (st === "ok" || st === "groups") ? (() => {
+          const seen = new Map();
+          allGroups.forEach(grp => {
+            (Array.isArray(grp) ? grp : [grp]).forEach(r => {
+              const d = r?.description;
+              if (d && d.trim() && !seen.has(d)) {
+                seen.set(d, zc(d));
               }
             });
           });
-          const entries=[...seen.entries()];
-          if(!entries.length)return null;
-          const order=e=>e[1]==="transparent"?99:0;
-          entries.sort((a,b)=>order(a)-order(b));
-          return <div style={{padding:"14px 14px 28px",background:"#f7f8fa"}}>
-            <div style={{display:"flex",flexDirection:"column",gap:7}}>
-              {entries.map(([desc,color])=>color==="transparent"?null:<div key={desc} style={{
-                display:"flex",alignItems:"center",gap:12,
-                padding:"11px 14px",
-                background:"#fff",
-                borderRadius:10,
-                border:"1px solid rgba(0,0,0,.06)",
-              }}>
-                <div style={{width:20,height:20,borderRadius:5,background:color,flexShrink:0}}/>
-                <span style={{fontSize:13,color:"#1a1a2e",fontWeight:400,lineHeight:1.3}}>{desc}</span>
-              </div>)}
-            </div>
-            <div style={{fontSize:12,color:"rgba(15,17,23,.38)",marginTop:16,lineHeight:1.6,padding:"0 2px"}}>
-              Si les équipes terminent à égalité de points à la fin de la saison, les résultats des face-à-face les départageront.
-            </div>
-          </div>;
-        })()}
-      </>}
+          const entries = [...seen.entries()];
+          if (!entries.length) return null;
+          const order = e => e[1] === "transparent" ? 99 : 0;
+          entries.sort((a, b) => order(a) - order(b));
+          return React.createElement("div", { style: { padding: "14px 14px 28px", background: "#f7f8fa" } },
+            React.createElement("div", { style: { display: "flex", flexDirection: "column", gap: 7 } },
+              entries.map(([desc, color]) => color === "transparent" ? null : React.createElement("div", {
+                key: desc,
+                style: {
+                  display: "flex",
+                  alignItems: "center",
+                  gap: 12,
+                  padding: "11px 14px",
+                  background: "#fff",
+                  borderRadius: 10,
+                  border: "1px solid rgba(0,0,0,.06)"
+                }
+              },
+                React.createElement("div", { style: { width: 20, height: 20, borderRadius: 5, background: color, flexShrink: 0 } }),
+                React.createElement("span", { style: { fontSize: 13, color: "#1a1a2e", fontWeight: 400, lineHeight: 1.3 } }, desc)
+              ))
+            ),
+            React.createElement("div", { style: { fontSize: 12, color: "rgba(15,17,23,.38)", marginTop: 16, lineHeight: 1.6, padding: "0 2px" } },
+              "Si les équipes terminent à égalité de points à la fin de la saison, les résultats des face-à-face les départageront."
+            )
+          );
+        })() : null
+      ) : null,
 
-      {view==="knockout"&&<div style={{padding:"12px 14px"}}>
-        {knockoutRounds.length===0&&<div style={{textAlign:"center",padding:"44px 24px"}}><Spin s={20}/><div style={{fontSize:13,color:T.t3,marginTop:12}}>Chargement des tours...</div></div>}
-        {knockoutRounds.length>0&&<>
-          <div style={{display:"flex",flexWrap:"wrap",gap:6,marginBottom:14}}>
-            {knockoutRounds.map(r=>{
-              const label=r.replace("Round of ","1/").replace("8th Finals","8 de F.").replace("Quarter-finals","Quarts").replace("Semi-finals","Demis").replace("Final","Finale").replace("3rd Place","3ème Pl.");
-              const active=selRound===r;
-              return<button key={r} onClick={()=>setSelRound(r===selRound?"":r)} style={{padding:"6px 10px",background:active?T.red:T.bg3,color:active?"#fff":T.t2,border:`1px solid ${active?T.red:T.bg4}`,borderRadius:8,fontSize:11,fontWeight:active?700:400,cursor:"pointer",transition:"all .15s"}}>{label}</button>;
-            })}
-          </div>
-          {selRound&&<>
-            {roundMatches.length===0&&<div style={{textAlign:"center",padding:32}}><Spin s={18}/></div>}
-            <div style={{display:"flex",flexDirection:"column",gap:8}}>
-              {roundMatches.map(m=>{
-                if(!m) return<div style={{height:56,background:T.bg3,borderRadius:10,opacity:.2,border:`1px solid ${T.line}`}}/>;
-                const h=m.teams?.home,a=m.teams?.away,sh=m.fixture?.status?.short;
-                const live=["1H","2H","HT","ET","P"].includes(sh);
-                const done=["FT","AET","PEN"].includes(sh);
-                const hg=m.goals?.home,ag=m.goals?.away;
-                const hw=hg!=null&&ag!=null&&hg>ag,aw=hg!=null&&ag!=null&&ag>hg;
-                return<div style={{
-                  background:T.bg2,borderRadius:10,overflow:"hidden",
-                  border:`1px solid ${live?"rgba(229,53,53,.3)":T.line}`,
-                  boxShadow:live?`0 0 12px rgba(229,53,53,.15)`:"none",
-                }}>
-                  <div style={{display:"flex",alignItems:"center",gap:8,padding:"8px 10px",borderBottom:`1px solid ${T.line}`,background:hw&&done?"rgba(255,255,255,.03)":"transparent"}}>
-                    <Logo src={h?.logo} size={18}/>
-                    <span className="bc" style={{flex:1,fontSize:13,fontWeight:hw?800:500,overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap",color:done&&aw?T.t3:"#fff"}}>{h?.name??"TBD"}</span>
-                    {hg!=null&&<span className="bc" style={{fontSize:15,fontWeight:hw?900:600,color:hw?"#fff":T.t3,flexShrink:0}}>{hg}</span>}
-                  </div>
-                  <div style={{display:"flex",alignItems:"center",gap:8,padding:"8px 10px",background:aw&&done?"rgba(255,255,255,.03)":"transparent"}}>
-                    <Logo src={a?.logo} size={18}/>
-                    <span className="bc" style={{flex:1,fontSize:13,fontWeight:aw?800:500,overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap",color:done&&hw?T.t3:"#fff"}}>{a?.name??"TBD"}</span>
-                    {ag!=null&&<span className="bc" style={{fontSize:15,fontWeight:aw?900:600,color:aw?"#fff":T.t3,flexShrink:0}}>{ag}</span>}
-                  </div>
-                  {live&&<div style={{padding:"3px 10px",background:"rgba(229,53,53,.1)",borderTop:`1px solid rgba(229,53,53,.2)`}}>
-                    <span className="bc" style={{fontSize:9,fontWeight:800,color:T.red,letterSpacing:1}}>● LIVE</span>
-                  </div>}
-                </div>;
-              })}
-            </div>
-          </>}
-          {!selRound&&<div style={{textAlign:"center",padding:"32px 14px",color:T.t3,fontSize:13}}>Sélectionnez un tour ci-dessus</div>}
-        </>}
-      </div>}
-    </div>
+      view === "knockout" ? React.createElement("div", { style: { padding: "12px 14px" } },
+        knockoutRounds.length === 0 ? React.createElement("div", { style: { textAlign: "center", padding: "44px 24px" } },
+          React.createElement(Spin, { s: 20 }),
+          React.createElement("div", { style: { fontSize: 13, color: T.t3, marginTop: 12 } }, "Chargement des tours...")
+        ) : null,
+        knockoutRounds.length > 0 ? React.createElement(React.Fragment, null,
+          React.createElement("div", { style: { display: "flex", flexWrap: "wrap", gap: 6, marginBottom: 14 } },
+            knockoutRounds.map(r => {
+              const label = r.replace("Round of ", "1/").replace("8th Finals", "8 de F.").replace("Quarter-finals", "Quarts").replace("Semi-finals", "Demis").replace("Final", "Finale").replace("3rd Place", "3ème Pl.");
+              const active = selRound === r;
+              return React.createElement("button", {
+                key: r,
+                onClick: () => setSelRound(r === selRound ? "" : r),
+                style: { padding: "6px 10px", background: active ? T.red : T.bg3, color: active ? "#fff" : T.t2, border: "1px solid " + (active ? T.red : T.bg4), borderRadius: 8, fontSize: 11, fontWeight: active ? 700 : 400, cursor: "pointer", transition: "all .15s" }
+              }, label);
+            })
+          ),
+          selRound ? React.createElement(React.Fragment, null,
+            roundMatches.length === 0 ? React.createElement("div", { style: { textAlign: "center", padding: 32 } }, React.createElement(Spin, { s: 18 })) : null,
+            React.createElement("div", { style: { display: "flex", flexDirection: "column", gap: 8 } },
+              roundMatches.map(m => {
+                if (!m) return React.createElement("div", { style: { height: 56, background: T.bg3, borderRadius: 10, opacity: 0.2, border: "1px solid " + T.line } });
+                const h = m.teams?.home, a = m.teams?.away, sh = m.fixture?.status?.short;
+                const live = ["1H", "2H", "HT", "ET", "P"].includes(sh);
+                const done = ["FT", "AET", "PEN"].includes(sh);
+                const hg = m.goals?.home, ag = m.goals?.away;
+                const hw = hg != null && ag != null && hg > ag, aw = hg != null && ag != null && ag > hg;
+                return React.createElement("div", {
+                  style: {
+                    background: T.bg2,
+                    borderRadius: 10,
+                    overflow: "hidden",
+                    border: "1px solid " + (live ? "rgba(229,53,53,.3)" : T.line),
+                    boxShadow: live ? "0 0 12px rgba(229,53,53,.15)" : "none"
+                  }
+                },
+                  React.createElement("div", { style: { display: "flex", alignItems: "center", gap: 8, padding: "8px 10px", borderBottom: "1px solid " + T.line, background: hw && done ? "rgba(255,255,255,.03)" : "transparent" } },
+                    React.createElement(Logo, { src: h?.logo, size: 18 }),
+                    React.createElement("span", { className: "bc", style: { flex: 1, fontSize: 13, fontWeight: hw ? 800 : 500, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap", color: done && aw ? T.t3 : "#fff" } }, h?.name ?? "TBD"),
+                    hg != null ? React.createElement("span", { className: "bc", style: { fontSize: 15, fontWeight: hw ? 900 : 600, color: hw ? "#fff" : T.t3, flexShrink: 0 } }, hg) : null
+                  ),
+                  React.createElement("div", { style: { display: "flex", alignItems: "center", gap: 8, padding: "8px 10px", background: aw && done ? "rgba(255,255,255,.03)" : "transparent" } },
+                    React.createElement(Logo, { src: a?.logo, size: 18 }),
+                    React.createElement("span", { className: "bc", style: { flex: 1, fontSize: 13, fontWeight: aw ? 800 : 500, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap", color: done && hw ? T.t3 : "#fff" } }, a?.name ?? "TBD"),
+                    ag != null ? React.createElement("span", { className: "bc", style: { fontSize: 15, fontWeight: aw ? 900 : 600, color: aw ? "#fff" : T.t3, flexShrink: 0 } }, ag) : null
+                  ),
+                  live ? React.createElement("div", { style: { padding: "3px 10px", background: "rgba(229,53,53,.1)", borderTop: "1px solid rgba(229,53,53,.2)" } },
+                    React.createElement("span", { className: "bc", style: { fontSize: 9, fontWeight: 800, color: T.red, letterSpacing: 1 } }, "● LIVE")
+                  ) : null
+                );
+              })
+            )
+          ) : null,
+          !selRound ? React.createElement("div", { style: { textAlign: "center", padding: "32px 14px", color: T.t3, fontSize: 13 } }, "Sélectionnez un tour ci-dessus") : null
+        ) : null
+      ) : null
+    ),
 
-    <Sheet open={cfg} onClose={()=>setCfg(false)}>
-      <div style={{padding:"4px 16px 16px"}}>
-        <span style={{fontSize:16,fontWeight:700}}>Compétition</span>
-      </div>
-      <div style={{padding:"0 16px",display:"flex",flexDirection:"column",gap:18,paddingBottom:"calc(48px + env(safe-area-inset-bottom))"}}>
-        <div><div style={{fontSize:10,fontWeight:700,color:T.t3,letterSpacing:1.3,textTransform:"uppercase",marginBottom:9}}>COMPÉTITION</div>
-          <select value={lid} onChange={e=>{setLid(+e.target.value);setView("standings");}} style={SEL}>
-            {REGIONS2.map(r=><optgroup key={r} label={r}>{LEAGUES.filter(l=>l.region===r).map(l=><option key={l.id} value={l.id}>{l.flag} {l.name} ({l.country})</option>)}</optgroup>)}
-          </select>
-        </div>
-        <div><div style={{fontSize:10,fontWeight:700,color:T.t3,letterSpacing:1.3,textTransform:"uppercase",marginBottom:9}}>SAISON</div><select value={s} onChange={e=>setS(+e.target.value)} style={SEL}>{SEASONS.map(x=><option key={x} value={x}>{x}/{x+1}</option>)}</select></div>
-        <button onClick={()=>setCfg(false)} style={{background:"linear-gradient(135deg,#e53535,#c62828)",border:"none",color:"#fff",borderRadius:12,padding:"15px",fontSize:14,fontWeight:700,cursor:"pointer",boxShadow:"0 4px 16px rgba(229,53,53,.35)",letterSpacing:.3}}>Appliquer</button>
-      </div>
-    </Sheet>
-  </div>;
+    React.createElement(Sheet, { open: cfg, onClose: () => setCfg(false) },
+      React.createElement("div", { style: { padding: "4px 16px 16px" } },
+        React.createElement("span", { style: { fontSize: 16, fontWeight: 700 } }, "Compétition")
+      ),
+      React.createElement("div", { style: { padding: "0 16px", display: "flex", flexDirection: "column", gap: 18, paddingBottom: "calc(48px + env(safe-area-inset-bottom))" } },
+        React.createElement("div", null,
+          React.createElement("div", { style: { fontSize: 10, fontWeight: 700, color: T.t3, letterSpacing: 1.3, textTransform: "uppercase", marginBottom: 9 } }, "COMPÉTITION"),
+          React.createElement("select", {
+            value: lid,
+            onChange: e => { setLid(+e.target.value); setView("standings"); },
+            style: SEL
+          },
+            REGIONS2.map(r => React.createElement("optgroup", { key: r, label: r },
+              LEAGUES.filter(l => l.region === r).map(l => React.createElement("option", { key: l.id, value: l.id }, l.flag + " " + l.name + " (" + l.country + ")"))
+            ))
+          )
+        ),
+        React.createElement("div", null,
+          React.createElement("div", { style: { fontSize: 10, fontWeight: 700, color: T.t3, letterSpacing: 1.3, textTransform: "uppercase", marginBottom: 9 } }, "SAISON"),
+          React.createElement("select", {
+            value: s,
+            onChange: e => setS(+e.target.value),
+            style: SEL
+          },
+            SEASONS.map(x => React.createElement("option", { key: x, value: x }, x + "/" + (x + 1)))
+          )
+        ),
+        React.createElement("button", {
+          onClick: () => setCfg(false),
+          style: { background: "linear-gradient(135deg,#e53535,#c62828)", border: "none", color: "#fff", borderRadius: 12, padding: "15px", fontSize: 14, fontWeight: 700, cursor: "pointer", boxShadow: "0 4px 16px rgba(229,53,53,.35)", letterSpacing: 0.3 }
+        }, "Appliquer")
+      )
+    )
+  );
 }
 
 //
@@ -5163,43 +4676,106 @@ function ScorersTab(){
   const[lid,setLid]=useState(39),[s,setS]=useState(CUR_SEASON),[type,setTy]=useState("scorers"),[list,setList]=useState([]),[st,setSt]=useState("load");
   useEffect(()=>{let c=false;setSt("load");setList([]);const path=type==="assists"?`/players/topassists?league=${lid}&season=${s}`:`/players/topscorers?league=${lid}&season=${s}`;api(path,3600000).then(d=>{if(!c){setList(d);setSt("ok");}}).catch(()=>{if(!c)setSt("err");});return()=>{c=true;};},[lid,s,type]);
   const SEL={width:"100%",background:T.bg2,border:`1px solid ${T.bg4}`,color:T.t1,borderRadius:8,padding:"8px 11px",fontSize:12,fontWeight:600,outline:"none",cursor:"pointer"};
-  return<div style={{display:"flex",flexDirection:"column",height:"100%",width:"100%",overflow:"hidden"}}>
-    <div style={{padding:"9px 14px",borderBottom:`1px solid ${T.line}`,display:"flex",gap:9,flexShrink:0,background:T.bg1,flexWrap:"wrap",minHeight:52,width:"100%"}}>
-      <div style={{display:"flex",background:T.bg3,borderRadius:10,padding:3,gap:2}}>
-        {[["scorers","⚽ Buts"],["assists","🎯 Passes D"]].map(([v,lb])=><button key={v} onClick={()=>setTy(v)} className="bc" style={{background:type===v?"linear-gradient(135deg,#e53535,#c62828)":"none",border:"none",color:type===v?"#fff":T.t3,borderRadius:8,padding:"6px 14px",fontSize:12,fontWeight:800,cursor:"pointer",transition:"all .15s",letterSpacing:.4,boxShadow:type===v?"0 2px 8px rgba(229,53,53,.3)":"none"}}>{lb}</button>)}
-      </div>
-      <div style={{flex:1,minWidth:120}}><select value={lid} onChange={e=>setLid(+e.target.value)} style={SEL}>{REGIONS.map(r=><optgroup key={r} label={r}>{LEAGUES.filter(l=>l.region===r).map(l=><option key={l.id} value={l.id}>{l.flag} {l.name}</option>)}</optgroup>)}</select></div>
-      <div style={{minWidth:110}}><select value={s} onChange={e=>setS(+e.target.value)} style={SEL}>{SEASONS.map(x=><option key={x} value={x}>{x}/{x+1}</option>)}</select></div>
-    </div>
-    <div style={{flex:1,overflowY:"auto",paddingBottom:"env(safe-area-inset-bottom)"}}>
-      {st==="load"?<div style={{display:"flex",justifyContent:"center",padding:52}}><Spin s={26}/></div>
-      :st==="err"||list.length===0?<div style={{textAlign:"center",padding:"56px 24px",display:"flex",flexDirection:"column",alignItems:"center",gap:10}}><div style={{fontSize:40,opacity:.4}}>⚽</div><div className="bc" style={{fontSize:16,fontWeight:800,color:T.t2,letterSpacing:.3}}>Données indisponibles</div><div style={{fontSize:12,color:T.t4}}>Essayez une autre ligue ou saison</div></div>
-      :list.slice(0,30).map((p,i)=>{
-        const pl=p.player,st2=p.statistics?.[0],val=type==="assists"?(st2?.goals?.assists??0):(st2?.goals?.total??0);
-        const md=i===0?"🥇":i===1?"🥈":i===2?"🥉":null,mc=i===0?T.gold:i===1?"#c0c0c0":i===2?"#cd7f32":T.bg4;
-        const isTop3=i<3;
-        const maxVal=type==="assists"?(list[0]?.statistics?.[0]?.goals?.assists??1):(list[0]?.statistics?.[0]?.goals?.total??1);
-        const pct2=Math.round((val/(maxVal||1))*100);return<div key={pl.id} style={{display:"flex",alignItems:"center",gap:12,padding:"11px 14px",borderBottom:`1px solid ${T.line}`,transition:"background .15s",width:"100%",borderLeft:isTop3?`3px solid ${i===0?T.gold:i===1?"#c0c0c0":"#cd7f32"}`:"3px solid transparent",position:"relative",overflow:"hidden"}} onMouseEnter={e=>e.currentTarget.style.background=T.bg3} onMouseLeave={e=>e.currentTarget.style.background="transparent"}>
-          <div style={{position:"absolute",bottom:0,left:0,height:2,width:`${pct2}%`,background:i===0?"linear-gradient(90deg,#f0a500,transparent)":i===1?"linear-gradient(90deg,#c0c0c0,transparent)":i===2?"linear-gradient(90deg,#cd7f32,transparent)":"linear-gradient(90deg,rgba(229,53,53,.5),transparent)",transition:"width .5s ease",borderRadius:1}}/>
-          <div className="bc" style={{width:30,textAlign:"center",flexShrink:0}}>{md?<span style={{fontSize:24,lineHeight:1}}>{md}</span>:<span className="bc" style={{fontSize:14,fontWeight:800,color:T.t4}}>{i+1}</span>}</div>
-          <div style={{position:"relative",flexShrink:0}}>
-            <Avatar src={pl.photo} size={44} ring={mc}/>
-            {st2?.team?.logo&&<img src={st2.team.logo} style={{position:"absolute",bottom:-1,right:-1,width:17,height:17,borderRadius:8,objectFit:"contain",background:T.bg2,border:`1.5px solid ${T.bg0}`}} alt="" onError={e=>e.target.style.display="none"}/>}
-          </div>
-          <div style={{flex:1,minWidth:0}}>
-            <div className="bc" style={{fontSize:15,fontWeight:800,overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap",letterSpacing:.2}}>{pl.name}</div>
-            <div className="bc" style={{fontSize:11,color:T.t3,marginTop:3,letterSpacing:.3}}>{st2?.team?.name} · {pl.nationality}</div>
-            <div style={{fontSize:10,color:T.t4,marginTop:2}}>{st2?.games?.appearences??0} matchs · {st2?.games?.minutes??0} min</div>
-          </div>
-          <div style={{textAlign:"right",flexShrink:0}}>
-            <div className="bc" style={{fontSize:32,fontWeight:900,lineHeight:1,color:i===0?T.gold:i===1?"#c0c0c0":i===2?"#cd7f32":T.red,textShadow:i<3?"0 0 14px currentColor":"0 0 10px rgba(229,53,53,.35)"}}>{val}</div>
-            <div className="bc" style={{fontSize:9,color:T.t3,fontWeight:800,letterSpacing:1,textTransform:"uppercase",marginTop:3}}>{type==="assists"?"PASSES":"BUTS"}</div>
-            {type==="scorers"&&(st2?.goals?.assists??0)>0&&<div className="bc" style={{fontSize:11,color:T.greenB,fontWeight:700,marginTop:4}}>+{st2.goals.assists} PD</div>}
-          </div>
-        </div>;
-      })}
-    </div>
-  </div>;
+  return React.createElement("div", { style: { display: "flex", flexDirection: "column", height: "100%", width: "100%", overflow: "hidden" } },
+    React.createElement("div", { style: { padding: "9px 14px", borderBottom: "1px solid " + T.line, display: "flex", gap: 9, flexShrink: 0, background: T.bg1, flexWrap: "wrap", minHeight: 52, width: "100%" } },
+      React.createElement("div", { style: { display: "flex", background: T.bg3, borderRadius: 10, padding: 3, gap: 2 } },
+        [["scorers", "⚽ Buts"], ["assists", "🎯 Passes D"]].map(([v, lb]) => React.createElement("button", {
+          key: v,
+          onClick: () => setTy(v),
+          className: "bc",
+          style: {
+            background: type === v ? "linear-gradient(135deg,#e53535,#c62828)" : "none",
+            border: "none",
+            color: type === v ? "#fff" : T.t3,
+            borderRadius: 8,
+            padding: "6px 14px",
+            fontSize: 12,
+            fontWeight: 800,
+            cursor: "pointer",
+            transition: "all .15s",
+            letterSpacing: 0.4,
+            boxShadow: type === v ? "0 2px 8px rgba(229,53,53,.3)" : "none"
+          }
+        }, lb))
+      ),
+      React.createElement("div", { style: { flex: 1, minWidth: 120 } },
+        React.createElement("select", {
+          value: lid,
+          onChange: e => setLid(+e.target.value),
+          style: SEL
+        },
+          REGIONS.map(r => React.createElement("optgroup", { key: r, label: r },
+            LEAGUES.filter(l => l.region === r).map(l => React.createElement("option", { key: l.id, value: l.id }, l.flag + " " + l.name))
+          ))
+        )
+      ),
+      React.createElement("div", { style: { minWidth: 110 } },
+        React.createElement("select", {
+          value: s,
+          onChange: e => setS(+e.target.value),
+          style: SEL
+        },
+          SEASONS.map(x => React.createElement("option", { key: x, value: x }, x + "/" + (x + 1)))
+        )
+      )
+    ),
+    React.createElement("div", { style: { flex: 1, overflowY: "auto", paddingBottom: "env(safe-area-inset-bottom)" } },
+      st === "load" ? React.createElement("div", { style: { display: "flex", justifyContent: "center", padding: 52 } }, React.createElement(Spin, { s: 26 }))
+      : st === "err" || list.length === 0 ? React.createElement("div", { style: { textAlign: "center", padding: "56px 24px", display: "flex", flexDirection: "column", alignItems: "center", gap: 10 } },
+          React.createElement("div", { style: { fontSize: 40, opacity: 0.4 } }, "⚽"),
+          React.createElement("div", { className: "bc", style: { fontSize: 16, fontWeight: 800, color: T.t2, letterSpacing: 0.3 } }, "Données indisponibles"),
+          React.createElement("div", { style: { fontSize: 12, color: T.t4 } }, "Essayez une autre ligue ou saison")
+        )
+      : list.slice(0, 30).map((p, i) => {
+          const pl = p.player, st2 = p.statistics?.[0], val = type === "assists" ? (st2?.goals?.assists ?? 0) : (st2?.goals?.total ?? 0);
+          const md = i === 0 ? "🥇" : i === 1 ? "🥈" : i === 2 ? "🥉" : null, mc = i === 0 ? T.gold : i === 1 ? "#c0c0c0" : i === 2 ? "#cd7f32" : T.bg4;
+          const isTop3 = i < 3;
+          const maxVal = type === "assists" ? (list[0]?.statistics?.[0]?.goals?.assists ?? 1) : (list[0]?.statistics?.[0]?.goals?.total ?? 1);
+          const pct2 = Math.round((val / (maxVal || 1)) * 100);
+          return React.createElement("div", {
+            key: pl.id,
+            style: {
+              display: "flex",
+              alignItems: "center",
+              gap: 12,
+              padding: "11px 14px",
+              borderBottom: "1px solid " + T.line,
+              transition: "background .15s",
+              width: "100%",
+              borderLeft: isTop3 ? "3px solid " + (i === 0 ? T.gold : i === 1 ? "#c0c0c0" : "#cd7f32") : "3px solid transparent",
+              position: "relative",
+              overflow: "hidden"
+            },
+            onMouseEnter: e => e.currentTarget.style.background = T.bg3,
+            onMouseLeave: e => e.currentTarget.style.background = "transparent"
+          },
+            React.createElement("div", { style: { position: "absolute", bottom: 0, left: 0, height: 2, width: pct2 + "%", background: i === 0 ? "linear-gradient(90deg,#f0a500,transparent)" : i === 1 ? "linear-gradient(90deg,#c0c0c0,transparent)" : i === 2 ? "linear-gradient(90deg,#cd7f32,transparent)" : "linear-gradient(90deg,rgba(229,53,53,.5),transparent)", transition: "width .5s ease", borderRadius: 1 } }),
+            React.createElement("div", { className: "bc", style: { width: 30, textAlign: "center", flexShrink: 0 } },
+              md ? React.createElement("span", { style: { fontSize: 24, lineHeight: 1 } }, md) : React.createElement("span", { className: "bc", style: { fontSize: 14, fontWeight: 800, color: T.t4 } }, i + 1)
+            ),
+            React.createElement("div", { style: { position: "relative", flexShrink: 0 } },
+              React.createElement(Avatar, { src: pl.photo, size: 44, ring: mc }),
+              st2?.team?.logo ? React.createElement("img", {
+                src: st2.team.logo,
+                style: { position: "absolute", bottom: -1, right: -1, width: 17, height: 17, borderRadius: 8, objectFit: "contain", background: T.bg2, border: "1.5px solid " + T.bg0 },
+                alt: "",
+                onError: e => e.target.style.display = "none"
+              }) : null
+            ),
+            React.createElement("div", { style: { flex: 1, minWidth: 0 } },
+              React.createElement("div", { className: "bc", style: { fontSize: 15, fontWeight: 800, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap", letterSpacing: 0.2 } }, pl.name),
+              React.createElement("div", { className: "bc", style: { fontSize: 11, color: T.t3, marginTop: 3, letterSpacing: 0.3 } }, st2?.team?.name + " · " + pl.nationality),
+              React.createElement("div", { style: { fontSize: 10, color: T.t4, marginTop: 2 } }, (st2?.games?.appearences ?? 0) + " matchs · " + (st2?.games?.minutes ?? 0) + " min")
+            ),
+            React.createElement("div", { style: { textAlign: "right", flexShrink: 0 } },
+              React.createElement("div", { className: "bc", style: { fontSize: 32, fontWeight: 900, lineHeight: 1, color: i === 0 ? T.gold : i === 1 ? "#c0c0c0" : i === 2 ? "#cd7f32" : T.red, textShadow: i < 3 ? "0 0 14px currentColor" : "0 0 10px rgba(229,53,53,.35)" } }, val),
+              React.createElement("div", { className: "bc", style: { fontSize: 9, color: T.t3, fontWeight: 800, letterSpacing: 1, textTransform: "uppercase", marginTop: 3 } }, type === "assists" ? "PASSES" : "BUTS"),
+              type === "scorers" && (st2?.goals?.assists ?? 0) > 0 ? React.createElement("div", { className: "bc", style: { fontSize: 11, color: T.greenB, fontWeight: 700, marginTop: 4 } }, "+" + st2.goals.assists + " PD") : null
+            )
+          );
+        })
+    )
+  );
 }
 
 //
@@ -5256,36 +4832,72 @@ function CalendarTab({favs,onFav}){
     }catch(e){if(e.name!=="AbortError")setDt({error:e.message});}
   },[]);
   const SEL={width:"100%",background:T.bg2,border:`1px solid ${T.bg4}`,color:T.t1,borderRadius:8,padding:"8px 11px",fontSize:12,fontWeight:600,outline:"none",cursor:"pointer"};
-  return<div style={{display:"flex",flexDirection:"column",height:"100%",width:"100%",overflow:"hidden"}}>
-    <div style={{padding:"9px 14px",borderBottom:`1px solid ${T.line}`,display:"flex",gap:9,flexShrink:0,background:T.bg1,minHeight:52,width:"100%"}}>
-      <div style={{flex:2}}><select value={lid} onChange={e=>setLid(+e.target.value)} style={SEL}>{REGIONS.map(r=><optgroup key={r} label={r}>{LEAGUES.filter(l=>l.region===r).map(l=><option key={l.id} value={l.id}>{l.flag} {l.name}</option>)}</optgroup>)}</select></div>
-      <div style={{flex:1}}><select value={s} onChange={e=>setS(+e.target.value)} style={SEL}>{SEASONS.map(x=><option key={x} value={x}>{x}/{x+1}</option>)}</select></div>
-    </div>
-    <div style={{flex:1,overflowY:"auto",paddingBottom:"env(safe-area-inset-bottom)"}}>
-      {st==="load"?<div style={{display:"flex",justifyContent:"center",padding:52}}><Spin s={26}/></div>
-      :st==="err"?<div style={{textAlign:"center",padding:"44px 24px",color:T.t3}}>Données indisponibles</div>
-      :Object.keys(byD).length===0?<div style={{textAlign:"center",padding:"56px 24px"}}><div style={{fontSize:44,marginBottom:14}}>📭</div><div style={{fontSize:15,color:T.t2}}>Aucun match à venir</div></div>
-      :Object.entries(byD).sort(([a],[b])=>a.localeCompare(b)).map(([d,matches])=><div key={d}>
-        <div style={{padding:"10px 14px 5px",fontSize:11,fontWeight:700,color:T.t3,letterSpacing:1,textTransform:"uppercase",background:T.bg1,borderBottom:`1px solid ${T.line}`,borderTop:`1px solid ${T.line}`}}>{DL(d)}</div>
-        {matches.map(m=>{const isFav=favs.has(m.fixture.id);return<div key={m.fixture.id} onClick={()=>openMatch(m.fixture.id)} style={{display:"flex",alignItems:"center",padding:"11px 14px",borderBottom:`1px solid ${T.line}`,cursor:"pointer",transition:"background .12s"}} onMouseEnter={e=>e.currentTarget.style.background=T.bg2} onMouseLeave={e=>e.currentTarget.style.background="transparent"}>
-          <span className="bc" style={{fontSize:13,fontWeight:700,color:T.blueB,width:46,flexShrink:0}}>{hhmm(m.fixture.date)}</span>
-          <div style={{flex:1,minWidth:0}}>
-            <div style={{display:"flex",alignItems:"center",gap:7,marginBottom:5}}><Logo src={m.teams.home.logo} size={16}/><span className="bc" style={{fontSize:14,fontWeight:700,overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap",letterSpacing:.2}}>{m.teams.home.name}</span></div>
-            <div style={{display:"flex",alignItems:"center",gap:7}}><Logo src={m.teams.away.logo} size={16}/><span className="bc" style={{fontSize:14,fontWeight:500,color:T.t2,overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap",letterSpacing:.2}}>{m.teams.away.name}</span></div>
-          </div>
-          {m.fixture.venue?.city&&<span className="bc" style={{fontSize:10,color:T.t3,maxWidth:72,textAlign:"right",lineHeight:1.4,flexShrink:0,marginRight:5}}>{m.fixture.venue.city}</span>}
-          <button onClick={e=>{e.stopPropagation();onFav(m.fixture.id);}} style={{background:"none",border:"none",color:isFav?T.gold:T.t4,fontSize:15,padding:"0 5px",flexShrink:0,cursor:"pointer"}}>{isFav?"★":"☆"}</button>
-        </div>;})}
-      </div>)}
-    </div>
-    <MatchDetailWrapper state={detail} onClose={()=>setDt(null)}/>
-  </div>;
+  return React.createElement("div", { style: { display: "flex", flexDirection: "column", height: "100%", width: "100%", overflow: "hidden" } },
+    React.createElement("div", { style: { padding: "9px 14px", borderBottom: "1px solid " + T.line, display: "flex", gap: 9, flexShrink: 0, background: T.bg1, minHeight: 52, width: "100%" } },
+      React.createElement("div", { style: { flex: 2 } },
+        React.createElement("select", {
+          value: lid,
+          onChange: e => setLid(+e.target.value),
+          style: SEL
+        },
+          REGIONS.map(r => React.createElement("optgroup", { key: r, label: r },
+            LEAGUES.filter(l => l.region === r).map(l => React.createElement("option", { key: l.id, value: l.id }, l.flag + " " + l.name))
+          ))
+        )
+      ),
+      React.createElement("div", { style: { flex: 1 } },
+        React.createElement("select", {
+          value: s,
+          onChange: e => setS(+e.target.value),
+          style: SEL
+        },
+          SEASONS.map(x => React.createElement("option", { key: x, value: x }, x + "/" + (x + 1)))
+        )
+      )
+    ),
+    React.createElement("div", { style: { flex: 1, overflowY: "auto", paddingBottom: "env(safe-area-inset-bottom)" } },
+      st === "load" ? React.createElement("div", { style: { display: "flex", justifyContent: "center", padding: 52 } }, React.createElement(Spin, { s: 26 }))
+      : st === "err" ? React.createElement("div", { style: { textAlign: "center", padding: "44px 24px", color: T.t3 } }, "Données indisponibles")
+      : Object.keys(byD).length === 0 ? React.createElement("div", { style: { textAlign: "center", padding: "56px 24px" } },
+          React.createElement("div", { style: { fontSize: 44, marginBottom: 14 } }, "📭"),
+          React.createElement("div", { style: { fontSize: 15, color: T.t2 } }, "Aucun match à venir")
+        )
+      : Object.entries(byD).sort(([a], [b]) => a.localeCompare(b)).map(([d, matches]) => React.createElement("div", { key: d },
+          React.createElement("div", { style: { padding: "10px 14px 5px", fontSize: 11, fontWeight: 700, color: T.t3, letterSpacing: 1, textTransform: "uppercase", background: T.bg1, borderBottom: "1px solid " + T.line, borderTop: "1px solid " + T.line } }, DL(d)),
+          matches.map(m => {
+            const isFav = favs.has(m.fixture.id);
+            return React.createElement("div", {
+              key: m.fixture.id,
+              onClick: () => openMatch(m.fixture.id),
+              style: { display: "flex", alignItems: "center", padding: "11px 14px", borderBottom: "1px solid " + T.line, cursor: "pointer", transition: "background .12s" },
+              onMouseEnter: e => e.currentTarget.style.background = T.bg2,
+              onMouseLeave: e => e.currentTarget.style.background = "transparent"
+            },
+              React.createElement("span", { className: "bc", style: { fontSize: 13, fontWeight: 700, color: T.blueB, width: 46, flexShrink: 0 } }, hhmm(m.fixture.date)),
+              React.createElement("div", { style: { flex: 1, minWidth: 0 } },
+                React.createElement("div", { style: { display: "flex", alignItems: "center", gap: 7, marginBottom: 5 } },
+                  React.createElement(Logo, { src: m.teams.home.logo, size: 16 }),
+                  React.createElement("span", { className: "bc", style: { fontSize: 14, fontWeight: 700, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap", letterSpacing: 0.2 } }, m.teams.home.name)
+                ),
+                React.createElement("div", { style: { display: "flex", alignItems: "center", gap: 7 } },
+                  React.createElement(Logo, { src: m.teams.away.logo, size: 16 }),
+                  React.createElement("span", { className: "bc", style: { fontSize: 14, fontWeight: 500, color: T.t2, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap", letterSpacing: 0.2 } }, m.teams.away.name)
+                )
+              ),
+              m.fixture.venue?.city ? React.createElement("span", { className: "bc", style: { fontSize: 10, color: T.t3, maxWidth: 72, textAlign: "right", lineHeight: 1.4, flexShrink: 0, marginRight: 5 } }, m.fixture.venue.city) : null,
+              React.createElement("button", {
+                onClick: e => { e.stopPropagation(); onFav(m.fixture.id); },
+                style: { background: "none", border: "none", color: isFav ? T.gold : T.t4, fontSize: 15, padding: "0 5px", flexShrink: 0, cursor: "pointer" }
+              }, isFav ? "★" : "☆")
+            );
+          })
+        ))
+    ),
+    React.createElement(MatchDetailWrapper, { state: detail, onClose: () => setDt(null) })
+  );
 }
 
-// Autres onglets (JSK, Transfers, Actu, Results) seraient inclus ici
-// Pour garder la réponse dans la limite, je les ai omis mais ils sont identiques à l'original
-
-// App component principal
+// ── APP PRINCIPAL ─────────────────────────────────
 function App(){
   const[scr,setScr]=useState(()=>{
     try{return sessionStorage.getItem("wf_last_tab")||"scores";}catch{return "scores";}
@@ -5351,118 +4963,168 @@ function App(){
     {id:"jsk", label:"JSK", icon:a=><div style={{position:"relative",display:"inline-flex"}}><div style={{width:23,height:23,borderRadius:"50%",overflow:"hidden",border:a?"2px solid #fff":"2px solid rgba(255,255,255,.3)",flexShrink:0,display:"flex",alignItems:"center",justifyContent:"center",background:a?"#00b86b":"transparent",fontSize:12,fontWeight:900,color:"#fff"}}>K</div></div>},
   ];
 
-  return<div style={{background:T.bg0,height:"100svh",width:"100%",maxWidth:430,margin:"0 auto",display:"flex",flexDirection:"column",overflow:"hidden"}}>
-    <div style={{
-      background:"linear-gradient(160deg,#00c170 0%,#009e5c 60%,#007a47 100%)",
-      flexShrink:0,
-      paddingTop:"env(safe-area-inset-top)",
-      width:"100%",
-      position:"relative",
-      overflow:"hidden",
-      boxShadow:"0 4px 30px rgba(0,193,112,.25)",
-    }}>
-      <div style={{position:"absolute",inset:0,pointerEvents:"none",overflow:"hidden"}}>
-        <div style={{position:"absolute",top:-30,right:-20,width:140,height:140,borderRadius:"50%",background:"rgba(255,255,255,.06)"}}/>
-        <div style={{position:"absolute",bottom:-20,left:-10,width:100,height:100,borderRadius:"50%",background:"rgba(255,255,255,.04)"}}/>
-        <div style={{position:"absolute",top:8,right:80,width:60,height:60,borderRadius:"50%",background:"rgba(255,255,255,.04)"}}/>
-      </div>
+  return React.createElement("div", { style: { background: T.bg0, height: "100svh", width: "100%", maxWidth: 430, margin: "0 auto", display: "flex", flexDirection: "column", overflow: "hidden" } },
+    React.createElement("div", {
+      style: {
+        background: "linear-gradient(160deg,#00c170 0%,#009e5c 60%,#007a47 100%)",
+        flexShrink: 0,
+        paddingTop: "env(safe-area-inset-top)",
+        width: "100%",
+        position: "relative",
+        overflow: "hidden",
+        boxShadow: "0 4px 30px rgba(0,193,112,.25)"
+      }
+    },
+      React.createElement("div", { style: { position: "absolute", inset: 0, pointerEvents: "none", overflow: "hidden" } },
+        React.createElement("div", { style: { position: "absolute", top: -30, right: -20, width: 140, height: 140, borderRadius: "50%", background: "rgba(255,255,255,.06)" } }),
+        React.createElement("div", { style: { position: "absolute", bottom: -20, left: -10, width: 100, height: 100, borderRadius: "50%", background: "rgba(255,255,255,.04)" } }),
+        React.createElement("div", { style: { position: "absolute", top: 8, right: 80, width: 60, height: 60, borderRadius: "50%", background: "rgba(255,255,255,.04)" } })
+      ),
 
-      <div style={{display:"flex",alignItems:"center",justifyContent:"space-between",padding:"14px 16px 0",position:"relative",zIndex:1}}>
-        <div style={{display:"flex",alignItems:"center",gap:10}}>
-          <div style={{
-            width:36,height:36,
-            background:"rgba(255,255,255,.18)",
-            borderRadius:11,
-            display:"flex",alignItems:"center",justifyContent:"center",
-            fontSize:18,flexShrink:0,
-            border:"1px solid rgba(255,255,255,.25)",
-            boxShadow:"0 2px 8px rgba(0,0,0,.12)",
-          }}>⚡</div>
-          <div>
-            <div className="bc" style={{fontSize:25,fontWeight:900,color:"#fff",letterSpacing:-.3,lineHeight:1,textTransform:"uppercase",textShadow:"0 1px 4px rgba(0,0,0,.15)"}}>WorldFoot</div>
-            <div style={{fontSize:8,color:"rgba(255,255,255,.75)",fontWeight:700,letterSpacing:3,textTransform:"uppercase",marginTop:1}}>PRO · LIVE · BY AMINE</div>
-          </div>
-        </div>
+      React.createElement("div", { style: { display: "flex", alignItems: "center", justifyContent: "space-between", padding: "14px 16px 0", position: "relative", zIndex: 1 } },
+        React.createElement("div", { style: { display: "flex", alignItems: "center", gap: 10 } },
+          React.createElement("div", {
+            style: {
+              width: 36,
+              height: 36,
+              background: "rgba(255,255,255,.18)",
+              borderRadius: 11,
+              display: "flex",
+              alignItems: "center",
+              justifyContent: "center",
+              fontSize: 18,
+              flexShrink: 0,
+              border: "1px solid rgba(255,255,255,.25)",
+              boxShadow: "0 2px 8px rgba(0,0,0,.12)"
+            }
+          }, "⚡"),
+          React.createElement("div", null,
+            React.createElement("div", { className: "bc", style: { fontSize: 25, fontWeight: 900, color: "#fff", letterSpacing: -0.3, lineHeight: 1, textTransform: "uppercase", textShadow: "0 1px 4px rgba(0,0,0,.15)" } }, "WorldFoot"),
+            React.createElement("div", { style: { fontSize: 8, color: "rgba(255,255,255,.75)", fontWeight: 700, letterSpacing: 3, textTransform: "uppercase", marginTop: 1 } }, "PRO · LIVE · BY AMINE")
+          )
+        ),
 
-        <div style={{display:"flex",alignItems:"center",gap:6}}>
-          {notifPerm==="granted"&&favs.size>0&&<div style={{
-            background:"rgba(255,255,255,.15)",border:"1px solid rgba(255,255,255,.2)",
-            borderRadius:20,padding:"4px 10px",display:"flex",alignItems:"center",gap:4,
-          }}>
-            <span style={{fontSize:10}}>🔔</span>
-            <span className="bc" style={{fontSize:10,fontWeight:700,color:"#fff"}}>{favs.size}</span>
-          </div>}
-          <div style={{
-            display:"flex",alignItems:"center",gap:5,
-            background:"rgba(255,255,255,.15)",
-            border:"1px solid rgba(255,255,255,.2)",
-            borderRadius:20,padding:"5px 11px",
-          }}>
-            <div className="live-dot"/>
-            <span className="bc" style={{fontSize:11,fontWeight:800,color:"#fff",letterSpacing:1}}>LIVE</span>
-          </div>
-          <div title={`API: ${_apiCallsToday}/7500`} style={{
-            background:"rgba(0,0,0,.15)",borderRadius:10,padding:"3px 7px",cursor:"default",
-          }}>
-            <span style={{fontSize:8,color:"rgba(255,255,255,.55)",fontWeight:700}}>{_apiCallsToday}<span style={{opacity:.6}}>/7.5k</span></span>
-          </div>
-          <button title="Déconnexion" onClick={()=>{localStorage.removeItem("wf_auth");window.location.href="login.html";}} style={{
-            background:"rgba(255,255,255,.08)",border:"1px solid rgba(255,255,255,.12)",
-            borderRadius:8,padding:"5px 8px",cursor:"pointer",
-            color:"rgba(255,255,255,.35)",fontSize:13,lineHeight:1,flexShrink:0,
-            transition:"color .2s",
-          }}>⏻</button>
-        </div>
-      </div>
+        React.createElement("div", { style: { display: "flex", alignItems: "center", gap: 6 } },
+          notifPerm === "granted" && favs.size > 0 ? React.createElement("div", {
+            style: {
+              background: "rgba(255,255,255,.15)",
+              border: "1px solid rgba(255,255,255,.2)",
+              borderRadius: 20,
+              padding: "4px 10px",
+              display: "flex",
+              alignItems: "center",
+              gap: 4
+            }
+          },
+            React.createElement("span", { style: { fontSize: 10 } }, "🔔"),
+            React.createElement("span", { className: "bc", style: { fontSize: 10, fontWeight: 700, color: "#fff" } }, favs.size)
+          ) : null,
+          React.createElement("div", {
+            style: {
+              display: "flex",
+              alignItems: "center",
+              gap: 5,
+              background: "rgba(255,255,255,.15)",
+              border: "1px solid rgba(255,255,255,.2)",
+              borderRadius: 20,
+              padding: "5px 11px"
+            }
+          },
+            React.createElement("div", { className: "live-dot" }),
+            React.createElement("span", { className: "bc", style: { fontSize: 11, fontWeight: 800, color: "#fff", letterSpacing: 1 } }, "LIVE")
+          ),
+          React.createElement("div", { title: "API: " + _apiCallsToday + "/7500", style: { background: "rgba(0,0,0,.15)", borderRadius: 10, padding: "3px 7px", cursor: "default" } },
+            React.createElement("span", { style: { fontSize: 8, color: "rgba(255,255,255,.55)", fontWeight: 700 } }, _apiCallsToday, React.createElement("span", { style: { opacity: 0.6 } }, "/7.5k"))
+          ),
+          React.createElement("button", {
+            title: "Déconnexion",
+            onClick: () => { localStorage.removeItem("wf_auth"); window.location.href = "login.html"; },
+            style: {
+              background: "rgba(255,255,255,.08)",
+              border: "1px solid rgba(255,255,255,.12)",
+              borderRadius: 8,
+              padding: "5px 8px",
+              cursor: "pointer",
+              color: "rgba(255,255,255,.35)",
+              fontSize: 13,
+              lineHeight: 1,
+              flexShrink: 0,
+              transition: "color .2s"
+            }
+          }, "⏻")
+        )
+      ),
 
-      <div style={{
-        display:"flex",marginTop:10,
-        overflowX:"auto",overflowY:"hidden",
-        scrollbarWidth:"none",WebkitOverflowScrolling:"touch",
-        position:"relative",zIndex:1,
-      }}>
-        {NAV.map(tab=>{
-          const a=scr===tab.id;
-          return<button key={tab.id} onClick={()=>setScr(tab.id)} style={{
-            flexShrink:0,
-            display:"flex",flexDirection:"column",alignItems:"center",gap:4,
-            padding:"8px 14px 12px",background:"none",border:"none",
-            color:a?"#fff":"rgba(255,255,255,.45)",
-            transition:"all .2s",cursor:"pointer",position:"relative",
-            minWidth:70,
-          }}>
-            {a&&<div style={{
-              position:"absolute",top:4,left:6,right:6,bottom:0,
-              background:"rgba(255,255,255,.12)",
-              borderRadius:"10px 10px 0 0",
-            }}/>}
-            <div style={{position:"relative",display:"inline-flex",zIndex:1}}>
-              {tab.icon(a)}
-            </div>
-            <span className="bc" style={{
-              fontSize:9,fontWeight:a?800:600,letterSpacing:.8,
-              textTransform:"uppercase",whiteSpace:"nowrap",zIndex:1,
-            }}>{tab.label}</span>
-            {a&&<div style={{
-              position:"absolute",bottom:0,left:"20%",right:"20%",
-              height:2.5,
-              background:"#fff",
-              borderRadius:"2px 2px 0 0",
-            }}/>}
-          </button>;
-        })}
-      </div>
-    </div>
+      React.createElement("div", {
+        style: {
+          display: "flex",
+          marginTop: 10,
+          overflowX: "auto",
+          overflowY: "hidden",
+          scrollbarWidth: "none",
+          WebkitOverflowScrolling: "touch",
+          position: "relative",
+          zIndex: 1
+        }
+      },
+        NAV.map(tab => {
+          const a = scr === tab.id;
+          return React.createElement("button", {
+            key: tab.id,
+            onClick: () => setScr(tab.id),
+            style: {
+              flexShrink: 0,
+              display: "flex",
+              flexDirection: "column",
+              alignItems: "center",
+              gap: 4,
+              padding: "8px 14px 12px",
+              background: "none",
+              border: "none",
+              color: a ? "#fff" : "rgba(255,255,255,.45)",
+              transition: "all .2s",
+              cursor: "pointer",
+              position: "relative",
+              minWidth: 70
+            }
+          },
+            a ? React.createElement("div", {
+              style: {
+                position: "absolute",
+                top: 4,
+                left: 6,
+                right: 6,
+                bottom: 0,
+                background: "rgba(255,255,255,.12)",
+                borderRadius: "10px 10px 0 0"
+              }
+            }) : null,
+            React.createElement("div", { style: { position: "relative", display: "inline-flex", zIndex: 1 } }, tab.icon(a)),
+            React.createElement("span", { className: "bc", style: { fontSize: 9, fontWeight: a ? 800 : 600, letterSpacing: 0.8, textTransform: "uppercase", whiteSpace: "nowrap", zIndex: 1 } }, tab.label),
+            a ? React.createElement("div", {
+              style: {
+                position: "absolute",
+                bottom: 0,
+                left: "20%",
+                right: "20%",
+                height: 2.5,
+                background: "#fff",
+                borderRadius: "2px 2px 0 0"
+              }
+            }) : null
+          );
+        })
+      )
+    ),
 
-    <div style={{flex:1,overflow:"hidden",display:"flex",flexDirection:"column",width:"100%",background:T.bg0}}>
-      {scr==="scores"    &&<ScoresTab    favs={favs} onFav={toggleFav}/>}
-      {scr==="standings" &&<StandingsTab/>}
-      {scr==="scorers"   &&<ScorersTab/>}
-      {scr==="calendar"  &&<CalendarTab  favs={favs} onFav={toggleFav}/>}
-      {/* Les autres onglets (transfers, actu, results, jsk) seraient inclus ici mais identiques à l'original */}
-    </div>
-    <div style={{height:"env(safe-area-inset-bottom)",background:T.bg0,flexShrink:0}}/>
-  </div>;
+    React.createElement("div", { style: { flex: 1, overflow: "hidden", display: "flex", flexDirection: "column", width: "100%", background: T.bg0 } },
+      scr === "scores" ? React.createElement(ScoresTab, { favs: favs, onFav: toggleFav }) : null,
+      scr === "standings" ? React.createElement(StandingsTab, null) : null,
+      scr === "scorers" ? React.createElement(ScorersTab, null) : null,
+      scr === "calendar" ? React.createElement(CalendarTab, { favs: favs, onFav: toggleFav }) : null
+    ),
+    React.createElement("div", { style: { height: "env(safe-area-inset-bottom)", background: T.bg0, flexShrink: 0 } })
+  );
 }
 
 // Vérifier auth avant d'afficher l'app
