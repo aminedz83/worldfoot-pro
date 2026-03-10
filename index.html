@@ -2942,6 +2942,34 @@ function MatchDetail({state,onClose}){
     {id:"classement",label:"Classement"},
   ];
 
+  const STAT_SECTIONS=[
+    {label:"Tirs",keys:["Total Shots","Shots on Goal","Shots off Goal","Blocked Shots","Shots insidebox","Shots outsidebox"]},
+    {label:"Attaque",keys:["Corner Kicks","Offsides","Ball Possession","Fouls","Yellow Cards","Red Cards"]},
+    {label:"Passes",keys:["Total passes","Passes accurate","Passes %"]},
+    {label:"Défense",keys:["Goalkeeper Saves","expected_goals"]},
+  ];
+  const STAT_LABELS2={
+    "Total Shots":"Tirs totaux","Shots on Goal":"Tirs cadrés","Shots off Goal":"Tirs non cadrés",
+    "Blocked Shots":"Tirs bloqués","Shots insidebox":"Dans surface","Shots outsidebox":"Hors surface",
+    "Corner Kicks":"Corners","Offsides":"Hors-jeux","Ball Possession":"Possession",
+    "Fouls":"Fautes","Yellow Cards":"Cartons jaunes","Red Cards":"Cartons rouges",
+    "Total passes":"Passes totales","Passes accurate":"Passes réussies","Passes %":"Précision passes",
+    "Goalkeeper Saves":"Arrêts gardien","expected_goals":"xG (buts attendus)",
+  };
+
+  const hSt=stats.find(s=>s.team?.id===hid)?.statistics||[];
+  const aSt=stats.find(s=>s.team?.id===aid)?.statistics||[];
+
+  const computeHalfStats=(half)=>{
+    const isFirst=half==="first";
+    const evts=events.filter(e=>isFirst?(e.time?.elapsed||0)<=45:(e.time?.elapsed||0)>45);
+    const goals=(tid)=>evts.filter(e=>e.type==="Goal"&&e.detail!=="Missed Penalty"&&((e.team?.id===tid&&e.detail!=="Own Goal")||(e.team?.id!==tid&&e.detail==="Own Goal"))).length;
+    const yellows=(tid)=>evts.filter(e=>e.type==="Card"&&e.detail==="Yellow Card"&&e.team?.id===tid).length;
+    const reds=(tid)=>evts.filter(e=>e.type==="Card"&&(e.detail==="Red Card"||e.detail==="Second Yellow Card")&&e.team?.id===tid).length;
+    return {goals,yellows,reds};
+  };
+  const halfStats=period!=="all"?computeHalfStats(period):null;
+
   const renderTimeline=()=>{
     if(!events.length&&isNS)return React.createElement("div",{className:"md-empty"},"⏳ Le match n'a pas encore commencé");
     if(isLoading||isPartial&&!events.length)return React.createElement("div",{className:"md-empty"},"📋 Chargement...");
@@ -3227,625 +3255,125 @@ function MatchDetail({state,onClose}){
     );
   };
 
-  // ✅ NOUVELLE VERSION STATS SÉCURISÉE AVEC 🥅 ET BARRES
-  const renderStats = () => {
-    // ✅ SÉCURITÉ MAXIMALE - Vérification que tout existe
-    if (!fix || !fix.teams || !fix.teams.home || !fix.teams.away) {
-      return React.createElement("div", { 
-        style: { 
-          padding: 40, 
-          textAlign: "center", 
-          color: "#8E96A8",
-          fontSize: 14,
-          fontFamily: "Barlow, sans-serif"
-        } 
-      }, "📊 Statistiques non disponibles");
-    }
-
-    // ✅ Protection contre stats undefined
-    const safeStats = stats || [];
-    const hStats = safeStats.find(s => s?.team?.id === fix.teams.home?.id)?.statistics || [];
-    const aStats = safeStats.find(s => s?.team?.id === fix.teams.away?.id)?.statistics || [];
-
-    // ✅ Helper ultra sécurisé pour récupérer les stats
-    const getStat = (arr, type) => {
-      try {
-        if (!Array.isArray(arr)) return 0;
-        const stat = arr.find(s => s && s.type === type);
-        if (!stat) return 0;
-        
-        // Gestion des différents formats de valeur
-        const val = stat.value;
-        if (typeof val === 'object' && val !== null) {
-          return val.total || 0;
-        }
-        return val || 0;
-      } catch (e) {
-        return 0;
-      }
-    };
-
-    // ✅ Helper pour les pourcentages
-    const getPercentStat = (arr, type) => {
-      try {
-        const val = getStat(arr, type);
-        if (typeof val === 'string' && val.includes('%')) {
-          return parseInt(val.replace('%', '')) || 0;
-        }
-        return parseInt(val) || 0;
-      } catch {
-        return 0;
-      }
-    };
-
-    // ✅ Récupération de TOUTES les stats avec fallbacks sécurisés
-    const possessionH = getPercentStat(hStats, "Ball Possession");
-    const possessionA = getPercentStat(aStats, "Ball Possession");
-    
-    const totalShotsH = parseInt(getStat(hStats, "Total Shots")) || 0;
-    const totalShotsA = parseInt(getStat(aStats, "Total Shots")) || 0;
-    
-    const shotsOffH = parseInt(getStat(hStats, "Shots off Goal")) || 0;
-    const shotsOffA = parseInt(getStat(aStats, "Shots off Goal")) || 0;
-    
-    const shotsOnH = parseInt(getStat(hStats, "Shots on Goal")) || 0;
-    const shotsOnA = parseInt(getStat(aStats, "Shots on Goal")) || 0;
-    
-    const blockedShotsH = parseInt(getStat(hStats, "Blocked Shots")) || 0;
-    const blockedShotsA = parseInt(getStat(aStats, "Blocked Shots")) || 0;
-    
-    const shotsInsideH = parseInt(getStat(hStats, "Shots insidebox")) || 0;
-    const shotsInsideA = parseInt(getStat(aStats, "Shots insidebox")) || 0;
-    
-    const shotsOutsideH = parseInt(getStat(hStats, "Shots outsidebox")) || 0;
-    const shotsOutsideA = parseInt(getStat(aStats, "Shots outsidebox")) || 0;
-    
-    const cornersH = parseInt(getStat(hStats, "Corner Kicks")) || 0;
-    const cornersA = parseInt(getStat(aStats, "Corner Kicks")) || 0;
-    
-    const offsidesH = parseInt(getStat(hStats, "Offsides")) || 0;
-    const offsidesA = parseInt(getStat(aStats, "Offsides")) || 0;
-    
-    const yellowH = parseInt(getStat(hStats, "Yellow Cards")) || 0;
-    const yellowA = parseInt(getStat(aStats, "Yellow Cards")) || 0;
-    
-    const redH = parseInt(getStat(hStats, "Red Cards")) || 0;
-    const redA = parseInt(getStat(aStats, "Red Cards")) || 0;
-    
-    const totalPassesH = parseInt(getStat(hStats, "Total passes")) || 0;
-    const totalPassesA = parseInt(getStat(aStats, "Total passes")) || 0;
-    
-    const accuratePassesH = parseInt(getStat(hStats, "Passes accurate")) || 0;
-    const accuratePassesA = parseInt(getStat(aStats, "Passes accurate")) || 0;
-    
-    const passPercentH = totalPassesH > 0 ? Math.round((accuratePassesH / totalPassesH) * 100) : 0;
-    const passPercentA = totalPassesA > 0 ? Math.round((accuratePassesA / totalPassesA) * 100) : 0;
-    
-    const tacklesH = parseInt(getStat(hStats, "Tackles")) || 0;
-    const tacklesA = parseInt(getStat(aStats, "Tackles")) || 0;
-    
-    const foulsH = parseInt(getStat(hStats, "Fouls")) || 0;
-    const foulsA = parseInt(getStat(aStats, "Fouls")) || 0;
-    
-    const savesH = parseInt(getStat(hStats, "Goalkeeper Saves")) || 0;
-    const savesA = parseInt(getStat(aStats, "Goalkeeper Saves")) || 0;
-
-    // ✅ Fonction pour générer les 🥅 avec barres (exactement comme sur l'image)
-    const renderGoalBars = (value, color = "#00b86b", max = null) => {
-      const num = parseInt(value) || 0;
-      const maxVal = max !== null ? parseInt(max) : Math.max(num, 1);
-      // Proportionnel sur 8 barres max pour garder l'interface clean
-      const barCount = Math.min(Math.ceil((num / maxVal) * 8), 8);
-      
-      return React.createElement("div", { 
-        style: { 
-          display: "inline-flex", 
-          alignItems: "center",
-          gap: 2,
-          background: "linear-gradient(135deg, rgba(0,184,107,0.08) 0%, rgba(0,184,107,0.02) 100%)",
-          padding: "3px 8px",
-          borderRadius: 20,
-          marginLeft: 6,
-          border: "1px solid rgba(0,184,107,0.15)",
-          backdropFilter: "blur(4px)"
-        } 
-      },
-        React.createElement("span", { style: { fontSize: 15, marginRight: 3, filter: "drop-shadow(0 2px 3px rgba(0,0,0,0.1))" } }, "🥅"),
-        React.createElement("div", { style: { display: "flex", gap: 2, alignItems: "center" } },
-          Array.from({ length: barCount }).map((_, i) => 
-            React.createElement("div", {
-              key: i,
-              style: {
-                width: 3,
-                height: 14 - (i * 0.5), // Légère variation pour effet premium
-                background: color,
-                borderRadius: 2,
-                opacity: 0.5 + (i / barCount) * 0.5,
-                boxShadow: "0 1px 2px rgba(0,0,0,0.1)"
-              }
-            })
+  const renderStats=()=>{
+    if(period!=="all"&&halfStats){
+      const hG=halfStats.goals(hid),aG=halfStats.goals(aid);
+      const hY=halfStats.yellows(hid),aY=halfStats.yellows(aid);
+      const hR=halfStats.reds(hid),aR=halfStats.reds(aid);
+      const label=period==="first"?"1re mi-temps":"2e mi-temps";
+      const htScore=period==="first"?fix.score?.halftime:null;
+      const makeRow=(icon,label,hv,av)=>React.createElement("div",{style:{display:"flex",alignItems:"center",padding:"10px 14px",borderBottom:"1px solid rgba(0,0,0,.05)",gap:8}},
+        React.createElement("div",{style:{flex:1,textAlign:"right",fontFamily:"'Barlow Condensed',sans-serif",fontSize:18,fontWeight:900,color:"#111827"}},[hv]),
+        React.createElement("div",{style:{flex:2,textAlign:"center",fontSize:11,color:"rgba(17,24,39,0.39)",fontWeight:600,textTransform:"uppercase"}},[`${icon} ${label}`]),
+        React.createElement("div",{style:{flex:1,textAlign:"left",fontFamily:"'Barlow Condensed',sans-serif",fontSize:18,fontWeight:900,color:"#111827"}},[av])
+      );
+      return React.createElement("div",{style:{paddingBottom:16}},
+        htScore!=null?React.createElement("div",{style:{textAlign:"center",padding:"14px 16px",background:"rgba(0,0,0,0.03)",borderBottom:"1px solid rgba(0,0,0,.06)",marginBottom:8}},
+          React.createElement("div",{style:{fontSize:11,color:"rgba(17,24,39,0.37)",fontWeight:700,textTransform:"uppercase",letterSpacing:1,marginBottom:4}},[label]),
+          React.createElement("div",{style:{fontFamily:"'Barlow Condensed',sans-serif",fontSize:32,fontWeight:900,color:"#111827",letterSpacing:-1}},[`${htScore.home} - ${htScore.away}`])
+        ):React.createElement("div",{style:{textAlign:"center",padding:"10px 16px",background:"rgba(0,0,0,0.03)",borderBottom:"1px solid rgba(0,0,0,.06)",marginBottom:8}},
+          React.createElement("div",{style:{fontSize:11,color:"rgba(17,24,39,0.36)",fontWeight:700,textTransform:"uppercase",letterSpacing:1}},[label])
+        ),
+        React.createElement("div",{style:{display:"flex",alignItems:"center",justifyContent:"space-between",padding:"8px 14px",marginBottom:4}},
+          React.createElement("div",{style:{display:"flex",alignItems:"center",gap:6}},
+            React.createElement("img",{src:fix.teams.home.logo,style:{width:20,height:20,objectFit:"contain"},onError:e=>{e.target.style.display="none"}}),
+            React.createElement("span",{style:{fontSize:11,fontWeight:700,color:"rgba(17,24,39,0.75)"}},fix.teams.home.name)
+          ),
+          React.createElement("div",{style:{display:"flex",alignItems:"center",gap:6}},
+            React.createElement("span",{style:{fontSize:11,fontWeight:700,color:"rgba(17,24,39,0.75)"}},fix.teams.away.name),
+            React.createElement("img",{src:fix.teams.away.logo,style:{width:20,height:20,objectFit:"contain"},onError:e=>{e.target.style.display="none"}})
+          )
+        ),
+        makeRow("⚽","Buts",hG,aG),
+        makeRow("🟨","Cartons jaunes",hY,aY),
+        (hR||aR)?makeRow("🟥","Cartons rouges",hR,aR):null,
+        React.createElement("div",{style:{margin:"16px 14px 0",padding:"10px 12px",background:"rgba(245,158,11,.06)",borderRadius:8,border:"1px solid rgba(245,158,11,.18)"}},
+          React.createElement("div",{style:{fontSize:11,color:"#92400e",fontWeight:500}},
+            "ℹ️ Possession, tirs, corners et fautes ne sont pas disponibles par mi-temps via l'API."
           )
         )
       );
-    };
-
-    // ✅ Style pour chaque ligne (flex parfait, pas de décalage)
-    const statRowStyle = {
-      display: "flex",
-      alignItems: "center",
-      justifyContent: "space-between",
-      padding: "12px 16px",
-      borderBottom: "1px solid rgba(0,0,0,0.04)",
-      background: "#ffffff",
-      width: "100%",
-      boxSizing: "border-box",
-      transition: "background 0.2s ease"
-    };
-
-    const valueLeftStyle = (isHigher = false) => ({
-      fontFamily: "'Barlow Condensed', sans-serif",
-      fontSize: 18,
-      fontWeight: 700,
-      color: isHigher ? "#00b86b" : "#1A1F2E",
-      minWidth: 40,
-      textAlign: "left",
-      display: "flex",
-      alignItems: "center",
-      gap: 8
-    });
-
-    const valueRightStyle = (isHigher = false) => ({
-      fontFamily: "'Barlow Condensed', sans-serif",
-      fontSize: 18,
-      fontWeight: 700,
-      color: isHigher ? "#00b86b" : "#1A1F2E",
-      minWidth: 40,
-      textAlign: "right",
-      display: "flex",
-      alignItems: "center",
-      justifyContent: "flex-end",
-      gap: 8
-    });
-
-    const labelStyle = {
-      flex: 1,
-      textAlign: "center",
-      fontSize: 11,
-      fontWeight: 600,
-      color: "#8E96A8",
-      textTransform: "uppercase",
-      letterSpacing: 0.5,
-      fontFamily: "Barlow, sans-serif",
-      padding: "0 8px"
-    };
-
-    // ✅ Retour du composant avec TOUTES les cartes
-    return React.createElement("div", { 
-      style: { 
-        width: "100%", 
-        backgroundColor: "#f8fafe",
-        padding: "0 0 24px 0",
-        boxSizing: "border-box"
-      } 
-    },
-      
-      // ========== CARTE 1 - POSSESSION ==========
-      React.createElement("div", { 
-        style: { 
-          backgroundColor: "#fff", 
-          margin: "8px 12px 2px 12px",
-          borderRadius: 20,
-          padding: "18px 16px 14px",
-          boxShadow: "0 2px 12px rgba(0,0,0,0.02), 0 1px 4px rgba(0,0,0,0.02)",
-          border: "1px solid rgba(0,0,0,0.04)"
-        } 
-      },
-        React.createElement("div", { 
-          style: { 
-            display: "flex", 
-            alignItems: "center", 
-            justifyContent: "space-between", 
-            marginBottom: 12 
-          } 
-        },
-          React.createElement("span", { 
-            style: { 
-              fontFamily: "'Barlow Condensed', sans-serif", 
-              fontSize: 26, 
-              fontWeight: 900, 
-              color: possessionH > possessionA ? "#00b86b" : "#1A1F2E",
-              lineHeight: 1
-            } 
-          }, possessionH + "%"),
-          React.createElement("span", { 
-            style: { 
-              fontSize: 12, 
-              fontWeight: 700, 
-              color: "#8E96A8",
-              letterSpacing: 1,
-              textTransform: "uppercase"
-            } 
-          }, "POSSESSION"),
-          React.createElement("span", { 
-            style: { 
-              fontFamily: "'Barlow Condensed', sans-serif", 
-              fontSize: 26, 
-              fontWeight: 900, 
-              color: possessionA > possessionH ? "#00b86b" : "#1A1F2E",
-              lineHeight: 1
-            } 
-          }, possessionA + "%")
+    }
+    if(!stats.length){
+      if(!players.length)return React.createElement("div",{className:"md-empty"},"📊 Statistiques non disponibles pour cette rencontre");
+      return React.createElement("div",{style:{paddingBottom:24}},
+        React.createElement("div",{style:{textAlign:"center",padding:"10px 16px 14px",background:"rgba(245,158,11,.06)",borderRadius:10,border:"1px solid rgba(245,158,11,.2)",marginBottom:8}},
+          React.createElement("div",{style:{fontSize:12,color:"#92400e",fontWeight:600}},"📊 Stats d'équipe non disponibles · Stats joueurs affichées")
         ),
-        React.createElement("div", { 
-          style: { 
-            height: 6, 
-            backgroundColor: "#F0F2F5", 
-            borderRadius: 6, 
-            overflow: "hidden", 
-            display: "flex",
-            boxShadow: "inset 0 1px 3px rgba(0,0,0,0.05)"
-          } 
-        },
-          React.createElement("div", { 
-            style: { 
-              width: possessionH + "%", 
-              height: "100%", 
-              background: "linear-gradient(90deg, #00b86b, #34D399)",
-              transition: "width 0.5s ease"
-            } 
-          }),
-          React.createElement("div", { 
-            style: { 
-              width: possessionA + "%", 
-              height: "100%", 
-              background: "linear-gradient(90deg, #2563eb, #60A5FA)",
-              transition: "width 0.5s ease"
-            } 
+        players.map(team=>{
+          const tColor=team.team?.id===hid?"#e53935":"#2563eb";
+          return React.createElement("div",{key:team.team?.id,style:{marginBottom:12}},
+            React.createElement("div",{style:{display:"flex",alignItems:"center",gap:8,padding:"10px 14px",background:"rgba(0,0,0,0.03)",borderBottom:"1px solid rgba(0,0,0,0.05)"}},
+              React.createElement("img",{src:team.team?.logo,style:{width:24,height:24,objectFit:"contain"},onError:e=>{e.target.style.display="none"}}),
+              React.createElement("span",{style:{fontFamily:"'Barlow Condensed',sans-serif",fontSize:15,fontWeight:800,color:tColor}},[team.team?.name])
+            ),
+            (team.players||[])
+              .filter(p=>p.statistics?.[0]?.games?.minutes>0)
+              .sort((a,b)=>(b.statistics?.[0]?.games?.minutes||0)-(a.statistics?.[0]?.games?.minutes||0))
+              .map(p=>{
+                const st=p.statistics?.[0]||{};
+                const g=st.games||{},sh=st.shots||{},gl=st.goals||{},ps=st.passes||{},df=st.duels||{};
+                const photo=p.player?.photo;
+                const rating=parseFloat(g.rating||0);
+                const rBg=rating>=8?"#2e7d32":rating>=7?"#558b2f":rating>=6?"#e65100":"#c62828";
+                return React.createElement("div",{key:p.player?.id,style:{display:"flex",alignItems:"center",gap:10,padding:"9px 12px",background:"rgba(0,0,0,.03)",borderBottom:"1px solid rgba(0,0,0,0.03)"}},
+                  React.createElement("div",{style:{width:36,height:36,borderRadius:"50%",overflow:"hidden",background:"rgba(0,0,0,0.06)",flexShrink:0}},
+                    photo?React.createElement("img",{src:photo,style:{width:"100%",height:"100%",objectFit:"cover"},onError:e=>{e.target.style.display="none"}}):
+                    React.createElement("div",{style:{width:"100%",height:"100%",display:"flex",alignItems:"center",justifyContent:"center",fontSize:11,color:"rgba(17,24,39,0.51)"}},"👤")
+                  ),
+                  React.createElement("div",{style:{flex:1,minWidth:0}},
+                    React.createElement("div",{style:{fontSize:13,fontWeight:600,color:"#111827",overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap"}},[p.player?.name]),
+                    React.createElement("div",{style:{display:"flex",gap:8,marginTop:3,flexWrap:"wrap"}},
+                      g.minutes?React.createElement("span",{style:{fontSize:10,color:"rgba(17,24,39,0.36)"}},[`⏱ ${g.minutes}'`]):null,
+                      gl.total?React.createElement("span",{style:{fontSize:10,color:"#00c170",fontWeight:700,background:"rgba(0,193,112,.15)",borderRadius:4,padding:"1px 5px"}},[`⚽ ${gl.total}`]):null,
+                      gl.assists?React.createElement("span",{style:{fontSize:10,color:"rgba(17,24,39,0.49)",background:"rgba(0,0,0,0.05)",borderRadius:4,padding:"1px 5px"}},[`🎯 ${gl.assists}`]):null,
+                      sh.total?React.createElement("span",{style:{fontSize:10,color:"rgba(17,24,39,0.36)"}},[`Tirs: ${sh.on||0}/${sh.total}`]):null,
+                      ps.accuracy?React.createElement("span",{style:{fontSize:10,color:"rgba(17,24,39,0.36)"}},[`Passes: ${ps.accuracy}%`]):null,
+                      df.won&&df.total?React.createElement("span",{style:{fontSize:10,color:"rgba(17,24,39,0.36)"}},[`Duels: ${df.won}/${df.total}`]):null
+                    )
+                  ),
+                  rating>0?React.createElement("div",{style:{background:rBg,borderRadius:5,padding:"3px 7px",fontSize:12,fontWeight:900,color:"#111827",flexShrink:0}},rating.toFixed(1)):null
+                );
+              })
+          );
+        })
+      );
+    }
+    return React.createElement(React.Fragment,null,
+      React.createElement("div",{style:{display:"flex",alignItems:"center",justifyContent:"space-between",marginBottom:16,padding:"10px 14px",background:"rgba(0,0,0,.04)",borderRadius:12,border:"1px solid rgba(0,0,0,0.05)"}},
+        React.createElement("div",{style:{display:"flex",alignItems:"center",gap:8,flex:1,minWidth:0}},
+          React.createElement("img",{src:fix.teams.home.logo,style:{width:24,height:24,objectFit:"contain"},onError:e=>{e.target.style.display="none"}}),
+          React.createElement("span",{style:{fontSize:12,fontWeight:700,color:"#111827",overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap"}},[fix.teams.home.name])
+        ),
+        React.createElement("div",{style:{fontFamily:"'Barlow Condensed',sans-serif",fontSize:10,fontWeight:700,color:"rgba(17,24,39,0.69)",padding:"0 10px",flexShrink:0}},"VS"),
+        React.createElement("div",{style:{display:"flex",alignItems:"center",gap:8,flex:1,minWidth:0,justifyContent:"flex-end"}},
+          React.createElement("span",{style:{fontSize:12,fontWeight:700,color:"#111827",overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap",textAlign:"right"}},[fix.teams.away.name]),
+          React.createElement("img",{src:fix.teams.away.logo,style:{width:24,height:24,objectFit:"contain"},onError:e=>{e.target.style.display="none"}})
+        )
+      ),
+      STAT_SECTIONS.map(({label,keys})=>{
+        const rows=keys.filter(k=>{const hv=gv(hSt,k),av=gv(aSt,k);return hv!=null||av!=null;});
+        if(!rows.length)return null;
+        return React.createElement("div",{key:label},
+          React.createElement("div",{className:"md-stat-section-hdr"},[label]),
+          rows.map(k=>{
+            const hv=gv(hSt,k)??0,av=gv(aSt,k)??0;
+            const hn=numv(hv),an=numv(av),tot=hn+an||1;
+            const hp=Math.round(hn/tot*100);
+            return React.createElement("div",{key:k,className:"md-stat-line"},
+              React.createElement("div",{style:{display:"flex",alignItems:"center",gap:8,marginBottom:6}},
+                React.createElement("div",{className:"md-stat-val-h"},[String(hv)]),
+                React.createElement("div",{className:"md-stat-label"},[STAT_LABELS2[k]||k]),
+                React.createElement("div",{className:"md-stat-val-a"},[String(av)])
+              ),
+              React.createElement("div",{style:{display:"flex",height:4,borderRadius:2,overflow:"hidden",background:"rgba(0,0,0,.07)"}},
+                React.createElement("div",{style:{width:`${hp}%`,background:"#e53935",transition:"width .5s"}}),
+                React.createElement("div",{style:{width:`${100-hp}%`,background:"#2563eb",transition:"width .5s"}})
+              )
+            );
           })
-        )
-      ),
-
-      // ========== CARTE 2 - STATS DE TIRS ==========
-      React.createElement("div", { 
-        style: { 
-          backgroundColor: "#fff", 
-          margin: "2px 12px 2px 12px",
-          borderRadius: 20,
-          overflow: "hidden",
-          boxShadow: "0 2px 12px rgba(0,0,0,0.02), 0 1px 4px rgba(0,0,0,0.02)",
-          border: "1px solid rgba(0,0,0,0.04)"
-        } 
-      },
-        // En-tête de carte
-        React.createElement("div", { 
-          style: { 
-            padding: "12px 16px", 
-            background: "linear-gradient(90deg, #f8fafc, #ffffff)",
-            borderBottom: "1px solid rgba(0,0,0,0.04)"
-          } 
-        },
-          React.createElement("span", { 
-            style: { 
-              fontSize: 11, 
-              fontWeight: 700, 
-              color: "#00b86b",
-              textTransform: "uppercase",
-              letterSpacing: 1
-            } 
-          }, "ATTAQUE")
-        ),
-        
-        // Total tirs avec 🥅
-        React.createElement("div", { style: statRowStyle },
-          React.createElement("div", { style: valueLeftStyle(totalShotsH > totalShotsA) },
-            totalShotsH,
-            renderGoalBars(totalShotsH, "#00b86b", Math.max(totalShotsH, totalShotsA))
-          ),
-          React.createElement("span", { style: labelStyle }, "Total tirs"),
-          React.createElement("div", { style: valueRightStyle(totalShotsA > totalShotsH) },
-            renderGoalBars(totalShotsA, "#2563eb", Math.max(totalShotsH, totalShotsA)),
-            totalShotsA
-          )
-        ),
-
-        // Tirs non cadrés avec 🥅
-        React.createElement("div", { style: statRowStyle },
-          React.createElement("div", { style: valueLeftStyle(shotsOffH > shotsOffA) },
-            shotsOffH,
-            renderGoalBars(shotsOffH, "#00b86b", Math.max(shotsOffH, shotsOffA))
-          ),
-          React.createElement("span", { style: labelStyle }, "Tir non cadré"),
-          React.createElement("div", { style: valueRightStyle(shotsOffA > shotsOffH) },
-            renderGoalBars(shotsOffA, "#2563eb", Math.max(shotsOffH, shotsOffA)),
-            shotsOffA
-          )
-        ),
-
-        // Tirs cadrés avec 🥅
-        React.createElement("div", { style: statRowStyle },
-          React.createElement("div", { style: valueLeftStyle(shotsOnH > shotsOnA) },
-            shotsOnH,
-            renderGoalBars(shotsOnH, "#00b86b", Math.max(shotsOnH, shotsOnA))
-          ),
-          React.createElement("span", { style: labelStyle }, "Tir cadré"),
-          React.createElement("div", { style: valueRightStyle(shotsOnA > shotsOnH) },
-            renderGoalBars(shotsOnA, "#2563eb", Math.max(shotsOnH, shotsOnA)),
-            shotsOnA
-          )
-        ),
-
-        // Tirs contrés avec 🥅
-        React.createElement("div", { style: statRowStyle },
-          React.createElement("div", { style: valueLeftStyle(blockedShotsH > blockedShotsA) },
-            blockedShotsH,
-            renderGoalBars(blockedShotsH, "#00b86b", Math.max(blockedShotsH, blockedShotsA))
-          ),
-          React.createElement("span", { style: labelStyle }, "Tirs contrés"),
-          React.createElement("div", { style: valueRightStyle(blockedShotsA > blockedShotsH) },
-            renderGoalBars(blockedShotsA, "#2563eb", Math.max(blockedShotsH, blockedShotsA)),
-            blockedShotsA
-          )
-        ),
-
-        // Penalty
-        React.createElement("div", { style: statRowStyle },
-          React.createElement("div", { style: valueLeftStyle() }, "0"),
-          React.createElement("span", { style: labelStyle }, "Penalty"),
-          React.createElement("div", { style: valueRightStyle() }, "0")
-        ),
-
-        // Grosses occasions manquées
-        React.createElement("div", { style: statRowStyle },
-          React.createElement("div", { style: valueLeftStyle() }, "0"),
-          React.createElement("span", { style: labelStyle }, "Grosses occasions manquées"),
-          React.createElement("div", { style: valueRightStyle() }, "0")
-        ),
-
-        // Tirs dans la surface avec 🥅
-        React.createElement("div", { style: statRowStyle },
-          React.createElement("div", { style: valueLeftStyle(shotsInsideH > shotsInsideA) },
-            shotsInsideH,
-            renderGoalBars(shotsInsideH, "#00b86b", Math.max(shotsInsideH, shotsInsideA))
-          ),
-          React.createElement("span", { style: labelStyle }, "Tirs dans la surface"),
-          React.createElement("div", { style: valueRightStyle(shotsInsideA > shotsInsideH) },
-            renderGoalBars(shotsInsideA, "#2563eb", Math.max(shotsInsideH, shotsInsideA)),
-            shotsInsideA
-          )
-        ),
-
-        // Tirs en dehors de la surface avec 🥅
-        React.createElement("div", { style: { ...statRowStyle, borderBottom: "none" } },
-          React.createElement("div", { style: valueLeftStyle(shotsOutsideH > shotsOutsideA) },
-            shotsOutsideH,
-            renderGoalBars(shotsOutsideH, "#00b86b", Math.max(shotsOutsideH, shotsOutsideA))
-          ),
-          React.createElement("span", { style: labelStyle }, "Tirs en dehors de la surface"),
-          React.createElement("div", { style: valueRightStyle(shotsOutsideA > shotsOutsideH) },
-            renderGoalBars(shotsOutsideA, "#2563eb", Math.max(shotsOutsideH, shotsOutsideA)),
-            shotsOutsideA
-          )
-        )
-      ),
-
-      // ========== CARTE 3 - CORNERS / HORS-JEUX / CARTONS ==========
-      React.createElement("div", { 
-        style: { 
-          backgroundColor: "#fff", 
-          margin: "2px 12px 2px 12px",
-          borderRadius: 20,
-          overflow: "hidden",
-          boxShadow: "0 2px 12px rgba(0,0,0,0.02), 0 1px 4px rgba(0,0,0,0.02)",
-          border: "1px solid rgba(0,0,0,0.04)"
-        } 
-      },
-        React.createElement("div", { 
-          style: { 
-            padding: "12px 16px", 
-            background: "linear-gradient(90deg, #f8fafc, #ffffff)",
-            borderBottom: "1px solid rgba(0,0,0,0.04)"
-          } 
-        },
-          React.createElement("span", { 
-            style: { 
-              fontSize: 11, 
-              fontWeight: 700, 
-              color: "#f59e0b",
-              textTransform: "uppercase",
-              letterSpacing: 1
-            } 
-          }, "COUPS DE PIED ARRÊTÉS")
-        ),
-        
-        // Corners avec 🥅
-        React.createElement("div", { style: statRowStyle },
-          React.createElement("div", { style: valueLeftStyle(cornersH > cornersA) },
-            cornersH,
-            renderGoalBars(cornersH, "#00b86b", Math.max(cornersH, cornersA))
-          ),
-          React.createElement("span", { style: labelStyle }, "Corner"),
-          React.createElement("div", { style: valueRightStyle(cornersA > cornersH) },
-            renderGoalBars(cornersA, "#2563eb", Math.max(cornersH, cornersA)),
-            cornersA
-          )
-        ),
-
-        // Hors-jeux avec 🥅
-        React.createElement("div", { style: statRowStyle },
-          React.createElement("div", { style: valueLeftStyle(offsidesH > offsidesA) },
-            offsidesH,
-            renderGoalBars(offsidesH, "#00b86b", Math.max(offsidesH, offsidesA))
-          ),
-          React.createElement("span", { style: labelStyle }, "Hors-jeux"),
-          React.createElement("div", { style: valueRightStyle(offsidesA > offsidesH) },
-            renderGoalBars(offsidesA, "#2563eb", Math.max(offsidesH, offsidesA)),
-            offsidesA
-          )
-        ),
-
-        // Cartons jaunes
-        React.createElement("div", { style: statRowStyle },
-          React.createElement("div", { style: valueLeftStyle(yellowH > yellowA) }, yellowH),
-          React.createElement("span", { style: labelStyle }, "Cartons jaunes"),
-          React.createElement("div", { style: valueRightStyle(yellowA > yellowH) }, yellowA)
-        ),
-
-        // Cartons rouges
-        React.createElement("div", { style: { ...statRowStyle, borderBottom: "none" } },
-          React.createElement("div", { style: valueLeftStyle(redH > redA) }, redH),
-          React.createElement("span", { style: labelStyle }, "Cartons rouges"),
-          React.createElement("div", { style: valueRightStyle(redA > redH) }, redA)
-        )
-      ),
-
-      // ========== CARTE 4 - PASSES ==========
-      React.createElement("div", { 
-        style: { 
-          backgroundColor: "#fff", 
-          margin: "2px 12px 2px 12px",
-          borderRadius: 20,
-          overflow: "hidden",
-          boxShadow: "0 2px 12px rgba(0,0,0,0.02), 0 1px 4px rgba(0,0,0,0.02)",
-          border: "1px solid rgba(0,0,0,0.04)"
-        } 
-      },
-        React.createElement("div", { 
-          style: { 
-            padding: "12px 16px", 
-            background: "linear-gradient(90deg, #f8fafc, #ffffff)",
-            borderBottom: "1px solid rgba(0,0,0,0.04)"
-          } 
-        },
-          React.createElement("span", { 
-            style: { 
-              fontSize: 11, 
-              fontWeight: 700, 
-              color: "#8b5cf6",
-              textTransform: "uppercase",
-              letterSpacing: 1
-            } 
-          }, "DISTRIBUTION")
-        ),
-        
-        // Total passes
-        React.createElement("div", { style: statRowStyle },
-          React.createElement("span", { style: valueLeftStyle(totalPassesH > totalPassesA) }, totalPassesH),
-          React.createElement("span", { style: labelStyle }, "Total Passes"),
-          React.createElement("span", { style: valueRightStyle(totalPassesA > totalPassesH) }, totalPassesA)
-        ),
-
-        // Passes réussies avec pourcentage
-        React.createElement("div", { style: { ...statRowStyle, borderBottom: "none" } },
-          React.createElement("span", { style: valueLeftStyle(accuratePassesH > accuratePassesA) }, 
-            `${accuratePassesH} (${passPercentH}%)`
-          ),
-          React.createElement("span", { style: labelStyle }, "Passes réussies"),
-          React.createElement("span", { style: valueRightStyle(accuratePassesA > accuratePassesH) }, 
-            `${accuratePassesA} (${passPercentA}%)`
-          )
-        )
-      ),
-
-      // ========== CARTE 5 - DÉFENSE ==========
-      React.createElement("div", { 
-        style: { 
-          backgroundColor: "#fff", 
-          margin: "2px 12px 2px 12px",
-          borderRadius: 20,
-          overflow: "hidden",
-          boxShadow: "0 2px 12px rgba(0,0,0,0.02), 0 1px 4px rgba(0,0,0,0.02)",
-          border: "1px solid rgba(0,0,0,0.04)"
-        } 
-      },
-        React.createElement("div", { 
-          style: { 
-            padding: "12px 16px", 
-            background: "linear-gradient(90deg, #f8fafc, #ffffff)",
-            borderBottom: "1px solid rgba(0,0,0,0.04)"
-          } 
-        },
-          React.createElement("span", { 
-            style: { 
-              fontSize: 11, 
-              fontWeight: 700, 
-              color: "#dc2626",
-              textTransform: "uppercase",
-              letterSpacing: 1
-            } 
-          }, "DÉFENSE")
-        ),
-        
-        // Tacles
-        React.createElement("div", { style: statRowStyle },
-          React.createElement("span", { style: valueLeftStyle(tacklesH > tacklesA) }, tacklesH),
-          React.createElement("span", { style: labelStyle }, "Tacles"),
-          React.createElement("span", { style: valueRightStyle(tacklesA > tacklesH) }, tacklesA)
-        ),
-
-        // Fautes
-        React.createElement("div", { style: statRowStyle },
-          React.createElement("span", { style: valueLeftStyle(foulsH > foulsA) }, foulsH),
-          React.createElement("span", { style: labelStyle }, "Fautes"),
-          React.createElement("span", { style: valueRightStyle(foulsA > foulsH) }, foulsA)
-        ),
-
-        // Arrêts du gardien avec 🥅
-        React.createElement("div", { style: { ...statRowStyle, borderBottom: "none" } },
-          React.createElement("div", { style: valueLeftStyle(savesH > savesA) },
-            savesH,
-            renderGoalBars(savesH, "#00b86b", Math.max(savesH, savesA))
-          ),
-          React.createElement("span", { style: labelStyle }, "Arrêts du gardien"),
-          React.createElement("div", { style: valueRightStyle(savesA > savesH) },
-            renderGoalBars(savesA, "#2563eb", Math.max(savesH, savesA)),
-            savesA
-          )
-        )
-      ),
-
-      // ========== CARTE 6 - DISCIPLINE ==========
-      React.createElement("div", { 
-        style: { 
-          backgroundColor: "#fff", 
-          margin: "2px 12px 2px 12px",
-          borderRadius: 20,
-          overflow: "hidden",
-          boxShadow: "0 2px 12px rgba(0,0,0,0.02), 0 1px 4px rgba(0,0,0,0.02)",
-          border: "1px solid rgba(0,0,0,0.04)"
-        } 
-      },
-        React.createElement("div", { 
-          style: { 
-            padding: "12px 16px", 
-            background: "linear-gradient(90deg, #f8fafc, #ffffff)",
-            borderBottom: "1px solid rgba(0,0,0,0.04)"
-          } 
-        },
-          React.createElement("span", { 
-            style: { 
-              fontSize: 11, 
-              fontWeight: 700, 
-              color: "#eab308",
-              textTransform: "uppercase",
-              letterSpacing: 1
-            } 
-          }, "DISCIPLINE")
-        ),
-        
-        // Cartons jaunes
-        React.createElement("div", { style: statRowStyle },
-          React.createElement("span", { style: valueLeftStyle(yellowH > yellowA) }, yellowH),
-          React.createElement("span", { style: labelStyle }, "Cartons jaunes"),
-          React.createElement("span", { style: valueRightStyle(yellowA > yellowH) }, yellowA)
-        ),
-
-        // Cartons rouges
-        React.createElement("div", { style: { ...statRowStyle, borderBottom: "none" } },
-          React.createElement("span", { style: valueLeftStyle(redH > redA) }, redH),
-          React.createElement("span", { style: labelStyle }, "Cartons rouges"),
-          React.createElement("span", { style: valueRightStyle(redA > redA) }, redA)
-        )
-      )
+        );
+      })
     );
   };
 
@@ -4423,17 +3951,7 @@ function MatchDetail({state,onClose}){
       tab==="stats"?React.createElement("div",{className:"md-panel"},
         React.createElement("div",{style:{display:"flex",gap:4,marginBottom:16,background:"#FFFFFF",borderRadius:10,padding:3,border:"1px solid rgba(0,0,0,0.04)"}},
           [{id:"all",label:"Match"},{id:"first",label:"1re MT"},{id:"second",label:"2e MT"}].map(p=>
-            React.createElement("button",{key:p.id,onClick:()=>setPeriod(p.id),style:{
-              flex:1,
-              padding:"6px 0",
-              background:period===p.id?"#00b86b":"transparent",
-              border:"none",
-              borderRadius:6,
-              color:period===p.id?"#fff":"#8E96A8",
-              fontSize:11,
-              fontWeight:period===p.id?700:600,
-              cursor:"pointer"
-            }},[p.label])
+            React.createElement("button",{key:p.id,className:`md-subtab${period===p.id?" active":""}`,onClick:()=>setPeriod(p.id)},[p.label])
           )
         ),
         renderStats()
