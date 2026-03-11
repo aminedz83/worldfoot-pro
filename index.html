@@ -2896,65 +2896,56 @@ function Row({match:m,onOpen,isFav,onFav}){
   const hn=m.teams.home.name,an=m.teams.away.name;
   const hRank=m.teams.home.rank,aRank=m.teams.away.rank;
 
-  // ✅ BADGES GROSSE OCCASION ET PENALTY
+  // ✅ BADGES SIMPLES (texte rouge/orange sans fond)
+  const [displayHomeGoals, setDisplayHomeGoals] = useState(m.goals.home);
+  const [displayAwayGoals, setDisplayAwayGoals] = useState(m.goals.away);
   const [showBigChance, setShowBigChance] = useState(false);
   const [showPenalty, setShowPenalty] = useState(false);
   const [actionTeam, setActionTeam] = useState(null);
   const timerRef = useRef(null);
+  const prevGoalsRef = useRef({ home: m.goals.home, away: m.goals.away });
 
   useEffect(() => {
-    const matchEvents = m.events || [];
-    const currentMinute = m.fixture.status.elapsed || 0;
+    const prevHome = prevGoalsRef.current.home;
+    const prevAway = prevGoalsRef.current.away;
+    const currentHome = m.goals.home;
+    const currentAway = m.goals.away;
     
-    // ===== CAS 1 : PENALTY =====
-    // Vérifier s'il y a un penalty accordé non encore tiré
-    const activePenalty = matchEvents.find(e => 
-      e.detail === "Penalty" && // Penalty accordé
-      !matchEvents.some(ev => 
-        (ev.type === "Goal" || ev.detail === "Missed Penalty") && // But ou raté
-        ev.time?.elapsed > e.time?.elapsed // Survenu après le penalty
-      )
-    );
-    
-    if (activePenalty) {
-      setShowPenalty(true);
-      setActionTeam(activePenalty.team?.id);
-      setShowBigChance(false);
-      if (timerRef.current) clearTimeout(timerRef.current);
-      timerRef.current = null;
-    } else {
-      setShowPenalty(false);
-    }
-    
-    // ===== CAS 2 : GROSSE OCCASION AVANT BUT =====
-    // Vérifier s'il y a une grosse occasion dans la minute précédente
-    const recentBigChance = matchEvents.find(e => 
-      (e.type === "Big Chance" || e.detail?.includes("Big chance")) &&
-      e.time?.elapsed >= currentMinute - 1 // Dans la dernière minute
-    );
-    
-    // Vérifier s'il y a un but dans la minute actuelle
-    const currentGoal = matchEvents.find(e => 
-      e.type === "Goal" && 
-      e.time?.elapsed === currentMinute // But maintenant
-    );
-    
-    if (recentBigChance && currentGoal && recentBigChance.team?.id === currentGoal.team?.id) {
+    // Vérifier si un but vient d'être marqué
+    if (currentHome > prevHome || currentAway > prevAway) {
+      // Déterminer quelle équipe a marqué
+      const scoringTeam = currentHome > prevHome ? m.teams.home.id : m.teams.away.id;
+      
+      // Afficher "GROSSE OCCASION!" immédiatement
       setShowBigChance(true);
-      setActionTeam(currentGoal.team?.id);
+      setActionTeam(scoringTeam);
       setShowPenalty(false);
       
+      // Garder l'ANCIEN score affiché
+      setDisplayHomeGoals(prevHome);
+      setDisplayAwayGoals(prevAway);
+      
+      // Après 2 secondes : enlever le badge et afficher le nouveau score
       if (timerRef.current) clearTimeout(timerRef.current);
       timerRef.current = setTimeout(() => {
         setShowBigChance(false);
         setActionTeam(null);
-      }, 3000);
+        setDisplayHomeGoals(currentHome);
+        setDisplayAwayGoals(currentAway);
+      }, 2000);
+    } else {
+      // Pas de but, afficher les scores actuels
+      setDisplayHomeGoals(currentHome);
+      setDisplayAwayGoals(currentAway);
     }
+    
+    // Mettre à jour la référence
+    prevGoalsRef.current = { home: currentHome, away: currentAway };
     
     return () => {
       if (timerRef.current) clearTimeout(timerRef.current);
     };
-  }, [m.fixture.status.elapsed, m.goals?.home, m.goals?.away, m.events]);
+  }, [m.goals.home, m.goals.away]);
 
   return React.createElement("div", {
     onClick: onOpen,
@@ -2988,41 +2979,15 @@ function Row({match:m,onOpen,isFav,onFav}){
           hRank ? React.createElement("span", { style: { fontSize: 11, color: "#bbb", fontWeight: 400 } }, " [" + hRank + "]") : null
         ),
         
-        // Badge PENALTY (orange)
-        showPenalty && actionTeam === m.teams.home.id && React.createElement("div", {
+        // Badge GROSSE OCCASION (texte rouge)
+        showBigChance && actionTeam === m.teams.home.id && React.createElement("span", {
           style: {
             position: "absolute",
             right: 0,
-            background: "#ff9800",
-            color: "#fff",
+            color: "#e53935",
             fontSize: 10,
             fontWeight: 800,
-            padding: "4px 10px",
-            borderRadius: 20,
-            letterSpacing: "0.5px",
             textTransform: "uppercase",
-            boxShadow: "0 2px 8px rgba(255,152,0,0.3)",
-            animation: "pulse 1.5s ease-in-out infinite",
-            zIndex: 5,
-            whiteSpace: "nowrap"
-          }
-        }, "PENALTY!"),
-        
-        // Badge GROSSE OCCASION (rouge)
-        showBigChance && actionTeam === m.teams.home.id && React.createElement("div", {
-          style: {
-            position: "absolute",
-            right: 0,
-            background: "#e53935",
-            color: "#fff",
-            fontSize: 10,
-            fontWeight: 800,
-            padding: "4px 10px",
-            borderRadius: 20,
-            letterSpacing: "0.5px",
-            textTransform: "uppercase",
-            boxShadow: "0 2px 8px rgba(229,57,53,0.3)",
-            animation: "pulse 1.5s ease-in-out infinite",
             zIndex: 5,
             whiteSpace: "nowrap"
           }
@@ -3037,41 +3002,15 @@ function Row({match:m,onOpen,isFav,onFav}){
           aRank ? React.createElement("span", { style: { fontSize: 11, color: "#bbb", fontWeight: 400 } }, " [" + aRank + "]") : null
         ),
         
-        // Badge PENALTY (orange)
-        showPenalty && actionTeam === m.teams.away.id && React.createElement("div", {
+        // Badge GROSSE OCCASION (texte rouge)
+        showBigChance && actionTeam === m.teams.away.id && React.createElement("span", {
           style: {
             position: "absolute",
             right: 0,
-            background: "#ff9800",
-            color: "#fff",
+            color: "#e53935",
             fontSize: 10,
             fontWeight: 800,
-            padding: "4px 10px",
-            borderRadius: 20,
-            letterSpacing: "0.5px",
             textTransform: "uppercase",
-            boxShadow: "0 2px 8px rgba(255,152,0,0.3)",
-            animation: "pulse 1.5s ease-in-out infinite",
-            zIndex: 5,
-            whiteSpace: "nowrap"
-          }
-        }, "PENALTY!"),
-        
-        // Badge GROSSE OCCASION (rouge)
-        showBigChance && actionTeam === m.teams.away.id && React.createElement("div", {
-          style: {
-            position: "absolute",
-            right: 0,
-            background: "#e53935",
-            color: "#fff",
-            fontSize: 10,
-            fontWeight: 800,
-            padding: "4px 10px",
-            borderRadius: 20,
-            letterSpacing: "0.5px",
-            textTransform: "uppercase",
-            boxShadow: "0 2px 8px rgba(229,57,53,0.3)",
-            animation: "pulse 1.5s ease-in-out infinite",
             zIndex: 5,
             whiteSpace: "nowrap"
           }
@@ -3081,8 +3020,8 @@ function Row({match:m,onOpen,isFav,onFav}){
     React.createElement("div", { style: { width: 32, display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", gap: 7, flexShrink: 0 } },
       has
         ? React.createElement(React.Fragment, null,
-            React.createElement("span", { style: { fontSize: 16, fontWeight: hw ? 900 : 500, color: flash ? "#e53535" : hw ? "#111" : "#999", lineHeight: 1 } }, hg),
-            React.createElement("span", { style: { fontSize: 16, fontWeight: aw ? 900 : 500, color: flash ? "#e53535" : aw ? "#111" : "#999", lineHeight: 1 } }, ag)
+            React.createElement("span", { style: { fontSize: 16, fontWeight: hw ? 900 : 500, color: flash ? "#e53535" : hw ? "#111" : "#999", lineHeight: 1 } }, displayHomeGoals),
+            React.createElement("span", { style: { fontSize: 16, fontWeight: aw ? 900 : 500, color: flash ? "#e53535" : aw ? "#111" : "#999", lineHeight: 1 } }, displayAwayGoals)
           )
         : React.createElement("span", { style: { fontSize: 13, color: "#ccc" } }, "-")
     ),
