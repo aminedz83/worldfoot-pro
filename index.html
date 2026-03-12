@@ -190,39 +190,15 @@
 				}
 			}
 			
-			/* ✅ ANIMATION POUR GROSSE OCCASION */
-			@keyframes pulse-red {
-				0% {
-					background-color: rgba(229, 57, 53, 0.1);
-					border-left-color: #e53935;
-				}
-				50% {
-					background-color: rgba(229, 57, 53, 0.3);
-					border-left-color: #ff1744;
-				}
-				100% {
-					background-color: rgba(229, 57, 53, 0.1);
-					border-left-color: #e53935;
-				}
-			}
-			
-			/* ✅ ANIMATION POUR LE BADGE GROSSE OCCASION */
-			@keyframes big-chance-blink {
-				0% {
-					background-color: #e53935;
-					transform: scale(1);
-					box-shadow: 0 0 0 0 rgba(229, 57, 53, 0.7);
-				}
-				50% {
-					background-color: #ff5252;
-					transform: scale(1.05);
-					box-shadow: 0 0 15px 3px rgba(229, 57, 53, 0.9);
-				}
-				100% {
-					background-color: #e53935;
-					transform: scale(1);
-					box-shadow: 0 0 0 0 rgba(229, 57, 53, 0.7);
-				}
+			/* ✅ ANIMATION POUR GROSSE OCCASION - CLIGNOTE 3 FOIS */
+			@keyframes blink-3 {
+				0% { opacity: 1; }
+				16% { opacity: 0.2; }
+				33% { opacity: 1; }
+				49% { opacity: 0.2; }
+				66% { opacity: 1; }
+				82% { opacity: 0.2; }
+				100% { opacity: 1; }
 			}
 			
 			@keyframes sk {
@@ -2896,11 +2872,10 @@ function Row({match:m,onOpen,isFav,onFav}){
   const hn=m.teams.home.name,an=m.teams.away.name;
   const hRank=m.teams.home.rank,aRank=m.teams.away.rank;
 
-  // ✅ BADGES SIMPLES (texte rouge/orange sans fond)
+  // ✅ BADGE GROSSE OCCASION - CLIGNOTE 3 FOIS (MISE À JOUR)
   const [displayHomeGoals, setDisplayHomeGoals] = useState(m.goals.home);
   const [displayAwayGoals, setDisplayAwayGoals] = useState(m.goals.away);
   const [showBigChance, setShowBigChance] = useState(false);
-  const [showPenalty, setShowPenalty] = useState(false);
   const [actionTeam, setActionTeam] = useState(null);
   const timerRef = useRef(null);
   const prevGoalsRef = useRef({ home: m.goals.home, away: m.goals.away });
@@ -2911,35 +2886,33 @@ function Row({match:m,onOpen,isFav,onFav}){
     const currentHome = m.goals.home;
     const currentAway = m.goals.away;
     
-    // Vérifier si un but vient d'être marqué
+    // But détecté !
     if (currentHome > prevHome || currentAway > prevAway) {
-      // Déterminer quelle équipe a marqué
       const scoringTeam = currentHome > prevHome ? m.teams.home.id : m.teams.away.id;
       
-      // Afficher "GROSSE OCCASION!" immédiatement
+      // Afficher le badge et démarrer le clignotement
       setShowBigChance(true);
       setActionTeam(scoringTeam);
-      setShowPenalty(false);
       
-      // Garder l'ANCIEN score affiché
+      // Garder l'ancien score pendant l'animation
       setDisplayHomeGoals(prevHome);
       setDisplayAwayGoals(prevAway);
       
-      // Après 2 secondes : enlever le badge et afficher le nouveau score
+      // Après 1.5s (3 clignotements), afficher le nouveau score et enlever le badge
       if (timerRef.current) clearTimeout(timerRef.current);
       timerRef.current = setTimeout(() => {
         setShowBigChance(false);
         setActionTeam(null);
         setDisplayHomeGoals(currentHome);
         setDisplayAwayGoals(currentAway);
-      }, 2000);
+      }, 1500); // 1.5 secondes = 3 clignotements
+      
     } else {
       // Pas de but, afficher les scores actuels
       setDisplayHomeGoals(currentHome);
       setDisplayAwayGoals(currentAway);
     }
     
-    // Mettre à jour la référence
     prevGoalsRef.current = { home: currentHome, away: currentAway };
     
     return () => {
@@ -2979,7 +2952,7 @@ function Row({match:m,onOpen,isFav,onFav}){
           hRank ? React.createElement("span", { style: { fontSize: 11, color: "#bbb", fontWeight: 400 } }, " [" + hRank + "]") : null
         ),
         
-        // Badge GROSSE OCCASION (texte rouge)
+        // ✅ BADGE GROSSE OCCASION (clignote 3 fois)
         showBigChance && actionTeam === m.teams.home.id && React.createElement("span", {
           style: {
             position: "absolute",
@@ -2989,7 +2962,8 @@ function Row({match:m,onOpen,isFav,onFav}){
             fontWeight: 800,
             textTransform: "uppercase",
             zIndex: 5,
-            whiteSpace: "nowrap"
+            whiteSpace: "nowrap",
+            animation: "blink-3 1.5s ease-in-out"  // Animation 3 clignotements
           }
         }, "GROSSE OCCASION!")
       ),
@@ -3002,7 +2976,7 @@ function Row({match:m,onOpen,isFav,onFav}){
           aRank ? React.createElement("span", { style: { fontSize: 11, color: "#bbb", fontWeight: 400 } }, " [" + aRank + "]") : null
         ),
         
-        // Badge GROSSE OCCASION (texte rouge)
+        // ✅ BADGE GROSSE OCCASION (clignote 3 fois)
         showBigChance && actionTeam === m.teams.away.id && React.createElement("span", {
           style: {
             position: "absolute",
@@ -3012,7 +2986,8 @@ function Row({match:m,onOpen,isFav,onFav}){
             fontWeight: 800,
             textTransform: "uppercase",
             zIndex: 5,
-            whiteSpace: "nowrap"
+            whiteSpace: "nowrap",
+            animation: "blink-3 1.5s ease-in-out"  // Animation 3 clignotements
           }
         }, "GROSSE OCCASION!")
       )
