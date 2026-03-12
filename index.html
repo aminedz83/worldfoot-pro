@@ -35,9 +35,7 @@
                 },
             ],
         };
-        const b = new Blob([JSON.stringify(M)], {
-            type: "application/json",
-        });
+        const b = new Blob([JSON.stringify(M)], { type: "application/json" });
         const lk = document.createElement("link");
         lk.rel = "manifest";
         lk.href = URL.createObjectURL(b);
@@ -48,7 +46,6 @@
     <link href="https://fonts.googleapis.com/css2?family=Barlow:wght@400;500;600;700;800;900&family=Barlow+Condensed:wght@600;700;800;900&display=swap" rel="stylesheet" />
     <link rel="apple-touch-icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 180 180'><rect width='180' height='180' rx='36' fill='%2300b86b'/><text y='130' x='90' text-anchor='middle' font-size='100'>⚡</text></svg>" />
     <script>
-        // Service Worker avec support notifications
         if ("serviceWorker" in navigator) {
             const sw = `
     const C='wf-pro-v17';
@@ -73,11 +70,7 @@
     });
   `;
             navigator.serviceWorker
-                .register(
-                    URL.createObjectURL(
-                        new Blob([sw], { type: "application/javascript" })
-                    )
-                )
+                .register(URL.createObjectURL(new Blob([sw], { type: "application/javascript" })))
                 .catch(() => {});
         }
     </script>
@@ -97,8 +90,7 @@
         body {
             height: 100%;
             background: #f4f5f7;
-            font-family: "Barlow", -apple-system, BlinkMacSystemFont,
-                sans-serif;
+            font-family: "Barlow", -apple-system, BlinkMacSystemFont, sans-serif;
             color: #1a1d23;
             background: #eef0f5;
             -webkit-tap-highlight-color: transparent;
@@ -138,10 +130,7 @@
             box-sizing: border-box;
         }
         .scroll-safe {
-            padding-bottom: max(
-                80px,
-                calc(70px + env(safe-area-inset-bottom))
-            ) !important;
+            padding-bottom: max(80px, calc(70px + env(safe-area-inset-bottom))) !important;
         }
         button,
         a {
@@ -172,7 +161,6 @@
             }
         }
         
-        /* ✅ ANIMATION POUR GROSSE OCCASION - CLIGNOTE 3 FOIS */
         @keyframes blink-3 {
             0% { opacity: 1; }
             16% { opacity: 0.2; }
@@ -249,8 +237,7 @@
                 text-shadow: 0 0 6px rgba(0, 184, 107, 0.6);
             }
             50% {
-                text-shadow: 0 0 18px rgba(0, 184, 107, 0.9),
-                    0 0 36px rgba(0, 184, 107, 0.3);
+                text-shadow: 0 0 18px rgba(0, 184, 107, 0.9), 0 0 36px rgba(0, 184, 107, 0.3);
             }
         }
         @keyframes dotPulse {
@@ -317,7 +304,6 @@
             font-family: "Barlow Condensed", sans-serif;
         }
 
-        /* Point LIVE rouge */
         .live-dot {
             width: 7px;
             height: 7px;
@@ -327,19 +313,16 @@
                 pulseR 1.4s ease-in-out infinite;
         }
 
-        /* Animations */
         .row-anim {
             animation: rowIn 0.3s cubic-bezier(0.22, 1, 0.36, 1) forwards;
         }
         .score-pop {
-            animation: sPop 0.55s cubic-bezier(0.36, 0.07, 0.19, 0.97)
-                forwards;
+            animation: sPop 0.55s cubic-bezier(0.36, 0.07, 0.19, 0.97) forwards;
         }
         .pop-in {
             animation: popIn 0.3s cubic-bezier(0.22, 1, 0.36, 1) forwards;
         }
 
-        /* Cards premium light */
         .card {
             background: #ffffff;
             border: 1px solid rgba(0, 0, 0, 0.06);
@@ -355,7 +338,6 @@
             box-shadow: 0 1px 6px rgba(0, 0, 0, 0.08);
         }
 
-        /* Glass élégant */
         .glass {
             background: rgba(255, 255, 255, 0.85);
             border: 1px solid rgba(255, 255, 255, 0.9);
@@ -363,7 +345,6 @@
             -webkit-backdrop-filter: blur(20px);
         }
 
-        /* Tags */
         .tag {
             display: inline-flex;
             align-items: center;
@@ -376,7 +357,6 @@
             text-transform: uppercase;
         }
 
-        /* Séparateur élégant */
         .sep-line {
             height: 1px;
             background: linear-gradient(
@@ -387,7 +367,6 @@
             );
         }
 
-        /* Bouton premium */
         .btn-premium {
             background: linear-gradient(135deg, #00b86b 0%, #009657 100%);
             border: none;
@@ -405,7 +384,6 @@
             box-shadow: 0 2px 8px rgba(0, 184, 107, 0.2);
         }
 
-        /* Input premium */
         .input-premium {
             background: #f8f9fb;
             border: 1.5px solid rgba(0, 0, 0, 0.08);
@@ -423,7 +401,6 @@
             background: #fff;
         }
 
-        /* Skeleton shimmer */
         .sk {
             background: linear-gradient(
                 90deg,
@@ -436,9 +413,6 @@
             border-radius: 8px;
         }
 
-        /* ══════════════════════════════════════════
-       MATCH DETAIL — PREMIUM (style FlashScore FR)
-       ══════════════════════════════════════════ */
         @keyframes mdSlideUp {
             from {
                 transform: translateY(44px);
@@ -460,9 +434,6 @@
             }
         }
 
-        /* ═══════════════════════════════════════════════
-       MATCH DETAIL — PREMIUM REDESIGN
-       ═══════════════════════════════════════════════ */
         @keyframes mdBarGrow {
             from {
                 transform: scaleX(0);
@@ -493,7 +464,6 @@
             animation: mdIn 0.2s ease;
         }
 
-        /* ── Topbar ── */
         .md-topbar {
             flex-shrink: 0;
             display: flex;
@@ -533,7 +503,6 @@
             color: rgba(17, 24, 39, 0.3);
         }
 
-        /* ── Hero Header ── */
         .md-header {
             flex-shrink: 0;
             background: linear-gradient(175deg, #1e2535 0%, #141927 100%);
@@ -595,7 +564,6 @@
             box-shadow: 0 0 6px rgba(0, 193, 112, 0.6);
         }
 
-        /* ── Scoreline ── */
         .md-scoreline {
             display: flex;
             align-items: center;
@@ -653,7 +621,6 @@
             margin-bottom: 2px;
         }
 
-        /* ── Status ── */
         .md-status-row {
             display: flex;
             align-items: center;
@@ -720,7 +687,6 @@
             text-align: right;
         }
 
-        /* ── Tabs — segment scrollable ── */
         .md-tabs {
             display: flex;
             border-bottom: 1px solid rgba(255, 255, 255, 0.07);
@@ -757,7 +723,6 @@
             font-weight: 700;
         }
 
-        /* ── Content ── */
         .md-content {
             flex: 1;
             overflow-y: auto;
@@ -776,7 +741,6 @@
             padding: 8px 8px 32px;
         }
 
-        /* ── Section labels ── */
         .md-period-label,
         .md-info-section-title,
         .md-stat-section-hdr {
@@ -812,7 +776,6 @@
             color: rgba(17, 24, 39, 0.25);
         }
 
-        /* ── Events ── */
         .md-evt-row {
             display: flex;
             align-items: center;
@@ -832,7 +795,6 @@
             border-left: 3px solid rgba(0, 184, 107, 0.45);
         }
         
-        /* ✅ STYLE POUR GROSSE OCCASION */
         .md-evt-row.big-chance {
             background: rgba(229, 57, 53, 0.1);
             border-left: 3px solid #e53935;
@@ -911,7 +873,6 @@
             background: rgba(0, 0, 0, 0.03);
         }
 
-        /* Half time separator premium light */
         .half-time-badge {
             background: #F8F9FC;
             border-radius: 100px;
@@ -938,7 +899,6 @@
             border-radius: 30px;
         }
 
-        /* Stats premium light */
         .md-stat-line {
             background: #FFFFFF;
             border-radius: 16px;
@@ -990,7 +950,6 @@
             margin-left: auto;
         }
 
-        /* Info section premium light - RESTRUCTURÉ */
         .md-info-section {
             background: #FFFFFF;
             border-radius: 20px;
@@ -1177,7 +1136,6 @@
             border-radius: 20px;
         }
 
-        /* Player sheet */
         .md-player-sheet-bg {
             position: absolute;
             inset: 0;
@@ -1263,7 +1221,7 @@
 
 const {useState,useEffect,useCallback,useRef,useMemo}=React;
 
-// ── IDs des clubs algériens ──────────────────────────────
+// IDs des clubs algériens
 const ALGERIAN_CLUBS = {
   "CR Belouizdad": 904, "ES Setif": 905, "MC Alger": 906, "MC Oran": 907,
   "Olympique Medea": 908, "US Biskra": 909, "USM Alger": 910, "CS Constantine": 911,
@@ -1286,7 +1244,7 @@ const ALGERIAN_SEASON = 2025;
 
 const isAlgerianTeam = (teamId) => ALGERIAN_CLUB_IDS.includes(teamId);
 
-// ── CACHE LOCAL ──────────────────────────────────────────────
+// CACHE LOCAL
 const CACHE_TTL = 15 * 60 * 1000;
 
 function cacheSet(key, data) {
@@ -2932,13 +2890,10 @@ function LeagueBlock({group, onOpen, favs, onFav}){
 }
 
 // ============================================
-// MATCH DETAIL AVEC STATS ARBITRES
+// CACHE POUR LES STATS D'ARBITRES
 // ============================================
-
-// Cache pour les stats d'arbitres
 const refereeStatsCache = new Map();
 
-// Fonction pour calculer les moyennes de cartons et détecter le pays
 const getRefereeStats = async (refereeName) => {
   if (!refereeName) return null;
   
@@ -2997,9 +2952,7 @@ const getRefereeStats = async (refereeName) => {
           countryCount[match.league.country] = (countryCount[match.league.country] || 0) + 1;
         }
         
-      } catch (e) {
-        console.log('Erreur sur un match', e);
-      }
+      } catch (e) {}
     }
     
     let countryCode = null;
@@ -3035,11 +2988,13 @@ const getRefereeStats = async (refereeName) => {
     return stats;
     
   } catch (error) {
-    console.error('Erreur stats arbitre:', error);
     return null;
   }
 };
 
+// ============================================
+// MATCH DETAIL AMÉLIORÉ
+// ============================================
 function MatchDetailWrapper({state,onClose}){
   if(!state)return null;
   return React.createElement(MatchDetail,{state,onClose});
@@ -3055,7 +3010,7 @@ function MatchDetail({state,onClose}){
   const[refStats,setRefStats]=React.useState(null);
   const contentRef=React.useRef(null);
 
-  // Nouveaux états pour les stats arbitres
+  // États pour les stats arbitres
   const [refereeStats, setRefereeStats] = useState(null);
   const [refereeCountry, setRefereeCountry] = useState(null);
   const [refereeLoading, setRefereeLoading] = useState(false);
@@ -3118,7 +3073,7 @@ function MatchDetail({state,onClose}){
     return()=>{cancelled=true;};
   },[fix?.fixture?.id]);
 
-  // Récupération des stats de l'arbitre (ancien)
+  // Anciennes stats de l'arbitre
   React.useEffect(() => {
     if (!fix?.fixture?.referee) return;
     
@@ -3267,6 +3222,13 @@ function MatchDetail({state,onClose}){
       return 'tr';
     }
     
+    if (n.includes('cordero') || n.includes('vega') || n.includes('díaz') || 
+        n.includes('mateu') || n.includes('lahoz') || n.includes('del cerro') || 
+        n.includes('gil') || n.includes('sánchez') || n.includes('martínez') ||
+        n.includes('muñiz') || n.includes('de burgos') || n.includes('cuadra')) {
+      return 'es';
+    }
+    
     if (n.includes('turpin') || n.includes('bastien') || n.includes('letexier') || 
         n.includes('buquet') || n.includes('gautier') || n.includes('delajod') ||
         n.includes('brisard') || n.includes('frappart') || n.includes('wattellier')) {
@@ -3277,12 +3239,6 @@ function MatchDetail({state,onClose}){
         n.includes('coote') || n.includes('pawson') || n.includes('mariner') ||
         n.includes('kavanagh') || n.includes('bankes') || n.includes('gillett')) {
       return 'gb';
-    }
-    
-    if (n.includes('mateu') || n.includes('lahoz') || n.includes('del cerro') || 
-        n.includes('gil') || n.includes('sánchez') || n.includes('martínez') ||
-        n.includes('muñiz') || n.includes('de burgos') || n.includes('cuadra')) {
-      return 'es';
     }
     
     if (n.includes('orsato') || n.includes('rocca') || n.includes('doveri') || 
@@ -3620,7 +3576,7 @@ function MatchDetail({state,onClose}){
     );
   };
 
-  // ========== STATS AMÉLIORÉES ==========
+  // ========== STATS ==========
   const renderStats = () => {
     if (!fix || !fix.teams || !fix.teams.home || !fix.teams.away) {
       return React.createElement("div", { 
@@ -4681,7 +4637,6 @@ function MatchDetail({state,onClose}){
           // SECTION ARBITRE AMÉLIORÉE AVEC STATS
           fix.fixture?.referee && (() => {
             const refereeName = fix.fixture.referee;
-            // Utiliser d'abord les stats calculées, sinon fallback avec detectRefereeCountry
             const finalCountryCode = refereeCountry || detectRefereeCountry(refereeName);
             
             return [
@@ -5204,7 +5159,7 @@ function ScoresTab({favs,onFav}){
 }
 
 // ============================================
-// ONGLET CLASSEMENT (StandingsTab)
+// ONGLET CLASSEMENT (StandingsTab) - CORRIGÉ
 // ============================================
 function StandingsTab() {
   const [viewMode, setViewMode] = useState("classement");
@@ -5277,13 +5232,76 @@ function StandingsTab() {
     return () => { mounted = false; };
   }, [selectedRound, lid, season, viewMode]);
   
+  // FONCTION CORRIGÉE POUR OUVRIR LES DÉTAILS DU MATCH
   const openMatchDetail = async (id) => {
     setDetailMatch({ loading: true });
+    
     try {
+      // Récupérer les infos de base du match
       const fx = await api(`/fixtures?id=${id}`, 30000);
       const fix = fx[0];
       if (!fix) throw new Error("Match introuvable");
-      setDetailMatch({ data: { fixture: fix } });
+      
+      // Préparer les variables
+      const hid = fix.teams.home.id;
+      const aid = fix.teams.away.id;
+      const fid = fix.fixture.id;
+      const isLive = LIVE_ST.has(fix.fixture.status.short);
+      const isDone = DONE_ST.has(fix.fixture.status.short);
+      const detailTTL = isLive ? 15000 : isDone ? 10800000 : 3600000;
+      
+      // Afficher d'abord les infos de base
+      setDetailMatch({ 
+        partial: true, 
+        data: { 
+          fixture: fix, 
+          stats: [], 
+          events: [], 
+          lineups: [], 
+          players: [], 
+          h2h: [], 
+          injuries: [] 
+        } 
+      });
+      
+      // Fonction pour mettre à jour progressivement
+      const update = (patch) => {
+        setDetailMatch(prev => 
+          prev?.data ? { ...prev, partial: true, data: { ...prev.data, ...patch } } : prev
+        );
+      };
+      
+      // Charger tous les détails en parallèle
+      const p_events = api(`/fixtures/events?fixture=${fid}`, detailTTL)
+        .then(d => update({ events: d }))
+        .catch(() => {});
+        
+      const p_stats = api(`/fixtures/statistics?fixture=${fid}`, detailTTL)
+        .then(d => update({ stats: d }))
+        .catch(() => {});
+        
+      const p_lineups = api(`/fixtures/lineups?fixture=${fid}`, detailTTL)
+        .then(d => update({ lineups: d }))
+        .catch(() => {});
+        
+      const p_players = api(`/fixtures/players?fixture=${fid}`, detailTTL)
+        .then(d => update({ players: d }))
+        .catch(() => {});
+        
+      const p_h2h = api(`/fixtures/headtohead?h2h=${hid}-${aid}&last=50`, 86400000)
+        .then(d => update({ h2h: d }))
+        .catch(() => {});
+        
+      const p_inj = api(`/injuries?fixture=${fid}`, isDone ? 10800000 : 3600000)
+        .then(d => update({ injuries: d }))
+        .catch(() => {});
+      
+      // Attendre que tout soit chargé
+      await Promise.allSettled([p_events, p_stats, p_lineups, p_players, p_h2h, p_inj]);
+      
+      // Marquer comme complètement chargé
+      setDetailMatch(prev => prev?.data ? { ...prev, partial: false } : prev);
+      
     } catch (e) {
       setDetailMatch({ error: e.message });
     }
@@ -5619,7 +5637,7 @@ function StandingsTab() {
       )
     ),
     
-    // Détail du match
+    // Détail du match (corrigé)
     detailMatch && React.createElement(MatchDetailWrapper, {
       state: detailMatch,
       onClose: () => setDetailMatch(null)
@@ -6297,7 +6315,7 @@ function JSKTab() {
   const [articles, setArticles] = useState([]);
   const [status, setStatus] = useState("load");
   const [selected, setSelected] = useState(null);
-  const [view, setView] = useState("actualites"); // actualites ou une
+  const [view, setView] = useState("actualites");
   
   useEffect(() => {
     let mounted = true;
@@ -6442,7 +6460,6 @@ function App() {
     catch { return "scores"; }
   });
   
-  // Récupérer le compteur d'appels API
   const [apiCallsToday, setApiCallsToday] = useState(0);
   
   useEffect(() => {
@@ -6454,7 +6471,6 @@ function App() {
       setApiCallsToday(0);
     }
     
-    // Mettre à jour le compteur toutes les 30 secondes
     const interval = setInterval(() => {
       try {
         const today = new Date().toDateString();
@@ -6518,7 +6534,6 @@ function App() {
   };
   
   return React.createElement("div", { style: { height: "100%", display: "flex", flexDirection: "column", background: T.bg0 } },
-    // HEADER
     React.createElement("div", { style: {
       padding: "16px 16px 8px",
       paddingTop: "calc(16px + env(safe-area-inset-top))",
