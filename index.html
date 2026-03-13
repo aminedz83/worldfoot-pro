@@ -48,7 +48,7 @@
     <script>
         if ("serviceWorker" in navigator) {
             const sw = `
-    const C='wf-pro-v26';
+    const C='wf-pro-v28';
     self.addEventListener('install',e=>{e.waitUntil(caches.open(C).then(c=>c.addAll(['./'])).then(()=>self.skipWaiting()));});
     self.addEventListener('activate',e=>{e.waitUntil(caches.keys().then(ks=>Promise.all(ks.filter(k=>k!==C).map(k=>caches.delete(k)))).then(()=>self.clients.claim()));});
     self.addEventListener('push',e=>{
@@ -6511,35 +6511,48 @@ function TeamPage({ teamId, teamName, teamLogo, leagueId, season, onClose }) {
   const [loading,  setLoading]  = useState(true);
   const [tab,      setTab]      = useState("resultats");
 
-  const lid  = leagueId || 39;
-  const seas = season   || 2024;
-
   useEffect(() => {
     if (!teamId) return;
     let cancelled = false;
     setLoading(true);
+
+    // Étape 1 : infos équipe + fixtures (pour détecter la vraie ligue/saison)
     Promise.allSettled([
       api(`/teams?id=${teamId}`, 86400000),
       api(`/fixtures?team=${teamId}&last=6`, TTL.DONE),
       api(`/fixtures?team=${teamId}&next=5`, TTL.UPCOMING),
-      api(`/standings?league=${lid}&season=${seas}`, TTL.STANDING),
-      api(`/players/topscorers?league=${lid}&season=${seas}`, TTL.STANDING),
-    ]).then(([rInfo, rRes, rNext, rStand, rTop]) => {
+    ]).then(async ([rInfo, rRes, rNext]) => {
       if (cancelled) return;
-      if (rInfo.status  === "fulfilled") setInfo(rInfo.value?.[0] || null);
-      if (rRes.status   === "fulfilled") setResults(rRes.value || []);
-      if (rNext.status  === "fulfilled") setNext(rNext.value || []);
+      if (rInfo.status === "fulfilled") setInfo(rInfo.value?.[0] || null);
+      const recentFix = rRes.status === "fulfilled" ? (rRes.value || []) : [];
+      const nextFix   = rNext.status === "fulfilled" ? (rNext.value || []) : [];
+      if (recentFix.length) setResults(recentFix);
+      if (nextFix.length)   setNext(nextFix);
+
+      // Détection automatique ligue + saison depuis les fixtures réels
+      const allFix = [...recentFix, ...nextFix];
+      const detectedLeague = allFix.find(f => f.league?.id)?.league;
+      const lid  = leagueId  || detectedLeague?.id     || 39;
+      const seas = season    || detectedLeague?.season  || new Date().getFullYear();
+
+      // Étape 2 : standings + joueurs avec les vraies valeurs ligue/saison
+      const [rStand, rPlayers] = await Promise.allSettled([
+        api(`/standings?league=${lid}&season=${seas}`, TTL.STANDING),
+        api(`/players?team=${teamId}&season=${seas}`, 3600000),
+      ]);
+      if (cancelled) return;
+
       if (rStand.status === "fulfilled") {
         const rows = (rStand.value || []).flatMap(g =>
           Array.isArray(g) ? g : (g?.league?.standings || []).flat()
         );
         setStanding(rows.find(r => r.team?.id === teamId) || null);
       }
-      if (rTop.status === "fulfilled") {
-        setTopScore((rTop.value || [])
-          .filter(p => p.statistics?.[0]?.team?.id === teamId)
-          .slice(0, 3)
-        );
+      if (rPlayers.status === "fulfilled") {
+        const sorted = (rPlayers.value || [])
+          .filter(p => (p.statistics?.[0]?.goals?.total || 0) > 0)
+          .sort((a, b) => (b.statistics?.[0]?.goals?.total || 0) - (a.statistics?.[0]?.goals?.total || 0));
+        setTopScore(sorted.slice(0, 5));
       }
       setLoading(false);
     });
@@ -6664,7 +6677,7 @@ function TeamPage({ teamId, teamName, teamLogo, leagueId, season, onClose }) {
     return (
       <div className="md-overlay" style={{ background: heroGrad }}>
         <div className="md-topbar" style={{ background: "transparent", borderBottom: "none" }}>
-          <button onClick={onClose} className="md-back-btn">←</button>
+          <button onClick={onClose} style={{ background: "rgba(0,193,112,.85)", border: "none", color: "#fff", width: 40, height: 40, borderRadius: 12, cursor: "pointer", fontSize: 18, fontWeight: 700, boxShadow: "0 4px 12px rgba(0,193,112,.4)" }}>←</button>
         </div>
         <div style={{ flex: 1, display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", gap: 16 }}>
           <Logo src={teamLogo} size={64} />
@@ -6695,11 +6708,11 @@ function TeamPage({ teamId, teamName, teamLogo, leagueId, season, onClose }) {
         flexShrink: 0,
       }}>
         <button onClick={onClose} style={{
-          background: "rgba(255,255,255,.15)", border: "none", color: "#fff",
-          width: 36, height: 36, borderRadius: 10, cursor: "pointer",
+          background: "linear-gradient(135deg,#00c170,#009e5c)", border: "none", color: "#fff",
+          width: 40, height: 40, borderRadius: 12, cursor: "pointer",
           display: "flex", alignItems: "center", justifyContent: "center",
-          fontSize: 16, fontWeight: 700, backdropFilter: "blur(8px)",
-          boxShadow: "0 2px 8px rgba(0,0,0,.2)"
+          fontSize: 20, fontWeight: 900,
+          boxShadow: "0 4px 14px rgba(0,193,112,.5)"
         }}>←</button>
       </div>
 
