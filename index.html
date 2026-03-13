@@ -48,7 +48,7 @@
     <script>
         if ("serviceWorker" in navigator) {
             const sw = `
-    const C='wf-pro-v20';
+    const C='wf-pro-v21';
     self.addEventListener('install',e=>{e.waitUntil(caches.open(C).then(c=>c.addAll(['./'])).then(()=>self.skipWaiting()));});
     self.addEventListener('activate',e=>{e.waitUntil(caches.keys().then(ks=>Promise.all(ks.filter(k=>k!==C).map(k=>caches.delete(k)))).then(()=>self.clients.claim()));});
     self.addEventListener('push',e=>{
@@ -5668,65 +5668,149 @@ const SB_KEY = "sb_publishable_IS9q0rpm-NFpEm_jNoKTTA_q_xX4-0m";
 async function sbGet(table) {
   try {
     const url = `https://iqeqlsxjiklygywjirqs.supabase.co/rest/v1/${table}?order=published_at.desc&limit=30`;
-    const res = await fetch(url, {
-      headers: { "apikey": SB_KEY, "Authorization": `Bearer ${SB_KEY}` }
-    });
+    const res = await fetch(url, { headers: { "apikey": SB_KEY, "Authorization": `Bearer ${SB_KEY}` } });
     return await res.json();
   } catch { return []; }
 }
 
+// ── Couleurs sections ──────────────────────────────────────────────────────
+const TYPE_MAP = {
+  "free":  { label: "Gratuit",  bg: "linear-gradient(135deg,#00c170,#009e5c)", icon: "🆓" },
+  "loan":  { label: "Prêt",     bg: "linear-gradient(135deg,#2563eb,#1d4ed8)", icon: "🔄" },
+  "n/a":   { label: "—",        bg: "linear-gradient(135deg,#94a3b8,#64748b)", icon: "" },
+};
+function getTypeInfo(type) {
+  if (!type) return { label: "—", bg: "linear-gradient(135deg,#94a3b8,#64748b)", icon: "" };
+  const lo = type.toLowerCase();
+  if (TYPE_MAP[lo]) return TYPE_MAP[lo];
+  return { label: type, bg: "linear-gradient(135deg,#f59e0b,#d97706)", icon: "💶" };
+}
+
+// ── Carte Mercato Premium ─────────────────────────────────────────────────
 function MercatoCard({ transfer, onTeam }) {
   const { player, teams, date, type } = transfer;
-  const typeStyle = (() => {
-    const t = (type || "").toLowerCase();
-    if (t === "free") return { bg: T.greenL, color: T.green, label: "Gratuit" };
-    if (t === "loan") return { bg: T.blueL,  color: T.blue,  label: "Prêt" };
-    if (t === "n/a")  return { bg: T.bg3,    color: T.t3,    label: "N/A" };
-    return { bg: T.goldL, color: T.gold, label: type || "—" };
-  })();
+  const info = getTypeInfo(type);
   const fmtDate = date
     ? new Date(date).toLocaleDateString("fr-FR", { day: "2-digit", month: "short", year: "2-digit" })
     : "—";
+
+  const [imgErr, setImgErr] = React.useState(false);
+
   return React.createElement("div", {
-    style: { background: T.bg1, borderRadius: 14, margin: "0 10px 10px", boxShadow: T.shadowSm, overflow: "hidden" }
+    style: {
+      margin: "0 10px 14px",
+      background: "#fff",
+      borderRadius: 16,
+      boxShadow: "0 2px 16px rgba(0,0,0,.09), 0 1px 3px rgba(0,0,0,.06)",
+      overflow: "hidden",
+      position: "relative",
+    }
   },
-    React.createElement("div", { style: { display: "flex", alignItems: "center", gap: 10, padding: "10px 12px 8px" } },
-      React.createElement(Avatar, { src: player?.photo, size: 38, ring: T.bg4 }),
-      React.createElement("div", { style: { flex: 1, minWidth: 0 } },
-        React.createElement("div", { style: { fontSize: 13, fontWeight: 800, color: T.t1, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" } }, player?.name || "—"),
-        React.createElement("div", { style: { fontSize: 10, color: T.t3, marginTop: 2 } }, fmtDate)
+    // ── Bande supérieure colorée ──
+    React.createElement("div", {
+      style: { height: 4, background: info.bg }
+    }),
+
+    React.createElement("div", { style: { padding: "14px 14px 0" } },
+      // ── Ligne joueur ──
+      React.createElement("div", { style: { display: "flex", alignItems: "center", gap: 12, marginBottom: 12 } },
+        // Photo joueur grande
+        React.createElement("div", {
+          style: {
+            width: 56, height: 56, borderRadius: 12, overflow: "hidden", flexShrink: 0,
+            background: "#f1f5f9", border: "2px solid #e8edf3",
+            display: "flex", alignItems: "center", justifyContent: "center",
+          }
+        },
+          (!imgErr && player?.photo)
+            ? React.createElement("img", {
+                src: player.photo, alt: player?.name,
+                style: { width: "100%", height: "100%", objectFit: "cover" },
+                onError: () => setImgErr(true)
+              })
+            : React.createElement("span", { style: { fontSize: 22 } }, "👤")
+        ),
+
+        // Nom + position + date
+        React.createElement("div", { style: { flex: 1, minWidth: 0 } },
+          React.createElement("div", {
+            style: { fontSize: 15, fontWeight: 800, color: "#0f1117", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap", lineHeight: 1.2 }
+          }, player?.name || "—"),
+          React.createElement("div", { style: { display: "flex", alignItems: "center", gap: 8, marginTop: 4 } },
+            React.createElement("span", { style: { fontSize: 11, color: "#64748b" } }, fmtDate)
+          )
+        ),
+
+        // Badge montant/type
+        React.createElement("div", {
+          style: {
+            background: info.bg, borderRadius: 10, padding: "5px 11px",
+            fontSize: 11, fontWeight: 800, color: "#fff",
+            whiteSpace: "nowrap", flexShrink: 0, boxShadow: "0 2px 8px rgba(0,0,0,.15)"
+          }
+        }, info.icon ? `${info.icon} ${info.label}` : info.label)
       ),
-      React.createElement("div", { style: { background: typeStyle.bg, color: typeStyle.color, borderRadius: 8, padding: "3px 9px", fontSize: 10, fontWeight: 800 } }, typeStyle.label)
-    ),
-    React.createElement("div", { style: { display: "flex", alignItems: "center", gap: 6, padding: "8px 12px 10px", borderTop: `1px solid ${T.line}`, background: T.bg2 } },
+
+      // ── Ligne clubs ──
       React.createElement("div", {
-        onClick: () => onTeam && teams?.out?.id && onTeam(teams.out.id, teams.out.name, teams.out.logo),
-        style: { display: "flex", alignItems: "center", gap: 6, flex: 1, minWidth: 0, cursor: onTeam && teams?.out?.id ? "pointer" : "default" }
+        style: {
+          display: "flex", alignItems: "center", gap: 8,
+          background: "#f8fafc", borderRadius: 12, padding: "10px 12px",
+          marginBottom: 14, border: "1px solid #e8edf3"
+        }
       },
-        React.createElement(Logo, { src: teams?.out?.logo, size: 22 }),
-        React.createElement("span", { style: { fontSize: 11, fontWeight: 600, color: T.t2, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" } }, teams?.out?.name || "?")
-      ),
-      React.createElement("div", { style: { fontSize: 16, color: T.t4, flexShrink: 0 } }, "→"),
-      React.createElement("div", {
-        onClick: () => onTeam && teams?.in?.id && onTeam(teams.in.id, teams.in.name, teams.in.logo),
-        style: { display: "flex", alignItems: "center", gap: 6, flex: 1, minWidth: 0, justifyContent: "flex-end", cursor: onTeam && teams?.in?.id ? "pointer" : "default" }
-      },
-        React.createElement("span", { style: { fontSize: 11, fontWeight: 600, color: T.green, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap", textAlign: "right" } }, teams?.in?.name || "?"),
-        React.createElement(Logo, { src: teams?.in?.logo, size: 22 })
+        // Club départ
+        React.createElement("div", {
+          onClick: () => onTeam && teams?.out?.id && onTeam(teams.out.id, teams.out.name, teams.out.logo),
+          style: { display: "flex", flexDirection: "column", alignItems: "center", gap: 4, flex: 1, minWidth: 0, cursor: onTeam && teams?.out?.id ? "pointer" : "default" }
+        },
+          React.createElement("div", { style: { width: 32, height: 32, display: "flex", alignItems: "center", justifyContent: "center" } },
+            React.createElement(Logo, { src: teams?.out?.logo, size: 30 })
+          ),
+          React.createElement("span", {
+            style: { fontSize: 10, fontWeight: 600, color: "#64748b", textAlign: "center", lineHeight: 1.2, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap", maxWidth: "100%" }
+          }, teams?.out?.name || "?")
+        ),
+
+        // Flèche centrale
+        React.createElement("div", {
+          style: {
+            flexShrink: 0, width: 28, height: 28, borderRadius: "50%",
+            background: "linear-gradient(135deg,#1e293b,#334155)",
+            display: "flex", alignItems: "center", justifyContent: "center",
+            boxShadow: "0 2px 6px rgba(0,0,0,.2)"
+          }
+        },
+          React.createElement("span", { style: { color: "#fff", fontSize: 12, fontWeight: 900 } }, "→")
+        ),
+
+        // Club arrivée
+        React.createElement("div", {
+          onClick: () => onTeam && teams?.in?.id && onTeam(teams.in.id, teams.in.name, teams.in.logo),
+          style: { display: "flex", flexDirection: "column", alignItems: "center", gap: 4, flex: 1, minWidth: 0, cursor: onTeam && teams?.in?.id ? "pointer" : "default" }
+        },
+          React.createElement("div", { style: { width: 32, height: 32, display: "flex", alignItems: "center", justifyContent: "center" } },
+            React.createElement(Logo, { src: teams?.in?.logo, size: 30 })
+          ),
+          React.createElement("span", {
+            style: { fontSize: 10, fontWeight: 700, color: "#00c170", textAlign: "center", lineHeight: 1.2, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap", maxWidth: "100%" }
+          }, teams?.in?.name || "?")
+        )
       )
     )
   );
 }
 
+// ── Carte Actualité Supabase (inchangée, améliorée visuellement) ──────────
 function AfricaTransferCard({ t, onOpen }) {
   const SOURCE_COLORS = { "Dzfoot": "#00883a", "El Heddaf": "#c8002d", "MarocSport": "#c8002d", "KingFut": "#1a1a2e", "BBC Afrique": "#bb1919", "FootMercato": "#ff6b00" };
-  const srcColor = SOURCE_COLORS[t.source_name] || T.red;
+  const srcColor = SOURCE_COLORS[t.source_name] || "#e53535";
   const date = t.published_at ? new Date(t.published_at).toLocaleDateString("fr-FR", { day: "2-digit", month: "short" }) : "";
   const countryFlags = { "Algérie": "🇩🇿", "Maroc": "🇲🇦", "Tunisie": "🇹🇳", "Égypte": "🇪🇬" };
   const flag = countryFlags[t.country] || "🌍";
   return React.createElement("div", {
     onClick: () => onOpen(t.source_url),
-    style: { margin: "0 10px 10px", background: "#fff", borderRadius: 14, boxShadow: T.shadowSm, borderLeft: `4px solid ${srcColor}`, overflow: "hidden", cursor: "pointer" }
+    style: { margin: "0 10px 10px", background: "#fff", borderRadius: 14, boxShadow: "0 2px 8px rgba(0,0,0,.06)", borderLeft: `4px solid ${srcColor}`, overflow: "hidden", cursor: "pointer" }
   },
     React.createElement("div", { style: { display: "flex", alignItems: "center", gap: 8, padding: "10px 14px 8px" } },
       React.createElement("div", { style: { background: srcColor, borderRadius: 6, padding: "2px 8px" } },
@@ -5737,13 +5821,12 @@ function AfricaTransferCard({ t, onOpen }) {
     ),
     React.createElement("div", { style: { padding: "0 14px 12px" } },
       React.createElement("div", { style: { fontSize: 14, fontWeight: 700, marginBottom: 6 } }, t.player_name),
-      React.createElement("div", { style: { display: "flex", alignItems: "center", gap: 6 } },
-        React.createElement("span", { style: { background: "rgba(0,184,107,0.1)", color: T.red, borderRadius: 20, padding: "3px 10px", fontSize: 10, fontWeight: 800 } }, t.transfer_type || "Mercato")
-      )
+      React.createElement("span", { style: { background: "rgba(0,184,107,0.1)", color: "#00c170", borderRadius: 20, padding: "3px 10px", fontSize: 10, fontWeight: 800 } }, t.transfer_type || "Mercato")
     )
   );
 }
 
+// ── Clubs suivis ────────────────────────────────────────────────────────────
 const MERCATO_CLUBS = [
   { id: 918, name: "JS Kabylie",    algerian: true },
   { id: 906, name: "MC Alger",      algerian: true },
@@ -5765,6 +5848,24 @@ const MERCATO_CLUBS = [
 ];
 const ALGERIAN_IDS = new Set(MERCATO_CLUBS.filter(c => c.algerian).map(c => c.id));
 
+// ── Header section "Arrivées / Départs" style TM ─────────────────────────
+function SectionHeader({ label, color, count }) {
+  return React.createElement("div", {
+    style: {
+      display: "flex", alignItems: "center", justifyContent: "space-between",
+      margin: "16px 10px 8px",
+      padding: "10px 14px", borderRadius: 10,
+      background: color,
+    }
+  },
+    React.createElement("span", { style: { fontSize: 13, fontWeight: 900, color: "#fff", letterSpacing: ".3px" } }, label),
+    count > 0 && React.createElement("span", {
+      style: { background: "rgba(255,255,255,.25)", color: "#fff", borderRadius: 20, padding: "2px 9px", fontSize: 11, fontWeight: 700 }
+    }, count)
+  );
+}
+
+// ── Composant principal ───────────────────────────────────────────────────
 function TransfersTab({ onTeam }) {
   const [mainTab,       setMainTab]       = useState("mercato");
   const [clubFilter,    setClubFilter]    = useState("algerie");
@@ -5776,7 +5877,9 @@ function TransfersTab({ onTeam }) {
   const [actuStatus,    setActuStatus]    = useState("idle");
   const [actuFilter,    setActuFilter]    = useState("all");
   const [selectedUrl,   setSelectedUrl]   = useState(null);
+  const [viewMode,      setViewMode]      = useState("sections"); // "sections" | "list"
 
+  // Chargement Mercato
   useEffect(() => {
     if (mainTab !== "mercato") return;
     const clubs = MERCATO_CLUBS.filter(c => clubFilter === "algerie" ? c.algerian : !c.algerian);
@@ -5784,7 +5887,11 @@ function TransfersTab({ onTeam }) {
     if (!toLoad.length) { if (mercatoStatus === "idle") setMercatoStatus("ok"); return; }
     setMercatoStatus("load");
     Promise.allSettled(
-      toLoad.map(c => api(`/transfers?team=${c.id}`, 86400000).then(res => ({ clubId: c.id, data: res || [] })).catch(() => ({ clubId: c.id, data: [] })))
+      toLoad.map(c =>
+        api(`/transfers?team=${c.id}`, 86400000)
+          .then(res => ({ clubId: c.id, data: res || [] }))
+          .catch(() => ({ clubId: c.id, data: [] }))
+      )
     ).then(results => {
       const newEntries = [];
       const newLoaded = new Set(loadedClubs);
@@ -5810,6 +5917,7 @@ function TransfersTab({ onTeam }) {
     });
   }, [mainTab, clubFilter]);
 
+  // Chargement Actu
   useEffect(() => {
     if (mainTab !== "actu" || actuData.length) return;
     setActuStatus("load");
@@ -5818,6 +5926,7 @@ function TransfersTab({ onTeam }) {
       .catch(() => setActuStatus("err"));
   }, [mainTab]);
 
+  // Filtrage mercato
   const filteredMercato = mercatoData.filter(t => {
     if (clubFilter === "algerie" && !ALGERIAN_IDS.has(t._clubId)) return false;
     if (clubFilter === "europe"  &&  ALGERIAN_IDS.has(t._clubId)) return false;
@@ -5827,64 +5936,146 @@ function TransfersTab({ onTeam }) {
     return true;
   });
 
+  // Séparation arrivées / départs pour viewMode "sections"
+  const arrivals  = filteredMercato.filter(t => t.teams?.in  && MERCATO_CLUBS.some(c => c.id === t._clubId && (clubFilter === "algerie" ? c.algerian : !c.algerian) && c.id === t.teams?.in?.id));
+  const departures = filteredMercato.filter(t => t.teams?.out && MERCATO_CLUBS.some(c => c.id === t._clubId && (clubFilter === "algerie" ? c.algerian : !c.algerian) && c.id === t.teams?.out?.id));
+  // Si pas de distinction nette, tout afficher chronologiquement
+  const hasArrivals  = arrivals.length  > 0;
+  const hasDepartures = departures.length > 0;
+  const showSections = viewMode === "sections" && (hasArrivals || hasDepartures);
+
+  // Actu filtrage
   const countries = ["all", "Algérie", "Maroc", "Tunisie", "Égypte"];
   const flags = { all: "🌍", "Algérie": "🇩🇿", "Maroc": "🇲🇦", "Tunisie": "🇹🇳", "Égypte": "🇪🇬" };
   const filteredActu = actuFilter === "all" ? actuData : actuData.filter(t => t.country === actuFilter);
 
+  // Vue article
   if (selectedUrl) {
     return React.createElement("div", { style: { height: "100%", display: "flex", flexDirection: "column" } },
-      React.createElement("div", { style: { padding: "12px", background: T.red, display: "flex", alignItems: "center", gap: 12, flexShrink: 0 } },
-        React.createElement("button", { onClick: () => setSelectedUrl(null), style: { background: "rgba(255,255,255,0.2)", border: "none", color: "#fff", padding: "8px 16px", borderRadius: 8, cursor: "pointer" } }, "← Retour"),
+      React.createElement("div", { style: { padding: "12px 16px", background: "#e53535", display: "flex", alignItems: "center", gap: 12, flexShrink: 0 } },
+        React.createElement("button", { onClick: () => setSelectedUrl(null), style: { background: "rgba(255,255,255,.2)", border: "none", color: "#fff", padding: "8px 16px", borderRadius: 8, cursor: "pointer", fontWeight: 700 } }, "← Retour"),
         React.createElement("span", { style: { color: "#fff", fontWeight: 700 } }, "Article")
       ),
       React.createElement("iframe", { src: selectedUrl, style: { flex: 1, border: "none", width: "100%" } })
     );
   }
 
-  return React.createElement("div", { style: { height: "100%", display: "flex", flexDirection: "column", overflow: "hidden" } },
-    // Tabs principaux
-    React.createElement("div", { style: { display: "flex", background: T.bg1, borderBottom: `1px solid ${T.line}`, flexShrink: 0 } },
-      [{ id: "mercato", label: "⚽ Mercato", color: T.green }, { id: "actu", label: "📰 Actualités", color: "#e53535" }]
-        .map(t => React.createElement("button", {
-          key: t.id, onClick: () => setMainTab(t.id),
-          style: { flex: 1, padding: "13px 0", background: "none", border: "none", cursor: "pointer", fontSize: 12, fontWeight: 800, color: mainTab === t.id ? t.color : T.t3, borderBottom: mainTab === t.id ? `3px solid ${t.color}` : "3px solid transparent", transition: "all .15s" }
-        }, t.label))
+  return React.createElement("div", { style: { height: "100%", display: "flex", flexDirection: "column", overflow: "hidden", background: "#f1f4f9" } },
+
+    // ── Header ──────────────────────────────────────────────────────────────
+    React.createElement("div", {
+      style: { background: "linear-gradient(160deg,#1a1d23 0%,#0f1117 100%)", flexShrink: 0, paddingBottom: 0 }
+    },
+      React.createElement("div", { style: { padding: "14px 16px 0", display: "flex", alignItems: "center", justifyContent: "space-between" } },
+        React.createElement("div", { style: { fontSize: 18, fontWeight: 900, color: "#fff", letterSpacing: "-.2px" } }, "Transferts"),
+        mainTab === "mercato" && React.createElement("div", { style: { display: "flex", gap: 4 } },
+          React.createElement("button", {
+            onClick: () => setViewMode(v => v === "sections" ? "list" : "sections"),
+            style: { background: "rgba(255,255,255,.1)", border: "none", color: "#fff", padding: "5px 10px", borderRadius: 7, cursor: "pointer", fontSize: 10, fontWeight: 700 }
+          }, viewMode === "sections" ? "≡ Liste" : "⊞ Sections")
+        )
+      ),
+      // Tabs principaux
+      React.createElement("div", { style: { display: "flex", marginTop: 10 } },
+        [{ id: "mercato", label: "⚽ Mercato" }, { id: "actu", label: "📰 Actualités" }].map(t =>
+          React.createElement("button", {
+            key: t.id, onClick: () => setMainTab(t.id),
+            style: {
+              flex: 1, padding: "11px 0", background: "none", border: "none", cursor: "pointer",
+              fontSize: 12, fontWeight: 800,
+              color: mainTab === t.id ? "#00c170" : "rgba(255,255,255,.5)",
+              borderBottom: mainTab === t.id ? "2px solid #00c170" : "2px solid transparent",
+            }
+          }, t.label)
+        )
+      )
     ),
 
-    // MERCATO
-    mainTab === "mercato" && React.createElement(React.Fragment, null,
-      React.createElement("div", { style: { background: T.bg1, borderBottom: `1px solid ${T.line}`, padding: "10px 12px", flexShrink: 0 } },
-        React.createElement("div", { style: { display: "flex", gap: 6, marginBottom: 8 } },
-          [{ id: "algerie", label: "🇩🇿 Algérie" }, { id: "europe", label: "🌍 Europe" }].map(f =>
-            React.createElement("button", { key: f.id, onClick: () => setClubFilter(f.id), style: { flex: 1, padding: "7px 0", borderRadius: 8, border: "none", cursor: "pointer", background: clubFilter === f.id ? T.green : T.bg2, color: clubFilter === f.id ? "#fff" : T.t2, fontSize: 11, fontWeight: 700 } }, f.label)
-          )
+    // ── Filtres Mercato ────────────────────────────────────────────────────
+    mainTab === "mercato" && React.createElement("div", {
+      style: { background: "#fff", borderBottom: "1px solid #e8edf3", padding: "10px 12px", flexShrink: 0 }
+    },
+      React.createElement("div", { style: { display: "flex", gap: 6, marginBottom: 8 } },
+        [{ id: "algerie", label: "🇩🇿 Algérie" }, { id: "europe", label: "🌍 Europe" }].map(f =>
+          React.createElement("button", {
+            key: f.id, onClick: () => setClubFilter(f.id),
+            style: {
+              flex: 1, padding: "8px 0", borderRadius: 9, border: "none", cursor: "pointer", fontWeight: 700, fontSize: 12,
+              background: clubFilter === f.id ? "linear-gradient(135deg,#00c170,#009e5c)" : "#f1f5f9",
+              color: clubFilter === f.id ? "#fff" : "#64748b",
+              boxShadow: clubFilter === f.id ? "0 2px 8px rgba(0,193,112,.3)" : "none",
+              transition: "all .15s"
+            }
+          }, f.label)
+        )
+      ),
+      React.createElement("div", { style: { display: "flex", gap: 5 } },
+        [{ id: "all", label: "Tous" }, { id: "Free", label: "Gratuit" }, { id: "Loan", label: "Prêt" }, { id: "paid", label: "Payant" }].map(f =>
+          React.createElement("button", {
+            key: f.id, onClick: () => setTypeFilter(f.id),
+            style: {
+              flex: 1, padding: "6px 0", borderRadius: 7, border: "none", cursor: "pointer",
+              background: typeFilter === f.id ? "#1e293b" : "#f1f5f9",
+              color: typeFilter === f.id ? "#fff" : "#94a3b8",
+              fontSize: 10, fontWeight: 700, transition: "all .15s"
+            }
+          }, f.label)
+        )
+      )
+    ),
+
+    // ── Contenu Mercato ────────────────────────────────────────────────────
+    mainTab === "mercato" && React.createElement("div", { style: { flex: 1, overflowY: "auto", paddingTop: 4 } },
+      mercatoStatus === "load" && React.createElement("div", { style: { display: "flex", flexDirection: "column", alignItems: "center", padding: 50, gap: 12 } },
+        React.createElement(Spin, { s: 30, c: "#00c170" }),
+        React.createElement("span", { style: { fontSize: 13, color: "#94a3b8" } }, "Chargement des transferts…")
+      ),
+      mercatoStatus === "ok" && filteredMercato.length === 0 && React.createElement("div", {
+        style: { textAlign: "center", padding: 50, color: "#94a3b8", fontSize: 13 }
+      }, "Aucun transfert trouvé"),
+      mercatoStatus === "ok" && !showSections && filteredMercato.map((t, i) =>
+        React.createElement(MercatoCard, { key: i, transfer: t, onTeam: onTeam })
+      ),
+      mercatoStatus === "ok" && showSections && React.createElement(React.Fragment, null,
+        hasArrivals && React.createElement(React.Fragment, null,
+          React.createElement(SectionHeader, { label: "PRINCIPALES ARRIVÉES", color: "linear-gradient(135deg,#00c170,#009e5c)", count: arrivals.length }),
+          arrivals.map((t, i) => React.createElement(MercatoCard, { key: `a${i}`, transfer: t, onTeam: onTeam }))
         ),
-        React.createElement("div", { style: { display: "flex", gap: 5 } },
-          [{ id: "all", label: "Tous" }, { id: "Free", label: "Gratuit" }, { id: "Loan", label: "Prêt" }, { id: "paid", label: "Payant" }].map(f =>
-            React.createElement("button", { key: f.id, onClick: () => setTypeFilter(f.id), style: { flex: 1, padding: "5px 0", borderRadius: 7, border: "none", cursor: "pointer", background: typeFilter === f.id ? T.t1 : T.bg2, color: typeFilter === f.id ? "#fff" : T.t3, fontSize: 10, fontWeight: 700 } }, f.label)
-          )
+        hasDepartures && React.createElement(React.Fragment, null,
+          React.createElement(SectionHeader, { label: "PRINCIPAUX DÉPARTS", color: "linear-gradient(135deg,#1e3a5f,#1a2d4a)", count: departures.length }),
+          departures.map((t, i) => React.createElement(MercatoCard, { key: `d${i}`, transfer: t, onTeam: onTeam }))
+        ),
+        !hasArrivals && !hasDepartures && filteredMercato.map((t, i) =>
+          React.createElement(MercatoCard, { key: i, transfer: t, onTeam: onTeam })
         )
       ),
-      React.createElement("div", { style: { flex: 1, overflowY: "auto", paddingTop: 8, background: T.bg2 } },
-        mercatoStatus === "load" && React.createElement("div", { style: { textAlign: "center", padding: 40 } }, React.createElement(Spin, null)),
-        mercatoStatus === "ok" && filteredMercato.length === 0 && React.createElement("div", { style: { textAlign: "center", padding: 40, color: T.t3, fontSize: 13 } }, "Aucun transfert trouvé"),
-        mercatoStatus === "ok" && filteredMercato.map((t, i) => React.createElement(MercatoCard, { key: i, transfer: t, onTeam: onTeam }))
-      )
+      React.createElement("div", { style: { height: 20 } })
     ),
 
-    // ACTUALITÉS SUPABASE
-    mainTab === "actu" && React.createElement(React.Fragment, null,
-      React.createElement("div", { style: { padding: "10px 12px", borderBottom: `1px solid ${T.line}`, flexShrink: 0, background: T.bg1 } },
-        React.createElement("div", { style: { display: "flex", gap: 6, overflowX: "auto" } },
-          countries.map(c => React.createElement("button", { key: c, onClick: () => setActuFilter(c), style: { padding: "6px 12px", borderRadius: 20, border: "none", cursor: "pointer", background: actuFilter === c ? T.red : T.bg2, color: actuFilter === c ? "#fff" : T.t2, fontSize: 11, fontWeight: actuFilter === c ? 700 : 500, whiteSpace: "nowrap" } }, `${flags[c]} ${c === "all" ? "Tous" : c}`))
-        )
-      ),
-      React.createElement("div", { style: { flex: 1, overflowY: "auto", paddingTop: 8 } },
-        actuStatus === "load" && React.createElement("div", { style: { textAlign: "center", padding: 40 } }, React.createElement(Spin, null)),
-        actuStatus === "err"  && React.createElement("div", { style: { textAlign: "center", padding: 40, color: T.t3 } }, "Erreur de chargement"),
-        actuStatus === "empty" && React.createElement("div", { style: { textAlign: "center", padding: 40, color: T.t3 } }, "Aucun transfert disponible"),
-        actuStatus === "ok" && filteredActu.map(t => React.createElement(AfricaTransferCard, { key: t.id, t: t, onOpen: setSelectedUrl }))
+    // ── Filtres Actualités ─────────────────────────────────────────────────
+    mainTab === "actu" && React.createElement("div", {
+      style: { background: "#fff", borderBottom: "1px solid #e8edf3", padding: "10px 12px", flexShrink: 0 }
+    },
+      React.createElement("div", { style: { display: "flex", gap: 6, overflowX: "auto" } },
+        countries.map(c => React.createElement("button", {
+          key: c, onClick: () => setActuFilter(c),
+          style: {
+            padding: "6px 13px", borderRadius: 20, border: "none", cursor: "pointer",
+            background: actuFilter === c ? "#e53535" : "#f1f5f9",
+            color: actuFilter === c ? "#fff" : "#64748b",
+            fontSize: 11, fontWeight: 700, whiteSpace: "nowrap", transition: "all .15s"
+          }
+        }, `${flags[c]} ${c === "all" ? "Tous" : c}`))
       )
+    ),
+    mainTab === "actu" && React.createElement("div", { style: { flex: 1, overflowY: "auto", paddingTop: 8 } },
+      actuStatus === "load" && React.createElement("div", { style: { textAlign: "center", padding: 40 } }, React.createElement(Spin, null)),
+      actuStatus === "err"  && React.createElement("div", { style: { textAlign: "center", padding: 40, color: "#94a3b8" } }, "Erreur de chargement"),
+      actuStatus === "empty" && React.createElement("div", { style: { textAlign: "center", padding: 40, color: "#94a3b8" } }, "Aucun transfert disponible"),
+      actuStatus === "ok" && filteredActu.map(t =>
+        React.createElement(AfricaTransferCard, { key: t.id, t: t, onOpen: setSelectedUrl })
+      ),
+      React.createElement("div", { style: { height: 20 } })
     )
   );
 }
