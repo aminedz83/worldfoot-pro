@@ -48,7 +48,7 @@
     <script>
         if ("serviceWorker" in navigator) {
             const sw = `
-    const C='wf-pro-v24';
+    const C='wf-pro-v25';
     self.addEventListener('install',e=>{e.waitUntil(caches.open(C).then(c=>c.addAll(['./'])).then(()=>self.skipWaiting()));});
     self.addEventListener('activate',e=>{e.waitUntil(caches.keys().then(ks=>Promise.all(ks.filter(k=>k!==C).map(k=>caches.delete(k)))).then(()=>self.clients.claim()));});
     self.addEventListener('push',e=>{
@@ -857,36 +857,92 @@ function Logo({src,size=16}){
   </div>;
 }
 
-const AVATAR_COLORS=["#ef4444","#f97316","#f59e0b","#10b981","#3b82f6","#6366f1","#8b5cf6","#ec4899","#6b7280"];
+// ============================================
+// SYSTÈME PHOTOS MULTI-SOURCES
+// ============================================
+const AVATAR_COLORS=["#ef4444","#f97316","#f59e0b","#10b981","#3b82f6","#6366f1","#8b5cf6","#ec4899","#14b8a6","#f43f5e","#84cc16","#06b6d4","#d946ef","#fbbf24","#34d399","#60a5fa"];
 function avatarColor(name){if(!name)return AVATAR_COLORS[0];const h=name.split("").reduce((a,c)=>c.charCodeAt(0)+a,0);return AVATAR_COLORS[h%AVATAR_COLORS.length];}
-function avatarInitials(name){if(!name)return"";const p=name.trim().split(/\s+/);return p.length>=2?(p[0][0]+p[p.length-1][0]).toUpperCase():name.substring(0,2).toUpperCase();}
-function getPlayerPhoto(playerId,src){
-  if(!playerId)return src||null;
-  const key=`player_img_${playerId}`;
-  try{const c=localStorage.getItem(key);if(c)return c;}catch(e){}
-  const direct=`https://media.api-sports.io/football/players/${playerId}.png`;
-  const proxy=`https://corsproxy.io/?${encodeURIComponent(direct)}`;
-  const img=new Image();img.crossOrigin="anonymous";
-  img.onload=()=>{try{const cv=document.createElement("canvas");cv.width=112;cv.height=112;const ctx=cv.getContext("2d");ctx.drawImage(img,0,0,112,112);localStorage.setItem(key,cv.toDataURL("image/jpeg",.8));}catch(e){}};
-  img.src=proxy;
-  return proxy;
+function avatarInitials(name){if(!name)return"?";const p=name.trim().split(/\s+/);return p.length>=2?(p[0][0]+p[p.length-1][0]).toUpperCase():name.substring(0,2).toUpperCase();}
+
+// Cache mémoire + localStorage
+const _photoCache=new Map();
+const PHOTO_SOURCES=[
+  {name:"API-Sports-Proxy",  getUrl:(id)=>id?`https://corsproxy.io/?${encodeURIComponent(`https://media.api-sports.io/football/players/${id}.png`)}`:null},
+  {name:"API-Sports-Direct", getUrl:(id)=>id?`https://media.api-sports.io/football/players/${id}.png`:null},
+  {name:"TheSportsDB",       getUrl:async(_,name)=>{try{const r=await fetch(`https://www.thesportsdb.com/api/v1/json/3/searchplayers.php?p=${encodeURIComponent(name)}`);const d=await r.json();return d.player?.[0]?.strCutout||d.player?.[0]?.strThumb||null;}catch{return null;}}},
+  {name:"ESPN",              getUrl:async(_,name)=>{try{const r=await fetch(`https://site.api.espn.com/apis/site/v2/sports/soccer/players?q=${encodeURIComponent(name)}`);const d=await r.json();return d.athletes?.[0]?.headshot?.href||null;}catch{return null;}}},
+];
+
+function checkImg(url){return new Promise(res=>{const i=new Image();i.onload=()=>res(true);i.onerror=()=>res(false);i.src=url;});}
+
+async function resolvePlayerPhoto(playerId,playerName){
+  const key=`pph_${playerId||""}_${playerName}`;
+  if(_photoCache.has(key))return _photoCache.get(key);
+  try{const lc=localStorage.getItem(key);if(lc){_photoCache.set(key,lc);return lc;}}catch(e){}
+  for(const src of PHOTO_SOURCES){
+    try{
+      const url=await src.getUrl(playerId,playerName);
+      if(!url)continue;
+      const ok=await checkImg(url);
+      if(ok){
+        _photoCache.set(key,url);
+        try{localStorage.setItem(key,url);}catch(e){}
+        return url;
+      }
+    }catch(e){}
+  }
+  _photoCache.set(key,null);
+  return null;
 }
+
+// Composant PlayerImage — async multi-sources
+function PlayerImage({playerId,playerName,size=56,ring="rgba(255,255,255,.15)"}){
+  const[url,setUrl]=useState(()=>{
+    const key=`pph_${playerId||""}_${playerName}`;
+    if(_photoCache.has(key))return _photoCache.get(key);
+    try{return localStorage.getItem(key)||null;}catch{return null;}
+  });
+  const[loading,setLoading]=useState(!url);
+  useEffect(()=>{
+    if(url!==undefined&&url!==null&&url!=="")return;
+    let alive=true;
+    resolvePlayerPhoto(playerId,playerName).then(u=>{if(alive){setUrl(u);setLoading(false);}});
+    return()=>{alive=false;};
+  },[playerId,playerName]);
+  const S={width:size,height:size,borderRadius:size/2,border:`2px solid ${ring}`,flexShrink:0,display:"flex",alignItems:"center",justifyContent:"center",overflow:"hidden",color:"#fff",fontSize:size*.35,fontWeight:700,transition:"all .2s"};
+  if(loading)return <div style={{...S,background:"linear-gradient(90deg,#e8edf3 25%,#f1f5f9 50%,#e8edf3 75%)",backgroundSize:"200% 100%",animation:"shimmer 1.2s infinite"}}/>;
+  if(!url)return <div style={{...S,background:avatarColor(playerName)}}>{avatarInitials(playerName)}</div>;
+  return <div style={{...S,background:T.bg3}}><img src={url} style={{width:"100%",height:"100%",objectFit:"cover",display:"block"}} alt="" onError={()=>setUrl(null)}/></div>;
+}
+
+// Avatar classique (logos, petits joueurs — utilise PlayerImage si playerId fourni)
 function Avatar({src,size=40,ring=T.bg4,playerId=null,playerName=""}){
   const[imgSrc,setImgSrc]=useState(()=>{
+    if(playerId){
+      const key=`pph_${playerId}_${playerName}`;
+      if(_photoCache.has(key))return _photoCache.get(key);
+      try{const lc=localStorage.getItem(key);if(lc)return lc;}catch(e){}
+    }
     if(!src)return null;
-    if(playerId)return getPlayerPhoto(playerId,src);
-    if(src.includes("media.api-sports.io")){const direct=src;return`https://corsproxy.io/?${encodeURIComponent(direct)}`;}
+    if(src.includes("media.api-sports.io"))return`https://corsproxy.io/?${encodeURIComponent(src)}`;
     return src;
   });
   const[err,setErr]=useState(false);
-  const[proxied,setProxied]=useState(false);
-  const S={width:size,height:size,borderRadius:size/2,background:err||!src?avatarColor(playerName):T.bg3,border:`2px solid ${ring}`,flexShrink:0,display:"flex",alignItems:"center",justifyContent:"center",overflow:"hidden",color:"#fff",fontSize:size*.35,fontWeight:700};
-  if(err||!src)return <div style={S}>{avatarInitials(playerName)}</div>;
+  const[tried,setTried]=useState(0);
+  // Si on a un playerId et pas de cache → lancer resolvePlayerPhoto
+  useEffect(()=>{
+    if(!playerId||imgSrc)return;
+    resolvePlayerPhoto(playerId,playerName).then(u=>{if(u)setImgSrc(u);else setErr(true);});
+  },[playerId]);
+  const S={width:size,height:size,borderRadius:size/2,background:err||!imgSrc?avatarColor(playerName):T.bg3,border:`2px solid ${ring}`,flexShrink:0,display:"flex",alignItems:"center",justifyContent:"center",overflow:"hidden",color:"#fff",fontSize:size*.35,fontWeight:700};
+  if(err||!imgSrc)return <div style={S}>{avatarInitials(playerName)}</div>;
   return <div style={S}><img src={imgSrc} style={{width:"100%",height:"100%",objectFit:"cover",display:"block"}} alt="" onError={()=>{
-    if(!proxied&&imgSrc&&!imgSrc.includes("wsrv.nl")){
-      setProxied(true);
-      setImgSrc(`https://corsproxy.io/?${encodeURIComponent(src)}`);
-    }else{setErr(true);}
+    const fallbacks=[
+      playerId?`https://corsproxy.io/?${encodeURIComponent(`https://media.api-sports.io/football/players/${playerId}.png`)}`:null,
+      src&&src!==imgSrc?src:null,
+    ].filter(Boolean);
+    if(tried<fallbacks.length){setImgSrc(fallbacks[tried]);setTried(t=>t+1);}
+    else setErr(true);
   }}/></div>;
 }
 
@@ -5736,13 +5792,12 @@ function MercatoCard({ transfer, onTeam }) {
     React.createElement("div", { style: { padding: "14px 14px 0" } },
       // ── Ligne joueur ──
       React.createElement("div", { style: { display: "flex", alignItems: "center", gap: 12, marginBottom: 12 } },
-        // Photo joueur via Avatar amélioré (proxy + cache + initiales)
-        React.createElement(Avatar, {
-          src: player?.photo,
-          size: 56,
-          ring: "#e8edf3",
+        // Photo joueur — PlayerImage multi-sources async
+        React.createElement(PlayerImage, {
           playerId: player?.id,
-          playerName: player?.name || ""
+          playerName: player?.name || "",
+          size: 56,
+          ring: "#e8edf3"
         }),
 
         // Nom + position + date
