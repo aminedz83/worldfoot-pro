@@ -321,9 +321,7 @@
             background: var(--c-base);
             display: flex; flex-direction: column;
             max-width: 430px; margin: 0 auto;
-            overflow: hidden !important;
-            height: 100dvh;
-            max-height: 100dvh;
+            overflow: hidden;
             animation: mdIn 0.2s ease;
         }
         .md-topbar {
@@ -332,7 +330,6 @@
             padding: calc(14px + env(safe-area-inset-top)) 16px 12px;
             background: var(--c-surface);
             border-bottom: 1px solid var(--c-border);
-            position: relative; z-index: 11;
         }
         .md-back-btn {
             background: var(--c-base);
@@ -355,7 +352,6 @@
         /* ── MATCH DETAIL HEADER (sombre conservé pour contraste score) ── */
         .md-header {
             flex-shrink: 0;
-            overflow: hidden;
             background: linear-gradient(170deg, #111827 0%, #0C1220 100%);
             padding: 18px 16px 16px;
             position: relative; overflow: hidden;
@@ -407,8 +403,7 @@
             display: flex;
             border-bottom: 1px solid var(--c-border);
             background: var(--c-surface);
-            flex-shrink: 0 !important;
-            overflow-x: auto;
+            flex-shrink: 0; overflow-x: auto;
             scrollbar-width: none; -webkit-overflow-scrolling: touch;
         }
         .md-tabs::-webkit-scrollbar { display: none; }
@@ -428,14 +423,10 @@
         .md-tab-btn.active { color: var(--c-jade); border-bottom-color: var(--c-jade); font-weight: 700; }
 
         .md-content {
-            flex: 1 1 0 !important;
-            overflow-y: auto !important;
-            overflow-x: hidden;
-            min-height: 0 !important;
+            flex: 1; overflow-y: auto;
             background: var(--c-base);
             scrollbar-width: thin;
             scrollbar-color: rgba(15,23,42,0.08) transparent;
-            -webkit-overflow-scrolling: touch;
         }
         .md-content::-webkit-scrollbar { width: 3px; }
         .md-content::-webkit-scrollbar-thumb { background: rgba(15,23,42,0.10); border-radius: 2px; }
@@ -3933,11 +3924,11 @@ function MatchDetail({state,onClose}){
       ):null
     ),
 
-    React.createElement("div",{className:"md-tabs", style:{flexShrink:0, flexGrow:0, minHeight:46}},
+    React.createElement("div",{className:"md-tabs"},
       TABS2.map(t=>React.createElement("button",{key:t.id,className:`md-tab-btn${tab===t.id?" active":""}`,onClick:()=>{setTab(t.id);if(contentRef.current)contentRef.current.scrollTop=0;}},[t.label]))
     ),
 
-    React.createElement("div",{className:"md-content",ref:contentRef, style:{flex:"1 1 0", minHeight:0, overflowY:"auto"}},
+    React.createElement("div",{className:"md-content",ref:contentRef},
       tab==="resume"?React.createElement("div",{className:"md-panel"},
         renderTimeline(),
         
