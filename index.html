@@ -2188,34 +2188,57 @@ function Row({match:m, onOpen, isFav, onFav}){
 function LeagueBlock({group, onOpen, favs, onFav}){
   const[open,setOpen]=useState(true);
   const lv=group.matches.filter(m=>LIVE_ST.has(m.fixture.status.short)).length;
-  return React.createElement("div", { style: { background: "#fff" } },
+  return React.createElement("div", { style: { background: "var(--c-surface)", marginBottom: 2 } },
     React.createElement("div", {
       onClick: () => setOpen(v => !v),
       style: {
         display: "flex",
         alignItems: "center",
-        gap: 10,
-        padding: "9px 14px",
-        background: "#fff",
-        borderBottom: "1px solid #f0f1f5",
-        borderTop: "3px solid #f5f6f9",
+        gap: 11,
+        padding: "10px 14px",
+        background: "var(--c-base)",
+        borderBottom: "1px solid var(--c-border)",
+        borderTop: "1px solid var(--c-border)",
         cursor: "pointer",
         userSelect: "none"
       }
     },
-      React.createElement("div", { style: { width: 26, height: 26, borderRadius: "50%", overflow: "hidden", flexShrink: 0, border: "1.5px solid #eee" } },
+      React.createElement("div", { style: {
+        width: 36, height: 36, borderRadius: 10,
+        overflow: "hidden", flexShrink: 0,
+        background: "#fff",
+        border: "1px solid var(--c-border)",
+        boxShadow: "0 1px 4px rgba(15,23,42,0.07)",
+        display: "flex", alignItems: "center", justifyContent: "center"
+      } },
         React.createElement(Logo, { src: group.lg.flag || group.lg.logo, size: 26 })
       ),
       React.createElement("div", { style: { flex: 1, minWidth: 0 } },
-        React.createElement("span", { style: { fontSize: 13, fontWeight: 700, color: "#111", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap", display: "block" } },
-          group.lg.country,
-          React.createElement("span", { style: { color: "#999", fontWeight: 500 } }, ": " + group.lg.name)
+        React.createElement("span", { style: {
+          fontFamily: "'Plus Jakarta Sans', sans-serif",
+          fontSize: 13, fontWeight: 700,
+          color: "var(--c-ink)",
+          overflow: "hidden", textOverflow: "ellipsis",
+          whiteSpace: "nowrap", display: "block",
+          letterSpacing: "-0.1px"
+        } }, group.lg.name),
+        React.createElement("div", { style: { display: "flex", alignItems: "center", gap: 4, marginTop: 2 } },
+          React.createElement("span", { style: { fontSize: 11, color: "var(--c-ink-3)", fontWeight: 500 } }, group.lg.country)
         )
       ),
       lv > 0
-        ? React.createElement("span", { style: { fontSize: 10, fontWeight: 900, color: "#e53535", background: "rgba(229,53,53,.1)", border: "1px solid rgba(229,53,53,.25)", padding: "2px 8px", borderRadius: 20, animation: "pulse 1.5s infinite", flexShrink: 0 } }, "LIVE " + lv)
+        ? React.createElement("span", { style: {
+            fontSize: 9, fontWeight: 700,
+            fontFamily: "'JetBrains Mono', monospace",
+            letterSpacing: "0.5px",
+            color: "var(--c-live)",
+            background: "var(--c-live-dim)",
+            border: "1px solid rgba(229,62,62,0.22)",
+            padding: "3px 9px", borderRadius: 20,
+            animation: "pulse 1.5s infinite", flexShrink: 0
+          } }, "● LIVE " + lv)
         : null,
-      React.createElement("span", { style: { fontSize: 10, color: "#ccc", flexShrink: 0 } }, open ? "▾" : "▸")
+      React.createElement("span", { style: { fontSize: 10, color: "var(--c-ink-4)", flexShrink: 0, marginLeft: 4 } }, open ? "▾" : "▸")
     ),
     open ? group.matches.map(m => React.createElement(Row, { key: m.fixture.id, match: m, onOpen: () => onOpen(m.fixture.id), isFav: favs.has(m.fixture.id), onFav: () => onFav(m.fixture.id) })) : null
   );
