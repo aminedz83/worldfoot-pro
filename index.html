@@ -321,8 +321,9 @@
             background: var(--c-base);
             display: flex; flex-direction: column;
             max-width: 430px; margin: 0 auto;
-            overflow: hidden;
+            overflow: hidden !important;
             height: 100dvh;
+            max-height: 100dvh;
             animation: mdIn 0.2s ease;
         }
         .md-topbar {
@@ -406,9 +407,9 @@
             display: flex;
             border-bottom: 1px solid var(--c-border);
             background: var(--c-surface);
-            flex-shrink: 0; overflow-x: auto;
+            flex-shrink: 0 !important;
+            overflow-x: auto;
             scrollbar-width: none; -webkit-overflow-scrolling: touch;
-            position: sticky; top: 0; z-index: 10;
         }
         .md-tabs::-webkit-scrollbar { display: none; }
         .md-tab-btn {
@@ -427,8 +428,10 @@
         .md-tab-btn.active { color: var(--c-jade); border-bottom-color: var(--c-jade); font-weight: 700; }
 
         .md-content {
-            flex: 1; overflow-y: auto;
-            min-height: 0;
+            flex: 1 1 0 !important;
+            overflow-y: auto !important;
+            overflow-x: hidden;
+            min-height: 0 !important;
             background: var(--c-base);
             scrollbar-width: thin;
             scrollbar-color: rgba(15,23,42,0.08) transparent;
@@ -3930,11 +3933,11 @@ function MatchDetail({state,onClose}){
       ):null
     ),
 
-    React.createElement("div",{className:"md-tabs"},
+    React.createElement("div",{className:"md-tabs", style:{flexShrink:0, flexGrow:0, minHeight:46}},
       TABS2.map(t=>React.createElement("button",{key:t.id,className:`md-tab-btn${tab===t.id?" active":""}`,onClick:()=>{setTab(t.id);if(contentRef.current)contentRef.current.scrollTop=0;}},[t.label]))
     ),
 
-    React.createElement("div",{className:"md-content",ref:contentRef},
+    React.createElement("div",{className:"md-content",ref:contentRef, style:{flex:"1 1 0", minHeight:0, overflowY:"auto"}},
       tab==="resume"?React.createElement("div",{className:"md-panel"},
         renderTimeline(),
         
