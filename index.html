@@ -48,7 +48,7 @@
     <script>
         if ("serviceWorker" in navigator) {
             const sw = `
-    const C='wf-pro-v28';
+    const C='wf-pro-v29';
     self.addEventListener('install',e=>{e.waitUntil(caches.open(C).then(c=>c.addAll(['./'])).then(()=>self.skipWaiting()));});
     self.addEventListener('activate',e=>{e.waitUntil(caches.keys().then(ks=>Promise.all(ks.filter(k=>k!==C).map(k=>caches.delete(k)))).then(()=>self.clients.claim()));});
     self.addEventListener('push',e=>{
@@ -6652,8 +6652,8 @@ function TeamPage({ teamId, teamName, teamLogo, leagueId, season, onClose }) {
   if (loading) {
     return (
       <div className="md-overlay" style={{ background: heroGrad }}>
-        <div className="md-topbar" style={{ background: "transparent", borderBottom: "none" }}>
-          <button onClick={onClose} style={{ background: "rgba(0,193,112,.85)", border: "none", color: "#fff", width: 40, height: 40, borderRadius: 12, cursor: "pointer", fontSize: 18, fontWeight: 700, boxShadow: "0 4px 12px rgba(0,193,112,.4)" }}>←</button>
+        <div className="md-topbar" style={{ background: "transparent", borderBottom: "none", paddingTop: "calc(env(safe-area-inset-top, 0px) + 14px)" }}>
+          <button onClick={onClose} style={{ background: "rgba(0,193,112,.85)", border: "none", color: "#fff", width: 44, height: 44, borderRadius: 14, cursor: "pointer", fontSize: 22, fontWeight: 700, boxShadow: "0 4px 12px rgba(0,193,112,.4)", display:"flex", alignItems:"center", justifyContent:"center" }}>←</button>
         </div>
         <div style={{ flex: 1, display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", gap: 16 }}>
           <Logo src={teamLogo} size={64} />
@@ -6680,15 +6680,17 @@ function TeamPage({ teamId, teamName, teamLogo, leagueId, season, onClose }) {
         position: "relative", zIndex: 2,
         background: "transparent",
         display: "flex", alignItems: "center",
-        padding: "14px 16px 0",
+        paddingTop: "calc(env(safe-area-inset-top, 0px) + 14px)",
+        paddingLeft: 16, paddingRight: 16, paddingBottom: 0,
         flexShrink: 0,
       }}>
         <button onClick={onClose} style={{
           background: "linear-gradient(135deg,#00c170,#009e5c)", border: "none", color: "#fff",
-          width: 40, height: 40, borderRadius: 12, cursor: "pointer",
+          width: 44, height: 44, borderRadius: 14, cursor: "pointer",
           display: "flex", alignItems: "center", justifyContent: "center",
-          fontSize: 20, fontWeight: 900,
-          boxShadow: "0 4px 14px rgba(0,193,112,.5)"
+          fontSize: 22, fontWeight: 900,
+          boxShadow: "0 4px 16px rgba(0,193,112,.55)",
+          flexShrink: 0,
         }}>←</button>
       </div>
 
