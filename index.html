@@ -48,7 +48,7 @@
     <script>
         if ("serviceWorker" in navigator) {
             const sw = `
-    const C='wf-pro-v18';
+    const C='wf-pro-v19';
     self.addEventListener('install',e=>{e.waitUntil(caches.open(C).then(c=>c.addAll(['./'])).then(()=>self.skipWaiting()));});
     self.addEventListener('activate',e=>{e.waitUntil(caches.keys().then(ks=>Promise.all(ks.filter(k=>k!==C).map(k=>caches.delete(k)))).then(()=>self.clients.claim()));});
     self.addEventListener('push',e=>{
@@ -5239,207 +5239,418 @@ function CalendarTab({ favs, onFav, onTeam }) {
   const [data, setData] = useState([]);
   const [status, setStatus] = useState("load");
   const [detailMatch, setDetailMatch] = useState(null);
-  
+  const [favOnly, setFavOnly] = useState(false);
+  const [weekOffset, setWeekOffset] = useState(0); // 0 = semaine courante
+  const [teamForms, setTeamForms] = useState({}); // {teamId: [matches]}
+  const [expandedH2H, setExpandedH2H] = useState(null); // fixture id
+  const [h2hData, setH2hData] = useState({});
+
+  // Calcul plage de la semaine affichée
+  const getWeekRange = (offset) => {
+    const now = new Date();
+    const day = now.getDay(); // 0=dim
+    const monday = new Date(now);
+    monday.setDate(now.getDate() - (day === 0 ? 6 : day - 1) + offset * 7);
+    monday.setHours(0, 0, 0, 0);
+    const sunday = new Date(monday);
+    sunday.setDate(monday.getDate() + 6);
+    sunday.setHours(23, 59, 59, 0);
+    return { from: monday, to: sunday };
+  };
+
+  const weekRange = getWeekRange(weekOffset);
+  const fromStr = weekRange.from.toISOString().slice(0, 10);
+  const toStr   = weekRange.to.toISOString().slice(0, 10);
+
+  const fmtWeekLabel = () => {
+    const opts = { day: "numeric", month: "short" };
+    const f = weekRange.from.toLocaleDateString("fr-FR", opts);
+    const t = weekRange.to.toLocaleDateString("fr-FR", opts);
+    if (weekOffset === 0) return `Cette semaine · ${f} – ${t}`;
+    if (weekOffset === 1) return `Semaine prochaine · ${f} – ${t}`;
+    if (weekOffset === -1) return `Semaine passée · ${f} – ${t}`;
+    return `${f} – ${t}`;
+  };
+
   useEffect(() => {
     let mounted = true;
     setStatus("load");
-    
-    const from = today();
-    const to = new Date();
-    to.setDate(to.getDate() + 30);
-    const toStr = to.toISOString().slice(0, 10);
-    
-    api(`/fixtures?league=${lid}&season=${season}&from=${from}&to=${toStr}&status=NS`, 3600000)
+    setData([]);
+
+    const endpoint = weekOffset < 0
+      ? `/fixtures?league=${lid}&season=${season}&from=${fromStr}&to=${toStr}&status=FT`
+      : `/fixtures?league=${lid}&season=${season}&from=${fromStr}&to=${toStr}`;
+
+    api(endpoint, 1800000)
       .then(res => {
-        if (mounted) {
-          setData(res || []);
-          setStatus(res?.length ? "ok" : "empty");
-        }
+        if (!mounted) return;
+        const sorted = (res || []).sort((a, b) =>
+          new Date(a.fixture.date) - new Date(b.fixture.date)
+        );
+        setData(sorted);
+        setStatus(sorted.length ? "ok" : "empty");
+
+        // Charger les formes en arrière-plan
+        const teamIds = [...new Set(sorted.flatMap(m => [m.teams.home.id, m.teams.away.id]))];
+        teamIds.forEach(tid => {
+          if (teamForms[tid]) return;
+          api(`/fixtures?team=${tid}&last=5&status=FT`, 3600000)
+            .then(res => {
+              if (!mounted) return;
+              setTeamForms(prev => ({ ...prev, [tid]: res || [] }));
+            })
+            .catch(() => {});
+        });
       })
-      .catch(() => {
-        if (mounted) setStatus("err");
-      });
-    
+      .catch(() => { if (mounted) setStatus("err"); });
+
     return () => { mounted = false; };
-  }, [lid, season]);
-  
-  // MÊME FONCTION QUE DANS STANDINGSTAB
+  }, [lid, season, weekOffset]);
+
   const openMatchDetail = async (id) => {
     setDetailMatch({ loading: true });
-    
     try {
       const fx = await api(`/fixtures?id=${id}`, 30000);
       const fix = fx[0];
       if (!fix) throw new Error("Match introuvable");
-      
-      const hid = fix.teams.home.id;
-      const aid = fix.teams.away.id;
-      const fid = fix.fixture.id;
+      const hid = fix.teams.home.id, aid = fix.teams.away.id, fid = fix.fixture.id;
       const isLive = LIVE_ST.has(fix.fixture.status.short);
       const isDone = DONE_ST.has(fix.fixture.status.short);
       const detailTTL = isLive ? 15000 : isDone ? 10800000 : 3600000;
-      
-      setDetailMatch({ 
-        partial: true, 
-        data: { 
-          fixture: fix, 
-          stats: [], 
-          events: [], 
-          lineups: [], 
-          players: [], 
-          h2h: [], 
-          injuries: [] 
-        } 
-      });
-      
-      const update = (patch) => {
-        setDetailMatch(prev => 
-          prev?.data ? { ...prev, partial: true, data: { ...prev.data, ...patch } } : prev
-        );
-      };
-      
-      const p_events = api(`/fixtures/events?fixture=${fid}`, detailTTL)
-        .then(d => update({ events: d }))
-        .catch(() => {});
-        
-      const p_stats = api(`/fixtures/statistics?fixture=${fid}`, detailTTL)
-        .then(d => update({ stats: d }))
-        .catch(() => {});
-        
-      const p_lineups = api(`/fixtures/lineups?fixture=${fid}`, detailTTL)
-        .then(d => update({ lineups: d }))
-        .catch(() => {});
-        
-      const p_players = api(`/fixtures/players?fixture=${fid}`, detailTTL)
-        .then(d => update({ players: d }))
-        .catch(() => {});
-        
-      const p_h2h = api(`/fixtures/headtohead?h2h=${hid}-${aid}&last=50`, 86400000)
-        .then(d => update({ h2h: d }))
-        .catch(() => {});
-        
-      const p_inj = api(`/injuries?fixture=${fid}`, isDone ? 10800000 : 3600000)
-        .then(d => update({ injuries: d }))
-        .catch(() => {});
-      
-      await Promise.allSettled([p_events, p_stats, p_lineups, p_players, p_h2h, p_inj]);
-      
+      setDetailMatch({ partial: true, data: { fixture: fix, stats: [], events: [], lineups: [], players: [], h2h: [], injuries: [] } });
+      const upd = patch => setDetailMatch(prev => prev?.data ? { ...prev, partial: true, data: { ...prev.data, ...patch } } : prev);
+      await Promise.allSettled([
+        api(`/fixtures/events?fixture=${fid}`, detailTTL).then(d => upd({ events: d })).catch(() => {}),
+        api(`/fixtures/statistics?fixture=${fid}`, detailTTL).then(d => upd({ stats: d })).catch(() => {}),
+        api(`/fixtures/lineups?fixture=${fid}`, detailTTL).then(d => upd({ lineups: d })).catch(() => {}),
+        api(`/fixtures/players?fixture=${fid}`, detailTTL).then(d => upd({ players: d })).catch(() => {}),
+        api(`/fixtures/headtohead?h2h=${hid}-${aid}&last=50`, 86400000).then(d => upd({ h2h: d })).catch(() => {}),
+        api(`/injuries?fixture=${fid}`, isDone ? 10800000 : 3600000).then(d => upd({ injuries: d })).catch(() => {}),
+      ]);
       setDetailMatch(prev => prev?.data ? { ...prev, partial: false } : prev);
-      
     } catch (e) {
       setDetailMatch({ error: e.message });
     }
   };
-  
-  const SEL = {
-    background: T.bg2,
-    border: `1px solid ${T.bg4}`,
-    color: T.t1,
-    borderRadius: 8,
-    padding: "8px 11px",
-    fontSize: 12,
-    fontWeight: 600,
-    outline: "none",
-    cursor: "pointer"
+
+  const toggleH2H = async (match) => {
+    const fid = match.fixture.id;
+    if (expandedH2H === fid) { setExpandedH2H(null); return; }
+    setExpandedH2H(fid);
+    if (h2hData[fid]) return;
+    const hid = match.teams.home.id, aid = match.teams.away.id;
+    try {
+      const res = await api(`/fixtures/headtohead?h2h=${hid}-${aid}&last=10`, 86400000);
+      setH2hData(prev => ({ ...prev, [fid]: res || [] }));
+    } catch {}
   };
-  
+
+  const getForm = (teamId, matches) => {
+    if (!matches || !matches.length) return [];
+    return [...matches].reverse().slice(0, 5).map(m => {
+      const isHome = m.teams?.home?.id === teamId;
+      const gF = isHome ? (m.goals?.home ?? 0) : (m.goals?.away ?? 0);
+      const gA = isHome ? (m.goals?.away ?? 0) : (m.goals?.home ?? 0);
+      return gF > gA ? "W" : gF < gA ? "L" : "D";
+    });
+  };
+
+  const FormBar = ({ teamId }) => {
+    const form = getForm(teamId, teamForms[teamId]);
+    if (!form.length) return React.createElement("div", { style: { width: 60, height: 10 } });
+    const colors = { W: T.green, D: T.gold, L: "#e53535" };
+    return React.createElement("div", { style: { display: "flex", gap: 3 } },
+      form.map((r, i) => React.createElement("div", {
+        key: i,
+        style: {
+          width: 10, height: 10, borderRadius: 3,
+          background: colors[r],
+          opacity: 0.85
+        }
+      }))
+    );
+  };
+
+  const SEL = {
+    background: T.bg2, border: `1px solid ${T.bg4}`, color: T.t1,
+    borderRadius: 8, padding: "8px 11px", fontSize: 12, fontWeight: 600,
+    outline: "none", cursor: "pointer"
+  };
+
+  // Grouper par date
+  const displayed = favOnly ? data.filter(m => favs.has(m.fixture.id)) : data;
   const groupedByDate = {};
-  data.forEach(match => {
+  displayed.forEach(match => {
     const date = match.fixture.date.slice(0, 10);
     if (!groupedByDate[date]) groupedByDate[date] = [];
     groupedByDate[date].push(match);
   });
-  
   const sortedDates = Object.keys(groupedByDate).sort();
-  
+
   return React.createElement("div", { style: { height: "100%", display: "flex", flexDirection: "column", overflow: "hidden" } },
-    React.createElement("div", { style: { padding: "12px", borderBottom: `1px solid ${T.line}`, display: "flex", gap: 8, flexShrink: 0, background: T.bg1 } },
-      React.createElement("select", {
-        value: lid,
-        onChange: e => setLid(Number(e.target.value)),
-        style: { ...SEL, flex: 2 }
-      },
-        REGIONS.map(region => 
-          React.createElement("optgroup", { key: region, label: region },
-            LEAGUES.filter(l => l.region === region).map(l =>
-              React.createElement("option", { key: l.id, value: l.id }, `${l.flag} ${l.name}`)
+
+    // — Filtres —
+    React.createElement("div", { style: { padding: "10px 12px", borderBottom: `1px solid ${T.line}`, background: T.bg1, flexShrink: 0 } },
+      React.createElement("div", { style: { display: "flex", gap: 8, marginBottom: 8 } },
+        React.createElement("select", {
+          value: lid,
+          onChange: e => { setLid(Number(e.target.value)); setWeekOffset(0); },
+          style: { ...SEL, flex: 2 }
+        },
+          REGIONS.map(region =>
+            React.createElement("optgroup", { key: region, label: region },
+              LEAGUES.filter(l => l.region === region).map(l =>
+                React.createElement("option", { key: l.id, value: l.id }, `${l.flag} ${l.name}`)
+              )
             )
           )
+        ),
+        React.createElement("select", {
+          value: season,
+          onChange: e => setSeason(Number(e.target.value)),
+          style: { ...SEL, width: 80 }
+        },
+          SEASONS.map(y => React.createElement("option", { key: y, value: y }, `${y}`))
         )
       ),
-      React.createElement("select", {
-        value: season,
-        onChange: e => setSeason(Number(e.target.value)),
-        style: { ...SEL, width: 100 }
-      },
-        SEASONS.map(y => 
-          React.createElement("option", { key: y, value: y }, `${y}`)
-        )
+
+      // Navigation semaine + filtre favoris
+      React.createElement("div", { style: { display: "flex", alignItems: "center", gap: 8 } },
+        React.createElement("button", {
+          onClick: () => setWeekOffset(w => w - 1),
+          style: { ...SEL, padding: "6px 12px", fontSize: 14, fontWeight: 700 }
+        }, "‹"),
+        React.createElement("div", {
+          style: { flex: 1, textAlign: "center", fontSize: 11, fontWeight: 700, color: T.t2 }
+        }, fmtWeekLabel()),
+        React.createElement("button", {
+          onClick: () => setWeekOffset(w => w + 1),
+          style: { ...SEL, padding: "6px 12px", fontSize: 14, fontWeight: 700 }
+        }, "›"),
+        React.createElement("button", {
+          onClick: () => setFavOnly(v => !v),
+          style: {
+            ...SEL,
+            padding: "6px 10px",
+            background: favOnly ? T.goldL : T.bg2,
+            color: favOnly ? T.gold : T.t3,
+            border: `1px solid ${favOnly ? T.gold : T.bg4}`,
+            fontSize: 15
+          }
+        }, "★")
       )
     ),
-    
-    React.createElement("div", { style: { flex: 1, overflowY: "auto" } },
-      status === "load" && React.createElement("div", { style: { textAlign: "center", padding: 40 } },
-        React.createElement(Spin, null)
+
+    // — Contenu —
+    React.createElement("div", { style: { flex: 1, overflowY: "auto", background: T.bg2 } },
+      status === "load" && React.createElement("div", { style: { textAlign: "center", padding: 40 } }, React.createElement(Spin, null)),
+      status === "err"  && React.createElement("div", { style: { textAlign: "center", padding: 40, color: T.t3, fontSize: 13 } }, "Erreur de chargement"),
+      status === "empty" && React.createElement("div", { style: { display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", padding: 48, gap: 10 } },
+        React.createElement("div", { style: { fontSize: 32 } }, "📅"),
+        React.createElement("div", { style: { fontSize: 14, fontWeight: 700, color: T.t2 } }, "Aucun match cette semaine"),
+        React.createElement("div", { style: { fontSize: 12, color: T.t3 } }, "Essaie une autre semaine ou une autre ligue")
       ),
-      
-      status === "err" && React.createElement("div", { style: { textAlign: "center", padding: 40, color: T.t3 } },
-        "Erreur de chargement"
-      ),
-      
-      status === "empty" && React.createElement("div", { style: { textAlign: "center", padding: 40, color: T.t3 } },
-        "Aucun match à venir"
-      ),
-      
-      status === "ok" && sortedDates.map(date => 
-        React.createElement("div", { key: date },
-          React.createElement("div", { style: { padding: "8px 12px", background: T.bg2, fontWeight: "bold", fontSize: 13 } },
-            DL(date)
+
+      status === "ok" && sortedDates.map(date =>
+        React.createElement("div", { key: date, style: { marginBottom: 2 } },
+
+          // Header date
+          React.createElement("div", { style: {
+            padding: "7px 14px", background: T.bg1,
+            borderBottom: `1px solid ${T.line}`,
+            borderTop: `1px solid ${T.line}`,
+            display: "flex", alignItems: "center", gap: 8
+          } },
+            React.createElement("span", { style: { fontSize: 12, fontWeight: 800, color: T.t1 } }, DL(date)),
+            React.createElement("span", { style: { fontSize: 11, color: T.t4 } }, `· ${groupedByDate[date].length} match${groupedByDate[date].length > 1 ? "s" : ""}`)
           ),
+
           groupedByDate[date].map(match => {
-            const isFav = favs.has(match.fixture.id);
-            return React.createElement("div", {
-              key: match.fixture.id,
-              onClick: () => openMatchDetail(match.fixture.id), // UTILISE LA NOUVELLE FONCTION
-              style: {
-                display: "flex",
-                alignItems: "center",
-                padding: "12px",
-                borderBottom: `1px solid ${T.line}`,
-                cursor: "pointer"
-              }
-            },
-              React.createElement("div", { style: { width: 50, fontSize: 13, color: T.blue } },
-                hhmm(match.fixture.date)
-              ),
-              React.createElement("div", { style: { flex: 1 } },
-                React.createElement("div", { style: { display: "flex", alignItems: "center", gap: 8, marginBottom: 4 } },
-                  React.createElement(Logo, { src: match.teams.home.logo, size: 16 }),
-                  React.createElement("span", { style: { flex: 1 } }, match.teams.home.name)
+            const fid = match.fixture.id;
+            const isFav = favs.has(fid);
+            const hid = match.teams.home.id;
+            const aid = match.teams.away.id;
+            const hForm = getForm(hid, teamForms[hid]);
+            const aForm = getForm(aid, teamForms[aid]);
+            const isH2HOpen = expandedH2H === fid;
+            const h2h = h2hData[fid] || [];
+            const sh = match.fixture.status?.short;
+            const isDone = DONE_ST.has(sh);
+            const isLive = LIVE_ST.has(sh);
+            const round = match.league?.round;
+            const hg = match.goals?.home;
+            const ag = match.goals?.away;
+
+            return React.createElement("div", { key: fid, style: { background: T.bg1, borderBottom: `1px solid ${T.line}` } },
+
+              // Ligne principale
+              React.createElement("div", {
+                onClick: () => openMatchDetail(fid),
+                style: { display: "flex", alignItems: "stretch", cursor: "pointer", padding: "10px 0" }
+              },
+                // Heure / Score
+                React.createElement("div", { style: {
+                  width: 52, flexShrink: 0, display: "flex", flexDirection: "column",
+                  alignItems: "center", justifyContent: "center", gap: 4,
+                  borderRight: `1px solid ${T.line}`, padding: "0 6px"
+                } },
+                  isDone
+                    ? React.createElement(React.Fragment, null,
+                        React.createElement("div", { style: { fontFamily: "'JetBrains Mono',monospace", fontSize: 15, fontWeight: 900, color: T.t1, lineHeight: 1 } }, `${hg ?? "–"}`),
+                        React.createElement("div", { style: { width: 14, height: 1, background: T.t4 } }),
+                        React.createElement("div", { style: { fontFamily: "'JetBrains Mono',monospace", fontSize: 15, fontWeight: 900, color: T.t1, lineHeight: 1 } }, `${ag ?? "–"}`)
+                      )
+                    : isLive
+                    ? React.createElement("div", { style: { fontSize: 11, fontWeight: 800, color: "#e53535" } }, `${match.fixture.status?.elapsed ?? 0}'`)
+                    : React.createElement("div", { style: { fontSize: 13, fontWeight: 700, color: T.blue } }, hhmm(match.fixture.date))
                 ),
-                React.createElement("div", { style: { display: "flex", alignItems: "center", gap: 8 } },
-                  React.createElement(Logo, { src: match.teams.away.logo, size: 16 }),
-                  React.createElement("span", { style: { flex: 1 } }, match.teams.away.name)
+
+                // Équipes + forme
+                React.createElement("div", { style: { flex: 1, minWidth: 0, padding: "0 10px", display: "flex", flexDirection: "column", gap: 6 } },
+                  // Équipe domicile
+                  React.createElement("div", { style: { display: "flex", alignItems: "center", gap: 7 } },
+                    React.createElement("div", {
+                      onClick: e => { e.stopPropagation(); onTeam && onTeam(hid, match.teams.home.name, match.teams.home.logo, match.league?.id, match.league?.season); },
+                      style: { display: "flex", alignItems: "center", gap: 7, flex: 1, minWidth: 0, cursor: onTeam ? "pointer" : "default" }
+                    },
+                      React.createElement(Logo, { src: match.teams.home.logo, size: 18 }),
+                      React.createElement("span", { style: {
+                        fontSize: 13, fontWeight: isDone && hg > ag ? 800 : 500,
+                        color: isDone && hg < ag ? T.t3 : T.t1,
+                        overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap"
+                      } }, match.teams.home.name)
+                    ),
+                    hForm.length > 0 && React.createElement("div", { style: { display: "flex", gap: 2, flexShrink: 0 } },
+                      hForm.map((r, i) => React.createElement("div", {
+                        key: i,
+                        style: { width: 8, height: 8, borderRadius: 2, background: r === "W" ? T.green : r === "D" ? T.gold : "#e53535" }
+                      }))
+                    )
+                  ),
+                  // Équipe extérieur
+                  React.createElement("div", { style: { display: "flex", alignItems: "center", gap: 7 } },
+                    React.createElement("div", {
+                      onClick: e => { e.stopPropagation(); onTeam && onTeam(aid, match.teams.away.name, match.teams.away.logo, match.league?.id, match.league?.season); },
+                      style: { display: "flex", alignItems: "center", gap: 7, flex: 1, minWidth: 0, cursor: onTeam ? "pointer" : "default" }
+                    },
+                      React.createElement(Logo, { src: match.teams.away.logo, size: 18 }),
+                      React.createElement("span", { style: {
+                        fontSize: 13, fontWeight: isDone && ag > hg ? 800 : 500,
+                        color: isDone && ag < hg ? T.t3 : T.t1,
+                        overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap"
+                      } }, match.teams.away.name)
+                    ),
+                    aForm.length > 0 && React.createElement("div", { style: { display: "flex", gap: 2, flexShrink: 0 } },
+                      aForm.map((r, i) => React.createElement("div", {
+                        key: i,
+                        style: { width: 8, height: 8, borderRadius: 2, background: r === "W" ? T.green : r === "D" ? T.gold : "#e53535" }
+                      }))
+                    )
+                  )
+                ),
+
+                // Actions droite
+                React.createElement("div", { style: { display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", gap: 4, paddingRight: 4 } },
+                  React.createElement("button", {
+                    onClick: e => { e.stopPropagation(); onFav(fid); },
+                    style: { background: "none", border: "none", fontSize: 16, color: isFav ? T.gold : T.t4, cursor: "pointer", padding: "2px 8px" }
+                  }, isFav ? "★" : "☆"),
+                  !isDone && React.createElement("button", {
+                    onClick: e => { e.stopPropagation(); toggleH2H(match); },
+                    style: {
+                      background: isH2HOpen ? T.green : "none",
+                      border: `1px solid ${isH2HOpen ? T.green : T.bg4}`,
+                      borderRadius: 5, fontSize: 9, fontWeight: 800,
+                      color: isH2HOpen ? "#fff" : T.t3,
+                      cursor: "pointer", padding: "2px 5px", lineHeight: 1.4
+                    }
+                  }, "H2H")
                 )
               ),
-              React.createElement("button", {
-                onClick: e => { e.stopPropagation(); onFav(match.fixture.id); },
-                style: {
-                  background: "none",
-                  border: "none",
-                  fontSize: 20,
-                  color: isFav ? T.gold : T.t4,
-                  cursor: "pointer",
-                  padding: 8
-                }
-              }, isFav ? "★" : "☆")
+
+              // Sous-ligne info (round)
+              round && React.createElement("div", { style: { padding: "0 12px 6px 62px", fontSize: 10, color: T.t3, fontWeight: 600 } },
+                round
+              ),
+
+              // Panel H2H dépliable
+              isH2HOpen && React.createElement("div", { style: {
+                background: T.bg2, borderTop: `1px solid ${T.line}`,
+                padding: "10px 12px"
+              } },
+                !h2h.length
+                  ? React.createElement("div", { style: { textAlign: "center", padding: "8px 0" } }, React.createElement(Spin, { s: 16 }))
+                  : React.createElement(React.Fragment, null,
+                      React.createElement("div", { style: { fontSize: 10, fontWeight: 800, color: T.t3, textTransform: "uppercase", letterSpacing: "0.8px", marginBottom: 8 } },
+                        `H2H — ${match.teams.home.name} vs ${match.teams.away.name}`
+                      ),
+                      (() => {
+                        const last10 = h2h.slice(0, 10);
+                        const hW = last10.filter(m => {
+                          const isH = m.teams.home.id === hid;
+                          const gF = isH ? m.goals.home : m.goals.away;
+                          const gA = isH ? m.goals.away : m.goals.home;
+                          return gF > gA;
+                        }).length;
+                        const aW = last10.filter(m => {
+                          const isH = m.teams.home.id === hid;
+                          const gF = isH ? m.goals.home : m.goals.away;
+                          const gA = isH ? m.goals.away : m.goals.home;
+                          return gF < gA;
+                        }).length;
+                        const draws = last10.length - hW - aW;
+                        const total = last10.length || 1;
+
+                        return React.createElement(React.Fragment, null,
+                          // Barre
+                          React.createElement("div", { style: { display: "flex", borderRadius: 6, overflow: "hidden", height: 22, marginBottom: 6 } },
+                            React.createElement("div", { style: { flex: hW, background: T.green, display: "flex", alignItems: "center", justifyContent: "center" } },
+                              hW > 0 && React.createElement("span", { style: { fontSize: 10, fontWeight: 800, color: "#fff" } }, hW)
+                            ),
+                            React.createElement("div", { style: { flex: draws, background: T.gold, display: "flex", alignItems: "center", justifyContent: "center" } },
+                              draws > 0 && React.createElement("span", { style: { fontSize: 10, fontWeight: 800, color: "#fff" } }, draws)
+                            ),
+                            React.createElement("div", { style: { flex: aW, background: "#e53535", display: "flex", alignItems: "center", justifyContent: "center" } },
+                              aW > 0 && React.createElement("span", { style: { fontSize: 10, fontWeight: 800, color: "#fff" } }, aW)
+                            )
+                          ),
+                          // Labels
+                          React.createElement("div", { style: { display: "flex", justifyContent: "space-between", marginBottom: 10 } },
+                            React.createElement("span", { style: { fontSize: 10, color: T.green, fontWeight: 700 } }, match.teams.home.name.split(" ").pop()),
+                            React.createElement("span", { style: { fontSize: 10, color: T.gold, fontWeight: 700 } }, "Nuls"),
+                            React.createElement("span", { style: { fontSize: 10, color: "#e53535", fontWeight: 700 } }, match.teams.away.name.split(" ").pop())
+                          ),
+                          // Derniers matchs
+                          last10.slice(0, 5).map((m, i) => {
+                            const isH = m.teams.home.id === hid;
+                            const gF = isH ? m.goals.home : m.goals.away;
+                            const gA = isH ? m.goals.away : m.goals.home;
+                            const res = gF > gA ? "W" : gF < gA ? "L" : "D";
+                            const resColor = res === "W" ? T.green : res === "L" ? "#e53535" : T.gold;
+                            return React.createElement("div", { key: i, style: {
+                              display: "flex", alignItems: "center", gap: 8,
+                              padding: "4px 0", borderTop: i > 0 ? `1px solid ${T.line}` : "none",
+                              fontSize: 11
+                            } },
+                              React.createElement("div", { style: { width: 16, height: 16, borderRadius: 4, background: resColor, display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0 } },
+                                React.createElement("span", { style: { fontSize: 8, fontWeight: 900, color: "#fff" } }, res === "W" ? "V" : res === "L" ? "D" : "N")
+                              ),
+                              React.createElement("span", { style: { color: T.t3, flexShrink: 0, fontSize: 10 } }, m.fixture.date.slice(0, 7)),
+                              React.createElement("span", { style: { flex: 1, color: T.t2, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" } },
+                                `${m.teams.home.name} ${m.goals.home ?? "–"} – ${m.goals.away ?? "–"} ${m.teams.away.name}`
+                              )
+                            );
+                          })
+                        );
+                      })()
+                    )
+              )
             );
           })
         )
       )
     ),
-    
-    // Détail du match (corrigé)
+
     detailMatch && React.createElement(MatchDetailWrapper, {
       state: detailMatch,
       onClose: () => setDetailMatch(null),
@@ -5447,6 +5658,7 @@ function CalendarTab({ favs, onFav, onTeam }) {
     })
   );
 }
+
 
 // ============================================
 // ONGLET TRANSFERTS (TransfersTab)
