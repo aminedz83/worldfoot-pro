@@ -48,7 +48,7 @@
     <script>
         if ("serviceWorker" in navigator) {
             const sw = `
-    const C='wf-pro-v37';
+    const C='wf-pro-v38';
     self.addEventListener('install',e=>{e.waitUntil(caches.open(C).then(c=>c.addAll(['./'])).then(()=>self.skipWaiting()));});
     self.addEventListener('activate',e=>{e.waitUntil(caches.keys().then(ks=>Promise.all(ks.filter(k=>k!==C).map(k=>caches.delete(k)))).then(()=>self.clients.claim()));});
     self.addEventListener('push',e=>{
@@ -5151,6 +5151,82 @@ function StandingsTab({ onTeam }) {
 // ============================================
 // ONGLET BUTEURS (ScorersTab)
 // ============================================
+// ── Calcul buteurs ligue algérienne depuis les events de la journée ──
+const _algerianScorersCache = { data: null, ts: 0 };
+
+async function buildAlgerianScorers(season) {
+  // Cache 30 min
+  if (_algerianScorersCache.data && Date.now() - _algerianScorersCache.ts < 1800000) {
+    return _algerianScorersCache.data;
+  }
+
+  // Étape 1 : charger les matchs de la saison (1 requête — souvent déjà en cache)
+  const fixtures = await api(`/fixtures?league=186&season=${season}`, 3600000);
+  if (!fixtures || fixtures.length === 0) return [];
+
+  // Étape 2 : récupérer la journée la plus récente terminée
+  const finished = fixtures.filter(f => DONE_ST.has(f.fixture.status.short));
+  if (finished.length === 0) return [];
+
+  // Grouper par round et prendre les rounds terminés
+  const rounds = {};
+  finished.forEach(f => {
+    const r = f.league?.round || "?";
+    if (!rounds[r]) rounds[r] = [];
+    rounds[r].push(f);
+  });
+  const roundKeys = Object.keys(rounds);
+
+  // Étape 3 : charger les events de TOUS les matchs terminés par lots
+  // Mais seulement ceux pas encore en cache mémoire
+  const scorersMap = new Map();
+
+  // On charge par lots de 8 matchs max (1 journée = ~8 matchs)
+  // On traite round par round depuis le plus récent
+  const allFinishedIds = finished.map(f => f.fixture.id);
+
+  // Charger les events par lots de 8
+  const BATCH = 8;
+  for (let i = 0; i < Math.min(allFinishedIds.length, 200); i += BATCH) {
+    const batch = allFinishedIds.slice(i, i + BATCH);
+    const results = await Promise.allSettled(
+      batch.map(id => api(`/fixtures/events?fixture=${id}`, 86400000))
+    );
+
+    results.forEach(r => {
+      if (r.status !== "fulfilled") return;
+      const events = r.value || [];
+      events.forEach(e => {
+        if (e.type !== "Goal" || e.detail === "Missed Penalty" || e.detail === "Own Goal") return;
+        const pid = e.player?.id;
+        const pname = e.player?.name;
+        if (!pid || !pname) return;
+        if (scorersMap.has(pid)) {
+          scorersMap.get(pid).goals++;
+        } else {
+          scorersMap.set(pid, {
+            player: { id: pid, name: pname, photo: `https://media.api-sports.io/football/players/${pid}.png` },
+            team: { id: e.team?.id, name: e.team?.name, logo: `https://media.api-sports.io/football/teams/${e.team?.id}.png` },
+            goals: 1
+          });
+        }
+      });
+    });
+  }
+
+  const result = Array.from(scorersMap.values())
+    .map(s => ({
+      player: s.player,
+      statistics: [{ team: s.team, goals: { total: s.goals }, games: { appearences: 0 } }]
+    }))
+    .sort((a, b) => b.statistics[0].goals.total - a.statistics[0].goals.total)
+    .slice(0, 30);
+
+  _algerianScorersCache.data = result;
+  _algerianScorersCache.ts = Date.now();
+  return result;
+}
+
 function ScorersTab() {
   const [lid, setLid] = useState(186);
   const [season, setSeason] = useState(2024);
@@ -5158,28 +5234,28 @@ function ScorersTab() {
   const [data, setData] = useState([]);
   const [status, setStatus] = useState("load");
   const [lastUpdate, setLastUpdate] = useState(null);
+  const [buildProgress, setBuildProgress] = useState(null);
 
   const loadScorers = useCallback(async (leagueId, seas, typ, silent=false) => {
     if (!silent) setStatus("load");
     try {
       if (leagueId === 186 && typ === "scorers") {
-        // Tester les 3 saisons possibles et garder celle avec le + de buts
-        const [r1, r2, r3] = await Promise.allSettled([
-          api(`/players/topscorers?league=186&season=2024`, 1800000),
-          api(`/players/topscorers?league=186&season=2023`, 1800000),
-          api(`/players/topscorers?league=186&season=2025`, 1800000)
-        ]);
-        const candidates = [r1, r2, r3]
-          .map(r => r.status === "fulfilled" ? (r.value || []) : [])
-          .filter(d => d.length > 0);
-        // Garder la saison dont le top buteur a le plus de buts
-        const best = candidates.reduce((a, b) => {
-          const maxA = a[0]?.statistics?.[0]?.goals?.total || 0;
-          const maxB = b[0]?.statistics?.[0]?.goals?.total || 0;
-          return maxB > maxA ? b : a;
-        }, []);
-        setData(best);
-        setStatus(best.length ? "ok" : "empty");
+        // D'abord essayer l'API standard (1 requête)
+        const apiResult = await api(`/players/topscorers?league=186&season=${seas}`, 1800000).catch(() => []);
+        const apiMax = apiResult?.[0]?.statistics?.[0]?.goals?.total || 0;
+
+        if (apiMax >= 5) {
+          // L'API retourne des données valides
+          setData(apiResult);
+          setStatus("ok");
+        } else {
+          // L'API ne couvre pas bien — on calcule depuis les events
+          setBuildProgress("Calcul depuis les matchs…");
+          const built = await buildAlgerianScorers(seas);
+          setBuildProgress(null);
+          setData(built);
+          setStatus(built.length ? "ok" : "empty");
+        }
       } else {
         const path = typ === "assists"
           ? `/players/topassists?league=${leagueId}&season=${seas}`
@@ -5191,6 +5267,7 @@ function ScorersTab() {
       setLastUpdate(Date.now());
     } catch {
       if (!silent) setStatus("err");
+      setBuildProgress(null);
     }
   }, []);
 
@@ -5198,10 +5275,10 @@ function ScorersTab() {
     loadScorers(lid, season, type);
   }, [lid, season, type]);
 
-  // Refresh quand on revient sur l'onglet après 30 min
   useEffect(() => {
     const onVisible = () => {
-      if (!document.hidden && lastUpdate && Date.now() - lastUpdate > 30 * 60 * 1000) {
+      if (!document.hidden && lastUpdate && Date.now() - lastUpdate > 1800000) {
+        _algerianScorersCache.ts = 0; // invalider cache algérien
         loadScorers(lid, season, type, true);
       }
     };
@@ -5229,9 +5306,8 @@ function ScorersTab() {
             }, t === "scorers" ? "⚽ Buts" : "🎯 Passes")
           )
         ),
-        // Bouton refresh
         React.createElement("button", {
-          onClick: () => loadScorers(lid, season, type),
+          onClick: () => { _algerianScorersCache.ts = 0; loadScorers(lid, season, type); },
           style: { marginLeft: "auto", background: "none", border: "none", fontSize: 20, cursor: "pointer", color: "#94a3b8", padding: "0 4px" }
         }, "↻")
       ),
@@ -5259,14 +5335,14 @@ function ScorersTab() {
 
     // ── LISTE ──
     React.createElement("div", { style: { flex: 1, overflowY: "auto" } },
-      status === "load" && React.createElement("div", { style: { display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", padding: 60, gap: 12 } },
+      (status === "load" || buildProgress) && React.createElement("div", { style: { display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", padding: 60, gap: 12 } },
         React.createElement(Spin, { s: 28, c: "#e53535" }),
-        React.createElement("span", { style: { fontSize: 13, color: "#94a3b8" } }, "Chargement des buteurs…")
+        React.createElement("span", { style: { fontSize: 13, color: "#94a3b8" } }, buildProgress || "Chargement…")
       ),
       status === "err" && React.createElement("div", { style: { textAlign: "center", padding: 40, color: "#94a3b8" } }, "Erreur de chargement"),
-      status === "empty" && React.createElement("div", { style: { textAlign: "center", padding: 40, color: "#94a3b8" } }, "Aucune donnée disponible"),
+      status === "empty" && React.createElement("div", { style: { textAlign: "center", padding: 40, color: "#94a3b8" } }, "Aucune donnée"),
 
-      status === "ok" && React.createElement("div", null,
+      status === "ok" && !buildProgress && React.createElement("div", null,
         data.slice(0, 30).map((item, idx) => {
           const player = item.player;
           const stats = item.statistics?.[0] || {};
@@ -5300,10 +5376,7 @@ function ScorersTab() {
                 team && React.createElement(Logo, { src: team.logo, size: 14 }),
                 React.createElement("span", { style: { fontSize: 11, color: "#64748b", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" } }, team?.name)
               ),
-              React.createElement("div", { style: { display: "flex", alignItems: "center", gap: 8, marginTop: 3 } },
-                games > 0 && React.createElement("span", { style: { fontSize: 10, color: "#94a3b8" } }, `${games} matchs`),
-                type === "scorers" && penalties > 0 && React.createElement("span", { style: { fontSize: 10, color: "#94a3b8" } }, `dont ${penalties} pen.`)
-              )
+              games > 0 && React.createElement("span", { style: { fontSize: 10, color: "#94a3b8", marginTop: 2, display: "block" } }, `${games} matchs`)
             ),
             React.createElement("div", { style: { flexShrink: 0, textAlign: "center", minWidth: 44 } },
               React.createElement("div", { style: { fontSize: 28, fontWeight: 900, color: isTop3 ? rankColors[idx] : "#e53535", lineHeight: 1 } }, value),
