@@ -48,7 +48,7 @@
     <script>
         if ("serviceWorker" in navigator) {
             const sw = `
-    const C='wf-pro-v19';
+    const C='wf-pro-v20';
     self.addEventListener('install',e=>{e.waitUntil(caches.open(C).then(c=>c.addAll(['./'])).then(()=>self.skipWaiting()));});
     self.addEventListener('activate',e=>{e.waitUntil(caches.keys().then(ks=>Promise.all(ks.filter(k=>k!==C).map(k=>caches.delete(k)))).then(()=>self.clients.claim()));});
     self.addEventListener('push',e=>{
@@ -5669,43 +5669,64 @@ async function sbGet(table) {
   try {
     const url = `https://iqeqlsxjiklygywjirqs.supabase.co/rest/v1/${table}?order=published_at.desc&limit=30`;
     const res = await fetch(url, {
-      headers: {
-        "apikey": SB_KEY,
-        "Authorization": `Bearer ${SB_KEY}`
-      }
+      headers: { "apikey": SB_KEY, "Authorization": `Bearer ${SB_KEY}` }
     });
     return await res.json();
-  } catch {
-    return [];
-  }
+  } catch { return []; }
+}
+
+function MercatoCard({ transfer, onTeam }) {
+  const { player, teams, date, type } = transfer;
+  const typeStyle = (() => {
+    const t = (type || "").toLowerCase();
+    if (t === "free") return { bg: T.greenL, color: T.green, label: "Gratuit" };
+    if (t === "loan") return { bg: T.blueL,  color: T.blue,  label: "Prêt" };
+    if (t === "n/a")  return { bg: T.bg3,    color: T.t3,    label: "N/A" };
+    return { bg: T.goldL, color: T.gold, label: type || "—" };
+  })();
+  const fmtDate = date
+    ? new Date(date).toLocaleDateString("fr-FR", { day: "2-digit", month: "short", year: "2-digit" })
+    : "—";
+  return React.createElement("div", {
+    style: { background: T.bg1, borderRadius: 14, margin: "0 10px 10px", boxShadow: T.shadowSm, overflow: "hidden" }
+  },
+    React.createElement("div", { style: { display: "flex", alignItems: "center", gap: 10, padding: "10px 12px 8px" } },
+      React.createElement(Avatar, { src: player?.photo, size: 38, ring: T.bg4 }),
+      React.createElement("div", { style: { flex: 1, minWidth: 0 } },
+        React.createElement("div", { style: { fontSize: 13, fontWeight: 800, color: T.t1, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" } }, player?.name || "—"),
+        React.createElement("div", { style: { fontSize: 10, color: T.t3, marginTop: 2 } }, fmtDate)
+      ),
+      React.createElement("div", { style: { background: typeStyle.bg, color: typeStyle.color, borderRadius: 8, padding: "3px 9px", fontSize: 10, fontWeight: 800 } }, typeStyle.label)
+    ),
+    React.createElement("div", { style: { display: "flex", alignItems: "center", gap: 6, padding: "8px 12px 10px", borderTop: `1px solid ${T.line}`, background: T.bg2 } },
+      React.createElement("div", {
+        onClick: () => onTeam && teams?.out?.id && onTeam(teams.out.id, teams.out.name, teams.out.logo),
+        style: { display: "flex", alignItems: "center", gap: 6, flex: 1, minWidth: 0, cursor: onTeam && teams?.out?.id ? "pointer" : "default" }
+      },
+        React.createElement(Logo, { src: teams?.out?.logo, size: 22 }),
+        React.createElement("span", { style: { fontSize: 11, fontWeight: 600, color: T.t2, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" } }, teams?.out?.name || "?")
+      ),
+      React.createElement("div", { style: { fontSize: 16, color: T.t4, flexShrink: 0 } }, "→"),
+      React.createElement("div", {
+        onClick: () => onTeam && teams?.in?.id && onTeam(teams.in.id, teams.in.name, teams.in.logo),
+        style: { display: "flex", alignItems: "center", gap: 6, flex: 1, minWidth: 0, justifyContent: "flex-end", cursor: onTeam && teams?.in?.id ? "pointer" : "default" }
+      },
+        React.createElement("span", { style: { fontSize: 11, fontWeight: 600, color: T.green, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap", textAlign: "right" } }, teams?.in?.name || "?"),
+        React.createElement(Logo, { src: teams?.in?.logo, size: 22 })
+      )
+    )
+  );
 }
 
 function AfricaTransferCard({ t, onOpen }) {
-  const SOURCE_COLORS = {
-    "Dzfoot": "#00883a",
-    "El Heddaf": "#c8002d",
-    "MarocSport": "#c8002d",
-    "KingFut": "#1a1a2e",
-    "BBC Afrique": "#bb1919",
-    "FootMercato": "#ff6b00"
-  };
-  
+  const SOURCE_COLORS = { "Dzfoot": "#00883a", "El Heddaf": "#c8002d", "MarocSport": "#c8002d", "KingFut": "#1a1a2e", "BBC Afrique": "#bb1919", "FootMercato": "#ff6b00" };
   const srcColor = SOURCE_COLORS[t.source_name] || T.red;
   const date = t.published_at ? new Date(t.published_at).toLocaleDateString("fr-FR", { day: "2-digit", month: "short" }) : "";
   const countryFlags = { "Algérie": "🇩🇿", "Maroc": "🇲🇦", "Tunisie": "🇹🇳", "Égypte": "🇪🇬" };
   const flag = countryFlags[t.country] || "🌍";
-  
   return React.createElement("div", {
     onClick: () => onOpen(t.source_url),
-    style: {
-      margin: "0 10px 10px",
-      background: "#fff",
-      borderRadius: 14,
-      boxShadow: T.shadowSm,
-      borderLeft: `4px solid ${srcColor}`,
-      overflow: "hidden",
-      cursor: "pointer"
-    }
+    style: { margin: "0 10px 10px", background: "#fff", borderRadius: 14, boxShadow: T.shadowSm, borderLeft: `4px solid ${srcColor}`, overflow: "hidden", cursor: "pointer" }
   },
     React.createElement("div", { style: { display: "flex", alignItems: "center", gap: 8, padding: "10px 14px 8px" } },
       React.createElement("div", { style: { background: srcColor, borderRadius: 6, padding: "2px 8px" } },
@@ -5717,104 +5738,157 @@ function AfricaTransferCard({ t, onOpen }) {
     React.createElement("div", { style: { padding: "0 14px 12px" } },
       React.createElement("div", { style: { fontSize: 14, fontWeight: 700, marginBottom: 6 } }, t.player_name),
       React.createElement("div", { style: { display: "flex", alignItems: "center", gap: 6 } },
-        React.createElement("span", { style: { background: "rgba(0,184,107,0.1)", color: T.red, borderRadius: 20, padding: "3px 10px", fontSize: 10, fontWeight: 800 } },
-          t.transfer_type || "Mercato"
-        )
+        React.createElement("span", { style: { background: "rgba(0,184,107,0.1)", color: T.red, borderRadius: 20, padding: "3px 10px", fontSize: 10, fontWeight: 800 } }, t.transfer_type || "Mercato")
       )
     )
   );
 }
 
-function TransfersTab() {
-  const [data, setData] = useState([]);
-  const [status, setStatus] = useState("load");
-  const [filter, setFilter] = useState("all");
-  const [selectedUrl, setSelectedUrl] = useState(null);
-  
+const MERCATO_CLUBS = [
+  { id: 918, name: "JS Kabylie",    algerian: true },
+  { id: 906, name: "MC Alger",      algerian: true },
+  { id: 910, name: "USM Alger",     algerian: true },
+  { id: 904, name: "CR Belouizdad", algerian: true },
+  { id: 905, name: "ES Sétif",      algerian: true },
+  { id: 85,  name: "PSG",           algerian: false },
+  { id: 80,  name: "Lyon",          algerian: false },
+  { id: 81,  name: "Marseille",     algerian: false },
+  { id: 33,  name: "Man United",    algerian: false },
+  { id: 40,  name: "Liverpool",     algerian: false },
+  { id: 50,  name: "Man City",      algerian: false },
+  { id: 529, name: "Barcelone",     algerian: false },
+  { id: 541, name: "Real Madrid",   algerian: false },
+  { id: 489, name: "AC Milan",      algerian: false },
+  { id: 496, name: "Juventus",      algerian: false },
+  { id: 157, name: "Bayern",        algerian: false },
+  { id: 165, name: "Dortmund",      algerian: false },
+];
+const ALGERIAN_IDS = new Set(MERCATO_CLUBS.filter(c => c.algerian).map(c => c.id));
+
+function TransfersTab({ onTeam }) {
+  const [mainTab,       setMainTab]       = useState("mercato");
+  const [clubFilter,    setClubFilter]    = useState("algerie");
+  const [typeFilter,    setTypeFilter]    = useState("all");
+  const [mercatoData,   setMercatoData]   = useState([]);
+  const [mercatoStatus, setMercatoStatus] = useState("idle");
+  const [loadedClubs,   setLoadedClubs]   = useState(new Set());
+  const [actuData,      setActuData]      = useState([]);
+  const [actuStatus,    setActuStatus]    = useState("idle");
+  const [actuFilter,    setActuFilter]    = useState("all");
+  const [selectedUrl,   setSelectedUrl]   = useState(null);
+
   useEffect(() => {
-    let mounted = true;
-    setStatus("load");
-    
-    sbGet("transfers_africa")
-      .then(res => {
-        if (mounted) {
-          setData(res || []);
-          setStatus(res?.length ? "ok" : "empty");
-        }
-      })
-      .catch(() => {
-        if (mounted) setStatus("err");
+    if (mainTab !== "mercato") return;
+    const clubs = MERCATO_CLUBS.filter(c => clubFilter === "algerie" ? c.algerian : !c.algerian);
+    const toLoad = clubs.filter(c => !loadedClubs.has(c.id));
+    if (!toLoad.length) { if (mercatoStatus === "idle") setMercatoStatus("ok"); return; }
+    setMercatoStatus("load");
+    Promise.allSettled(
+      toLoad.map(c => api(`/transfers?team=${c.id}`, 86400000).then(res => ({ clubId: c.id, data: res || [] })).catch(() => ({ clubId: c.id, data: [] })))
+    ).then(results => {
+      const newEntries = [];
+      const newLoaded = new Set(loadedClubs);
+      results.forEach(r => {
+        if (r.status !== "fulfilled") return;
+        const { clubId, data } = r.value;
+        newLoaded.add(clubId);
+        data.forEach(entry => {
+          (entry.transfers || []).forEach(t => {
+            const year = parseInt((t.date || "").slice(0, 4));
+            if (year < 2023) return;
+            newEntries.push({ player: entry.player, date: t.date, type: t.type, teams: t.teams, _clubId: clubId });
+          });
+        });
       });
-    
-    return () => { mounted = false; };
-  }, []);
-  
+      setMercatoData(prev => {
+        const existing = new Set(prev.map(e => `${e.player?.id}-${e.date}-${e.type}`));
+        const fresh = newEntries.filter(e => !existing.has(`${e.player?.id}-${e.date}-${e.type}`));
+        return [...prev, ...fresh].sort((a, b) => new Date(b.date) - new Date(a.date));
+      });
+      setLoadedClubs(newLoaded);
+      setMercatoStatus("ok");
+    });
+  }, [mainTab, clubFilter]);
+
+  useEffect(() => {
+    if (mainTab !== "actu" || actuData.length) return;
+    setActuStatus("load");
+    sbGet("transfers_africa")
+      .then(res => { setActuData(res || []); setActuStatus(res?.length ? "ok" : "empty"); })
+      .catch(() => setActuStatus("err"));
+  }, [mainTab]);
+
+  const filteredMercato = mercatoData.filter(t => {
+    if (clubFilter === "algerie" && !ALGERIAN_IDS.has(t._clubId)) return false;
+    if (clubFilter === "europe"  &&  ALGERIAN_IDS.has(t._clubId)) return false;
+    if (typeFilter === "Loan" && t.type !== "Loan") return false;
+    if (typeFilter === "Free" && t.type !== "Free") return false;
+    if (typeFilter === "paid" && (t.type === "Loan" || t.type === "Free" || t.type === "N/A" || !t.type)) return false;
+    return true;
+  });
+
   const countries = ["all", "Algérie", "Maroc", "Tunisie", "Égypte"];
-  const filtered = filter === "all" ? data : data.filter(t => t.country === filter);
-  const flags = { "all": "🌍", "Algérie": "🇩🇿", "Maroc": "🇲🇦", "Tunisie": "🇹🇳", "Égypte": "🇪🇬" };
-  
+  const flags = { all: "🌍", "Algérie": "🇩🇿", "Maroc": "🇲🇦", "Tunisie": "🇹🇳", "Égypte": "🇪🇬" };
+  const filteredActu = actuFilter === "all" ? actuData : actuData.filter(t => t.country === actuFilter);
+
   if (selectedUrl) {
     return React.createElement("div", { style: { height: "100%", display: "flex", flexDirection: "column" } },
-      React.createElement("div", { style: { padding: "12px", background: T.red, display: "flex", alignItems: "center", gap: 12 } },
-        React.createElement("button", {
-          onClick: () => setSelectedUrl(null),
-          style: { background: "rgba(255,255,255,0.2)", border: "none", color: "#fff", padding: "8px 16px", borderRadius: 8, cursor: "pointer" }
-        }, "← Retour"),
+      React.createElement("div", { style: { padding: "12px", background: T.red, display: "flex", alignItems: "center", gap: 12, flexShrink: 0 } },
+        React.createElement("button", { onClick: () => setSelectedUrl(null), style: { background: "rgba(255,255,255,0.2)", border: "none", color: "#fff", padding: "8px 16px", borderRadius: 8, cursor: "pointer" } }, "← Retour"),
         React.createElement("span", { style: { color: "#fff", fontWeight: 700 } }, "Article")
       ),
-      React.createElement("iframe", {
-        src: selectedUrl,
-        style: { flex: 1, border: "none", width: "100%" }
-      })
+      React.createElement("iframe", { src: selectedUrl, style: { flex: 1, border: "none", width: "100%" } })
     );
   }
-  
+
   return React.createElement("div", { style: { height: "100%", display: "flex", flexDirection: "column", overflow: "hidden" } },
-    React.createElement("div", { style: { padding: "12px", borderBottom: `1px solid ${T.line}`, flexShrink: 0, background: T.bg1 } },
-      React.createElement("div", { style: { display: "flex", gap: 6, overflowX: "auto", paddingBottom: 2 } },
-        countries.map(c => 
-          React.createElement("button", {
-            key: c,
-            onClick: () => setFilter(c),
-            style: {
-              padding: "6px 12px",
-              borderRadius: 20,
-              border: "none",
-              background: filter === c ? T.red : T.bg2,
-              color: filter === c ? "#fff" : T.t2,
-              fontSize: 11,
-              fontWeight: filter === c ? 700 : 500,
-              cursor: "pointer",
-              whiteSpace: "nowrap"
-            }
-          }, `${flags[c]} ${c === "all" ? "Tous" : c}`)
+    // Tabs principaux
+    React.createElement("div", { style: { display: "flex", background: T.bg1, borderBottom: `1px solid ${T.line}`, flexShrink: 0 } },
+      [{ id: "mercato", label: "⚽ Mercato", color: T.green }, { id: "actu", label: "📰 Actualités", color: "#e53535" }]
+        .map(t => React.createElement("button", {
+          key: t.id, onClick: () => setMainTab(t.id),
+          style: { flex: 1, padding: "13px 0", background: "none", border: "none", cursor: "pointer", fontSize: 12, fontWeight: 800, color: mainTab === t.id ? t.color : T.t3, borderBottom: mainTab === t.id ? `3px solid ${t.color}` : "3px solid transparent", transition: "all .15s" }
+        }, t.label))
+    ),
+
+    // MERCATO
+    mainTab === "mercato" && React.createElement(React.Fragment, null,
+      React.createElement("div", { style: { background: T.bg1, borderBottom: `1px solid ${T.line}`, padding: "10px 12px", flexShrink: 0 } },
+        React.createElement("div", { style: { display: "flex", gap: 6, marginBottom: 8 } },
+          [{ id: "algerie", label: "🇩🇿 Algérie" }, { id: "europe", label: "🌍 Europe" }].map(f =>
+            React.createElement("button", { key: f.id, onClick: () => setClubFilter(f.id), style: { flex: 1, padding: "7px 0", borderRadius: 8, border: "none", cursor: "pointer", background: clubFilter === f.id ? T.green : T.bg2, color: clubFilter === f.id ? "#fff" : T.t2, fontSize: 11, fontWeight: 700 } }, f.label)
+          )
+        ),
+        React.createElement("div", { style: { display: "flex", gap: 5 } },
+          [{ id: "all", label: "Tous" }, { id: "Free", label: "Gratuit" }, { id: "Loan", label: "Prêt" }, { id: "paid", label: "Payant" }].map(f =>
+            React.createElement("button", { key: f.id, onClick: () => setTypeFilter(f.id), style: { flex: 1, padding: "5px 0", borderRadius: 7, border: "none", cursor: "pointer", background: typeFilter === f.id ? T.t1 : T.bg2, color: typeFilter === f.id ? "#fff" : T.t3, fontSize: 10, fontWeight: 700 } }, f.label)
+          )
         )
+      ),
+      React.createElement("div", { style: { flex: 1, overflowY: "auto", paddingTop: 8, background: T.bg2 } },
+        mercatoStatus === "load" && React.createElement("div", { style: { textAlign: "center", padding: 40 } }, React.createElement(Spin, null)),
+        mercatoStatus === "ok" && filteredMercato.length === 0 && React.createElement("div", { style: { textAlign: "center", padding: 40, color: T.t3, fontSize: 13 } }, "Aucun transfert trouvé"),
+        mercatoStatus === "ok" && filteredMercato.map((t, i) => React.createElement(MercatoCard, { key: i, transfer: t, onTeam: onTeam }))
       )
     ),
-    
-    React.createElement("div", { style: { flex: 1, overflowY: "auto", paddingTop: 8 } },
-      status === "load" && React.createElement("div", { style: { textAlign: "center", padding: 40 } },
-        React.createElement(Spin, null)
+
+    // ACTUALITÉS SUPABASE
+    mainTab === "actu" && React.createElement(React.Fragment, null,
+      React.createElement("div", { style: { padding: "10px 12px", borderBottom: `1px solid ${T.line}`, flexShrink: 0, background: T.bg1 } },
+        React.createElement("div", { style: { display: "flex", gap: 6, overflowX: "auto" } },
+          countries.map(c => React.createElement("button", { key: c, onClick: () => setActuFilter(c), style: { padding: "6px 12px", borderRadius: 20, border: "none", cursor: "pointer", background: actuFilter === c ? T.red : T.bg2, color: actuFilter === c ? "#fff" : T.t2, fontSize: 11, fontWeight: actuFilter === c ? 700 : 500, whiteSpace: "nowrap" } }, `${flags[c]} ${c === "all" ? "Tous" : c}`))
+        )
       ),
-      
-      status === "err" && React.createElement("div", { style: { textAlign: "center", padding: 40, color: T.t3 } },
-        "Erreur de chargement"
-      ),
-      
-      status === "empty" && React.createElement("div", { style: { textAlign: "center", padding: 40, color: T.t3 } },
-        "Aucun transfert disponible"
-      ),
-      
-      status === "ok" && filtered.map(t => 
-        React.createElement(AfricaTransferCard, {
-          key: t.id,
-          t: t,
-          onOpen: setSelectedUrl
-        })
+      React.createElement("div", { style: { flex: 1, overflowY: "auto", paddingTop: 8 } },
+        actuStatus === "load" && React.createElement("div", { style: { textAlign: "center", padding: 40 } }, React.createElement(Spin, null)),
+        actuStatus === "err"  && React.createElement("div", { style: { textAlign: "center", padding: 40, color: T.t3 } }, "Erreur de chargement"),
+        actuStatus === "empty" && React.createElement("div", { style: { textAlign: "center", padding: 40, color: T.t3 } }, "Aucun transfert disponible"),
+        actuStatus === "ok" && filteredActu.map(t => React.createElement(AfricaTransferCard, { key: t.id, t: t, onOpen: setSelectedUrl }))
       )
     )
   );
 }
+
 
 // ============================================
 // ONGLET ACTUALITÉS (ActuTab)
@@ -6541,7 +6615,7 @@ function App() {
       case "standings": return React.createElement(StandingsTab, { onTeam: openTeam });
       case "scorers": return React.createElement(ScorersTab, null);
       case "calendar": return React.createElement(CalendarTab, { favs, onFav: toggleFav, onTeam: openTeam });
-      case "transfers": return React.createElement(TransfersTab, null);
+      case "transfers": return React.createElement(TransfersTab, { onTeam: openTeam });
       case "actu": return React.createElement(ActuTab, null);
       case "jsk": return React.createElement(JSKTab, null);
       default: return React.createElement(ScoresTab, { favs, onFav: toggleFav });
