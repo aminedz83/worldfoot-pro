@@ -43,7 +43,7 @@
     </script>
     <link rel="preconnect" href="https://fonts.googleapis.com" />
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
-    <link href="https://fonts.googleapis.com/css2?family=Syne:wght@400;500;600;700;800&family=Outfit:wght@300;400;500;600;700&family=Barlow+Condensed:wght@600;700;800;900&display=swap" rel="stylesheet" />
+    <link href="https://fonts.googleapis.com/css2?family=Barlow:wght@400;500;600;700;800;900&family=Barlow+Condensed:wght@600;700;800;900&display=swap" rel="stylesheet" />
     <link rel="apple-touch-icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 180 180'><rect width='180' height='180' rx='36' fill='%2300b86b'/><text y='130' x='90' text-anchor='middle' font-size='100'>⚡</text></svg>" />
     <script>
         if ("serviceWorker" in navigator) {
@@ -74,7 +74,7 @@
                 .catch(() => {});
         }
     </script>
-    
+    <link href="https://fonts.googleapis.com/css2?family=Barlow+Condensed:wght@400;600;700;800;900&family=Barlow:wght@400;500;600;700&display=swap" rel="stylesheet" />
     <style>
         *,
         *::before,
@@ -90,9 +90,9 @@
         body {
             height: 100%;
             background: #f4f5f7;
-            font-family: "Outfit", -apple-system, BlinkMacSystemFont, sans-serif;
+            font-family: "Barlow", -apple-system, BlinkMacSystemFont, sans-serif;
             color: #1a1d23;
-            background: #f0f2f8;
+            background: #eef0f5;
             -webkit-tap-highlight-color: transparent;
             -webkit-font-smoothing: antialiased;
             -moz-osx-font-smoothing: grayscale;
@@ -115,7 +115,7 @@
         input,
         select,
         button {
-            font-family: "Outfit", -apple-system, sans-serif;
+            font-family: "Barlow", -apple-system, sans-serif;
         }
         select option {
             background: #fff;
@@ -1175,223 +1175,15 @@
             animation: mdSlideUp 0.22s cubic-bezier(0.22, 1, 0.36, 1);
         }
 
-        /* ═══════════════════════════════════════════════
-           INTERFACE PREMIUM — HEADER + ONGLETS
-           ═══════════════════════════════════════════════ */
-
-        :root {
-            --g-start: #ffffff;
-            --g-end: #f5f7ff;
-            --accent: #0ea86a;
-            --accent-2: #0077ff;
-            --accent-pill: rgba(14,168,106,0.10);
-            --pill-border: rgba(14,168,106,0.22);
-            --header-shadow: 0 1px 0 rgba(255,255,255,0.9) inset,
-                             0 6px 32px rgba(14,30,80,0.08),
-                             0 2px 8px rgba(14,30,80,0.05);
-            --tab-active-bg: #ffffff;
-            --tab-active-shadow: 0 2px 12px rgba(14,30,80,0.10), 0 1px 3px rgba(14,30,80,0.06);
-        }
-
-        /* ── HEADER ── */
-        .wf-header {
-            flex-shrink: 0;
-            position: relative;
-            padding: calc(env(safe-area-inset-top) + 14px) 18px 0;
-            background: linear-gradient(170deg, #ffffff 0%, #f6f8ff 100%);
-            box-shadow: var(--header-shadow);
-            overflow: hidden;
-        }
-        .wf-header::before {
-            /* subtle grain texture */
-            content: "";
-            position: absolute;
-            inset: 0;
-            background-image: url("data:image/svg+xml,%3Csvg viewBox='0 0 200 200' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.75' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)' opacity='0.03'/%3E%3C/svg%3E");
-            pointer-events: none;
-            opacity: 0.4;
-        }
-        .wf-header::after {
-            /* top accent stripe */
-            content: "";
-            position: absolute;
-            top: 0; left: 0; right: 0;
-            height: 2px;
-            background: linear-gradient(90deg, #0ea86a 0%, #0077ff 50%, #0ea86a 100%);
-            background-size: 200% 100%;
-            animation: stripeFlow 4s linear infinite;
-        }
-        @keyframes stripeFlow {
-            0%   { background-position: 0% 0; }
-            100% { background-position: 200% 0; }
-        }
-
-        /* ── TOP ROW ── */
-        .wf-top-row {
-            display: flex;
-            align-items: center;
-            justify-content: space-between;
-            margin-bottom: 16px;
-        }
-
-        /* Logo cluster */
-        .wf-logo-cluster {
-            display: flex;
-            align-items: center;
-            gap: 10px;
-        }
-        .wf-logo-mark {
-            width: 36px;
-            height: 36px;
-            border-radius: 12px;
-            background: linear-gradient(145deg, #0ea86a, #097a4d);
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            font-size: 17px;
-            box-shadow: 0 4px 14px rgba(14,168,106,0.35),
-                        0 1px 0 rgba(255,255,255,0.25) inset;
-            flex-shrink: 0;
-        }
-        .wf-logo-text {
-            display: flex;
-            flex-direction: column;
-            line-height: 1;
-            gap: 1px;
-        }
-        .wf-logo-main {
-            font-family: "Syne", sans-serif;
-            font-size: 18px;
-            font-weight: 800;
-            letter-spacing: -0.5px;
-            color: #0d1117;
-        }
-        .wf-logo-sub {
-            font-family: "Outfit", sans-serif;
-            font-size: 9px;
-            font-weight: 500;
-            letter-spacing: 2.5px;
-            text-transform: uppercase;
-            color: #0ea86a;
-        }
-
-        /* Right badges */
-        .wf-badges {
-            display: flex;
-            align-items: center;
-            gap: 7px;
-        }
-        .wf-badge-live {
-            display: flex;
-            align-items: center;
-            gap: 5px;
-            padding: 5px 11px;
-            border-radius: 20px;
-            background: rgba(239,68,68,0.07);
-            border: 1px solid rgba(239,68,68,0.16);
-        }
-        .wf-badge-live span {
-            font-family: "Syne", sans-serif;
-            font-size: 10px;
-            font-weight: 700;
-            letter-spacing: 1px;
-            color: #dc2626;
-        }
-        .wf-badge-api {
-            padding: 5px 9px;
-            border-radius: 10px;
-            background: rgba(0,0,0,0.04);
-            border: 1px solid rgba(0,0,0,0.07);
-            font-family: "Outfit", sans-serif;
-            font-size: 9.5px;
-            font-weight: 500;
-            color: #8c94a6;
-        }
-        .wf-badge-api strong { color: #4a5568; font-weight: 600; }
-        .wf-btn-power {
-            width: 32px; height: 32px;
-            border-radius: 10px;
-            background: rgba(0,0,0,0.04);
-            border: 1px solid rgba(0,0,0,0.07);
-            display: flex; align-items: center; justify-content: center;
-            cursor: pointer;
-            font-size: 14px;
-            color: #8c94a6;
-            transition: background 0.15s, color 0.15s;
-        }
-        .wf-btn-power:active { background: rgba(239,68,68,0.08); color: #dc2626; }
-
-        /* ── TAB BAR ── */
-        .wf-tabbar {
-            display: flex;
-            gap: 4px;
-            overflow-x: auto;
-            scrollbar-width: none;
-            padding: 0 0 calc(14px + env(safe-area-inset-bottom, 0px));
-            -webkit-overflow-scrolling: touch;
-        }
-        .wf-tabbar::-webkit-scrollbar { display: none; }
-
-        .wf-tab {
-            position: relative;
-            flex-shrink: 0;
-            padding: 7px 14px;
-            border-radius: 10px;
-            border: none;
-            background: transparent;
-            cursor: pointer;
-            transition: all 0.22s cubic-bezier(.22,1,.36,1);
-            display: flex;
-            align-items: center;
-            gap: 5px;
-            white-space: nowrap;
-        }
-        .wf-tab-label {
-            font-family: "Syne", sans-serif;
-            font-size: 11px;
-            font-weight: 700;
-            letter-spacing: 0.3px;
-            text-transform: uppercase;
-            color: #a0aabb;
-            transition: color 0.2s;
-        }
-        .wf-tab:active { transform: scale(0.95); }
-
-        /* Active state */
-        .wf-tab.active {
-            background: var(--tab-active-bg);
-            box-shadow: var(--tab-active-shadow);
-        }
-        .wf-tab.active .wf-tab-label {
-            color: #0d1117;
-        }
-        /* Active indicator dot */
-        .wf-tab.active::after {
-            content: "";
-            position: absolute;
-            bottom: -2px;
-            left: 50%;
-            transform: translateX(-50%);
-            width: 16px;
-            height: 3px;
-            border-radius: 2px;
-            background: linear-gradient(90deg, #0ea86a, #0077ff);
-            opacity: 0;
-            transition: opacity 0.2s;
-        }
-
-        /* ── LIVE DOT override for new header ── */
-        .wf-live-dot {
-            width: 6px; height: 6px;
-            border-radius: 50%;
-            background: #dc2626;
-            animation: dotPulse 1.4s ease-in-out infinite, pulseR 1.4s ease-in-out infinite;
-            flex-shrink: 0;
-        }
-
         @keyframes fadeSlide {
-            from { opacity: 0; transform: translateY(10px); }
-            to   { opacity: 1; transform: translateY(0); }
+            from {
+                opacity: 0;
+                transform: translateY(10px);
+            }
+            to {
+                opacity: 1;
+                transform: translateY(0);
+            }
         }
     </style>
 </head>
@@ -6810,53 +6602,68 @@ function App() {
     }
   };
   
-  return React.createElement("div", { style: { height: "100%", display: "flex", flexDirection: "column", background: "#ffffff" } },
-
-    /* ── HEADER PREMIUM ── */
-    React.createElement("div", { className: "wf-header" },
-
-      React.createElement("div", { className: "wf-top-row" },
-
-        /* Logo */
-        React.createElement("div", { className: "wf-logo-cluster" },
-          React.createElement("div", { className: "wf-logo-mark" }, "⚡"),
-          React.createElement("div", { className: "wf-logo-text" },
-            React.createElement("span", { className: "wf-logo-main" }, "WORLDFOOT"),
-            React.createElement("span", { className: "wf-logo-sub" }, "Pro · Live · By Amine")
-          )
-        ),
-
-        /* Badges */
-        React.createElement("div", { className: "wf-badges" },
-          React.createElement("div", { className: "wf-badge-live" },
-            React.createElement("div", { className: "wf-live-dot" }),
-            React.createElement("span", null, "LIVE")
+  return React.createElement("div", { style: { height: "100%", display: "flex", flexDirection: "column", background: T.bg0 } },
+    React.createElement("div", { style: {
+      padding: "16px 16px 8px",
+      paddingTop: "calc(16px + env(safe-area-inset-top))",
+      background: "linear-gradient(135deg, #00b86b, #009657)",
+      color: "#fff"
+    } },
+      React.createElement("div", { style: { display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 4 } },
+        React.createElement("span", { style: { fontSize: 24, fontWeight: 900, fontFamily: "'Barlow Condensed', sans-serif", letterSpacing: -0.5 } }, "WORLDFOOT"),
+        React.createElement("div", { style: { display: "flex", alignItems: "center", gap: 8 } },
+          React.createElement("div", { style: { display: "flex", alignItems: "center", gap: 4, background: "rgba(255,255,255,0.15)", borderRadius: 20, padding: "4px 8px" } },
+            React.createElement("div", { className: "live-dot" }),
+            React.createElement("span", { style: { fontSize: 10, fontWeight: 700, color: "#fff" } }, "LIVE")
           ),
-          React.createElement("div", { className: "wf-badge-api" },
-            React.createElement("strong", null, apiCallsToday),
-            "/7.5k"
+          React.createElement("div", { style: { background: "rgba(0,0,0,0.2)", borderRadius: 10, padding: "4px 8px" } },
+            React.createElement("span", { style: { fontSize: 9, color: "rgba(255,255,255,0.7)" } },
+              apiCallsToday, React.createElement("span", { style: { opacity: 0.5 } }, "/7.5k")
+            )
           ),
           React.createElement("button", {
-            className: "wf-btn-power",
-            onClick: () => { localStorage.removeItem("wf_auth"); window.location.href = "login.html"; }
+            onClick: () => { localStorage.removeItem("wf_auth"); window.location.href = "login.html"; },
+            style: {
+              background: "rgba(255,255,255,0.1)",
+              border: "1px solid rgba(255,255,255,0.2)",
+              borderRadius: 8,
+              padding: "4px 8px",
+              color: "#fff",
+              fontSize: 14,
+              cursor: "pointer"
+            }
           }, "⏻")
         )
       ),
-
-      /* ── TAB BAR ── */
-      React.createElement("div", { className: "wf-tabbar" },
-        tabs.map(tab =>
-          React.createElement("button", {
-            key: tab.id,
-            className: `wf-tab${currentTab === tab.id ? " active" : ""}`,
-            onClick: () => setCurrentTab(tab.id)
-          },
-            React.createElement("span", { className: "wf-tab-label" }, tab.label)
-          )
-        )
+      React.createElement("div", { style: { fontSize: 10, color: "rgba(255,255,255,0.7)", marginBottom: 12 } },
+        "PRO·LIVE·BY AMINE"
       )
     ),
-
+    
+    React.createElement("div", { style: {
+      display: "flex",
+      overflowX: "auto",
+      background: "#fff",
+      borderBottom: "1px solid rgba(0,0,0,0.1)",
+      scrollbarWidth: "none"
+    } },
+      tabs.map(tab =>
+        React.createElement("div", {
+          key: tab.id,
+          onClick: () => setCurrentTab(tab.id),
+          style: {
+            padding: "12px 16px",
+            fontSize: "13px",
+            fontWeight: currentTab === tab.id ? "bold" : "normal",
+            color: currentTab === tab.id ? "#00b86b" : "#888",
+            borderBottom: currentTab === tab.id ? "2px solid #00b86b" : "2px solid transparent",
+            cursor: "pointer",
+            whiteSpace: "nowrap"
+          }
+        }, tab.label)
+      )
+    ),
+    
     React.createElement("div", { style: { flex: 1, overflow: "hidden" } },
       renderContent()
     )
