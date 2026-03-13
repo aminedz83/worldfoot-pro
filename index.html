@@ -48,7 +48,7 @@
     <script>
         if ("serviceWorker" in navigator) {
             const sw = `
-    const C='wf-pro-v29';
+    const C='wf-pro-v32';
     self.addEventListener('install',e=>{e.waitUntil(caches.open(C).then(c=>c.addAll(['./'])).then(()=>self.skipWaiting()));});
     self.addEventListener('activate',e=>{e.waitUntil(caches.keys().then(ks=>Promise.all(ks.filter(k=>k!==C).map(k=>caches.delete(k)))).then(()=>self.clients.claim()));});
     self.addEventListener('push',e=>{
@@ -2185,136 +2185,180 @@ function Row({match:m, onOpen, isFav, onFav, onTeam}){
   const isUpcoming = sh === "NS";
   const isPostponed = sh === "PST";
   const isCancelled = sh === "CANC" || sh === "ABD";
+  const isHT = sh === "HT" || sh === "BT";
+  const isFT = DONE_ST.has(sh) && !isCancelled;
+
+  // Status column content
+  const StatusCol = () => {
+    if (live) return React.createElement("div", { style: { display:"flex", flexDirection:"column", alignItems:"center", gap: 4 } },
+      React.createElement("span", { style: { fontSize: 13, fontWeight: 800, color: "#e53535", lineHeight: 1, fontVariantNumeric: "tabular-nums", letterSpacing: -0.5 } }, min + "'"),
+      React.createElement("div", { style: { width: 5, height: 5, borderRadius: "50%", background: "#e53535", animation: "pulse 1.2s infinite" } })
+    );
+    if (isHT) return React.createElement("div", { style: { display:"flex", flexDirection:"column", alignItems:"center", gap: 3 } },
+      React.createElement("span", { style: { fontSize: 10, fontWeight: 800, color: "#f59e0b", letterSpacing: 0.5, textTransform: "uppercase" } }, stLabel),
+      React.createElement("div", { style: { width: 5, height: 5, borderRadius: "50%", background: "#f59e0b", animation: "pulse 1.2s infinite" } })
+    );
+    if (isUpcoming) return React.createElement("div", { style: { display:"flex", flexDirection:"column", alignItems:"center", gap: 2 } },
+      React.createElement("span", { style: { fontSize: 13, fontWeight: 700, color: "#1e293b", letterSpacing: -0.3, fontVariantNumeric: "tabular-nums" } }, hhmm(m.fixture.date)),
+      React.createElement("span", { style: { fontSize: 8, fontWeight: 600, color: "#94a3b8", textTransform: "uppercase", letterSpacing: 0.8 } }, "À venir")
+    );
+    if (isPostponed) return React.createElement("div", {
+      style: {
+        background: "linear-gradient(135deg, #f97316, #ea580c)",
+        borderRadius: 8, padding: "5px 8px",
+        display:"flex", alignItems:"center", justifyContent:"center",
+        boxShadow: "0 2px 8px rgba(234,88,12,.25)"
+      }
+    },
+      React.createElement("span", { style: { fontSize: 9, fontWeight: 800, color: "#fff", letterSpacing: 0.8, textTransform: "uppercase" } }, "Reporté")
+    );
+    if (isCancelled) return React.createElement("div", {
+      style: {
+        background: sh === "CANC"
+          ? "linear-gradient(135deg, #ef4444, #dc2626)"
+          : "linear-gradient(135deg, #f87171, #ef4444)",
+        borderRadius: 8, padding: "5px 8px",
+        display:"flex", alignItems:"center", justifyContent:"center",
+        boxShadow: "0 2px 8px rgba(220,38,38,.25)"
+      }
+    },
+      React.createElement("span", { style: { fontSize: 9, fontWeight: 800, color: "#fff", letterSpacing: 0.8, textTransform: "uppercase" } }, sh === "CANC" ? "Annulé" : "Arrêté")
+    );
+    // FT / finished
+    return React.createElement("span", { style: { fontSize: 11, fontWeight: 700, color: "#94a3b8", letterSpacing: 0.3 } }, stLabel);
+  };
+
+  // Score column
+  const ScoreCol = () => {
+    if (!has) return React.createElement("div", { style: { display:"flex", flexDirection:"column", alignItems:"center", justifyContent:"center", gap: 8, width: 36 } },
+      React.createElement("span", { style: { fontSize: 15, color: "#cbd5e1", fontWeight: 300 } }, "—")
+    );
+    return React.createElement("div", {
+      style: {
+        display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center",
+        gap: 5, width: 36,
+        background: flash ? "rgba(229,53,53,.07)" : live ? "rgba(229,53,53,.04)" : "transparent",
+        borderRadius: 8, padding: "2px 0", transition: "background .3s"
+      }
+    },
+      React.createElement("span", {
+        style: {
+          fontSize: 17, lineHeight: 1,
+          fontWeight: hw ? 900 : 500,
+          color: flash ? "#e53535" : hw ? "#0f172a" : "#94a3b8",
+          fontVariantNumeric: "tabular-nums"
+        }
+      }, displayHomeGoals),
+      React.createElement("span", {
+        style: {
+          fontSize: 17, lineHeight: 1,
+          fontWeight: aw ? 900 : 500,
+          color: flash ? "#e53535" : aw ? "#0f172a" : "#94a3b8",
+          fontVariantNumeric: "tabular-nums"
+        }
+      }, displayAwayGoals)
+    );
+  };
+
+  const rowBg = flash ? "rgba(229,53,53,.04)"
+    : live ? "#fff8f8"
+    : isUpcoming ? "#f8faff"
+    : "#fff";
+
+  const accentBar = live ? "linear-gradient(180deg,#e53535,#ff6b6b)"
+    : isHT ? "linear-gradient(180deg,#f59e0b,#fcd34d)"
+    : isUpcoming ? "linear-gradient(180deg,#3b82f6,#93c5fd)"
+    : "transparent";
 
   return React.createElement("div", {
     onClick: onOpen,
     style: {
-      display: "flex",
-      alignItems: "center",
-      minHeight: 58,
-      cursor: "pointer",
-      borderBottom: "1px solid #f0f1f5",
-      background: flash ? "rgba(229,53,53,.05)" : isUpcoming ? "rgba(59,130,246,.03)" : "#fff",
-      padding: "0 0 0 12px",
+      display: "flex", alignItems: "stretch",
+      minHeight: 64, cursor: "pointer",
+      borderBottom: "1px solid #f1f5f9",
+      background: rowBg,
       opacity: isCancelled ? 0.45 : 1,
-      borderLeft: isUpcoming ? "3px solid rgba(59,130,246,.25)" : live ? "3px solid #e53535" : "3px solid transparent"
+      position: "relative",
+      overflow: "hidden"
     }
   },
-    React.createElement("div", { style: { width: 46, flexShrink: 0, textAlign: "center" } },
-      live
-        ? React.createElement("div", null,
-            React.createElement("div", { style: { fontSize: 13, fontWeight: 800, color: "#e53535", lineHeight: 1 } }, min + "'"),
-            React.createElement("div", { style: { width: 6, height: 6, borderRadius: "50%", background: "#e53535", margin: "3px auto 0", animation: "pulse 1.2s infinite" } })
-          )
-        : isUpcoming
-        ? React.createElement("div", null,
-            React.createElement("span", { style: { fontSize: 13, fontWeight: 800, color: "#3b82f6" } }, hhmm(m.fixture.date)),
-            React.createElement("div", { style: { fontSize: 9, color: "#93c5fd", fontWeight: 600, marginTop: 1 } }, "À venir")
-          )
-        : isPostponed
-        ? React.createElement("div", {
-            style: {
-              background: "linear-gradient(135deg,#f97316,#ea580c)",
-              borderRadius: 6,
-              padding: "3px 5px",
-              display: "inline-block"
-            }
-          },
-            React.createElement("span", { style: { fontSize: 9, fontWeight: 800, color: "#fff", letterSpacing: 0.3 } }, "REPORTÉ")
-          )
-        : isCancelled
-        ? React.createElement("div", {
-            style: {
-              background: "linear-gradient(135deg,#ef4444,#dc2626)",
-              borderRadius: 6,
-              padding: "3px 5px",
-              display: "inline-block"
-            }
-          },
-            React.createElement("span", { style: { fontSize: 9, fontWeight: 800, color: "#fff", letterSpacing: 0.3 } }, sh === "CANC" ? "ANNULÉ" : "ARRÊTÉ")
-          )
-        : React.createElement("span", { style: { fontSize: 11, fontWeight: 800, color: sh === "HT" || sh === "BT" ? "#f59e0b" : "#888" } }, stLabel)
+    // left accent bar
+    React.createElement("div", { style: { width: 3, flexShrink: 0, background: accentBar, borderRadius: "0 2px 2px 0", boxShadow: live ? "0 0 6px rgba(229,53,53,.4)" : isUpcoming ? "0 0 6px rgba(59,130,246,.3)" : "none" } }),
+
+    // status col
+    React.createElement("div", { style: { width: 50, flexShrink: 0, display: "flex", alignItems: "center", justifyContent: "center", padding: "8px 4px" } },
+      React.createElement(StatusCol, null)
     ),
-    React.createElement("div", { style: { flex: 1, minWidth: 0, padding: "8px 0 8px 6px", display: "flex", flexDirection: "column", gap: 7 } },
+
+    // teams col
+    React.createElement("div", { style: { flex: 1, minWidth: 0, padding: "10px 0 10px 4px", display: "flex", flexDirection: "column", justifyContent: "space-between", gap: 6 } },
+      // Home team
       React.createElement("div", { style: { display: "flex", alignItems: "center", gap: 8, position: "relative" } },
         React.createElement("div", {
           onClick: (e) => { e.stopPropagation(); onTeam && onTeam(m.teams.home.id, m.teams.home.name, m.teams.home.logo, m.league?.id, m.league?.season); },
-          style: { display:"flex", alignItems:"center", gap:8, flex:1, minWidth:0, cursor: onTeam?"pointer":"default" }
+          style: { display:"flex", alignItems:"center", gap: 9, flex:1, minWidth:0, cursor: onTeam?"pointer":"default" }
         },
-          React.createElement(Logo, { src: m.teams.home.logo, size: 20 }),
-          React.createElement("span", { style: { fontSize: 14, fontWeight: hw ? 800 : 500, color: hw ? "#111" : aw ? "#bbb" : "#222", flex: 1, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" } },
+          React.createElement(Logo, { src: m.teams.home.logo, size: 22 }),
+          React.createElement("span", {
+            style: {
+              fontSize: 14, fontWeight: hw ? 700 : 450,
+              color: hw ? "#0f172a" : (has && aw) ? "#94a3b8" : "#1e293b",
+              flex: 1, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap",
+              letterSpacing: hw ? -0.2 : 0
+            }
+          },
             hn,
-            hRank ? React.createElement("span", { style: { fontSize: 11, color: "#bbb", fontWeight: 400 } }, " [" + hRank + "]") : null
+            hRank ? React.createElement("span", { style: { fontSize: 10, color: "#cbd5e1", fontWeight: 400, marginLeft: 4 } }, "#" + hRank) : null
           )
         ),
-        
         showBigChance && actionTeam === m.teams.home.id && React.createElement("span", {
-          style: {
-            position: "absolute",
-            right: 0,
-            color: "#e53935",
-            fontSize: 10,
-            fontWeight: 800,
-            textTransform: "uppercase",
-            zIndex: 5,
-            whiteSpace: "nowrap",
-            animation: "blink-3 1.5s ease-in-out"
-          }
+          style: { position:"absolute", right:0, background:"linear-gradient(90deg,transparent,#fff 20%)", paddingLeft:16, color:"#e53935", fontSize: 10, fontWeight: 800, textTransform:"uppercase", zIndex:5, whiteSpace:"nowrap", animation:"blink-3 1.5s ease-in-out" }
         }, "GROSSE OCCASION!")
       ),
-      
+      // Away team
       React.createElement("div", { style: { display: "flex", alignItems: "center", gap: 8, position: "relative" } },
         React.createElement("div", {
           onClick: (e) => { e.stopPropagation(); onTeam && onTeam(m.teams.away.id, m.teams.away.name, m.teams.away.logo, m.league?.id, m.league?.season); },
-          style: { display:"flex", alignItems:"center", gap:8, flex:1, minWidth:0, cursor: onTeam?"pointer":"default" }
+          style: { display:"flex", alignItems:"center", gap: 9, flex:1, minWidth:0, cursor: onTeam?"pointer":"default" }
         },
-          React.createElement(Logo, { src: m.teams.away.logo, size: 20 }),
-          React.createElement("span", { style: { fontSize: 14, fontWeight: aw ? 800 : 500, color: aw ? "#111" : hw ? "#bbb" : "#222", flex: 1, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" } },
+          React.createElement(Logo, { src: m.teams.away.logo, size: 22 }),
+          React.createElement("span", {
+            style: {
+              fontSize: 14, fontWeight: aw ? 700 : 450,
+              color: aw ? "#0f172a" : (has && hw) ? "#94a3b8" : "#1e293b",
+              flex: 1, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap",
+              letterSpacing: aw ? -0.2 : 0
+            }
+          },
             an,
-            aRank ? React.createElement("span", { style: { fontSize: 11, color: "#bbb", fontWeight: 400 } }, " [" + aRank + "]") : null
+            aRank ? React.createElement("span", { style: { fontSize: 10, color: "#cbd5e1", fontWeight: 400, marginLeft: 4 } }, "#" + aRank) : null
           )
         ),
-        
         showBigChance && actionTeam === m.teams.away.id && React.createElement("span", {
-          style: {
-            position: "absolute",
-            right: 0,
-            color: "#e53935",
-            fontSize: 10,
-            fontWeight: 800,
-            textTransform: "uppercase",
-            zIndex: 5,
-            whiteSpace: "nowrap",
-            animation: "blink-3 1.5s ease-in-out"
-          }
+          style: { position:"absolute", right:0, background:"linear-gradient(90deg,transparent,#fff 20%)", paddingLeft:16, color:"#e53935", fontSize: 10, fontWeight: 800, textTransform:"uppercase", zIndex:5, whiteSpace:"nowrap", animation:"blink-3 1.5s ease-in-out" }
         }, "GROSSE OCCASION!")
       )
     ),
-    React.createElement("div", { style: { width: 32, display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", gap: 7, flexShrink: 0 } },
-      has
-        ? React.createElement(React.Fragment, null,
-            React.createElement("span", { style: { fontSize: 16, fontWeight: hw ? 900 : 500, color: flash ? "#e53535" : hw ? "#111" : "#999", lineHeight: 1 } }, displayHomeGoals),
-            React.createElement("span", { style: { fontSize: 16, fontWeight: aw ? 900 : 500, color: flash ? "#e53535" : aw ? "#111" : "#999", lineHeight: 1 } }, displayAwayGoals)
-          )
-        : React.createElement("span", { style: { fontSize: 13, color: "#ccc" } }, "-")
+
+    // score col
+    React.createElement("div", { style: { display:"flex", alignItems:"center", justifyContent:"center", padding: "0 4px", flexShrink: 0 } },
+      React.createElement(ScoreCol, null)
     ),
+
+    // fav button
     React.createElement("button", {
       onClick: e => { e.stopPropagation(); onFav(); },
       style: {
         background: isFav ? "rgba(245,158,11,.1)" : "none",
         border: "none",
-        color: isFav ? "#f59e0b" : "#ccc",
-        fontSize: 22,
-        padding: "0 10px",
-        width: 44,
-        height: 44,
-        flexShrink: 0,
+        width: 44, flexShrink: 0,
         cursor: "pointer",
+        display: "flex", alignItems: "center", justifyContent: "center",
+        color: isFav ? "#f59e0b" : "#d1d5db",
+        fontSize: 22,
         borderRadius: 12,
-        display: "flex",
-        alignItems: "center",
-        justifyContent: "center",
-        transition: "all .2s"
+        transition: "all .2s",
+        boxShadow: isFav ? "0 0 8px rgba(245,158,11,.2)" : "none"
       }
     }, isFav ? "★" : "☆")
   );
