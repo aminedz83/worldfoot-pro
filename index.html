@@ -48,7 +48,7 @@
     <script>
         if ("serviceWorker" in navigator) {
             const sw = `
-    const C='wf-pro-v31';
+    const C='wf-pro-v33';
     self.addEventListener('install',e=>{e.waitUntil(caches.open(C).then(c=>c.addAll(['./'])).then(()=>self.skipWaiting()));});
     self.addEventListener('activate',e=>{e.waitUntil(caches.keys().then(ks=>Promise.all(ks.filter(k=>k!==C).map(k=>caches.delete(k)))).then(()=>self.clients.claim()));});
     self.addEventListener('push',e=>{
@@ -5152,154 +5152,155 @@ function StandingsTab({ onTeam }) {
 // ONGLET BUTEURS (ScorersTab)
 // ============================================
 function ScorersTab() {
-  const [lid, setLid] = useState(39);
+  const [lid, setLid] = useState(186);
   const [season, setSeason] = useState(CUR_SEASON);
   const [type, setType] = useState("scorers");
   const [data, setData] = useState([]);
   const [status, setStatus] = useState("load");
-  
+
   useEffect(() => {
     let mounted = true;
     setStatus("load");
-    
+    setData([]);
     const path = type === "assists"
       ? `/players/topassists?league=${lid}&season=${season}`
       : `/players/topscorers?league=${lid}&season=${season}`;
-    
-    api(path, 3600000)
+    api(path, 1800000)
       .then(res => {
         if (mounted) {
           setData(res || []);
           setStatus(res?.length ? "ok" : "empty");
         }
       })
-      .catch(() => {
-        if (mounted) setStatus("err");
-      });
-    
+      .catch(() => { if (mounted) setStatus("err"); });
     return () => { mounted = false; };
   }, [lid, season, type]);
-  
-  const SEL = {
-    background: T.bg2,
-    border: `1px solid ${T.bg4}`,
-    color: T.t1,
-    borderRadius: 8,
-    padding: "8px 11px",
-    fontSize: 12,
-    fontWeight: 600,
-    outline: "none",
-    cursor: "pointer"
-  };
-  
-  return React.createElement("div", { style: { height: "100%", display: "flex", flexDirection: "column", overflow: "hidden" } },
-    React.createElement("div", { style: { padding: "12px", borderBottom: `1px solid ${T.line}`, display: "flex", gap: 8, flexShrink: 0, background: T.bg1 } },
-      React.createElement("div", { style: { display: "flex", background: T.bg3, borderRadius: 10, padding: 3 } },
-        React.createElement("button", {
-          onClick: () => setType("scorers"),
-          style: {
-            padding: "8px 16px",
-            borderRadius: 8,
-            border: "none",
-            background: type === "scorers" ? T.red : "transparent",
-            color: type === "scorers" ? "#fff" : T.t3,
-            fontWeight: type === "scorers" ? 700 : 500,
-            fontSize: 12,
-            cursor: "pointer"
-          }
-        }, "⚽ Buts"),
-        React.createElement("button", {
-          onClick: () => setType("assists"),
-          style: {
-            padding: "8px 16px",
-            borderRadius: 8,
-            border: "none",
-            background: type === "assists" ? T.red : "transparent",
-            color: type === "assists" ? "#fff" : T.t3,
-            fontWeight: type === "assists" ? 700 : 500,
-            fontSize: 12,
-            cursor: "pointer"
-          }
-        }, "🎯 Passes")
-      ),
-      React.createElement("select", {
-        value: lid,
-        onChange: e => setLid(Number(e.target.value)),
-        style: { ...SEL, flex: 1 }
-      },
-        REGIONS.map(region => 
-          React.createElement("optgroup", { key: region, label: region },
-            LEAGUES.filter(l => l.region === region).map(l =>
-              React.createElement("option", { key: l.id, value: l.id }, `${l.flag} ${l.name}`)
-            )
+
+  const leagueInfo = LEAGUES.find(l => l.id === lid);
+
+  return React.createElement("div", { style: { height: "100%", display: "flex", flexDirection: "column", overflow: "hidden", background: "#f8fafc" } },
+
+    // ── HEADER FILTRES ──
+    React.createElement("div", { style: { background: "#fff", borderBottom: "1px solid #f1f5f9", flexShrink: 0 } },
+
+      // Toggle Buts / Passes
+      React.createElement("div", { style: { display: "flex", padding: "12px 14px 0" } },
+        React.createElement("div", { style: { display: "flex", background: "#f1f5f9", borderRadius: 12, padding: 3, gap: 2 } },
+          ["scorers", "assists"].map(t =>
+            React.createElement("button", {
+              key: t,
+              onClick: () => setType(t),
+              style: {
+                padding: "8px 20px", borderRadius: 10, border: "none",
+                background: type === t ? "#fff" : "transparent",
+                color: type === t ? "#0f172a" : "#94a3b8",
+                fontWeight: type === t ? 700 : 500,
+                fontSize: 13, cursor: "pointer",
+                boxShadow: type === t ? "0 1px 4px rgba(15,23,42,.1)" : "none",
+                transition: "all .2s"
+              }
+            }, t === "scorers" ? "⚽ Buts" : "🎯 Passes")
           )
         )
       ),
-      React.createElement("select", {
-        value: season,
-        onChange: e => setSeason(Number(e.target.value)),
-        style: { ...SEL, width: 100 }
-      },
-        SEASONS.map(y => 
-          React.createElement("option", { key: y, value: y }, `${y}`)
+
+      // Sélecteur ligue + saison
+      React.createElement("div", { style: { display: "flex", gap: 8, padding: "10px 14px 12px", alignItems: "center" } },
+        React.createElement("select", {
+          value: lid,
+          onChange: e => setLid(Number(e.target.value)),
+          style: { flex: 1, background: "#f8fafc", border: "1px solid #e2e8f0", color: "#0f172a", borderRadius: 10, padding: "8px 10px", fontSize: 13, fontWeight: 600, outline: "none", cursor: "pointer" }
+        },
+          REGIONS.map(region =>
+            React.createElement("optgroup", { key: region, label: region },
+              LEAGUES.filter(l => l.region === region).map(l =>
+                React.createElement("option", { key: l.id, value: l.id }, `${l.flag} ${l.name}`)
+              )
+            )
+          )
+        ),
+        React.createElement("select", {
+          value: season,
+          onChange: e => setSeason(Number(e.target.value)),
+          style: { background: "#f8fafc", border: "1px solid #e2e8f0", color: "#0f172a", borderRadius: 10, padding: "8px 10px", fontSize: 13, fontWeight: 600, outline: "none", cursor: "pointer", width: 90 }
+        },
+          SEASONS.map(y => React.createElement("option", { key: y, value: y }, `${y}`))
         )
       )
     ),
-    
+
+    // ── LISTE ──
     React.createElement("div", { style: { flex: 1, overflowY: "auto" } },
-      status === "load" && React.createElement("div", { style: { textAlign: "center", padding: 40 } },
-        React.createElement(Spin, null)
+
+      status === "load" && React.createElement("div", { style: { display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", padding: 60, gap: 12 } },
+        React.createElement(Spin, { s: 28, c: "#e53535" }),
+        React.createElement("span", { style: { fontSize: 13, color: "#94a3b8" } }, "Chargement des buteurs…")
       ),
-      
-      status === "err" && React.createElement("div", { style: { textAlign: "center", padding: 40, color: T.t3 } },
-        "Erreur de chargement"
-      ),
-      
-      status === "empty" && React.createElement("div", { style: { textAlign: "center", padding: 40, color: T.t3 } },
-        "Aucune donnée disponible"
-      ),
-      
-      status === "ok" && data.slice(0, 30).map((item, idx) => {
-        const player = item.player;
-        const stats = item.statistics?.[0] || {};
-        const value = type === "assists" ? (stats.goals?.assists || 0) : (stats.goals?.total || 0);
-        const team = stats.team;
-        
-        const medal = idx === 0 ? "🥇" : idx === 1 ? "🥈" : idx === 2 ? "🥉" : null;
-        const medalColor = idx === 0 ? T.gold : idx === 1 ? "#c0c0c0" : idx === 2 ? "#cd7f32" : T.bg4;
-        
-        return React.createElement("div", {
-          key: player?.id || idx,
-          style: {
-            display: "flex",
-            alignItems: "center",
-            gap: 12,
-            padding: "12px 14px",
-            borderBottom: `1px solid ${T.line}`,
-            borderLeft: idx < 3 ? `3px solid ${medalColor}` : "3px solid transparent",
-            background: idx < 3 ? `rgba(${idx === 0 ? "255,215,0" : idx === 1 ? "192,192,192" : "205,127,50"},0.05)` : "transparent"
-          }
-        },
-          React.createElement("div", { className: "bc", style: { width: 40, textAlign: "center", fontSize: 20 } },
-            medal || `${idx+1}`
-          ),
-          React.createElement(Avatar, { src: player?.photo, size: 44, ring: medalColor }),
-          React.createElement("div", { style: { flex: 1, minWidth: 0 } },
-            React.createElement("div", { className: "bc", style: { fontSize: 15, fontWeight: 700, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" } },
-              player?.name
+
+      status === "err" && React.createElement("div", { style: { textAlign: "center", padding: 40, color: "#94a3b8" } }, "Erreur de chargement"),
+      status === "empty" && React.createElement("div", { style: { textAlign: "center", padding: 40, color: "#94a3b8" } }, "Aucune donnée disponible"),
+
+      status === "ok" && React.createElement("div", null,
+        data.slice(0, 30).map((item, idx) => {
+          const player = item.player;
+          const stats = item.statistics?.[0] || {};
+          const value = type === "assists" ? (stats.goals?.assists || 0) : (stats.goals?.total || 0);
+          const team = stats.team;
+          const games = stats.games?.appearences || 0;
+          const penalties = stats.penalty?.scored || 0;
+          const isTop3 = idx < 3;
+          const rankColors = ["#f59e0b", "#94a3b8", "#b45309"];
+          const rankBgs = ["rgba(245,158,11,.06)", "rgba(148,163,184,.06)", "rgba(180,83,9,.06)"];
+
+          return React.createElement("div", {
+            key: player?.id || idx,
+            style: {
+              display: "flex", alignItems: "center", gap: 12,
+              padding: "11px 14px",
+              borderBottom: "1px solid #f1f5f9",
+              background: isTop3 ? rankBgs[idx] : "#fff",
+              borderLeft: isTop3 ? `3px solid ${rankColors[idx]}` : "3px solid transparent",
+            }
+          },
+            // Rang
+            React.createElement("div", { style: { width: 26, flexShrink: 0, textAlign: "center" } },
+              isTop3
+                ? React.createElement("span", { style: { fontSize: 18 } }, ["🥇","🥈","🥉"][idx])
+                : React.createElement("span", { style: { fontSize: 12, fontWeight: 700, color: "#94a3b8" } }, idx + 1)
             ),
-            React.createElement("div", { style: { display: "flex", alignItems: "center", gap: 6, marginTop: 4 } },
-              team && React.createElement(Logo, { src: team.logo, size: 14 }),
-              React.createElement("span", { style: { fontSize: 11, color: T.t3 } }, team?.name),
-              player?.nationality && React.createElement("span", { style: { fontSize: 11, color: T.t3 } }, `· ${player.nationality}`)
+
+            // Photo
+            React.createElement(PlayerImage, { playerId: player?.id, playerName: player?.name, size: 48, ring: isTop3 ? rankColors[idx] : "#e2e8f0" }),
+
+            // Infos joueur
+            React.createElement("div", { style: { flex: 1, minWidth: 0 } },
+              React.createElement("div", { style: { fontSize: 14, fontWeight: 700, color: "#0f172a", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" } },
+                player?.name
+              ),
+              React.createElement("div", { style: { display: "flex", alignItems: "center", gap: 5, marginTop: 3 } },
+                team && React.createElement(Logo, { src: team.logo, size: 14 }),
+                React.createElement("span", { style: { fontSize: 11, color: "#64748b", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" } }, team?.name)
+              ),
+              React.createElement("div", { style: { display: "flex", alignItems: "center", gap: 8, marginTop: 3 } },
+                games > 0 && React.createElement("span", { style: { fontSize: 10, color: "#94a3b8", fontWeight: 500 } }, `${games} matchs`),
+                type === "scorers" && penalties > 0 && React.createElement("span", { style: { fontSize: 10, color: "#94a3b8" } }, `dont ${penalties} pen.`)
+              )
+            ),
+
+            // Score
+            React.createElement("div", { style: { flexShrink: 0, textAlign: "center", minWidth: 44 } },
+              React.createElement("div", { style: { fontSize: 28, fontWeight: 900, color: isTop3 ? rankColors[idx] : "#e53535", lineHeight: 1 } }, value),
+              React.createElement("div", { style: { fontSize: 9, color: "#94a3b8", fontWeight: 600, textTransform: "uppercase", letterSpacing: 0.5, marginTop: 1 } },
+                type === "assists" ? "passes" : "buts"
+              )
             )
-          ),
-          React.createElement("div", { className: "bc", style: { fontSize: 28, fontWeight: 900, color: T.red } }, value)
-        );
-      })
+          );
+        })
+      )
     )
   );
 }
+
 
 // ============================================
 // ONGLET CALENDRIER (CalendarTab) - CORRIGÉ
