@@ -48,7 +48,7 @@
     <script>
         if ("serviceWorker" in navigator) {
             const sw = `
-    const C='wf-pro-v25';
+    const C='wf-pro-v28';
     self.addEventListener('install',e=>{e.waitUntil(caches.open(C).then(c=>c.addAll(['./'])).then(()=>self.skipWaiting()));});
     self.addEventListener('activate',e=>{e.waitUntil(caches.keys().then(ks=>Promise.all(ks.filter(k=>k!==C).map(k=>caches.delete(k)))).then(()=>self.clients.claim()));});
     self.addEventListener('push',e=>{
@@ -2217,22 +2217,10 @@ function Row({match:m, onOpen, isFav, onFav, onTeam}){
             hRank ? React.createElement("span", { style: { fontSize: 11, color: "#bbb", fontWeight: 400 } }, " [" + hRank + "]") : null
           )
         ),
-        
         showBigChance && actionTeam === m.teams.home.id && React.createElement("span", {
-          style: {
-            position: "absolute",
-            right: 0,
-            color: "#e53935",
-            fontSize: 10,
-            fontWeight: 800,
-            textTransform: "uppercase",
-            zIndex: 5,
-            whiteSpace: "nowrap",
-            animation: "blink-3 1.5s ease-in-out"
-          }
+          style: { position: "absolute", right: 0, color: "#e53935", fontSize: 10, fontWeight: 800, textTransform: "uppercase", zIndex: 5, whiteSpace: "nowrap", animation: "blink-3 1.5s ease-in-out" }
         }, "GROSSE OCCASION!")
       ),
-      
       React.createElement("div", { style: { display: "flex", alignItems: "center", gap: 8, position: "relative" } },
         React.createElement("div", {
           onClick: (e) => { e.stopPropagation(); onTeam && onTeam(m.teams.away.id, m.teams.away.name, m.teams.away.logo, m.league?.id, m.league?.season); },
@@ -2244,19 +2232,8 @@ function Row({match:m, onOpen, isFav, onFav, onTeam}){
             aRank ? React.createElement("span", { style: { fontSize: 11, color: "#bbb", fontWeight: 400 } }, " [" + aRank + "]") : null
           )
         ),
-        
         showBigChance && actionTeam === m.teams.away.id && React.createElement("span", {
-          style: {
-            position: "absolute",
-            right: 0,
-            color: "#e53935",
-            fontSize: 10,
-            fontWeight: 800,
-            textTransform: "uppercase",
-            zIndex: 5,
-            whiteSpace: "nowrap",
-            animation: "blink-3 1.5s ease-in-out"
-          }
+          style: { position: "absolute", right: 0, color: "#e53935", fontSize: 10, fontWeight: 800, textTransform: "uppercase", zIndex: 5, whiteSpace: "nowrap", animation: "blink-3 1.5s ease-in-out" }
         }, "GROSSE OCCASION!")
       )
     ),
@@ -2274,7 +2251,6 @@ function Row({match:m, onOpen, isFav, onFav, onTeam}){
     }, isFav ? "★" : "☆")
   );
 }
-
 function LeagueBlock({group, onOpen, favs, onFav, onTeam}){
   const[open,setOpen]=useState(true);
   const lv=group.matches.filter(m=>LIVE_ST.has(m.fixture.status.short)).length;
@@ -6503,297 +6479,539 @@ function JSKTab() {
 // FICHE ÉQUIPE (TeamPage)
 // ============================================
 function TeamPage({ teamId, teamName, teamLogo, leagueId, season, onClose }) {
-  const [info,    setInfo]    = useState(null);
-  const [results, setResults] = useState([]);
-  const [next,    setNext]    = useState([]);
-  const [standing,setStanding]= useState(null);
-  const [loading, setLoading] = useState(true);
-  const [tab,     setTab]     = useState("resultats");
+  const [info,     setInfo]     = useState(null);
+  const [results,  setResults]  = useState([]);
+  const [next,     setNext]     = useState([]);
+  const [standing, setStanding] = useState(null);
+  const [topScore, setTopScore] = useState([]);
+  const [loading,  setLoading]  = useState(true);
+  const [tab,      setTab]      = useState("resultats");
 
   useEffect(() => {
     if (!teamId) return;
     let cancelled = false;
     setLoading(true);
 
-    const lid    = leagueId || 39;
-    const seas   = season   || 2024;
-
+    // Étape 1 : infos équipe + fixtures (pour détecter la vraie ligue/saison)
     Promise.allSettled([
       api(`/teams?id=${teamId}`, 86400000),
       api(`/fixtures?team=${teamId}&last=6`, TTL.DONE),
       api(`/fixtures?team=${teamId}&next=5`, TTL.UPCOMING),
-      api(`/standings?league=${lid}&season=${seas}`, TTL.STANDING),
-    ]).then(([rInfo, rRes, rNext, rStand]) => {
+    ]).then(async ([rInfo, rRes, rNext]) => {
       if (cancelled) return;
-      if (rInfo.status  === "fulfilled") setInfo(rInfo.value?.[0] || null);
-      if (rRes.status   === "fulfilled") setResults(rRes.value || []);
-      if (rNext.status  === "fulfilled") setNext(rNext.value || []);
+      if (rInfo.status === "fulfilled") setInfo(rInfo.value?.[0] || null);
+      const recentFix = rRes.status === "fulfilled" ? (rRes.value || []) : [];
+      const nextFix   = rNext.status === "fulfilled" ? (rNext.value || []) : [];
+      if (recentFix.length) setResults(recentFix);
+      if (nextFix.length)   setNext(nextFix);
+
+      // Détection automatique ligue + saison depuis les fixtures réels
+      const allFix = [...recentFix, ...nextFix];
+      const detectedLeague = allFix.find(f => f.league?.id)?.league;
+      const lid  = leagueId  || detectedLeague?.id     || 39;
+      const seas = season    || detectedLeague?.season  || new Date().getFullYear();
+
+      // Étape 2 : standings + joueurs avec les vraies valeurs ligue/saison
+      const [rStand, rPlayers] = await Promise.allSettled([
+        api(`/standings?league=${lid}&season=${seas}`, TTL.STANDING),
+        api(`/players?team=${teamId}&season=${seas}`, 3600000),
+      ]);
+      if (cancelled) return;
+
       if (rStand.status === "fulfilled") {
-        const allRows = (rStand.value || []).flatMap(g =>
+        const rows = (rStand.value || []).flatMap(g =>
           Array.isArray(g) ? g : (g?.league?.standings || []).flat()
         );
-        const row = allRows.find(r => r.team?.id === teamId);
-        setStanding(row || null);
+        setStanding(rows.find(r => r.team?.id === teamId) || null);
+      }
+      if (rPlayers.status === "fulfilled") {
+        const sorted = (rPlayers.value || [])
+          .filter(p => (p.statistics?.[0]?.goals?.total || 0) > 0)
+          .sort((a, b) => (b.statistics?.[0]?.goals?.total || 0) - (a.statistics?.[0]?.goals?.total || 0));
+        setTopScore(sorted.slice(0, 5));
       }
       setLoading(false);
     });
-
     return () => { cancelled = true; };
   }, [teamId, leagueId, season]);
 
-  const formColors = { W: T.green, D: T.gold, L: T.orange };
-  const formLabels = { W: "V", D: "N", L: "D" };
+  // Couleurs et helpers
+  const FC = { W: "#00c170", D: "#f59e0b", L: "#ef4444" };
+  const FL = { W: "V", D: "N", L: "D" };
+  const getRes = (m) => {
+    const isH = m.teams?.home?.id === teamId;
+    const gF = isH ? m.goals?.home : m.goals?.away;
+    const gA = isH ? m.goals?.away : m.goals?.home;
+    if (gF == null || gA == null) return null;
+    return gF > gA ? "W" : gF < gA ? "L" : "D";
+  };
+  const last5 = [...results].reverse().slice(0, 5);
+  const formStr = last5.map(m => getRes(m)).filter(Boolean);
+  const winPct = results.length
+    ? Math.round((results.filter(m => getRes(m) === "W").length / results.length) * 100)
+    : null;
 
-  const renderForm = (matches) => {
-    if (!matches.length) return null;
-    const last5 = [...matches].reverse().slice(0, 5);
+  // ── HERO BACKGROUND COLOR from logo (use team primary color heuristic)
+  // We use a dark gradient always, accent with green
+  const heroGrad = "linear-gradient(180deg, #0b0f1a 0%, #111827 60%, #1a1d23 100%)";
+
+  // ── Render form dots
+  const FormDots = ({ matches, size = 26 }) => {
+    const last = [...matches].reverse().slice(0, 5);
     return (
-      <div style={{ display: "flex", gap: 5, flexWrap: "wrap" }}>
-        {last5.map((m, i) => {
-          const isHome = m.teams?.home?.id === teamId;
-          const gF = isHome ? (m.goals?.home ?? 0) : (m.goals?.away ?? 0);
-          const gA = isHome ? (m.goals?.away ?? 0) : (m.goals?.home ?? 0);
-          const res = gF > gA ? "W" : gF < gA ? "L" : "D";
+      <div style={{ display: "flex", gap: 4 }}>
+        {last.map((m, i) => {
+          const r = getRes(m);
+          if (!r) return null;
           return (
             <div key={i} style={{
-              width: 28, height: 28, borderRadius: 8,
-              background: formColors[res],
+              width: size, height: size, borderRadius: size / 3,
+              background: FC[r],
               display: "flex", alignItems: "center", justifyContent: "center",
-              color: "#fff", fontSize: 11, fontWeight: 800,
-              boxShadow: `0 2px 8px ${formColors[res]}44`
-            }}>{formLabels[res]}</div>
+              color: "#fff", fontSize: size * .38, fontWeight: 900,
+              boxShadow: `0 2px 6px ${FC[r]}55`
+            }}>{FL[r]}</div>
           );
         })}
       </div>
     );
   };
 
-  const renderMatchRow = (m, idx) => {
+  // ── Match row premium
+  const MatchRow = ({ m, idx }) => {
     const isHome  = m.teams?.home?.id === teamId;
-    const oppTeam = isHome ? m.teams?.away : m.teams?.home;
+    const opp     = isHome ? m.teams?.away : m.teams?.home;
     const gF = isHome ? m.goals?.home : m.goals?.away;
     const gA = isHome ? m.goals?.away : m.goals?.home;
     const sh = m.fixture?.status?.short;
     const done = ["FT","AET","PEN","AWD","WO"].includes(sh);
     const ns   = ["NS","TBD","PST"].includes(sh);
-    const res  = done && gF != null && gA != null
-      ? (gF > gA ? "W" : gF < gA ? "L" : "D") : null;
-    const resColor = res ? formColors[res] : T.t4;
+    const res  = done && gF != null ? getRes(m) : null;
 
     return (
-      <div key={m.fixture?.id || idx} style={{
+      <div style={{
         display: "flex", alignItems: "center", gap: 10,
-        padding: "10px 14px",
-        borderBottom: `1px solid ${T.line}`,
-        background: T.bg1,
+        padding: "12px 16px",
+        borderBottom: "1px solid rgba(0,0,0,.05)",
+        background: "#fff",
       }}>
-        {res && (
-          <div style={{
-            width: 24, height: 24, borderRadius: 6, background: resColor,
-            display: "flex", alignItems: "center", justifyContent: "center",
-            color: "#fff", fontSize: 9, fontWeight: 800, flexShrink: 0
-          }}>{formLabels[res]}</div>
-        )}
-        {!res && (
-          <div style={{
-            width: 24, height: 24, borderRadius: 6, background: T.bg3,
-            display: "flex", alignItems: "center", justifyContent: "center",
-            flexShrink: 0
-          }}>
-            <span style={{ fontSize: 9, color: T.t3, fontWeight: 700 }}>
-              {ns ? hhmm(m.fixture?.date) : "—"}
-            </span>
-          </div>
-        )}
-        <Logo src={oppTeam?.logo} size={22} />
+        {/* Résultat badge */}
+        <div style={{
+          width: 28, height: 28, borderRadius: 8, flexShrink: 0,
+          background: res ? FC[res] : ns ? "#f1f5f9" : "#f1f5f9",
+          display: "flex", alignItems: "center", justifyContent: "center",
+          boxShadow: res ? `0 2px 6px ${FC[res]}44` : "none"
+        }}>
+          {res
+            ? <span style={{ color: "#fff", fontSize: 10, fontWeight: 900 }}>{FL[res]}</span>
+            : <span style={{ color: "#94a3b8", fontSize: 9, fontWeight: 700 }}>{ns ? hhmm(m.fixture?.date) : "—"}</span>
+          }
+        </div>
+
+        {/* Logo adversaire */}
+        <Logo src={opp?.logo} size={26} />
+
+        {/* Infos match */}
         <div style={{ flex: 1, minWidth: 0 }}>
-          <div style={{ fontSize: 12, fontWeight: 600, color: T.t1, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
-            {isHome ? "vs " : "@ "}{oppTeam?.name}
+          <div style={{ fontSize: 13, fontWeight: 700, color: "#0f1117", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
+            <span style={{ fontSize: 10, color: "#94a3b8", fontWeight: 600, marginRight: 4 }}>{isHome ? "DOM" : "EXT"}</span>
+            {opp?.name}
           </div>
-          <div style={{ fontSize: 10, color: T.t3, marginTop: 2 }}>
+          <div style={{ fontSize: 10, color: "#94a3b8", marginTop: 2, display: "flex", alignItems: "center", gap: 4 }}>
+            <Logo src={m.league?.logo} size={10} />
             {m.league?.name} · {DL(m.fixture?.date?.slice(0, 10))}
           </div>
         </div>
+
+        {/* Score */}
         {done && gF != null && (
           <div style={{
-            fontFamily: "'JetBrains Mono', monospace",
-            fontSize: 13, fontWeight: 800, color: T.t1,
-            background: T.bg2, borderRadius: 6, padding: "3px 8px",
-            flexShrink: 0
+            fontFamily: "monospace", fontSize: 15, fontWeight: 900,
+            color: res === "W" ? "#00c170" : res === "L" ? "#ef4444" : "#f59e0b",
+            background: res === "W" ? "rgba(0,193,112,.08)" : res === "L" ? "rgba(239,68,68,.08)" : "rgba(245,158,11,.08)",
+            borderRadius: 8, padding: "4px 10px", flexShrink: 0,
+            border: `1px solid ${res === "W" ? "rgba(0,193,112,.2)" : res === "L" ? "rgba(239,68,68,.2)" : "rgba(245,158,11,.2)"}`
           }}>{gF} – {gA}</div>
         )}
         {ns && (
-          <div style={{
-            fontSize: 10, color: T.t3, background: T.bg2,
-            borderRadius: 6, padding: "3px 8px", flexShrink: 0,
-            fontWeight: 600
-          }}>À venir</div>
+          <div style={{ fontSize: 10, color: "#94a3b8", background: "#f8fafc", borderRadius: 8, padding: "4px 10px", flexShrink: 0, fontWeight: 600, border: "1px solid #e8edf3" }}>
+            {hhmm(m.fixture?.date)}
+          </div>
         )}
       </div>
     );
   };
 
   const TABS = [
-    { id: "resultats", label: "Résultats" },
-    { id: "prochains", label: "Prochains" },
-    { id: "infos",     label: "Infos" },
+    { id: "resultats", label: "Résultats", icon: "📊" },
+    { id: "prochains", label: "Prochains", icon: "📅" },
+    { id: "stats",     label: "Stats",     icon: "🏆" },
+    { id: "infos",     label: "Infos",     icon: "🏟️" },
   ];
 
+  if (loading) {
+    return (
+      <div className="md-overlay" style={{ background: heroGrad }}>
+        <div className="md-topbar" style={{ background: "transparent", borderBottom: "none" }}>
+          <button onClick={onClose} style={{ background: "rgba(0,193,112,.85)", border: "none", color: "#fff", width: 40, height: 40, borderRadius: 12, cursor: "pointer", fontSize: 18, fontWeight: 700, boxShadow: "0 4px 12px rgba(0,193,112,.4)" }}>←</button>
+        </div>
+        <div style={{ flex: 1, display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", gap: 16 }}>
+          <Logo src={teamLogo} size={64} />
+          <Spin s={28} c="#00c170" />
+          <span style={{ color: "rgba(255,255,255,.4)", fontSize: 13 }}>Chargement de la fiche…</span>
+        </div>
+      </div>
+    );
+  }
+
+  const venue = info?.venue;
+  const team  = info?.team;
+  const st    = standing;
+  const totalGames = st ? (st.all?.win + st.all?.draw + st.all?.lose) : 0;
+  const goalsFor   = st?.all?.goals?.for || 0;
+  const goalsAgainst = st?.all?.goals?.against || 0;
+  const goalDiff   = goalsFor - goalsAgainst;
+
   return (
-    <div className="md-overlay">
-      {/* Topbar */}
-      <div className="md-topbar">
-        <button onClick={onClose} className="md-back-btn">←</button>
-        <div className="md-topbar-title">{teamName}</div>
-        <div style={{ width: 36 }} />
+    <div className="md-overlay" style={{ background: "#f1f4f9" }}>
+
+      {/* ── TOP BAR ── */}
+      <div style={{
+        position: "relative", zIndex: 2,
+        background: "transparent",
+        display: "flex", alignItems: "center",
+        padding: "14px 16px 0",
+        flexShrink: 0,
+      }}>
+        <button onClick={onClose} style={{
+          background: "linear-gradient(135deg,#00c170,#009e5c)", border: "none", color: "#fff",
+          width: 40, height: 40, borderRadius: 12, cursor: "pointer",
+          display: "flex", alignItems: "center", justifyContent: "center",
+          fontSize: 20, fontWeight: 900,
+          boxShadow: "0 4px 14px rgba(0,193,112,.5)"
+        }}>←</button>
       </div>
 
-      {/* Hero */}
+      {/* ── HERO SECTION ── */}
       <div style={{
-        background: "linear-gradient(160deg, #0f1629 0%, #1a2340 100%)",
-        padding: "20px 16px 16px", flexShrink: 0,
-        borderBottom: `1px solid rgba(255,255,255,.06)`
+        background: heroGrad,
+        padding: "12px 16px 0",
+        flexShrink: 0,
+        position: "relative", overflow: "hidden",
       }}>
-        <div style={{ display: "flex", alignItems: "center", gap: 14 }}>
+        {/* Cercle déco derrière le logo */}
+        <div style={{
+          position: "absolute", right: -30, top: -30,
+          width: 180, height: 180, borderRadius: "50%",
+          background: "rgba(255,255,255,.03)",
+          pointerEvents: "none"
+        }} />
+        <div style={{
+          position: "absolute", right: 20, top: 10,
+          width: 100, height: 100, borderRadius: "50%",
+          background: "rgba(0,193,112,.05)",
+          pointerEvents: "none"
+        }} />
+
+        {/* Ligne principale : logo + nom + rang */}
+        <div style={{ display: "flex", alignItems: "center", gap: 16, marginBottom: 16, position: "relative" }}>
+          {/* Logo dans un halo */}
           <div style={{
-            width: 60, height: 60, background: "rgba(255,255,255,.08)",
-            borderRadius: 14, display: "flex", alignItems: "center",
-            justifyContent: "center", flexShrink: 0,
-            border: "1px solid rgba(255,255,255,.1)"
+            width: 76, height: 76, borderRadius: 20, flexShrink: 0,
+            background: "rgba(255,255,255,.06)",
+            border: "1.5px solid rgba(255,255,255,.1)",
+            display: "flex", alignItems: "center", justifyContent: "center",
+            boxShadow: "0 8px 32px rgba(0,0,0,.4), 0 0 0 8px rgba(255,255,255,.03)",
+            backdropFilter: "blur(8px)",
           }}>
-            <Logo src={teamLogo} size={44} />
+            <Logo src={teamLogo} size={54} />
           </div>
+
           <div style={{ flex: 1, minWidth: 0 }}>
-            <div style={{ fontSize: 18, fontWeight: 800, color: "#fff", lineHeight: 1.2 }}>{teamName}</div>
-            {info?.team?.country && (
-              <div style={{ fontSize: 11, color: "rgba(255,255,255,.45)", marginTop: 3 }}>
-                {info.team.country} · Fondé en {info.team.founded || "—"}
+            <div style={{ fontSize: 20, fontWeight: 900, color: "#fff", lineHeight: 1.15, letterSpacing: "-.3px" }}>
+              {teamName}
+            </div>
+            {team && (
+              <div style={{ fontSize: 11, color: "rgba(255,255,255,.45)", marginTop: 4, display: "flex", alignItems: "center", gap: 6 }}>
+                <span>{team.country}</span>
+                {team.founded && <><span style={{ color: "rgba(255,255,255,.2)" }}>·</span><span>Fondé {team.founded}</span></>}
+                {team.national && <span style={{ background: "rgba(255,255,255,.1)", borderRadius: 4, padding: "1px 6px", fontSize: 9, fontWeight: 700 }}>NATIONAL</span>}
               </div>
             )}
-            {standing && (
-              <div style={{ display: "flex", alignItems: "center", gap: 8, marginTop: 8 }}>
+
+            {/* Rang + points */}
+            {st && (
+              <div style={{ display: "flex", alignItems: "center", gap: 6, marginTop: 8 }}>
                 <div style={{
-                  background: T.green, borderRadius: 6, padding: "3px 9px",
-                  fontSize: 11, fontWeight: 800, color: "#fff"
-                }}>#{standing.rank}</div>
-                <div style={{ fontSize: 11, color: "rgba(255,255,255,.5)" }}>
-                  {standing.points} pts · {standing.all?.played} J
-                </div>
+                  background: "linear-gradient(135deg,#00c170,#009e5c)",
+                  borderRadius: 8, padding: "4px 10px",
+                  fontSize: 12, fontWeight: 900, color: "#fff",
+                  boxShadow: "0 2px 8px rgba(0,193,112,.4)"
+                }}>#{st.rank}</div>
+                <div style={{
+                  background: "rgba(255,255,255,.08)", borderRadius: 8, padding: "4px 10px",
+                  fontSize: 11, color: "rgba(255,255,255,.7)", fontWeight: 700
+                }}>{st.points} pts</div>
+                <div style={{
+                  background: goalDiff > 0 ? "rgba(0,193,112,.15)" : goalDiff < 0 ? "rgba(239,68,68,.15)" : "rgba(255,255,255,.08)",
+                  borderRadius: 8, padding: "4px 10px", fontSize: 11, fontWeight: 700,
+                  color: goalDiff > 0 ? "#00c170" : goalDiff < 0 ? "#ef4444" : "rgba(255,255,255,.5)"
+                }}>{goalDiff > 0 ? "+" : ""}{goalDiff}</div>
               </div>
             )}
           </div>
-          {results.length > 0 && (
-            <div style={{ flexShrink: 0 }}>
-              {renderForm(results)}
+
+          {/* Forme récente colonne droite */}
+          {last5.length > 0 && (
+            <div style={{ flexShrink: 0, display: "flex", flexDirection: "column", alignItems: "flex-end", gap: 6 }}>
+              <div style={{ fontSize: 8, color: "rgba(255,255,255,.3)", fontWeight: 700, textTransform: "uppercase", letterSpacing: ".8px" }}>Forme</div>
+              <FormDots matches={results} size={22} />
+              {winPct !== null && (
+                <div style={{ fontSize: 9, color: "rgba(255,255,255,.3)", fontWeight: 600 }}>{winPct}% victoires</div>
+              )}
             </div>
           )}
         </div>
 
-        {/* Stats bar */}
-        {standing && (
+        {/* ── BARRE DE STATS ── */}
+        {st && (
           <div style={{
-            display: "flex", gap: 0, marginTop: 14,
-            background: "rgba(255,255,255,.06)", borderRadius: 10, overflow: "hidden"
+            display: "grid", gridTemplateColumns: "repeat(5,1fr)",
+            background: "rgba(255,255,255,.05)",
+            borderRadius: 14, overflow: "hidden",
+            border: "1px solid rgba(255,255,255,.07)",
+            marginBottom: 0,
           }}>
             {[
-              { label: "V", val: standing.all?.win   || 0, color: T.green },
-              { label: "N", val: standing.all?.draw  || 0, color: T.gold },
-              { label: "D", val: standing.all?.lose  || 0, color: T.orange },
-              { label: "BP", val: standing.all?.goals?.for     || 0, color: T.blue },
-              { label: "BC", val: standing.all?.goals?.against || 0, color: T.t3 },
+              { label: "Victoires", val: st.all?.win,   color: "#00c170", sub: `${totalGames > 0 ? Math.round((st.all?.win/totalGames)*100) : 0}%` },
+              { label: "Nuls",      val: st.all?.draw,  color: "#f59e0b", sub: `${totalGames > 0 ? Math.round((st.all?.draw/totalGames)*100) : 0}%` },
+              { label: "Défaites",  val: st.all?.lose,  color: "#ef4444", sub: `${totalGames > 0 ? Math.round((st.all?.lose/totalGames)*100) : 0}%` },
+              { label: "Buts +",    val: goalsFor,      color: "#3b82f6", sub: `${totalGames > 0 ? (goalsFor/totalGames).toFixed(1) : 0}/J` },
+              { label: "Buts -",    val: goalsAgainst,  color: "#94a3b8", sub: `${totalGames > 0 ? (goalsAgainst/totalGames).toFixed(1) : 0}/J` },
             ].map((s, i) => (
               <div key={i} style={{
-                flex: 1, textAlign: "center", padding: "8px 0",
-                borderRight: i < 4 ? "1px solid rgba(255,255,255,.06)" : "none"
+                textAlign: "center", padding: "12px 4px",
+                borderRight: i < 4 ? "1px solid rgba(255,255,255,.06)" : "none",
+                position: "relative"
               }}>
-                <div style={{ fontSize: 15, fontWeight: 800, color: s.color }}>{s.val}</div>
-                <div style={{ fontSize: 9, color: "rgba(255,255,255,.3)", fontWeight: 600, marginTop: 2 }}>{s.label}</div>
+                <div style={{
+                  fontSize: 20, fontWeight: 900, color: s.color,
+                  textShadow: `0 0 20px ${s.color}66`, lineHeight: 1
+                }}>{s.val || 0}</div>
+                <div style={{ fontSize: 8, color: "rgba(255,255,255,.3)", fontWeight: 700, marginTop: 3, textTransform: "uppercase", letterSpacing: ".5px" }}>{s.label}</div>
+                <div style={{ fontSize: 9, color: s.color, opacity: .6, fontWeight: 600, marginTop: 1 }}>{s.sub}</div>
               </div>
             ))}
           </div>
         )}
+
+        {/* Tabs collés en bas du hero */}
+        <div style={{ display: "flex", marginTop: 14, borderTop: "1px solid rgba(255,255,255,.06)", marginLeft: -16, marginRight: -16, paddingLeft: 16 }}>
+          {TABS.map(t => (
+            <button key={t.id} onClick={() => setTab(t.id)} style={{
+              padding: "12px 14px 11px",
+              background: "none", border: "none", cursor: "pointer",
+              fontSize: 11, fontWeight: 800,
+              color: tab === t.id ? "#00c170" : "rgba(255,255,255,.35)",
+              borderBottom: tab === t.id ? "2px solid #00c170" : "2px solid transparent",
+              whiteSpace: "nowrap", transition: "all .15s"
+            }}>{t.icon} {t.label}</button>
+          ))}
+        </div>
       </div>
 
-      {/* Tabs */}
-      <div style={{
-        display: "flex", borderBottom: `1px solid ${T.line}`,
-        background: T.bg1, flexShrink: 0
-      }}>
-        {TABS.map(t => (
-          <button key={t.id} onClick={() => setTab(t.id)} style={{
-            flex: 1, padding: "12px 0",
-            background: "none", border: "none", cursor: "pointer",
-            fontSize: 11, fontWeight: 700, textTransform: "uppercase",
-            letterSpacing: "0.5px",
-            color: tab === t.id ? T.green : T.t3,
-            borderBottom: tab === t.id ? `2px solid ${T.green}` : "2px solid transparent",
-            transition: "all .15s"
-          }}>{t.label}</button>
-        ))}
-      </div>
+      {/* ── CONTENT ── */}
+      <div style={{ flex: 1, overflowY: "auto" }}>
 
-      {/* Content */}
-      <div style={{ flex: 1, overflowY: "auto", background: T.bg2 }}>
-        {loading ? (
-          <div style={{ display: "flex", alignItems: "center", justifyContent: "center", height: 160 }}>
-            <Spin s={28} />
+        {/* RÉSULTATS */}
+        {tab === "resultats" && (
+          <div style={{ paddingBottom: 16 }}>
+            {results.length === 0
+              ? <div style={{ textAlign: "center", padding: 40, color: "#94a3b8" }}>Aucun résultat</div>
+              : [...results].reverse().map((m, i) => <MatchRow key={m.fixture?.id || i} m={m} idx={i} />)
+            }
           </div>
-        ) : (
-          <>
-            {tab === "resultats" && (
-              <div>
-                {results.length === 0
-                  ? <div style={{ textAlign: "center", padding: 40, color: T.t3, fontSize: 13 }}>Aucun résultat</div>
-                  : [...results].reverse().map((m, i) => renderMatchRow(m, i))
-                }
-              </div>
+        )}
+
+        {/* PROCHAINS */}
+        {tab === "prochains" && (
+          <div style={{ paddingBottom: 16 }}>
+            {next.length === 0
+              ? <div style={{ textAlign: "center", padding: 40, color: "#94a3b8" }}>Aucun match à venir</div>
+              : next.map((m, i) => <MatchRow key={m.fixture?.id || i} m={m} idx={i} />)
+            }
+          </div>
+        )}
+
+        {/* STATS */}
+        {tab === "stats" && (
+          <div style={{ padding: 14 }}>
+            {/* Bilan domicile / extérieur */}
+            {st && (
+              <>
+                <div style={{ fontSize: 10, fontWeight: 800, color: "#94a3b8", textTransform: "uppercase", letterSpacing: ".8px", marginBottom: 10 }}>Bilan</div>
+                <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 10, marginBottom: 16 }}>
+                  {[
+                    { label: "À domicile", d: st.home, color: "#3b82f6", icon: "🏠" },
+                    { label: "À l'extérieur", d: st.away, color: "#f59e0b", icon: "✈️" },
+                  ].map((s, i) => (
+                    <div key={i} style={{
+                      background: "#fff", borderRadius: 14, padding: "14px",
+                      boxShadow: "0 2px 8px rgba(0,0,0,.06)",
+                      borderTop: `3px solid ${s.color}`
+                    }}>
+                      <div style={{ fontSize: 11, fontWeight: 700, color: "#64748b", marginBottom: 10 }}>{s.icon} {s.label}</div>
+                      <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr 1fr", gap: 6 }}>
+                        {[
+                          { l: "V", v: s.d?.win,  c: "#00c170" },
+                          { l: "N", v: s.d?.draw, c: "#f59e0b" },
+                          { l: "D", v: s.d?.lose, c: "#ef4444" },
+                        ].map((r, j) => (
+                          <div key={j} style={{ textAlign: "center" }}>
+                            <div style={{ fontSize: 18, fontWeight: 900, color: r.c }}>{r.v || 0}</div>
+                            <div style={{ fontSize: 9, color: "#94a3b8", fontWeight: 700 }}>{r.l}</div>
+                          </div>
+                        ))}
+                      </div>
+                    </div>
+                  ))}
+                </div>
+
+                {/* Barre de forme visuelle */}
+                <div style={{ fontSize: 10, fontWeight: 800, color: "#94a3b8", textTransform: "uppercase", letterSpacing: ".8px", marginBottom: 10 }}>Répartition saison</div>
+                <div style={{ background: "#fff", borderRadius: 14, padding: 16, boxShadow: "0 2px 8px rgba(0,0,0,.06)", marginBottom: 16 }}>
+                  {[
+                    { label: "Victoires", val: st.all?.win,  total: totalGames, color: "#00c170" },
+                    { label: "Nuls",      val: st.all?.draw, total: totalGames, color: "#f59e0b" },
+                    { label: "Défaites",  val: st.all?.lose, total: totalGames, color: "#ef4444" },
+                  ].map((r, i) => {
+                    const pct = totalGames > 0 ? Math.round((r.val / totalGames) * 100) : 0;
+                    return (
+                      <div key={i} style={{ marginBottom: i < 2 ? 12 : 0 }}>
+                        <div style={{ display: "flex", justifyContent: "space-between", marginBottom: 4 }}>
+                          <span style={{ fontSize: 11, color: "#64748b", fontWeight: 600 }}>{r.label}</span>
+                          <span style={{ fontSize: 11, fontWeight: 800, color: r.color }}>{r.val} <span style={{ color: "#94a3b8", fontWeight: 500 }}>({pct}%)</span></span>
+                        </div>
+                        <div style={{ height: 6, background: "#f1f5f9", borderRadius: 4, overflow: "hidden" }}>
+                          <div style={{ width: `${pct}%`, height: "100%", background: r.color, borderRadius: 4, transition: "width .6s ease" }} />
+                        </div>
+                      </div>
+                    );
+                  })}
+                </div>
+              </>
             )}
-            {tab === "prochains" && (
-              <div>
-                {next.length === 0
-                  ? <div style={{ textAlign: "center", padding: 40, color: T.t3, fontSize: 13 }}>Aucun match à venir</div>
-                  : next.map((m, i) => renderMatchRow(m, i))
-                }
-              </div>
+
+            {/* Top buteurs de la ligue (filtrés par club) */}
+            {topScore.length > 0 && (
+              <>
+                <div style={{ fontSize: 10, fontWeight: 800, color: "#94a3b8", textTransform: "uppercase", letterSpacing: ".8px", marginBottom: 10 }}>Buteurs du club</div>
+                <div style={{ background: "#fff", borderRadius: 14, overflow: "hidden", boxShadow: "0 2px 8px rgba(0,0,0,.06)" }}>
+                  {topScore.map((p, i) => {
+                    const st2 = p.statistics?.[0];
+                    return (
+                      <div key={i} style={{
+                        display: "flex", alignItems: "center", gap: 12,
+                        padding: "12px 16px",
+                        borderBottom: i < topScore.length - 1 ? "1px solid #f1f5f9" : "none"
+                      }}>
+                        <PlayerImage playerId={p.player?.id} playerName={p.player?.name} size={40} ring="#e8edf3" />
+                        <div style={{ flex: 1 }}>
+                          <div style={{ fontSize: 13, fontWeight: 700, color: "#0f1117" }}>{p.player?.name}</div>
+                          <div style={{ fontSize: 10, color: "#94a3b8", marginTop: 2 }}>{st2?.games?.position || "—"}</div>
+                        </div>
+                        <div style={{ display: "flex", gap: 8 }}>
+                          <div style={{ textAlign: "center" }}>
+                            <div style={{ fontSize: 18, fontWeight: 900, color: "#00c170" }}>{st2?.goals?.total || 0}</div>
+                            <div style={{ fontSize: 8, color: "#94a3b8", fontWeight: 700 }}>BUTS</div>
+                          </div>
+                          <div style={{ textAlign: "center" }}>
+                            <div style={{ fontSize: 18, fontWeight: 900, color: "#3b82f6" }}>{st2?.goals?.assists || 0}</div>
+                            <div style={{ fontSize: 8, color: "#94a3b8", fontWeight: 700 }}>PASSES</div>
+                          </div>
+                        </div>
+                      </div>
+                    );
+                  })}
+                </div>
+              </>
             )}
-            {tab === "infos" && (
-              <div style={{ padding: 16 }}>
-                {info?.venue && (
-                  <div style={{ background: T.bg1, borderRadius: 12, padding: 14, marginBottom: 12, boxShadow: T.shadowSm }}>
-                    <div style={{ fontSize: 10, fontWeight: 700, color: T.t3, textTransform: "uppercase", letterSpacing: "0.8px", marginBottom: 10 }}>Stade</div>
-                    {info.venue.image && (
-                      <img src={info.venue.image} alt="" style={{ width: "100%", height: 120, objectFit: "cover", borderRadius: 8, marginBottom: 10 }} onError={e => e.target.style.display = "none"} />
-                    )}
-                    <div style={{ fontSize: 14, fontWeight: 700, color: T.t1 }}>{info.venue.name}</div>
-                    <div style={{ fontSize: 11, color: T.t3, marginTop: 3 }}>
-                      {info.venue.city} · {info.venue.capacity ? info.venue.capacity.toLocaleString() + " places" : ""}
+          </div>
+        )}
+
+        {/* INFOS */}
+        {tab === "infos" && (
+          <div style={{ padding: 14, paddingBottom: 24 }}>
+            {/* Stade — card premium */}
+            {venue && (
+              <div style={{ background: "#fff", borderRadius: 16, overflow: "hidden", boxShadow: "0 4px 20px rgba(0,0,0,.08)", marginBottom: 14 }}>
+                {venue.image && (
+                  <div style={{ position: "relative", height: 170, overflow: "hidden" }}>
+                    <img src={venue.image} alt="" style={{ width: "100%", height: "100%", objectFit: "cover" }} onError={e => e.target.parentElement.style.display = "none"} />
+                    <div style={{ position: "absolute", bottom: 0, left: 0, right: 0, height: "60%", background: "linear-gradient(transparent,rgba(0,0,0,.7))" }} />
+                    <div style={{ position: "absolute", bottom: 12, left: 14, right: 14 }}>
+                      <div style={{ fontSize: 15, fontWeight: 900, color: "#fff" }}>{venue.name}</div>
+                      <div style={{ fontSize: 11, color: "rgba(255,255,255,.65)", marginTop: 2 }}>{venue.city}</div>
                     </div>
                   </div>
                 )}
-                {info?.team && (
-                  <div style={{ background: T.bg1, borderRadius: 12, padding: 14, boxShadow: T.shadowSm }}>
-                    <div style={{ fontSize: 10, fontWeight: 700, color: T.t3, textTransform: "uppercase", letterSpacing: "0.8px", marginBottom: 10 }}>Club</div>
+                <div style={{ padding: "14px 16px" }}>
+                  {!venue.image && <div style={{ fontSize: 15, fontWeight: 800, color: "#0f1117", marginBottom: 8 }}>{venue.name}</div>}
+                  <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 10 }}>
                     {[
-                      { label: "Nom officiel", val: info.team.name },
-                      { label: "Pays", val: info.team.country },
-                      { label: "Fondé en", val: info.team.founded },
-                      { label: "Code", val: info.team.code },
-                    ].filter(r => r.val).map((r, i) => (
-                      <div key={i} style={{ display: "flex", justifyContent: "space-between", padding: "7px 0", borderBottom: `1px solid ${T.line}` }}>
-                        <span style={{ fontSize: 12, color: T.t3 }}>{r.label}</span>
-                        <span style={{ fontSize: 12, fontWeight: 600, color: T.t1 }}>{r.val}</span>
+                      { label: "Capacité", val: venue.capacity ? venue.capacity.toLocaleString("fr-FR") + " places" : "—", icon: "🏟️" },
+                      { label: "Surface", val: venue.surface || "—", icon: "🌿" },
+                      { label: "Ville", val: venue.city || "—", icon: "📍" },
+                      { label: "Adresse", val: venue.address || "—", icon: "🗺️" },
+                    ].map((r, i) => (
+                      <div key={i} style={{ background: "#f8fafc", borderRadius: 10, padding: "10px 12px" }}>
+                        <div style={{ fontSize: 9, color: "#94a3b8", fontWeight: 700, textTransform: "uppercase", letterSpacing: ".5px", marginBottom: 4 }}>{r.icon} {r.label}</div>
+                        <div style={{ fontSize: 12, fontWeight: 700, color: "#0f1117" }}>{r.val}</div>
                       </div>
                     ))}
                   </div>
-                )}
+                </div>
               </div>
             )}
-          </>
+
+            {/* Club infos */}
+            {team && (
+              <div style={{ background: "#fff", borderRadius: 16, overflow: "hidden", boxShadow: "0 4px 20px rgba(0,0,0,.08)" }}>
+                <div style={{ padding: "14px 16px 10px", borderBottom: "1px solid #f1f5f9", display: "flex", alignItems: "center", gap: 12 }}>
+                  <Logo src={teamLogo} size={36} />
+                  <div>
+                    <div style={{ fontSize: 14, fontWeight: 800, color: "#0f1117" }}>{team.name}</div>
+                    <div style={{ fontSize: 10, color: "#94a3b8", marginTop: 2 }}>{team.country}</div>
+                  </div>
+                </div>
+                <div style={{ padding: "8px 0" }}>
+                  {[
+                    { label: "Fondé en", val: team.founded, icon: "📅" },
+                    { label: "Code",     val: team.code,    icon: "🔤" },
+                    { label: "Pays",     val: team.country, icon: "🌍" },
+                  ].filter(r => r.val).map((r, i, arr) => (
+                    <div key={i} style={{
+                      display: "flex", justifyContent: "space-between", alignItems: "center",
+                      padding: "10px 16px",
+                      borderBottom: i < arr.length - 1 ? "1px solid #f8fafc" : "none"
+                    }}>
+                      <span style={{ fontSize: 12, color: "#64748b", display: "flex", alignItems: "center", gap: 8 }}>
+                        <span>{r.icon}</span>{r.label}
+                      </span>
+                      <span style={{ fontSize: 13, fontWeight: 700, color: "#0f1117" }}>{r.val}</span>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            )}
+          </div>
         )}
+
       </div>
     </div>
   );
 }
+
 
 // ============================================
 // APP PRINCIPALE
