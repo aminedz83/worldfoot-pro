@@ -48,7 +48,7 @@
     <script>
         if ("serviceWorker" in navigator) {
             const sw = `
-    const C='wf-pro-v29';
+    const C='wf-pro-v31';
     self.addEventListener('install',e=>{e.waitUntil(caches.open(C).then(c=>c.addAll(['./'])).then(()=>self.skipWaiting()));});
     self.addEventListener('activate',e=>{e.waitUntil(caches.keys().then(ks=>Promise.all(ks.filter(k=>k!==C).map(k=>caches.delete(k)))).then(()=>self.clients.claim()));});
     self.addEventListener('push',e=>{
@@ -2197,9 +2197,19 @@ function Row({match:m, onOpen, isFav, onFav, onTeam}){
   },
     React.createElement("div", { style: { width: 46, flexShrink: 0, textAlign: "center" } },
       live
-        ? React.createElement("div", null,
-            React.createElement("div", { style: { fontSize: 13, fontWeight: 800, color: "#e53535", lineHeight: 1 } }, min + "'"),
-            React.createElement("div", { style: { width: 6, height: 6, borderRadius: "50%", background: "#e53535", margin: "3px auto 0", animation: "pulse 1.2s infinite" } })
+        ? React.createElement("div", { style: { display:"flex", flexDirection:"column", alignItems:"center", gap: 2 } },
+            (sh === "2H" && min > 90)
+              ? React.createElement(React.Fragment, null,
+                  React.createElement("div", { style: { fontSize: 10, fontWeight: 700, color: "rgba(229,53,53,.6)", lineHeight: 1 } }, "(+" + (min - 90) + "')"),
+                  React.createElement("div", { style: { fontSize: 12, fontWeight: 900, color: "#e53535", lineHeight: 1 } }, "90+" + (min - 90) + "'")
+                )
+              : (sh === "1H" && min > 45)
+              ? React.createElement(React.Fragment, null,
+                  React.createElement("div", { style: { fontSize: 10, fontWeight: 700, color: "rgba(229,53,53,.6)", lineHeight: 1 } }, "(+" + (min - 45) + "')"),
+                  React.createElement("div", { style: { fontSize: 12, fontWeight: 900, color: "#e53535", lineHeight: 1 } }, "45+" + (min - 45) + "'")
+                )
+              : React.createElement("div", { style: { fontSize: 13, fontWeight: 800, color: "#e53535", lineHeight: 1 } }, min + "'"),
+            React.createElement("div", { style: { width: 6, height: 6, borderRadius: "50%", background: "#e53535", margin: "2px auto 0", animation: "pulse 1.2s infinite" } })
           )
         : sh === "NS"
         ? React.createElement("span", { style: { fontSize: 13, fontWeight: 700, color: "#333" } }, hhmm(m.fixture.date))
@@ -2260,7 +2270,7 @@ function LeagueBlock({group, onOpen, favs, onFav, onTeam}){
       style: {
         display: "flex",
         alignItems: "center",
-        gap: 11,
+        gap: 14,
         padding: "10px 14px",
         background: "var(--c-base)",
         borderBottom: "1px solid var(--c-border)",
@@ -2269,27 +2279,32 @@ function LeagueBlock({group, onOpen, favs, onFav, onTeam}){
         userSelect: "none"
       }
     },
+      // Logo ligue dans carré arrondi blanc avec ombre
       React.createElement("div", { style: {
-        width: 36, height: 36, borderRadius: 10,
+        width: 44, height: 44, borderRadius: 12,
         overflow: "hidden", flexShrink: 0,
         background: "#fff",
-        border: "1px solid var(--c-border)",
-        boxShadow: "0 1px 4px rgba(15,23,42,0.07)",
+        border: "1px solid rgba(15,23,42,0.08)",
+        boxShadow: "0 2px 8px rgba(15,23,42,0.10)",
         display: "flex", alignItems: "center", justifyContent: "center"
       } },
-        React.createElement(Logo, { src: group.lg.flag || group.lg.logo, size: 26 })
+        React.createElement(Logo, { src: group.lg.logo || group.lg.flag, size: 32 })
       ),
+      // Nom + drapeau + pays
       React.createElement("div", { style: { flex: 1, minWidth: 0 } },
         React.createElement("span", { style: {
           fontFamily: "'Plus Jakarta Sans', sans-serif",
-          fontSize: 13, fontWeight: 700,
+          fontSize: 14, fontWeight: 700,
           color: "var(--c-ink)",
           overflow: "hidden", textOverflow: "ellipsis",
           whiteSpace: "nowrap", display: "block",
-          letterSpacing: "-0.1px"
+          letterSpacing: "-0.2px"
         } }, group.lg.name),
-        React.createElement("div", { style: { display: "flex", alignItems: "center", gap: 4, marginTop: 2 } },
-          React.createElement("span", { style: { fontSize: 11, color: "var(--c-ink-3)", fontWeight: 500 } }, group.lg.country)
+        React.createElement("div", { style: { display: "flex", alignItems: "center", gap: 5, marginTop: 3 } },
+          group.lg.flag && group.lg.flag.startsWith("http")
+            ? React.createElement("img", { src: group.lg.flag, style: { width: 16, height: 11, borderRadius: 2, objectFit: "cover", flexShrink: 0 } })
+            : React.createElement("span", { style: { fontSize: 13, lineHeight: 1 } }, group.lg.flag || ""),
+          React.createElement("span", { style: { fontSize: 11, fontWeight: 600, color: "var(--c-ink-3)", textTransform: "uppercase", letterSpacing: 0.6 } }, group.lg.country)
         )
       ),
       lv > 0
@@ -2304,7 +2319,7 @@ function LeagueBlock({group, onOpen, favs, onFav, onTeam}){
             animation: "pulse 1.5s infinite", flexShrink: 0
           } }, "● LIVE " + lv)
         : null,
-      React.createElement("span", { style: { fontSize: 10, color: "var(--c-ink-4)", flexShrink: 0, marginLeft: 4 } }, open ? "▾" : "▸")
+      React.createElement("span", { style: { fontSize: 10, color: "var(--c-ink-4)", flexShrink: 0, marginLeft: 2 } }, open ? "▾" : "▸")
     ),
     open ? group.matches.map(m => React.createElement(Row, { key: m.fixture.id, match: m, onOpen: () => onOpen(m.fixture.id), isFav: favs.has(m.fixture.id), onFav: () => onFav(m.fixture.id), onTeam: onTeam })) : null
   );
