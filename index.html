@@ -48,7 +48,7 @@
     <script>
         if ("serviceWorker" in navigator) {
             const sw = `
-    const C='wf-pro-v17';
+    const C='wf-pro-v18';
     self.addEventListener('install',e=>{e.waitUntil(caches.open(C).then(c=>c.addAll(['./'])).then(()=>self.skipWaiting()));});
     self.addEventListener('activate',e=>{e.waitUntil(caches.keys().then(ks=>Promise.all(ks.filter(k=>k!==C).map(k=>caches.delete(k)))).then(()=>self.clients.claim()));});
     self.addEventListener('push',e=>{
@@ -2046,7 +2046,7 @@ function ComposPanel({lineups, players, homeTeam, awayTeam, isPartial, fix, even
 }
 
 // MATCH ROW
-function Row({match:m, onOpen, isFav, onFav}){
+function Row({match:m, onOpen, isFav, onFav, onTeam}){
   const s=m.fixture.status;
   const sh=s.short;
   const live=["1H","2H","ET","P"].includes(sh);
@@ -2127,10 +2127,15 @@ function Row({match:m, onOpen, isFav, onFav}){
     ),
     React.createElement("div", { style: { flex: 1, minWidth: 0, padding: "8px 0 8px 6px", display: "flex", flexDirection: "column", gap: 7 } },
       React.createElement("div", { style: { display: "flex", alignItems: "center", gap: 8, position: "relative" } },
-        React.createElement(Logo, { src: m.teams.home.logo, size: 20 }),
-        React.createElement("span", { style: { fontSize: 14, fontWeight: hw ? 800 : 500, color: hw ? "#111" : aw ? "#bbb" : "#222", flex: 1, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" } },
-          hn,
-          hRank ? React.createElement("span", { style: { fontSize: 11, color: "#bbb", fontWeight: 400 } }, " [" + hRank + "]") : null
+        React.createElement("div", {
+          onClick: (e) => { e.stopPropagation(); onTeam && onTeam(m.teams.home.id, m.teams.home.name, m.teams.home.logo, m.league?.id, m.league?.season); },
+          style: { display:"flex", alignItems:"center", gap:8, flex:1, minWidth:0, cursor: onTeam?"pointer":"default" }
+        },
+          React.createElement(Logo, { src: m.teams.home.logo, size: 20 }),
+          React.createElement("span", { style: { fontSize: 14, fontWeight: hw ? 800 : 500, color: hw ? "#111" : aw ? "#bbb" : "#222", flex: 1, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" } },
+            hn,
+            hRank ? React.createElement("span", { style: { fontSize: 11, color: "#bbb", fontWeight: 400 } }, " [" + hRank + "]") : null
+          )
         ),
         
         showBigChance && actionTeam === m.teams.home.id && React.createElement("span", {
@@ -2149,10 +2154,15 @@ function Row({match:m, onOpen, isFav, onFav}){
       ),
       
       React.createElement("div", { style: { display: "flex", alignItems: "center", gap: 8, position: "relative" } },
-        React.createElement(Logo, { src: m.teams.away.logo, size: 20 }),
-        React.createElement("span", { style: { fontSize: 14, fontWeight: aw ? 800 : 500, color: aw ? "#111" : hw ? "#bbb" : "#222", flex: 1, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" } },
-          an,
-          aRank ? React.createElement("span", { style: { fontSize: 11, color: "#bbb", fontWeight: 400 } }, " [" + aRank + "]") : null
+        React.createElement("div", {
+          onClick: (e) => { e.stopPropagation(); onTeam && onTeam(m.teams.away.id, m.teams.away.name, m.teams.away.logo, m.league?.id, m.league?.season); },
+          style: { display:"flex", alignItems:"center", gap:8, flex:1, minWidth:0, cursor: onTeam?"pointer":"default" }
+        },
+          React.createElement(Logo, { src: m.teams.away.logo, size: 20 }),
+          React.createElement("span", { style: { fontSize: 14, fontWeight: aw ? 800 : 500, color: aw ? "#111" : hw ? "#bbb" : "#222", flex: 1, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" } },
+            an,
+            aRank ? React.createElement("span", { style: { fontSize: 11, color: "#bbb", fontWeight: 400 } }, " [" + aRank + "]") : null
+          )
         ),
         
         showBigChance && actionTeam === m.teams.away.id && React.createElement("span", {
@@ -2185,7 +2195,7 @@ function Row({match:m, onOpen, isFav, onFav}){
   );
 }
 
-function LeagueBlock({group, onOpen, favs, onFav}){
+function LeagueBlock({group, onOpen, favs, onFav, onTeam}){
   const[open,setOpen]=useState(true);
   const lv=group.matches.filter(m=>LIVE_ST.has(m.fixture.status.short)).length;
   return React.createElement("div", { style: { background: "var(--c-surface)", marginBottom: 2 } },
@@ -2240,7 +2250,7 @@ function LeagueBlock({group, onOpen, favs, onFav}){
         : null,
       React.createElement("span", { style: { fontSize: 10, color: "var(--c-ink-4)", flexShrink: 0, marginLeft: 4 } }, open ? "▾" : "▸")
     ),
-    open ? group.matches.map(m => React.createElement(Row, { key: m.fixture.id, match: m, onOpen: () => onOpen(m.fixture.id), isFav: favs.has(m.fixture.id), onFav: () => onFav(m.fixture.id) })) : null
+    open ? group.matches.map(m => React.createElement(Row, { key: m.fixture.id, match: m, onOpen: () => onOpen(m.fixture.id), isFav: favs.has(m.fixture.id), onFav: () => onFav(m.fixture.id), onTeam: onTeam })) : null
   );
 }
 
@@ -2350,12 +2360,12 @@ const getRefereeStats = async (refereeName) => {
 // ============================================
 // MATCH DETAIL AMÉLIORÉ
 // ============================================
-function MatchDetailWrapper({state,onClose}){
+function MatchDetailWrapper({state,onClose,onTeam}){
   if(!state)return null;
-  return React.createElement(MatchDetail,{state,onClose});
+  return React.createElement(MatchDetail,{state,onClose,onTeam});
 }
 
-function MatchDetail({state,onClose}){
+function MatchDetail({state,onClose,onTeam}){
   const[tab,setTab]=React.useState("resume");
   const[period,setPeriod]=React.useState("all");
   const[playerSheet,setPlayerSheet]=React.useState(null);
@@ -3818,19 +3828,25 @@ function MatchDetail({state,onClose}){
           alignItems: "center",
           gap: "7px"
         }},
-          React.createElement(Logo, {src:fix.teams.home.logo, size:48}),
-          React.createElement("div", {className:"md-team-name", style:{
-            fontFamily: "'Plus Jakarta Sans', sans-serif",
-            fontSize: "14px",
-            fontWeight: "600",
-            color: "#1A1F2E",
-            textAlign: "center",
-            overflow: "hidden",
-            textOverflow: "ellipsis",
-            whiteSpace: "nowrap",
-            maxWidth: "100%",
-            lineHeight: "1.2"
-          }}, fix.teams.home.name)
+          React.createElement("div", {
+            onClick: () => onTeam && onTeam(fix.teams.home.id, fix.teams.home.name, fix.teams.home.logo, fix.league.id, fix.league.season),
+            style: { display:"flex", flexDirection:"column", alignItems:"center", gap:7, cursor: onTeam ? "pointer" : "default" }
+          },
+            React.createElement(Logo, {src:fix.teams.home.logo, size:48}),
+            React.createElement("div", {className:"md-team-name", style:{
+              fontFamily: "'Plus Jakarta Sans', sans-serif",
+              fontSize: "14px",
+              fontWeight: "600",
+              color: "#1A1F2E",
+              textAlign: "center",
+              overflow: "hidden",
+              textOverflow: "ellipsis",
+              whiteSpace: "nowrap",
+              maxWidth: "100%",
+              lineHeight: "1.2",
+              textDecoration: onTeam ? "underline dotted rgba(0,0,0,.2)" : "none"
+            }}, fix.teams.home.name)
+          )
         ),
         
         React.createElement("div", {className:"md-score-center", style:{
@@ -3868,19 +3884,25 @@ function MatchDetail({state,onClose}){
           alignItems: "center",
           gap: "7px"
         }},
-          React.createElement(Logo, {src:fix.teams.away.logo, size:48}),
-          React.createElement("div", {className:"md-team-name", style:{
-            fontFamily: "'Plus Jakarta Sans', sans-serif",
-            fontSize: "14px",
-            fontWeight: "600",
-            color: "#1A1F2E",
-            textAlign: "center",
-            overflow: "hidden",
-            textOverflow: "ellipsis",
-            whiteSpace: "nowrap",
-            maxWidth: "100%",
-            lineHeight: "1.2"
-          }}, fix.teams.away.name)
+          React.createElement("div", {
+            onClick: () => onTeam && onTeam(fix.teams.away.id, fix.teams.away.name, fix.teams.away.logo, fix.league.id, fix.league.season),
+            style: { display:"flex", flexDirection:"column", alignItems:"center", gap:7, cursor: onTeam ? "pointer" : "default" }
+          },
+            React.createElement(Logo, {src:fix.teams.away.logo, size:48}),
+            React.createElement("div", {className:"md-team-name", style:{
+              fontFamily: "'Plus Jakarta Sans', sans-serif",
+              fontSize: "14px",
+              fontWeight: "600",
+              color: "#1A1F2E",
+              textAlign: "center",
+              overflow: "hidden",
+              textOverflow: "ellipsis",
+              whiteSpace: "nowrap",
+              maxWidth: "100%",
+              lineHeight: "1.2",
+              textDecoration: onTeam ? "underline dotted rgba(0,0,0,.2)" : "none"
+            }}, fix.teams.away.name)
+          )
         )
       ),
 
@@ -4173,7 +4195,7 @@ function MatchDetail({state,onClose}){
 // ============================================
 // ONGLET SCORES
 // ============================================
-function ScoresTab({favs,onFav}){
+function ScoresTab({favs,onFav,onTeam}){
   const[date,setDate]=useState(today()),[data,setData]=useState([]),[st,setSt]=useState("load"),[err,setErr]=useState("");
   const[detail,setDet]=useState(null),[q,setQ]=useState(""),[lg,setLg]=useState(null),[favOnly,setFO]=useState(false);
   const[picker,setPicker]=useState(false),[cd,setCd]=useState(15),[spin,setSpin]=useState(false),[statusFilter,setStatusFilter]=useState("all");
@@ -4526,7 +4548,7 @@ function ScoresTab({favs,onFav}){
           React.createElement("div", { className: "bc", style: { fontSize: 17, fontWeight: 800, color: T.t2, letterSpacing: 0.3 } }, "Aucun match"),
           React.createElement("div", { style: { fontSize: 13, color: T.t4 } }, favOnly ? "Aucun favori ce jour" : q ? "Aucun résultat pour cette recherche" : "Pas de matchs programmés ce jour-là")
         )
-      : groups.map(g => React.createElement(LeagueBlock, { key: g.lg.id, group: g, onOpen: openMatch, favs: favs, onFav: onFav }))
+      : groups.map(g => React.createElement(LeagueBlock, { key: g.lg.id, group: g, onOpen: openMatch, favs: favs, onFav: onFav, onTeam: onTeam }))
     ),
     React.createElement(Sheet, { open: picker, onClose: () => setPicker(false) },
       React.createElement("div", { style: { padding: "4px 16px 14px" } },
@@ -4558,14 +4580,14 @@ function ScoresTab({favs,onFav}){
         ))
       )
     ),
-    React.createElement(MatchDetailWrapper, { state: detail, onClose: () => setDet(null) })
+    React.createElement(MatchDetailWrapper, { state: detail, onClose: () => setDet(null), onTeam: onTeam })
   );
 }
 
 // ============================================
 // ONGLET CLASSEMENT (StandingsTab) - CORRIGÉ
 // ============================================
-function StandingsTab() {
+function StandingsTab({ onTeam }) {
   const [viewMode, setViewMode] = useState("classement");
   const [lid, setLid] = useState(39);
   const [season, setSeason] = useState(CUR_SEASON);
@@ -4922,8 +4944,13 @@ function StandingsTab() {
                       },
                         React.createElement("td", { style: { padding: "8px 4px", textAlign: "center", fontWeight: "bold" } }, row.rank),
                         React.createElement("td", { style: { padding: "8px 4px", display: "flex", alignItems: "center", gap: 8 } },
-                          React.createElement(Logo, { src: row.team?.logo, size: 18 }),
-                          React.createElement("span", { style: { fontWeight: isJsk ? 700 : 400 } }, row.team?.name)
+                          React.createElement("div", {
+                            onClick: () => onTeam && onTeam(row.team?.id, row.team?.name, row.team?.logo, lid, season),
+                            style: { display:"flex", alignItems:"center", gap:8, cursor: onTeam ? "pointer" : "default" }
+                          },
+                            React.createElement(Logo, { src: row.team?.logo, size: 18 }),
+                            React.createElement("span", { style: { fontWeight: isJsk ? 700 : 400, textDecoration: onTeam ? "underline dotted rgba(0,0,0,.25)" : "none" } }, row.team?.name)
+                          )
                         ),
                         React.createElement("td", { style: { padding: "8px 4px", textAlign: "center" } }, row.all?.played || 0),
                         React.createElement("td", { style: { padding: "8px 4px", textAlign: "center", color: "#00b86b" } }, row.all?.win || 0),
@@ -5044,7 +5071,8 @@ function StandingsTab() {
     // Détail du match (corrigé)
     detailMatch && React.createElement(MatchDetailWrapper, {
       state: detailMatch,
-      onClose: () => setDetailMatch(null)
+      onClose: () => setDetailMatch(null),
+      onTeam: onTeam
     })
   );
 }
@@ -5205,7 +5233,7 @@ function ScorersTab() {
 // ============================================
 // ONGLET CALENDRIER (CalendarTab) - CORRIGÉ
 // ============================================
-function CalendarTab({ favs, onFav }) {
+function CalendarTab({ favs, onFav, onTeam }) {
   const [lid, setLid] = useState(39);
   const [season, setSeason] = useState(CUR_SEASON);
   const [data, setData] = useState([]);
@@ -5414,7 +5442,8 @@ function CalendarTab({ favs, onFav }) {
     // Détail du match (corrigé)
     detailMatch && React.createElement(MatchDetailWrapper, {
       state: detailMatch,
-      onClose: () => setDetailMatch(null)
+      onClose: () => setDetailMatch(null),
+      onTeam: onTeam
     })
   );
 }
@@ -5925,6 +5954,302 @@ function JSKTab() {
 }
 
 // ============================================
+// FICHE ÉQUIPE (TeamPage)
+// ============================================
+function TeamPage({ teamId, teamName, teamLogo, leagueId, season, onClose }) {
+  const [info,    setInfo]    = useState(null);
+  const [results, setResults] = useState([]);
+  const [next,    setNext]    = useState([]);
+  const [standing,setStanding]= useState(null);
+  const [loading, setLoading] = useState(true);
+  const [tab,     setTab]     = useState("resultats");
+
+  useEffect(() => {
+    if (!teamId) return;
+    let cancelled = false;
+    setLoading(true);
+
+    const lid    = leagueId || 39;
+    const seas   = season   || 2024;
+
+    Promise.allSettled([
+      api(`/teams?id=${teamId}`, 86400000),
+      api(`/fixtures?team=${teamId}&last=6`, TTL.DONE),
+      api(`/fixtures?team=${teamId}&next=5`, TTL.UPCOMING),
+      api(`/standings?league=${lid}&season=${seas}`, TTL.STANDING),
+    ]).then(([rInfo, rRes, rNext, rStand]) => {
+      if (cancelled) return;
+      if (rInfo.status  === "fulfilled") setInfo(rInfo.value?.[0] || null);
+      if (rRes.status   === "fulfilled") setResults(rRes.value || []);
+      if (rNext.status  === "fulfilled") setNext(rNext.value || []);
+      if (rStand.status === "fulfilled") {
+        const allRows = (rStand.value || []).flatMap(g =>
+          Array.isArray(g) ? g : (g?.league?.standings || []).flat()
+        );
+        const row = allRows.find(r => r.team?.id === teamId);
+        setStanding(row || null);
+      }
+      setLoading(false);
+    });
+
+    return () => { cancelled = true; };
+  }, [teamId, leagueId, season]);
+
+  const formColors = { W: T.green, D: T.gold, L: T.orange };
+  const formLabels = { W: "V", D: "N", L: "D" };
+
+  const renderForm = (matches) => {
+    if (!matches.length) return null;
+    const last5 = [...matches].reverse().slice(0, 5);
+    return (
+      <div style={{ display: "flex", gap: 5, flexWrap: "wrap" }}>
+        {last5.map((m, i) => {
+          const isHome = m.teams?.home?.id === teamId;
+          const gF = isHome ? (m.goals?.home ?? 0) : (m.goals?.away ?? 0);
+          const gA = isHome ? (m.goals?.away ?? 0) : (m.goals?.home ?? 0);
+          const res = gF > gA ? "W" : gF < gA ? "L" : "D";
+          return (
+            <div key={i} style={{
+              width: 28, height: 28, borderRadius: 8,
+              background: formColors[res],
+              display: "flex", alignItems: "center", justifyContent: "center",
+              color: "#fff", fontSize: 11, fontWeight: 800,
+              boxShadow: `0 2px 8px ${formColors[res]}44`
+            }}>{formLabels[res]}</div>
+          );
+        })}
+      </div>
+    );
+  };
+
+  const renderMatchRow = (m, idx) => {
+    const isHome  = m.teams?.home?.id === teamId;
+    const oppTeam = isHome ? m.teams?.away : m.teams?.home;
+    const gF = isHome ? m.goals?.home : m.goals?.away;
+    const gA = isHome ? m.goals?.away : m.goals?.home;
+    const sh = m.fixture?.status?.short;
+    const done = ["FT","AET","PEN","AWD","WO"].includes(sh);
+    const ns   = ["NS","TBD","PST"].includes(sh);
+    const res  = done && gF != null && gA != null
+      ? (gF > gA ? "W" : gF < gA ? "L" : "D") : null;
+    const resColor = res ? formColors[res] : T.t4;
+
+    return (
+      <div key={m.fixture?.id || idx} style={{
+        display: "flex", alignItems: "center", gap: 10,
+        padding: "10px 14px",
+        borderBottom: `1px solid ${T.line}`,
+        background: T.bg1,
+      }}>
+        {res && (
+          <div style={{
+            width: 24, height: 24, borderRadius: 6, background: resColor,
+            display: "flex", alignItems: "center", justifyContent: "center",
+            color: "#fff", fontSize: 9, fontWeight: 800, flexShrink: 0
+          }}>{formLabels[res]}</div>
+        )}
+        {!res && (
+          <div style={{
+            width: 24, height: 24, borderRadius: 6, background: T.bg3,
+            display: "flex", alignItems: "center", justifyContent: "center",
+            flexShrink: 0
+          }}>
+            <span style={{ fontSize: 9, color: T.t3, fontWeight: 700 }}>
+              {ns ? hhmm(m.fixture?.date) : "—"}
+            </span>
+          </div>
+        )}
+        <Logo src={oppTeam?.logo} size={22} />
+        <div style={{ flex: 1, minWidth: 0 }}>
+          <div style={{ fontSize: 12, fontWeight: 600, color: T.t1, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
+            {isHome ? "vs " : "@ "}{oppTeam?.name}
+          </div>
+          <div style={{ fontSize: 10, color: T.t3, marginTop: 2 }}>
+            {m.league?.name} · {DL(m.fixture?.date?.slice(0, 10))}
+          </div>
+        </div>
+        {done && gF != null && (
+          <div style={{
+            fontFamily: "'JetBrains Mono', monospace",
+            fontSize: 13, fontWeight: 800, color: T.t1,
+            background: T.bg2, borderRadius: 6, padding: "3px 8px",
+            flexShrink: 0
+          }}>{gF} – {gA}</div>
+        )}
+        {ns && (
+          <div style={{
+            fontSize: 10, color: T.t3, background: T.bg2,
+            borderRadius: 6, padding: "3px 8px", flexShrink: 0,
+            fontWeight: 600
+          }}>À venir</div>
+        )}
+      </div>
+    );
+  };
+
+  const TABS = [
+    { id: "resultats", label: "Résultats" },
+    { id: "prochains", label: "Prochains" },
+    { id: "infos",     label: "Infos" },
+  ];
+
+  return (
+    <div className="md-overlay">
+      {/* Topbar */}
+      <div className="md-topbar">
+        <button onClick={onClose} className="md-back-btn">←</button>
+        <div className="md-topbar-title">{teamName}</div>
+        <div style={{ width: 36 }} />
+      </div>
+
+      {/* Hero */}
+      <div style={{
+        background: "linear-gradient(160deg, #0f1629 0%, #1a2340 100%)",
+        padding: "20px 16px 16px", flexShrink: 0,
+        borderBottom: `1px solid rgba(255,255,255,.06)`
+      }}>
+        <div style={{ display: "flex", alignItems: "center", gap: 14 }}>
+          <div style={{
+            width: 60, height: 60, background: "rgba(255,255,255,.08)",
+            borderRadius: 14, display: "flex", alignItems: "center",
+            justifyContent: "center", flexShrink: 0,
+            border: "1px solid rgba(255,255,255,.1)"
+          }}>
+            <Logo src={teamLogo} size={44} />
+          </div>
+          <div style={{ flex: 1, minWidth: 0 }}>
+            <div style={{ fontSize: 18, fontWeight: 800, color: "#fff", lineHeight: 1.2 }}>{teamName}</div>
+            {info?.team?.country && (
+              <div style={{ fontSize: 11, color: "rgba(255,255,255,.45)", marginTop: 3 }}>
+                {info.team.country} · Fondé en {info.team.founded || "—"}
+              </div>
+            )}
+            {standing && (
+              <div style={{ display: "flex", alignItems: "center", gap: 8, marginTop: 8 }}>
+                <div style={{
+                  background: T.green, borderRadius: 6, padding: "3px 9px",
+                  fontSize: 11, fontWeight: 800, color: "#fff"
+                }}>#{standing.rank}</div>
+                <div style={{ fontSize: 11, color: "rgba(255,255,255,.5)" }}>
+                  {standing.points} pts · {standing.all?.played} J
+                </div>
+              </div>
+            )}
+          </div>
+          {results.length > 0 && (
+            <div style={{ flexShrink: 0 }}>
+              {renderForm(results)}
+            </div>
+          )}
+        </div>
+
+        {/* Stats bar */}
+        {standing && (
+          <div style={{
+            display: "flex", gap: 0, marginTop: 14,
+            background: "rgba(255,255,255,.06)", borderRadius: 10, overflow: "hidden"
+          }}>
+            {[
+              { label: "V", val: standing.all?.win   || 0, color: T.green },
+              { label: "N", val: standing.all?.draw  || 0, color: T.gold },
+              { label: "D", val: standing.all?.lose  || 0, color: T.orange },
+              { label: "BP", val: standing.all?.goals?.for     || 0, color: T.blue },
+              { label: "BC", val: standing.all?.goals?.against || 0, color: T.t3 },
+            ].map((s, i) => (
+              <div key={i} style={{
+                flex: 1, textAlign: "center", padding: "8px 0",
+                borderRight: i < 4 ? "1px solid rgba(255,255,255,.06)" : "none"
+              }}>
+                <div style={{ fontSize: 15, fontWeight: 800, color: s.color }}>{s.val}</div>
+                <div style={{ fontSize: 9, color: "rgba(255,255,255,.3)", fontWeight: 600, marginTop: 2 }}>{s.label}</div>
+              </div>
+            ))}
+          </div>
+        )}
+      </div>
+
+      {/* Tabs */}
+      <div style={{
+        display: "flex", borderBottom: `1px solid ${T.line}`,
+        background: T.bg1, flexShrink: 0
+      }}>
+        {TABS.map(t => (
+          <button key={t.id} onClick={() => setTab(t.id)} style={{
+            flex: 1, padding: "12px 0",
+            background: "none", border: "none", cursor: "pointer",
+            fontSize: 11, fontWeight: 700, textTransform: "uppercase",
+            letterSpacing: "0.5px",
+            color: tab === t.id ? T.green : T.t3,
+            borderBottom: tab === t.id ? `2px solid ${T.green}` : "2px solid transparent",
+            transition: "all .15s"
+          }}>{t.label}</button>
+        ))}
+      </div>
+
+      {/* Content */}
+      <div style={{ flex: 1, overflowY: "auto", background: T.bg2 }}>
+        {loading ? (
+          <div style={{ display: "flex", alignItems: "center", justifyContent: "center", height: 160 }}>
+            <Spin s={28} />
+          </div>
+        ) : (
+          <>
+            {tab === "resultats" && (
+              <div>
+                {results.length === 0
+                  ? <div style={{ textAlign: "center", padding: 40, color: T.t3, fontSize: 13 }}>Aucun résultat</div>
+                  : [...results].reverse().map((m, i) => renderMatchRow(m, i))
+                }
+              </div>
+            )}
+            {tab === "prochains" && (
+              <div>
+                {next.length === 0
+                  ? <div style={{ textAlign: "center", padding: 40, color: T.t3, fontSize: 13 }}>Aucun match à venir</div>
+                  : next.map((m, i) => renderMatchRow(m, i))
+                }
+              </div>
+            )}
+            {tab === "infos" && (
+              <div style={{ padding: 16 }}>
+                {info?.venue && (
+                  <div style={{ background: T.bg1, borderRadius: 12, padding: 14, marginBottom: 12, boxShadow: T.shadowSm }}>
+                    <div style={{ fontSize: 10, fontWeight: 700, color: T.t3, textTransform: "uppercase", letterSpacing: "0.8px", marginBottom: 10 }}>Stade</div>
+                    {info.venue.image && (
+                      <img src={info.venue.image} alt="" style={{ width: "100%", height: 120, objectFit: "cover", borderRadius: 8, marginBottom: 10 }} onError={e => e.target.style.display = "none"} />
+                    )}
+                    <div style={{ fontSize: 14, fontWeight: 700, color: T.t1 }}>{info.venue.name}</div>
+                    <div style={{ fontSize: 11, color: T.t3, marginTop: 3 }}>
+                      {info.venue.city} · {info.venue.capacity ? info.venue.capacity.toLocaleString() + " places" : ""}
+                    </div>
+                  </div>
+                )}
+                {info?.team && (
+                  <div style={{ background: T.bg1, borderRadius: 12, padding: 14, boxShadow: T.shadowSm }}>
+                    <div style={{ fontSize: 10, fontWeight: 700, color: T.t3, textTransform: "uppercase", letterSpacing: "0.8px", marginBottom: 10 }}>Club</div>
+                    {[
+                      { label: "Nom officiel", val: info.team.name },
+                      { label: "Pays", val: info.team.country },
+                      { label: "Fondé en", val: info.team.founded },
+                      { label: "Code", val: info.team.code },
+                    ].filter(r => r.val).map((r, i) => (
+                      <div key={i} style={{ display: "flex", justifyContent: "space-between", padding: "7px 0", borderBottom: `1px solid ${T.line}` }}>
+                        <span style={{ fontSize: 12, color: T.t3 }}>{r.label}</span>
+                        <span style={{ fontSize: 12, fontWeight: 600, color: T.t1 }}>{r.val}</span>
+                      </div>
+                    ))}
+                  </div>
+                )}
+              </div>
+            )}
+          </>
+        )}
+      </div>
+    </div>
+  );
+}
+
+// ============================================
 // APP PRINCIPALE
 // ============================================
 function App() {
@@ -5960,6 +6285,11 @@ function App() {
     catch {}
   }, [currentTab]);
   
+  const [teamPage, setTeamPage] = useState(null);
+  const openTeam = useCallback((teamId, teamName, teamLogo, leagueId, season) => {
+    setTeamPage({ teamId, teamName, teamLogo, leagueId, season });
+  }, []);
+
   const [favs, setFavs] = useState(() => {
     try {
       const saved = localStorage.getItem("wf_favs");
@@ -5995,10 +6325,10 @@ function App() {
   
   const renderContent = () => {
     switch (currentTab) {
-      case "scores": return React.createElement(ScoresTab, { favs, onFav: toggleFav });
-      case "standings": return React.createElement(StandingsTab, null);
+      case "scores": return React.createElement(ScoresTab, { favs, onFav: toggleFav, onTeam: openTeam });
+      case "standings": return React.createElement(StandingsTab, { onTeam: openTeam });
       case "scorers": return React.createElement(ScorersTab, null);
-      case "calendar": return React.createElement(CalendarTab, { favs, onFav: toggleFav });
+      case "calendar": return React.createElement(CalendarTab, { favs, onFav: toggleFav, onTeam: openTeam });
       case "transfers": return React.createElement(TransfersTab, null);
       case "actu": return React.createElement(ActuTab, null);
       case "jsk": return React.createElement(JSKTab, null);
@@ -6141,7 +6471,17 @@ function App() {
 
     React.createElement("div", { style: { flex: 1, overflow: "hidden" } },
       renderContent()
-    )
+    ),
+
+    teamPage ? React.createElement(TeamPage, {
+      key: teamPage.teamId,
+      teamId:   teamPage.teamId,
+      teamName: teamPage.teamName,
+      teamLogo: teamPage.teamLogo,
+      leagueId: teamPage.leagueId,
+      season:   teamPage.season,
+      onClose:  () => setTeamPage(null)
+    }) : null
   );
 }
 
