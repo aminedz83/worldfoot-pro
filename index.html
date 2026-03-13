@@ -48,7 +48,7 @@
     <script>
         if ("serviceWorker" in navigator) {
             const sw = `
-    const C='wf-pro-v35';
+    const C='wf-pro-v37';
     self.addEventListener('install',e=>{e.waitUntil(caches.open(C).then(c=>c.addAll(['./'])).then(()=>self.skipWaiting()));});
     self.addEventListener('activate',e=>{e.waitUntil(caches.keys().then(ks=>Promise.all(ks.filter(k=>k!==C).map(k=>caches.delete(k)))).then(()=>self.clients.claim()));});
     self.addEventListener('push',e=>{
@@ -5157,58 +5157,87 @@ function ScorersTab() {
   const [type, setType] = useState("scorers");
   const [data, setData] = useState([]);
   const [status, setStatus] = useState("load");
+  const [lastUpdate, setLastUpdate] = useState(null);
+
+  const loadScorers = useCallback(async (leagueId, seas, typ, silent=false) => {
+    if (!silent) setStatus("load");
+    try {
+      if (leagueId === 186 && typ === "scorers") {
+        // Tester les 3 saisons possibles et garder celle avec le + de buts
+        const [r1, r2, r3] = await Promise.allSettled([
+          api(`/players/topscorers?league=186&season=2024`, 1800000),
+          api(`/players/topscorers?league=186&season=2023`, 1800000),
+          api(`/players/topscorers?league=186&season=2025`, 1800000)
+        ]);
+        const candidates = [r1, r2, r3]
+          .map(r => r.status === "fulfilled" ? (r.value || []) : [])
+          .filter(d => d.length > 0);
+        // Garder la saison dont le top buteur a le plus de buts
+        const best = candidates.reduce((a, b) => {
+          const maxA = a[0]?.statistics?.[0]?.goals?.total || 0;
+          const maxB = b[0]?.statistics?.[0]?.goals?.total || 0;
+          return maxB > maxA ? b : a;
+        }, []);
+        setData(best);
+        setStatus(best.length ? "ok" : "empty");
+      } else {
+        const path = typ === "assists"
+          ? `/players/topassists?league=${leagueId}&season=${seas}`
+          : `/players/topscorers?league=${leagueId}&season=${seas}`;
+        const res = await api(path, 1800000);
+        setData(res || []);
+        setStatus(res?.length ? "ok" : "empty");
+      }
+      setLastUpdate(Date.now());
+    } catch {
+      if (!silent) setStatus("err");
+    }
+  }, []);
 
   useEffect(() => {
-    let mounted = true;
-    setStatus("load");
-    setData([]);
-    const path = type === "assists"
-      ? `/players/topassists?league=${lid}&season=${season}`
-      : `/players/topscorers?league=${lid}&season=${season}`;
-    api(path, 1800000)
-      .then(res => {
-        if (mounted) {
-          setData(res || []);
-          setStatus(res?.length ? "ok" : "empty");
-        }
-      })
-      .catch(() => { if (mounted) setStatus("err"); });
-    return () => { mounted = false; };
+    loadScorers(lid, season, type);
   }, [lid, season, type]);
 
-  const leagueInfo = LEAGUES.find(l => l.id === lid);
+  // Refresh quand on revient sur l'onglet après 30 min
+  useEffect(() => {
+    const onVisible = () => {
+      if (!document.hidden && lastUpdate && Date.now() - lastUpdate > 30 * 60 * 1000) {
+        loadScorers(lid, season, type, true);
+      }
+    };
+    document.addEventListener("visibilitychange", onVisible);
+    return () => document.removeEventListener("visibilitychange", onVisible);
+  }, [lid, season, type, lastUpdate, loadScorers]);
 
   return React.createElement("div", { style: { height: "100%", display: "flex", flexDirection: "column", overflow: "hidden", background: "#f8fafc" } },
 
-    // ── HEADER FILTRES ──
+    // ── HEADER ──
     React.createElement("div", { style: { background: "#fff", borderBottom: "1px solid #f1f5f9", flexShrink: 0 } },
-
-      // Toggle Buts / Passes
       React.createElement("div", { style: { display: "flex", padding: "12px 14px 0" } },
         React.createElement("div", { style: { display: "flex", background: "#f1f5f9", borderRadius: 12, padding: 3, gap: 2 } },
-          ["scorers", "assists"].map(t =>
+          ["scorers","assists"].map(t =>
             React.createElement("button", {
-              key: t,
-              onClick: () => setType(t),
+              key: t, onClick: () => setType(t),
               style: {
                 padding: "8px 20px", borderRadius: 10, border: "none",
                 background: type === t ? "#fff" : "transparent",
                 color: type === t ? "#0f172a" : "#94a3b8",
-                fontWeight: type === t ? 700 : 500,
-                fontSize: 13, cursor: "pointer",
+                fontWeight: type === t ? 700 : 500, fontSize: 13, cursor: "pointer",
                 boxShadow: type === t ? "0 1px 4px rgba(15,23,42,.1)" : "none",
                 transition: "all .2s"
               }
             }, t === "scorers" ? "⚽ Buts" : "🎯 Passes")
           )
-        )
+        ),
+        // Bouton refresh
+        React.createElement("button", {
+          onClick: () => loadScorers(lid, season, type),
+          style: { marginLeft: "auto", background: "none", border: "none", fontSize: 20, cursor: "pointer", color: "#94a3b8", padding: "0 4px" }
+        }, "↻")
       ),
-
-      // Sélecteur ligue + saison
-      React.createElement("div", { style: { display: "flex", gap: 8, padding: "10px 14px 12px", alignItems: "center" } },
+      React.createElement("div", { style: { display: "flex", gap: 8, padding: "10px 14px 12px" } },
         React.createElement("select", {
-          value: lid,
-          onChange: e => setLid(Number(e.target.value)),
+          value: lid, onChange: e => setLid(Number(e.target.value)),
           style: { flex: 1, background: "#f8fafc", border: "1px solid #e2e8f0", color: "#0f172a", borderRadius: 10, padding: "8px 10px", fontSize: 13, fontWeight: 600, outline: "none", cursor: "pointer" }
         },
           REGIONS.map(region =>
@@ -5220,9 +5249,8 @@ function ScorersTab() {
           )
         ),
         React.createElement("select", {
-          value: season,
-          onChange: e => setSeason(Number(e.target.value)),
-          style: { background: "#f8fafc", border: "1px solid #e2e8f0", color: "#0f172a", borderRadius: 10, padding: "8px 10px", fontSize: 13, fontWeight: 600, outline: "none", cursor: "pointer", width: 110 }
+          value: season, onChange: e => setSeason(Number(e.target.value)),
+          style: { background: "#f8fafc", border: "1px solid #e2e8f0", color: "#0f172a", borderRadius: 10, padding: "8px 10px", fontSize: 13, fontWeight: 600, outline: "none", cursor: "pointer", width: 115 }
         },
           SEASONS.map(y => React.createElement("option", { key: y, value: y }, `${y}/${String(y+1).slice(-2)}`))
         )
@@ -5231,12 +5259,10 @@ function ScorersTab() {
 
     // ── LISTE ──
     React.createElement("div", { style: { flex: 1, overflowY: "auto" } },
-
       status === "load" && React.createElement("div", { style: { display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", padding: 60, gap: 12 } },
         React.createElement(Spin, { s: 28, c: "#e53535" }),
         React.createElement("span", { style: { fontSize: 13, color: "#94a3b8" } }, "Chargement des buteurs…")
       ),
-
       status === "err" && React.createElement("div", { style: { textAlign: "center", padding: 40, color: "#94a3b8" } }, "Erreur de chargement"),
       status === "empty" && React.createElement("div", { style: { textAlign: "center", padding: 40, color: "#94a3b8" } }, "Aucune donnée disponible"),
 
@@ -5249,8 +5275,8 @@ function ScorersTab() {
           const games = stats.games?.appearences || 0;
           const penalties = stats.penalty?.scored || 0;
           const isTop3 = idx < 3;
-          const rankColors = ["#f59e0b", "#94a3b8", "#b45309"];
-          const rankBgs = ["rgba(245,158,11,.06)", "rgba(148,163,184,.06)", "rgba(180,83,9,.06)"];
+          const rankColors = ["#f59e0b","#94a3b8","#b45309"];
+          const rankBgs = ["rgba(245,158,11,.06)","rgba(148,163,184,.06)","rgba(180,83,9,.06)"];
 
           return React.createElement("div", {
             key: player?.id || idx,
@@ -5259,35 +5285,26 @@ function ScorersTab() {
               padding: "11px 14px",
               borderBottom: "1px solid #f1f5f9",
               background: isTop3 ? rankBgs[idx] : "#fff",
-              borderLeft: isTop3 ? `3px solid ${rankColors[idx]}` : "3px solid transparent",
+              borderLeft: isTop3 ? `3px solid ${rankColors[idx]}` : "3px solid transparent"
             }
           },
-            // Rang
             React.createElement("div", { style: { width: 26, flexShrink: 0, textAlign: "center" } },
               isTop3
                 ? React.createElement("span", { style: { fontSize: 18 } }, ["🥇","🥈","🥉"][idx])
                 : React.createElement("span", { style: { fontSize: 12, fontWeight: 700, color: "#94a3b8" } }, idx + 1)
             ),
-
-            // Photo
             React.createElement(PlayerImage, { playerId: player?.id, playerName: player?.name, size: 48, ring: isTop3 ? rankColors[idx] : "#e2e8f0" }),
-
-            // Infos joueur
             React.createElement("div", { style: { flex: 1, minWidth: 0 } },
-              React.createElement("div", { style: { fontSize: 14, fontWeight: 700, color: "#0f172a", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" } },
-                player?.name
-              ),
+              React.createElement("div", { style: { fontSize: 14, fontWeight: 700, color: "#0f172a", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" } }, player?.name),
               React.createElement("div", { style: { display: "flex", alignItems: "center", gap: 5, marginTop: 3 } },
                 team && React.createElement(Logo, { src: team.logo, size: 14 }),
                 React.createElement("span", { style: { fontSize: 11, color: "#64748b", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" } }, team?.name)
               ),
               React.createElement("div", { style: { display: "flex", alignItems: "center", gap: 8, marginTop: 3 } },
-                games > 0 && React.createElement("span", { style: { fontSize: 10, color: "#94a3b8", fontWeight: 500 } }, `${games} matchs`),
+                games > 0 && React.createElement("span", { style: { fontSize: 10, color: "#94a3b8" } }, `${games} matchs`),
                 type === "scorers" && penalties > 0 && React.createElement("span", { style: { fontSize: 10, color: "#94a3b8" } }, `dont ${penalties} pen.`)
               )
             ),
-
-            // Score
             React.createElement("div", { style: { flexShrink: 0, textAlign: "center", minWidth: 44 } },
               React.createElement("div", { style: { fontSize: 28, fontWeight: 900, color: isTop3 ? rankColors[idx] : "#e53535", lineHeight: 1 } }, value),
               React.createElement("div", { style: { fontSize: 9, color: "#94a3b8", fontWeight: 600, textTransform: "uppercase", letterSpacing: 0.5, marginTop: 1 } },
