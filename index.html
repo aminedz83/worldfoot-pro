@@ -48,7 +48,7 @@
     <script>
         if ("serviceWorker" in navigator) {
             const sw = `
-    const C='wf-pro-v34';
+    const C='wf-pro-v35';
     self.addEventListener('install',e=>{e.waitUntil(caches.open(C).then(c=>c.addAll(['./'])).then(()=>self.skipWaiting()));});
     self.addEventListener('activate',e=>{e.waitUntil(caches.keys().then(ks=>Promise.all(ks.filter(k=>k!==C).map(k=>caches.delete(k)))).then(()=>self.clients.claim()));});
     self.addEventListener('push',e=>{
@@ -5222,9 +5222,9 @@ function ScorersTab() {
         React.createElement("select", {
           value: season,
           onChange: e => setSeason(Number(e.target.value)),
-          style: { background: "#f8fafc", border: "1px solid #e2e8f0", color: "#0f172a", borderRadius: 10, padding: "8px 10px", fontSize: 13, fontWeight: 600, outline: "none", cursor: "pointer", width: 90 }
+          style: { background: "#f8fafc", border: "1px solid #e2e8f0", color: "#0f172a", borderRadius: 10, padding: "8px 10px", fontSize: 13, fontWeight: 600, outline: "none", cursor: "pointer", width: 110 }
         },
-          SEASONS.map(y => React.createElement("option", { key: y, value: y }, `${y}`))
+          SEASONS.map(y => React.createElement("option", { key: y, value: y }, `${y}/${String(y+1).slice(-2)}`))
         )
       )
     ),
