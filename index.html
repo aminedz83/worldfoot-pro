@@ -48,7 +48,7 @@
     <script>
         if ("serviceWorker" in navigator) {
             const sw = `
-    const C='wf-pro-v70';
+    const C='wf-pro-v71';
     self.addEventListener('install',e=>{e.waitUntil(caches.open(C).then(c=>c.addAll(['./'])).then(()=>self.skipWaiting()));});
     self.addEventListener('activate',e=>{e.waitUntil(caches.keys().then(ks=>Promise.all(ks.filter(k=>k!==C).map(k=>caches.delete(k)))).then(()=>self.clients.claim()));});
     self.addEventListener('push',e=>{
@@ -4001,11 +4001,16 @@ function MatchDetail({state,onClose,onTeam}){
             : isNS ? hhmm2(fix.fixture.date) : getStatusLabel(sh)
           ),
           // Temps additionnel
-          isLive && s.elapsed > 90 && sh === "2H"
-            ? React.createElement("span", {style:{fontSize:13,fontWeight:700,color:"#e53535"}}, `⏱️ +${s.elapsed-90}`)
-            : isLive && s.elapsed > 45 && sh === "1H"
-            ? React.createElement("span", {style:{fontSize:13,fontWeight:700,color:"#e53535"}}, `⏱️ +${s.elapsed-45}`)
-            : null
+          (() => {
+            const displayMin = liveTime ? parseInt(liveTime.split(':')[0]) : s.elapsed;
+            if(isLive && sh === "2H" && displayMin > 90)
+              return React.createElement("span", {style:{fontSize:13,fontWeight:700,color:"#e53535"}}, `⏱️ +${displayMin-90}`);
+            if(isLive && sh === "1H" && displayMin > 45)
+              return React.createElement("span", {style:{fontSize:13,fontWeight:700,color:"#e53535"}}, `⏱️ +${displayMin-45}`);
+            if(isLive && sh === "ET" && displayMin > 105)
+              return React.createElement("span", {style:{fontSize:13,fontWeight:700,color:"#e53535"}}, `⏱️ +${displayMin-105}`);
+            return null;
+          })()
         ),
 
         // Équipe extérieure
