@@ -48,7 +48,7 @@
     <script>
         if ("serviceWorker" in navigator) {
             const sw = `
-    const C='wf-pro-v40';
+    const C='wf-pro-v41';
     self.addEventListener('install',e=>{e.waitUntil(caches.open(C).then(c=>c.addAll(['./'])).then(()=>self.skipWaiting()));});
     self.addEventListener('activate',e=>{e.waitUntil(caches.keys().then(ks=>Promise.all(ks.filter(k=>k!==C).map(k=>caches.delete(k)))).then(()=>self.clients.claim()));});
     self.addEventListener('push',e=>{
@@ -4671,6 +4671,15 @@ function StandingsTab({ onTeam }) {
   const [showConfig, setShowConfig] = useState(false);
 
   const league = LEAGUES.find(l => l.id === lid) || LEAGUES[0];
+  const [leagueLogo, setLeagueLogo] = useState(null);
+
+  // Récupérer le logo depuis les standings
+  useEffect(() => {
+    if (standings?.length > 0) {
+      const logo = standings[0]?.league?.logo;
+      if (logo) setLeagueLogo(logo);
+    }
+  }, [standings]);
 
   useEffect(() => {
     if (viewMode !== "classement") return;
@@ -4760,9 +4769,11 @@ function StandingsTab({ onTeam }) {
         style: { display: "flex", alignItems: "center", gap: 12, background: "#f8fafc", padding: "10px 14px", cursor: "pointer", borderRadius: 14, border: "1px solid #e2e8f0", marginBottom: 12, boxShadow: "0 1px 4px rgba(15,23,42,.06)" }
       },
         React.createElement("div", { style: { width: 40, height: 40, borderRadius: 10, overflow: "hidden", background: "#fff", border: "1px solid #e2e8f0", display: "flex", alignItems: "center", justifyContent: "center", boxShadow: "0 1px 4px rgba(15,23,42,.08)", flexShrink: 0 } },
-          React.createElement(Logo, { src: null, size: 28, style: {} },
-            React.createElement("span", { style: { fontSize: 22 } }, league?.flag || "🏆")
-          )
+          leagueLogo
+            ? React.createElement(Logo, { src: leagueLogo, size: 30 })
+            : league?.flag && !league.flag.startsWith("http")
+            ? React.createElement("span", { style: { fontSize: 22 } }, league.flag)
+            : React.createElement(Logo, { src: league?.flag || "", size: 28 })
         ),
         React.createElement("div", { style: { flex: 1, minWidth: 0 } },
           React.createElement("div", { style: { fontSize: 15, fontWeight: 800, color: "#0f172a", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" } }, league?.name || "—"),
