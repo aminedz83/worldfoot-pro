@@ -48,7 +48,7 @@
     <script>
         if ("serviceWorker" in navigator) {
             const sw = `
-    const C='wf-pro-v69';
+    const C='wf-pro-v70';
     self.addEventListener('install',e=>{e.waitUntil(caches.open(C).then(c=>c.addAll(['./'])).then(()=>self.skipWaiting()));});
     self.addEventListener('activate',e=>{e.waitUntil(caches.keys().then(ks=>Promise.all(ks.filter(k=>k!==C).map(k=>caches.delete(k)))).then(()=>self.clients.claim()));});
     self.addEventListener('push',e=>{
@@ -2227,11 +2227,11 @@ function Row({match:m, onOpen, isFav, onFav, onTeam}){
           style: { display:"flex", alignItems:"center", gap:8, flex:1, minWidth:0, cursor: onTeam?"pointer":"default" }
         },
           React.createElement(Logo, { src: m.teams.home.logo, size: 20 }),
-          React.createElement("span", { style: { fontSize: 14, fontWeight: hw ? 800 : 500, color: hw ? "#111" : aw ? "#bbb" : "#222", flex: 1, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" } },
+          React.createElement("span", { style: { fontSize: 14, fontWeight: hw ? 800 : 500, color: hw ? "#111" : aw ? "#bbb" : "#222", flex: 1, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap", display: "flex", alignItems: "center", gap: 4 } },
             hn,
-            hRank ? React.createElement("span", { style: { fontSize: 11, color: "#bbb", fontWeight: 400 } }, " [" + hRank + "]") : null
-          ),
-          homeRed > 0 ? React.createElement("span", { style: { fontSize: 10, fontWeight: 800, color: "#fff", background: "#e53535", borderRadius: 4, padding: "1px 5px", flexShrink: 0, marginLeft: 2 } }, homeRed) : null
+            hRank ? React.createElement("span", { style: { fontSize: 11, color: "#bbb", fontWeight: 400 } }, " [" + hRank + "]") : null,
+            homeRed > 0 ? React.createElement("span", { style: { fontSize: 10, fontWeight: 800, color: "#fff", background: "#e53535", borderRadius: 4, padding: "1px 5px", flexShrink: 0 } }, homeRed) : null
+          )
         ),
         showBigChance && actionTeam === m.teams.home.id && React.createElement("span", {
           style: { position: "absolute", right: 0, color: "#e53935", fontSize: 10, fontWeight: 800, textTransform: "uppercase", zIndex: 5, whiteSpace: "nowrap", animation: "blink-3 1.5s ease-in-out" }
@@ -2243,11 +2243,11 @@ function Row({match:m, onOpen, isFav, onFav, onTeam}){
           style: { display:"flex", alignItems:"center", gap:8, flex:1, minWidth:0, cursor: onTeam?"pointer":"default" }
         },
           React.createElement(Logo, { src: m.teams.away.logo, size: 20 }),
-          React.createElement("span", { style: { fontSize: 14, fontWeight: aw ? 800 : 500, color: aw ? "#111" : hw ? "#bbb" : "#222", flex: 1, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" } },
+          React.createElement("span", { style: { fontSize: 14, fontWeight: aw ? 800 : 500, color: aw ? "#111" : hw ? "#bbb" : "#222", flex: 1, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap", display: "flex", alignItems: "center", gap: 4 } },
             an,
-            aRank ? React.createElement("span", { style: { fontSize: 11, color: "#bbb", fontWeight: 400 } }, " [" + aRank + "]") : null
-          ),
-          awayRed > 0 ? React.createElement("span", { style: { fontSize: 10, fontWeight: 800, color: "#fff", background: "#e53535", borderRadius: 4, padding: "1px 5px", flexShrink: 0, marginLeft: 2 } }, awayRed) : null
+            aRank ? React.createElement("span", { style: { fontSize: 11, color: "#bbb", fontWeight: 400 } }, " [" + aRank + "]") : null,
+            awayRed > 0 ? React.createElement("span", { style: { fontSize: 10, fontWeight: 800, color: "#fff", background: "#e53535", borderRadius: 4, padding: "1px 5px", flexShrink: 0 } }, awayRed) : null
+          )
         ),
         showBigChance && actionTeam === m.teams.away.id && React.createElement("span", {
           style: { position: "absolute", right: 0, color: "#e53935", fontSize: 10, fontWeight: 800, textTransform: "uppercase", zIndex: 5, whiteSpace: "nowrap", animation: "blink-3 1.5s ease-in-out" }
