@@ -48,7 +48,7 @@
     <script>
         if ("serviceWorker" in navigator) {
             const sw = `
-    const C='wf-pro-v38';
+    const C='wf-pro-v39';
     self.addEventListener('install',e=>{e.waitUntil(caches.open(C).then(c=>c.addAll(['./'])).then(()=>self.skipWaiting()));});
     self.addEventListener('activate',e=>{e.waitUntil(caches.keys().then(ks=>Promise.all(ks.filter(k=>k!==C).map(k=>caches.delete(k)))).then(()=>self.clients.claim()));});
     self.addEventListener('push',e=>{
@@ -5275,16 +5275,63 @@ function ScorersTab() {
     loadScorers(lid, season, type);
   }, [lid, season, type]);
 
+  // Refresh si on revient après 30 min
   useEffect(() => {
     const onVisible = () => {
       if (!document.hidden && lastUpdate && Date.now() - lastUpdate > 1800000) {
-        _algerianScorersCache.ts = 0; // invalider cache algérien
+        _algerianScorersCache.ts = 0;
         loadScorers(lid, season, type, true);
       }
     };
     document.addEventListener("visibilitychange", onVisible);
     return () => document.removeEventListener("visibilitychange", onVisible);
   }, [lid, season, type, lastUpdate, loadScorers]);
+
+  // ── Auto-refresh fin de journée ligue algérienne ──
+  useEffect(() => {
+    if (lid !== 186 || type !== "scorers") return;
+
+    let prevLiveIds = new Set();
+    let intervalId = null;
+
+    const checkAlgerianMatches = async () => {
+      try {
+        const today = new Date().toISOString().slice(0, 10);
+        const fixtures = await api(`/fixtures?league=186&season=${season}&date=${today}`, 60000);
+        if (!fixtures || fixtures.length === 0) return;
+
+        const liveNow = new Set(
+          fixtures
+            .filter(f => LIVE_ST.has(f.fixture.status.short))
+            .map(f => f.fixture.id)
+        );
+
+        const justFinished = fixtures.filter(f =>
+          DONE_ST.has(f.fixture.status.short) && prevLiveIds.has(f.fixture.id)
+        );
+
+        if (justFinished.length > 0) {
+          // Un match vient de se terminer → recalcul automatique
+          console.log(`✅ ${justFinished.length} match(s) algérien(s) terminé(s) → recalcul buteurs`);
+          _algerianScorersCache.ts = 0;
+          loadScorers(186, season, "scorers", true);
+        }
+
+        prevLiveIds = liveNow;
+
+        // Si des matchs sont en cours → vérifier toutes les 2 min
+        // Sinon → vérifier toutes les 10 min
+        const nextInterval = liveNow.size > 0 ? 120000 : 600000;
+        intervalId = setTimeout(checkAlgerianMatches, nextInterval);
+      } catch {
+        intervalId = setTimeout(checkAlgerianMatches, 600000);
+      }
+    };
+
+    // Démarrer la surveillance
+    intervalId = setTimeout(checkAlgerianMatches, 30000);
+    return () => { if (intervalId) clearTimeout(intervalId); };
+  }, [lid, season, type, loadScorers]);
 
   return React.createElement("div", { style: { height: "100%", display: "flex", flexDirection: "column", overflow: "hidden", background: "#f8fafc" } },
 
