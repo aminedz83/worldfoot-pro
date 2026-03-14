@@ -48,9 +48,84 @@
     <script>
         if ("serviceWorker" in navigator) {
             const sw = `
-    const C='wf-pro-v77';
+    const C='wf-pro-v78';
+    const API_KEY='3a14b1347c177458e2f23bea7899e9cf';
+    const BASE='https://v3.football.api-sports.io';
+    let prevScores = {};
+    let checkInterval = null;
+
     self.addEventListener('install',e=>{e.waitUntil(caches.open(C).then(c=>c.addAll(['./'])).then(()=>self.skipWaiting()));});
     self.addEventListener('activate',e=>{e.waitUntil(caches.keys().then(ks=>Promise.all(ks.filter(k=>k!==C).map(k=>caches.delete(k)))).then(()=>self.clients.claim()));});
+
+    // Vérifier les buts en arrière-plan
+    async function checkGoals() {
+      try {
+        const db = await self.clients.matchAll();
+        // Récupérer les favoris depuis le client si disponible
+        let favIds = [];
+        for (const client of db) {
+          try {
+            const mc = new MessageChannel();
+            client.postMessage({ type: 'GET_FAVS' }, [mc.port2]);
+            const favs = await new Promise((res, rej) => {
+              mc.port1.onmessage = e => res(e.data);
+              setTimeout(() => rej(), 1000);
+            });
+            if (favs && favs.length) { favIds = favs; break; }
+          } catch {}
+        }
+        if (!favIds.length) {
+          // Fallback: lire depuis indexedDB ou localStorage via le cache
+          const stored = await caches.match('wf-favs');
+          if (stored) favIds = await stored.json();
+        }
+        if (!favIds.length) return;
+
+        // Charger les scores des matchs favoris live
+        const today = new Date().toISOString().slice(0,10);
+        const r = await fetch(\`\${BASE}/fixtures?date=\${today}&status=1H-2H-ET-P\`, {
+          headers: { 'x-apisports-key': API_KEY }
+        });
+        const data = await r.json();
+        const fixtures = (data.response || []).filter(f => favIds.includes(f.fixture.id));
+
+        for (const f of fixtures) {
+          const id = f.fixture.id;
+          const hg = f.goals.home ?? 0;
+          const ag = f.goals.away ?? 0;
+          const key = id;
+          const prev = prevScores[key];
+
+          if (prev && (hg > prev.h || ag > prev.a)) {
+            const scoringTeam = hg > prev.h ? f.teams.home : f.teams.away;
+            await self.registration.showNotification(
+              \`⚽ But ! \${f.teams.home.name} \${hg} - \${ag} \${f.teams.away.name}\`,
+              {
+                body: \`\${scoringTeam.name} vient de marquer !\`,
+                icon: \`https://media.api-sports.io/football/teams/\${scoringTeam.id}.png\`,
+                tag: \`goal-\${id}-\${hg}-\${ag}\`,
+                vibrate: [200, 100, 200]
+              }
+            );
+          }
+          prevScores[key] = { h: hg, a: ag };
+        }
+      } catch(e) {}
+    }
+
+    // Démarrer/arrêter la surveillance selon les messages
+    self.addEventListener('message', e => {
+      if (e.data?.type === 'START_GOAL_CHECK') {
+        if (!checkInterval) checkInterval = setInterval(checkGoals, 30000);
+      }
+      if (e.data?.type === 'STOP_GOAL_CHECK') {
+        if (checkInterval) { clearInterval(checkInterval); checkInterval = null; }
+      }
+      if (e.data?.type === 'UPDATE_FAVS') {
+        prevScores = {};
+      }
+    });
+
     self.addEventListener('push',e=>{
       const d=e.data?.json()||{};
       e.waitUntil(self.registration.showNotification(d.title||'WorldFoot Pro',{
@@ -7078,6 +7153,24 @@ function App() {
   useEffect(() => {
     try { localStorage.setItem("wf_favs", JSON.stringify([...favs])); }
     catch {}
+    // Envoyer les favoris au SW + démarrer surveillance arrière-plan
+    if (navigator.serviceWorker?.controller) {
+      navigator.serviceWorker.controller.postMessage({
+        type: favs.size > 0 ? 'START_GOAL_CHECK' : 'STOP_GOAL_CHECK'
+      });
+      navigator.serviceWorker.controller.postMessage({ type: 'UPDATE_FAVS' });
+    }
+  }, [favs]);
+
+  // Répondre aux demandes de favoris du SW
+  useEffect(() => {
+    const handler = e => {
+      if (e.data?.type === 'GET_FAVS') {
+        e.ports[0]?.postMessage([...favs]);
+      }
+    };
+    navigator.serviceWorker?.addEventListener('message', handler);
+    return () => navigator.serviceWorker?.removeEventListener('message', handler);
   }, [favs]);
 
   const toggleFav = useCallback((id) => {
