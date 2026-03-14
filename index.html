@@ -48,7 +48,7 @@
     <script>
         if ("serviceWorker" in navigator) {
             const sw = `
-    const C='wf-pro-v40';
+    const C='wf-pro-v39';
     self.addEventListener('install',e=>{e.waitUntil(caches.open(C).then(c=>c.addAll(['./'])).then(()=>self.skipWaiting()));});
     self.addEventListener('activate',e=>{e.waitUntil(caches.keys().then(ks=>Promise.all(ks.filter(k=>k!==C).map(k=>caches.delete(k)))).then(()=>self.clients.claim()));});
     self.addEventListener('push',e=>{
@@ -5155,8 +5155,8 @@ function StandingsTab({ onTeam }) {
 const _algerianScorersCache = { data: null, ts: 0 };
 
 async function buildAlgerianScorers(season) {
-  // Cache 20 min
-  if (_algerianScorersCache.data && Date.now() - _algerianScorersCache.ts < 1200000) {
+  // Cache 30 min
+  if (_algerianScorersCache.data && Date.now() - _algerianScorersCache.ts < 1800000) {
     return _algerianScorersCache.data;
   }
 
@@ -5170,12 +5170,12 @@ async function buildAlgerianScorers(season) {
   const scorersMap = new Map();
   const allFinishedIds = finished.map(f => f.fixture.id);
 
-  // Charger les events par lots de 8 — cache 1h (pas 24h)
+  // Charger les events par lots de 8 — cache 24h
   const BATCH = 8;
   for (let i = 0; i < allFinishedIds.length; i += BATCH) {
     const batch = allFinishedIds.slice(i, i + BATCH);
     const results = await Promise.allSettled(
-      batch.map(id => api(`/fixtures/events?fixture=${id}`, 3600000))
+      batch.map(id => api(`/fixtures/events?fixture=${id}`, 86400000))
     );
 
     results.forEach(r => {
@@ -5260,17 +5260,12 @@ function ScorersTab() {
     loadScorers(lid, season, type);
   }, [lid, season, type]);
 
-  // Refresh si on revient sur l'onglet
+  // Refresh si on revient sur l'onglet après 30 min
   useEffect(() => {
     const onVisible = () => {
-      if (!document.hidden) {
-        if (lid === 186 && type === "scorers") {
-          // Ligue algérienne : invalider cache et recalculer silencieusement
-          _algerianScorersCache.ts = 0;
-          loadScorers(lid, season, type, true);
-        } else if (lastUpdate && Date.now() - lastUpdate > 1800000) {
-          loadScorers(lid, season, type, true);
-        }
+      if (!document.hidden && lastUpdate && Date.now() - lastUpdate > 1800000) {
+        _algerianScorersCache.ts = 0;
+        loadScorers(lid, season, type, true);
       }
     };
     document.addEventListener("visibilitychange", onVisible);
