@@ -48,7 +48,7 @@
     <script>
         if ("serviceWorker" in navigator) {
             const sw = `
-    const C='wf-pro-v49';
+    const C='wf-pro-v53';
     self.addEventListener('install',e=>{e.waitUntil(caches.open(C).then(c=>c.addAll(['./'])).then(()=>self.skipWaiting()));});
     self.addEventListener('activate',e=>{e.waitUntil(caches.keys().then(ks=>Promise.all(ks.filter(k=>k!==C).map(k=>caches.delete(k)))).then(()=>self.clients.claim()));});
     self.addEventListener('push',e=>{
@@ -3808,178 +3808,140 @@ function MatchDetail({state,onClose,onTeam}){
 
     React.createElement("div",{className:"md-header",
       style:{
-        background: "linear-gradient(145deg, #FFFFFF 0%, #F8FAFF 100%)",
-        borderBottom: "1px solid rgba(0,0,0,0.04)",
-        boxShadow: "0 4px 20px rgba(0,0,0,0.02)",
+        background: "#ffffff",
+        borderBottom: "1px solid #f1f5f9",
         position: "relative",
         overflow: "hidden",
-        padding: "20px 16px 16px"
+        padding: "0 0 16px"
       }
     },
-      React.createElement("div", {style:{
-        position: "absolute",
-        inset: 0,
-        background: "radial-gradient(circle at 80% 20%, rgba(0,184,107,0.03) 0%, transparent 70%)",
-        pointerEvents: "none"
-      }}),
 
+      // Barre ligue : drapeau + pays + compétition + journée
       React.createElement("div", {style:{
-        position: "absolute",
-        top: 0,
-        left: 0,
-        right: 0,
-        height: "1px",
-        background: "linear-gradient(90deg, transparent, rgba(0,184,107,0.2), transparent)"
-      }}),
-
-      React.createElement("div", {className:"md-league-row", style:{
-        fontFamily: "'Plus Jakarta Sans', sans-serif",
-        fontSize: "12px",
-        fontWeight: "400",
-        marginBottom: "16px",
-        display: "flex",
-        alignItems: "center",
-        gap: "8px",
-        padding: "0 2px"
+        display: "flex", alignItems: "center", gap: 8,
+        padding: "10px 16px",
+        borderBottom: "1px solid #f1f5f9",
+        marginBottom: "16px"
       }},
         fix.league.flag
-          ? React.createElement("img", {src:fix.league.flag, style:{width:18,height:13,objectFit:"cover",borderRadius:2,flexShrink:0,boxShadow:"0 1px 3px rgba(0,0,0,.05)"}})
-          : React.createElement("div", {style:{width:5,height:5,borderRadius:"50%",background:"#00b86b",flexShrink:0,boxShadow:"0 0 6px rgba(0,184,107,0.6)"}}),
-        React.createElement("span", {style:{color:"#8E96A8",fontWeight:400,fontSize:12,whiteSpace:"nowrap",flexShrink:0}}, `${fix.league.country.toUpperCase()}: `),
-        React.createElement("span", {style:{color:"#1A1F2E",fontWeight:700,fontSize:12,overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap"}}, `${fix.league.name.toUpperCase()}${round?" - "+round.toUpperCase():""}`)
+          ? React.createElement("img", {src:fix.league.flag, style:{width:20,height:14,objectFit:"cover",borderRadius:3,flexShrink:0}})
+          : null,
+        React.createElement("span", {style:{color:"#94a3b8",fontSize:12,fontWeight:500,whiteSpace:"nowrap",flexShrink:0}},
+          `${fix.league.country.toUpperCase()}:`
+        ),
+        React.createElement("span", {style:{color:"#0f172a",fontSize:12,fontWeight:700,overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap"}},
+          `${fix.league.name.toUpperCase()}${round?" · "+round.replace("Regular Season - ","JOURNÉE "):""}`
+        )
       ),
 
-      React.createElement("div", {className:"md-scoreline", style:{
-        display: "flex",
-        alignItems: "center",
+      // Date centré
+      React.createElement("div", {style:{
+        textAlign: "center",
+        fontSize: 12,
+        color: "rgba(255,255,255,0.35)",
+        marginBottom: 14,
+        letterSpacing: 0.3
+      }}, `${ddmm2(fix.fixture.date)} ${hhmm2(fix.fixture.date)}`),
+
+      // Logos + Score + Noms
+      React.createElement("div", {style:{
+        display: "flex", alignItems: "flex-start",
         justifyContent: "space-between",
-        gap: "6px",
-        marginBottom: "10px"
+        gap: 8, padding: "0 12px"
       }},
-        React.createElement("div", {className:"md-team-col", style:{
-          flex: 1,
-          minWidth: 0,
-          display: "flex",
-          flexDirection: "column",
-          alignItems: "center",
-          gap: "7px"
-        }},
-          React.createElement("div", {
-            onClick: () => onTeam && onTeam(fix.teams.home.id, fix.teams.home.name, fix.teams.home.logo, fix.league.id, fix.league.season),
-            style: { display:"flex", flexDirection:"column", alignItems:"center", gap:7, cursor: onTeam ? "pointer" : "default" }
-          },
-            React.createElement(Logo, {src:fix.teams.home.logo, size:48}),
-            React.createElement("div", {className:"md-team-name", style:{
-              fontFamily: "'Plus Jakarta Sans', sans-serif",
-              fontSize: "14px",
-              fontWeight: "600",
-              color: "#1A1F2E",
-              textAlign: "center",
-              overflow: "hidden",
-              textOverflow: "ellipsis",
-              whiteSpace: "nowrap",
-              maxWidth: "100%",
-              lineHeight: "1.2",
-              textDecoration: onTeam ? "underline dotted rgba(0,0,0,.2)" : "none"
-            }}, fix.teams.home.name)
-          )
+
+        // Équipe domicile
+        React.createElement("div", {
+          onClick: () => onTeam && onTeam(fix.teams.home.id, fix.teams.home.name, fix.teams.home.logo, fix.league.id, fix.league.season),
+          style: { flex:1, display:"flex", flexDirection:"column", alignItems:"center", gap:10, cursor: onTeam?"pointer":"default" }
+        },
+          React.createElement("div", {style:{
+            width:80, height:80, background:"#fff", borderRadius:18,
+            display:"flex", alignItems:"center", justifyContent:"center",
+            flexShrink:0
+          }},
+            React.createElement("img", {src:fix.teams.home.logo, style:{width:60,height:60,objectFit:"contain"}, alt:""})
+          ),
+          React.createElement("span", {style:{
+            fontSize:14, fontWeight:600, color:"#0f172a",
+            textAlign:"center", lineHeight:1.3,
+            overflow:"hidden", textOverflow:"ellipsis",
+            display:"-webkit-box", WebkitLineClamp:2, WebkitBoxOrient:"vertical"
+          }}, fix.teams.home.name)
         ),
 
-        React.createElement("div", {className:"md-score-center", style:{
-          display: "flex",
-          flexDirection: "column",
-          alignItems: "center",
-          flexShrink: 0,
-          minWidth: "120px",
-          gap: "2px"
+        // Score + statut centré
+        React.createElement("div", {style:{
+          display:"flex", flexDirection:"column", alignItems:"center",
+          gap:6, paddingTop:8, flexShrink:0
         }},
-          React.createElement("div", {className:`md-score-nums${isLive?" live":""}`, style:{
-            fontFamily: "'JetBrains Mono', monospace",
-            fontSize: "64px",
-            fontWeight: "900",
-            color: isLive ? "#E53E3E" : "#1A1F2E",
-            lineHeight: 1,
-            letterSpacing: "-3px",
-            textAlign: "center",
-            textShadow: isLive ? "0 4px 12px rgba(229,62,62,0.15)" : "0 4px 8px rgba(0,184,107,0.08)"
-          }}, has ? `${hg} – ${ag}` : isNS ? hhmm2(fix.fixture.date) : "–"),
-          React.createElement("div", {className:"md-datetime", style:{
-            fontFamily: "'Plus Jakarta Sans', sans-serif",
-            fontSize: "11px",
-            color: "#8E96A8",
-            textAlign: "center",
-            marginBottom: "2px"
-          }}, `${ddmm2(fix.fixture.date)} ${hhmm2(fix.fixture.date)}`)
+          React.createElement("div", {style:{
+            display:"flex", alignItems:"center", gap:10
+          }},
+            React.createElement("span", {style:{
+              fontSize:58, fontWeight:900, lineHeight:1,
+              color: isLive ? "#e53535" : isDone ? "#0f172a" : "#94a3b8",
+              fontVariantNumeric:"tabular-nums"
+            }}, has ? hg : "–"),
+            React.createElement("span", {style:{fontSize:28,color:"#cbd5e1",lineHeight:1}}, "-"),
+            React.createElement("span", {style:{
+              fontSize:58, fontWeight:900, lineHeight:1,
+              color: isLive ? "#e53535" : isDone ? "#0f172a" : "#94a3b8",
+              fontVariantNumeric:"tabular-nums"
+            }}, has ? ag : "–")
+          ),
+          // Statut centré
+          React.createElement("span", {style:{
+            fontSize:13, fontWeight:700, textAlign:"center",
+            color: isLive ? "#e53535" : isDone ? "rgba(255,255,255,0.5)" : "rgba(255,255,255,0.4)"
+          }}, isLive
+            ? `${getStatusLabel(sh)} · ${sh==="2H"&&s.elapsed>90?`90+${s.elapsed-90}'`:`${s.elapsed}'`}`
+            : isDone ? getStatusLabel(sh)
+            : isNS ? hhmm2(fix.fixture.date) : getStatusLabel(sh)
+          ),
+          // Temps additionnel
+          isLive && s.elapsed > 90 && sh === "2H"
+            ? React.createElement("span", {style:{fontSize:13,fontWeight:700,color:"#e53535"}}, `⏱️ +${s.elapsed-90}`)
+            : isLive && s.elapsed > 45 && sh === "1H"
+            ? React.createElement("span", {style:{fontSize:13,fontWeight:700,color:"#e53535"}}, `⏱️ +${s.elapsed-45}`)
+            : null
         ),
 
-        React.createElement("div", {className:"md-team-col away", style:{
-          flex: 1,
-          minWidth: 0,
-          display: "flex",
-          flexDirection: "column",
-          alignItems: "center",
-          gap: "7px"
-        }},
-          React.createElement("div", {
-            onClick: () => onTeam && onTeam(fix.teams.away.id, fix.teams.away.name, fix.teams.away.logo, fix.league.id, fix.league.season),
-            style: { display:"flex", flexDirection:"column", alignItems:"center", gap:7, cursor: onTeam ? "pointer" : "default" }
-          },
-            React.createElement(Logo, {src:fix.teams.away.logo, size:48}),
-            React.createElement("div", {className:"md-team-name", style:{
-              fontFamily: "'Plus Jakarta Sans', sans-serif",
-              fontSize: "14px",
-              fontWeight: "600",
-              color: "#1A1F2E",
-              textAlign: "center",
-              overflow: "hidden",
-              textOverflow: "ellipsis",
-              whiteSpace: "nowrap",
-              maxWidth: "100%",
-              lineHeight: "1.2",
-              textDecoration: onTeam ? "underline dotted rgba(0,0,0,.2)" : "none"
-            }}, fix.teams.away.name)
-          )
+        // Équipe extérieure
+        React.createElement("div", {
+          onClick: () => onTeam && onTeam(fix.teams.away.id, fix.teams.away.name, fix.teams.away.logo, fix.league.id, fix.league.season),
+          style: { flex:1, display:"flex", flexDirection:"column", alignItems:"center", gap:10, cursor: onTeam?"pointer":"default" }
+        },
+          React.createElement("div", {style:{
+            width:80, height:80, background:"#fff", borderRadius:18,
+            display:"flex", alignItems:"center", justifyContent:"center",
+            flexShrink:0
+          }},
+            React.createElement("img", {src:fix.teams.away.logo, style:{width:60,height:60,objectFit:"contain"}, alt:""})
+          ),
+          React.createElement("span", {style:{
+            fontSize:14, fontWeight:600, color:"#0f172a",
+            textAlign:"center", lineHeight:1.3,
+            overflow:"hidden", textOverflow:"ellipsis",
+            display:"-webkit-box", WebkitLineClamp:2, WebkitBoxOrient:"vertical"
+          }}, fix.teams.away.name)
         )
       ),
 
-      React.createElement("div", {className:"md-status-row", style:{
-        display: "flex",
-        alignItems: "center",
-        justifyContent: "center",
-        gap: "8px",
-        marginTop: "6px"
+      // Buteurs sous les logos
+      goals.length>0 ? React.createElement("div",{style:{
+        display:"flex", justifyContent:"space-between",
+        padding:"10px 16px 0", gap:8
       }},
-        React.createElement("div", {className:`md-status-badge ${statusClass}`, style:{
-          fontFamily: "'JetBrains Mono', monospace",
-          fontSize: "10px",
-          fontWeight: "800",
-          letterSpacing: "1.5px",
-          textTransform: "uppercase",
-          padding: "4px 14px",
-          borderRadius: "30px",
-          background: isLive ? "#FFE5E5" : isDone ? "#E8F5E9" : "#F0F2F5",
-          color: isLive ? "#E53E3E" : isDone ? "#00b86b" : "#4A5568",
-          border: "1px solid",
-          borderColor: isLive ? "rgba(229,62,62,0.15)" : isDone ? "rgba(0,184,107,0.15)" : "rgba(0,0,0,0.04)",
-          display: "flex",
-          alignItems: "center",
-          justifyContent: "center",
-          gap: "6px"
-        }},
-          React.createElement("span", null, getStatusLabel(sh)),
-          isLive && s.elapsed ? React.createElement("span", {style:{fontWeight:900}},
-            sh === "2H" && s.elapsed > 90 ? `· 90+${s.elapsed-90}'` : `· ${s.elapsed}'`
-          ) : null
-        )
-      ),
-      goals.length>0?React.createElement("div",{className:"md-goals-row"},
-        React.createElement("div",{className:"md-goal-scorer"},
+        React.createElement("div",{style:{flex:1,fontSize:11,color:"#94a3b8",textAlign:"center",lineHeight:1.4}},
           goals.filter(e=>e.team?.id===hid).map(e=>`${(e.player?.name||"").split(" ").pop()} ${e.time?.elapsed}'`).join(", ")
         ),
-        React.createElement("div",{className:"md-goal-scorer",style:{textAlign:"right"}},
+        React.createElement("div",{style:{width:80,flexShrink:0}}),
+        React.createElement("div",{style:{flex:1,fontSize:11,color:"#94a3b8",textAlign:"center",lineHeight:1.4}},
           goals.filter(e=>e.team?.id===aid).map(e=>`${(e.player?.name||"").split(" ").pop()} ${e.time?.elapsed}'`).join(", ")
         )
-      ):null
+      ) : null
+
     ),
 
     React.createElement("div",{className:"md-tabs"},
