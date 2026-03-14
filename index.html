@@ -48,7 +48,7 @@
     <script>
         if ("serviceWorker" in navigator) {
             const sw = `
-    const C='wf-pro-v56';
+    const C='wf-pro-v57';
     self.addEventListener('install',e=>{e.waitUntil(caches.open(C).then(c=>c.addAll(['./'])).then(()=>self.skipWaiting()));});
     self.addEventListener('activate',e=>{e.waitUntil(caches.keys().then(ks=>Promise.all(ks.filter(k=>k!==C).map(k=>caches.delete(k)))).then(()=>self.clients.claim()));});
     self.addEventListener('push',e=>{
@@ -816,7 +816,7 @@ function useLiveTime(elapsed, status, fixtureDate) {
     }
     // Calculer le décalage : on sait que à l'instant t0, elapsed = N minutes
     const t0 = Date.now();
-    const baseSeconds = elapsed * 60;
+    const baseSeconds = elapsed * 60 + 30; // +30s pour compenser le délai API
     const maxSeconds = (status === "2H" || status === "ET") ? 96 * 60 : 47 * 60;
 
     const tick = () => {
