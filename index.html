@@ -48,7 +48,7 @@
     <script>
         if ("serviceWorker" in navigator) {
             const sw = `
-    const C='wf-pro-v74';
+    const C='wf-pro-v75';
     self.addEventListener('install',e=>{e.waitUntil(caches.open(C).then(c=>c.addAll(['./'])).then(()=>self.skipWaiting()));});
     self.addEventListener('activate',e=>{e.waitUntil(caches.keys().then(ks=>Promise.all(ks.filter(k=>k!==C).map(k=>caches.delete(k)))).then(()=>self.clients.claim()));});
     self.addEventListener('push',e=>{
@@ -2169,23 +2169,32 @@ function Row({match:m, onOpen, isFav, onFav, onTeam}){
 
       // 🔔 Notification de but si match favori
       if (isFav && "Notification" in window && Notification.permission === "granted") {
-        const scorer = scoringTeam === m.teams.home.id ? m.teams.home.name : m.teams.away.name;
+        const scoringTeamId = scoringTeam;
+        const scoringTeamName = scoringTeam === m.teams.home.id ? m.teams.home.name : m.teams.away.name;
         const title = `⚽ But ! ${m.teams.home.name} ${currentHome} - ${currentAway} ${m.teams.away.name}`;
-        const body = `${scorer} vient de marquer !`;
+
+        // Chercher le buteur dans le cache events
+        const eventsKey = `/fixtures/events?fixture=${m.fixture.id}`;
+        const cachedEvents = _cache.get(eventsKey)?.d || [];
+        const lastGoal = [...cachedEvents]
+          .filter(e => e.type === "Goal" && e.detail !== "Missed Penalty" && e.team?.id === scoringTeamId)
+          .sort((a, b) => (b.time?.elapsed||0) - (a.time?.elapsed||0))[0];
+        const scorerName = lastGoal?.player?.name || scoringTeamName;
+        const body = lastGoal ? `${scorerName} ${lastGoal.time?.elapsed}'` : `${scoringTeamName} marque !`;
+        const icon = `https://media.api-sports.io/football/teams/${scoringTeamId}.png`;
+
         if (navigator.serviceWorker?.controller) {
           navigator.serviceWorker.ready.then(reg => {
             reg.showNotification(title, {
               body,
-              icon: "./icon-192.png",
-              badge: "./icon-192.png",
+              icon,
+              badge: icon,
               tag: `goal-${m.fixture.id}-${currentHome}-${currentAway}`,
               vibrate: [200, 100, 200]
             });
-          }).catch(() => {
-            new Notification(title, { body });
-          });
+          }).catch(() => new Notification(title, { body, icon }));
         } else {
-          new Notification(title, { body });
+          new Notification(title, { body, icon });
         }
       }
 
