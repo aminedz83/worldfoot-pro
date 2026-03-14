@@ -48,7 +48,7 @@
     <script>
         if ("serviceWorker" in navigator) {
             const sw = `
-    const C='wf-pro-v44';
+    const C='wf-pro-v45';
     self.addEventListener('install',e=>{e.waitUntil(caches.open(C).then(c=>c.addAll(['./'])).then(()=>self.skipWaiting()));});
     self.addEventListener('activate',e=>{e.waitUntil(caches.keys().then(ks=>Promise.all(ks.filter(k=>k!==C).map(k=>caches.delete(k)))).then(()=>self.clients.claim()));});
     self.addEventListener('push',e=>{
@@ -5065,26 +5065,22 @@ function ScorersTab() {
   const [status, setStatus] = useState("load");
   const [lastUpdate, setLastUpdate] = useState(null);
   const [buildProgress, setBuildProgress] = useState(null);
+  const [needsBuild, setNeedsBuild] = useState(false);
 
   const loadScorers = useCallback(async (leagueId, seas, typ, silent=false) => {
     if (!silent) setStatus("load");
+    setNeedsBuild(false);
     try {
       if (leagueId === 186 && typ === "scorers") {
-
         const apiResult = await api(`/players/topscorers?league=186&season=${seas}`, 1800000).catch(() => []);
         const apiMax = apiResult?.[0]?.statistics?.[0]?.goals?.total || 0;
-
         if (apiMax >= 5) {
-
           setData(apiResult);
           setStatus("ok");
         } else {
-
-          setBuildProgress("Calcul depuis les matchs…");
-          const built = await buildAlgerianScorers(seas);
-          setBuildProgress(null);
-          setData(built);
-          setStatus(built.length ? "ok" : "empty");
+          // Ne pas lancer automatiquement — demander confirmation
+          setStatus("idle");
+          setNeedsBuild(true);
         }
       } else {
         const path = typ === "assists"
@@ -5100,6 +5096,21 @@ function ScorersTab() {
       setBuildProgress(null);
     }
   }, []);
+
+  const runBuild = useCallback(async () => {
+    setNeedsBuild(false);
+    setBuildProgress("Calcul en cours…");
+    setStatus("load");
+    try {
+      const built = await buildAlgerianScorers(season);
+      setData(built);
+      setStatus(built.length ? "ok" : "empty");
+      setLastUpdate(Date.now());
+    } catch {
+      setStatus("err");
+    }
+    setBuildProgress(null);
+  }, [season]);
 
   useEffect(() => {
     loadScorers(lid, season, type);
@@ -5208,6 +5219,16 @@ function ScorersTab() {
       (status === "load" || buildProgress) && React.createElement("div", { style: { display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", padding: 60, gap: 12 } },
         React.createElement(Spin, { s: 28, c: "#e53535" }),
         React.createElement("span", { style: { fontSize: 13, color: "#94a3b8" } }, buildProgress || "Chargement…")
+      ),
+
+      status === "idle" && needsBuild && React.createElement("div", { style: { display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", padding: 48, gap: 16 } },
+        React.createElement("span", { style: { fontSize: 40 } }, "⚽"),
+        React.createElement("div", { style: { fontSize: 14, fontWeight: 600, color: "#0f172a", textAlign: "center" } }, "Données API indisponibles"),
+        React.createElement("div", { style: { fontSize: 12, color: "#94a3b8", textAlign: "center", maxWidth: 260 } }, "Calculer les buteurs depuis les événements de chaque match (peut prendre quelques secondes)"),
+        React.createElement("button", {
+          onClick: runBuild,
+          style: { background: "linear-gradient(135deg,#00c170,#009e5c)", border: "none", color: "#fff", borderRadius: 12, padding: "12px 28px", fontSize: 14, fontWeight: 700, cursor: "pointer", boxShadow: "0 4px 12px rgba(0,193,112,.3)" }
+        }, "🔢 Calculer les buteurs")
       ),
       status === "err" && React.createElement("div", { style: { textAlign: "center", padding: 40, color: "#94a3b8" } }, "Erreur de chargement"),
       status === "empty" && React.createElement("div", { style: { textAlign: "center", padding: 40, color: "#94a3b8" } }, "Aucune donnée"),
