@@ -48,7 +48,7 @@
     <script>
         if ("serviceWorker" in navigator) {
             const sw = `
-    const C='wf-pro-v45';
+    const C='wf-pro-v46';
     self.addEventListener('install',e=>{e.waitUntil(caches.open(C).then(c=>c.addAll(['./'])).then(()=>self.skipWaiting()));});
     self.addEventListener('activate',e=>{e.waitUntil(caches.keys().then(ks=>Promise.all(ks.filter(k=>k!==C).map(k=>caches.delete(k)))).then(()=>self.clients.claim()));});
     self.addEventListener('push',e=>{
@@ -795,23 +795,14 @@ const T = {
   shadowLg:"0 8px 40px rgba(0,0,0,.1),0 2px 8px rgba(0,0,0,.06)",
 };
 
-// Timer global — 1 seul interval pour tous les matchs live
-let _globalMinute = Math.floor(Date.now() / 60000);
-const _minuteListeners = new Set();
-setInterval(() => {
-  _globalMinute = Math.floor(Date.now() / 60000);
-  _minuteListeners.forEach(fn => fn(_globalMinute));
-}, 15000);
-
-function useMinute(elapsed, status) {
-  const [m, setM] = useState(elapsed ?? 0);
-  useEffect(() => {
-    setM(elapsed ?? 0);
-    if (!LIVE_ST.has(status)) return;
-    const fn = () => setM(v => { const c = (status === "2H" || status === "ET") ? 96 : 47; return v < c ? v + 1 : v; });
-    _minuteListeners.add(fn);
-    return () => _minuteListeners.delete(fn);
-  }, [elapsed, status]);
+function useMinute(elapsed,status){
+  const[m,setM]=useState(elapsed??0);
+  useEffect(()=>{
+    setM(elapsed??0);
+    if(!LIVE_ST.has(status))return;
+    const id=setInterval(()=>setM(v=>{const c=(status==="2H"||status==="ET")?96:47; return v<c?v+1:v;}),60000);
+    return()=>clearInterval(id);
+  },[elapsed,status]);
   return m;
 }
 
