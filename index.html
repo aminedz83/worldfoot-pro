@@ -48,7 +48,7 @@
     <script>
         if ("serviceWorker" in navigator) {
             const sw = `
-    const C='wf-pro-v73';
+    const C='wf-pro-v74';
     self.addEventListener('install',e=>{e.waitUntil(caches.open(C).then(c=>c.addAll(['./'])).then(()=>self.skipWaiting()));});
     self.addEventListener('activate',e=>{e.waitUntil(caches.keys().then(ks=>Promise.all(ks.filter(k=>k!==C).map(k=>caches.delete(k)))).then(()=>self.clients.claim()));});
     self.addEventListener('push',e=>{
@@ -2166,6 +2166,28 @@ function Row({match:m, onOpen, isFav, onFav, onTeam}){
 
       setDisplayHomeGoals(prevHome);
       setDisplayAwayGoals(prevAway);
+
+      // 🔔 Notification de but si match favori
+      if (isFav && "Notification" in window && Notification.permission === "granted") {
+        const scorer = scoringTeam === m.teams.home.id ? m.teams.home.name : m.teams.away.name;
+        const title = `⚽ But ! ${m.teams.home.name} ${currentHome} - ${currentAway} ${m.teams.away.name}`;
+        const body = `${scorer} vient de marquer !`;
+        if (navigator.serviceWorker?.controller) {
+          navigator.serviceWorker.ready.then(reg => {
+            reg.showNotification(title, {
+              body,
+              icon: "./icon-192.png",
+              badge: "./icon-192.png",
+              tag: `goal-${m.fixture.id}-${currentHome}-${currentAway}`,
+              vibrate: [200, 100, 200]
+            });
+          }).catch(() => {
+            new Notification(title, { body });
+          });
+        } else {
+          new Notification(title, { body });
+        }
+      }
 
       if (timerRef.current) clearTimeout(timerRef.current);
       timerRef.current = setTimeout(() => {
@@ -6995,6 +7017,15 @@ function App() {
   });
 
   const [apiCallsToday, setApiCallsToday] = useState(0);
+
+  // Demander permission notifications au lancement
+  useEffect(() => {
+    if ("Notification" in window && Notification.permission === "default") {
+      setTimeout(() => {
+        Notification.requestPermission();
+      }, 3000);
+    }
+  }, []);
 
   useEffect(() => {
     try {
