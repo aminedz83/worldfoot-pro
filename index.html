@@ -48,7 +48,7 @@
     <script>
         if ("serviceWorker" in navigator) {
             const sw = `
-    const C='wf-pro-v59';
+    const C='wf-pro-v60';
     self.addEventListener('install',e=>{e.waitUntil(caches.open(C).then(c=>c.addAll(['./'])).then(()=>self.skipWaiting()));});
     self.addEventListener('activate',e=>{e.waitUntil(caches.keys().then(ks=>Promise.all(ks.filter(k=>k!==C).map(k=>caches.delete(k)))).then(()=>self.clients.claim()));});
     self.addEventListener('push',e=>{
@@ -2741,6 +2741,11 @@ function MatchDetail({state,onClose,onTeam}){
       const isCSC = isGoal && e.detail==="Own Goal";
       const isPen = isGoal && e.detail==="Penalty";
       const isMiss = e.detail==="Missed Penalty";
+      const isGoalCancelled = isGoal && (
+        e.detail==="Goal cancelled" ||
+        (e.detail||"").toLowerCase().includes("cancelled") ||
+        (e.detail||"").toLowerCase().includes("cancel")
+      );
       const isYellow = isCard && e.detail?.includes("Yellow");
       const isRed = isCard && (e.detail?.includes("Red") || e.detail?.includes("Second Yellow"));
 
@@ -2750,6 +2755,56 @@ function MatchDetail({state,onClose,onTeam}){
           e.type === "Big Chance Created" ||
           e.type === "Big Chance Missed" ||
           e.type === "Hit Woodwork";
+
+      // But refusé par VAR — afficher comme event normal mais avec badge VAR
+      if (isGoalCancelled) {
+        const d = (e.detail||"").toLowerCase();
+        const reason = d.includes("handball")||d.includes("main") ? "main"
+          : d.includes("offside")||d.includes("hors") ? "hors-jeu"
+          : d.includes("foul")||d.includes("faute") ? "faute"
+          : d.includes("handball") ? "main"
+          : "VAR";
+
+        const varBadge = React.createElement("div", {style:{
+          display:"flex", alignItems:"center", gap:4,
+          background:"rgba(239,68,68,.08)", borderRadius:6, padding:"2px 7px",
+          border:"1px solid rgba(239,68,68,.2)", flexShrink:0
+        }},
+          React.createElement("span",{style:{fontSize:10,fontWeight:800,color:"#ef4444"}}, `But Refusé - ${reason}`),
+          React.createElement("span",{style:{fontSize:9,fontWeight:800,color:"#ef4444",background:"rgba(239,68,68,.15)",borderRadius:3,padding:"1px 4px",marginLeft:2}}, "VAR")
+        );
+
+        const playerName = e.player?.name || "";
+        const assistName = e.assist?.name || "";
+
+        if (isHome) {
+          return React.createElement("div",{key:i,style:{display:"flex",alignItems:"center",gap:8,padding:"9px 12px 9px 14px",borderBottom:"1px solid rgba(0,0,0,0.03)",background:"rgba(239,68,68,.04)",borderLeft:"3px solid #ef4444"}},
+            React.createElement("span",{style:{fontSize:13,fontWeight:700,color:"rgba(17,24,39,0.4)",minWidth:32,flexShrink:0,fontFamily:"'Barlow Condensed',sans-serif"}},minStr),
+            React.createElement("div",{style:{width:28,height:28,borderRadius:"50%",background:"rgba(239,68,68,.1)",display:"flex",alignItems:"center",justifyContent:"center",flexShrink:0,fontSize:14}},"❌"),
+            React.createElement("div",{style:{flex:1,minWidth:0}},
+              React.createElement("div",{style:{display:"flex",alignItems:"center",gap:6,flexWrap:"wrap"}},
+                varBadge
+              ),
+              playerName ? React.createElement("div",{style:{fontSize:12,fontWeight:600,color:"#0f172a",marginTop:2}}, playerName) : null,
+              assistName ? React.createElement("div",{style:{fontSize:11,color:"rgba(17,24,39,0.4)",marginTop:1}}, `(${assistName})`) : null
+            ),
+            React.createElement("div",{style:{flex:1}})
+          );
+        } else {
+          return React.createElement("div",{key:i,style:{display:"flex",alignItems:"center",gap:8,padding:"9px 14px 9px 12px",borderBottom:"1px solid rgba(0,0,0,0.03)",background:"rgba(239,68,68,.04)",borderRight:"3px solid #ef4444"}},
+            React.createElement("div",{style:{flex:1}}),
+            React.createElement("div",{style:{flex:1,minWidth:0,textAlign:"right"}},
+              React.createElement("div",{style:{display:"flex",alignItems:"center",justifyContent:"flex-end",gap:6,flexWrap:"wrap"}},
+                varBadge
+              ),
+              playerName ? React.createElement("div",{style:{fontSize:12,fontWeight:600,color:"#0f172a",marginTop:2}}, playerName) : null,
+              assistName ? React.createElement("div",{style:{fontSize:11,color:"rgba(17,24,39,0.4)",marginTop:1}}, `(${assistName})`) : null
+            ),
+            React.createElement("div",{style:{width:28,height:28,borderRadius:"50%",background:"rgba(239,68,68,.1)",display:"flex",alignItems:"center",justifyContent:"center",flexShrink:0,fontSize:14}},"❌"),
+            React.createElement("span",{style:{fontSize:13,fontWeight:700,color:"rgba(17,24,39,0.4)",minWidth:32,flexShrink:0,textAlign:"right",fontFamily:"'Barlow Condensed',sans-serif"}},minStr)
+          );
+        }
+      }
 
       const iconEl = isGoal&&!isMiss
         ?React.createElement("div",{style:{width:28,height:28,borderRadius:"50%",background:isCSC?"rgba(229,57,53,.1)":"rgba(0,0,0,.06)",display:"flex",alignItems:"center",justifyContent:"center",flexShrink:0,fontSize:15}},isCSC?"⚽":"⚽")
