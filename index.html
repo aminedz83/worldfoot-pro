@@ -48,7 +48,7 @@
     <script>
         if ("serviceWorker" in navigator) {
             const sw = `
-    const C='wf-pro-v46';
+    const C='wf-pro-v47';
     self.addEventListener('install',e=>{e.waitUntil(caches.open(C).then(c=>c.addAll(['./'])).then(()=>self.skipWaiting()));});
     self.addEventListener('activate',e=>{e.waitUntil(caches.keys().then(ks=>Promise.all(ks.filter(k=>k!==C).map(k=>caches.delete(k)))).then(()=>self.clients.claim()));});
     self.addEventListener('push',e=>{
@@ -4229,6 +4229,7 @@ function ScoresTab({favs,onFav,onTeam}){
   const[date,setDate]=useState(today()),[data,setData]=useState([]),[st,setSt]=useState("load"),[err,setErr]=useState("");
   const[detail,setDet]=useState(null),[q,setQ]=useState(""),[lg,setLg]=useState(null),[favOnly,setFO]=useState(false);
   const[picker,setPicker]=useState(false),[cd,setCd]=useState(15),[spin,setSpin]=useState(false),[statusFilter,setStatusFilter]=useState("all");
+  const[visibleLimit,setVisibleLimit]=useState(30);
   const stripRef=useRef(null),timerRef=useRef(null),cdRef=useRef(null),loadRef=useRef(null);
   const isToday=date===today();
 
@@ -4529,7 +4530,7 @@ function ScoresTab({favs,onFav,onTeam}){
       ].map(f =>
         React.createElement("button", {
           key: f.key,
-          onClick: () => setStatusFilter(f.key),
+          onClick: () => { setStatusFilter(f.key); setVisibleLimit(30); },
           style: {
             flexShrink: 0,
             display: "flex", alignItems: "center", gap: 5,
@@ -4579,6 +4580,16 @@ function ScoresTab({favs,onFav,onTeam}){
           React.createElement("div", { style: { fontSize: 13, color: T.t4 } }, favOnly ? "Aucun favori ce jour" : q ? "Aucun résultat pour cette recherche" : "Pas de matchs programmés ce jour-là")
         )
       : groups.map(g => React.createElement(LeagueBlock, { key: g.lg.id, group: g, onOpen: openMatch, favs: favs, onFav: onFav, onTeam: onTeam }))
+        .slice(0, visibleLimit)
+        .concat(
+          groups.length > visibleLimit
+            ? [React.createElement("div", {
+                key: "load-more",
+                onClick: () => setVisibleLimit(v => v + 30),
+                style: { textAlign: "center", padding: "16px", cursor: "pointer", color: "#00c170", fontWeight: 700, fontSize: 14 }
+              }, `Voir plus (${groups.length - visibleLimit} ligues restantes) ↓`)]
+            : []
+        )
     ),
     React.createElement(Sheet, { open: picker, onClose: () => setPicker(false) },
       React.createElement("div", { style: { padding: "4px 16px 14px" } },
