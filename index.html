@@ -48,7 +48,7 @@
     <script>
         if ("serviceWorker" in navigator) {
             const sw = `
-    const C='wf-pro-v67';
+    const C='wf-pro-v68';
     self.addEventListener('install',e=>{e.waitUntil(caches.open(C).then(c=>c.addAll(['./'])).then(()=>self.skipWaiting()));});
     self.addEventListener('activate',e=>{e.waitUntil(caches.keys().then(ks=>Promise.all(ks.filter(k=>k!==C).map(k=>caches.delete(k)))).then(()=>self.clients.claim()));});
     self.addEventListener('push',e=>{
@@ -1608,7 +1608,7 @@ const renderListeFlash = (fix, hLu, aLu, players, events, injuries, hid, aid) =>
             player.events && player.events.isVar
               ? React.createElement("span", {
                   style: { fontSize: 12, marginLeft: 2, flexShrink: 0, color: "#2563eb" }
-                }, "📺")
+                }, null)
               : null
           ),
 
@@ -1663,7 +1663,7 @@ const renderListeFlash = (fix, hLu, aLu, players, events, injuries, hid, aid) =>
                     : null,
 
                   awayTeamData.starters[index].events && awayTeamData.starters[index].events.isVar
-                    ? React.createElement("span", { style: { fontSize: 12, flexShrink: 0, color: "#2563eb" } }, "📺")
+                    ? React.createElement("span", { style: { fontSize: 12, flexShrink: 0, color: "#2563eb" } }, null)
                     : null,
 
                   React.createElement("span", {
@@ -2949,7 +2949,7 @@ function MatchDetail({state,onClose,onTeam}){
           background: varColor+"22",
           display:"flex", alignItems:"center", justifyContent:"center",
           flexShrink:0, fontSize:15
-        }}, "📺");
+        }}, null);
 
         // Si décision finale → du côté de l'équipe
         if (isFinal) {
