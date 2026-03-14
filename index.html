@@ -48,7 +48,7 @@
     <script>
         if ("serviceWorker" in navigator) {
             const sw = `
-    const C='wf-pro-v71';
+    const C='wf-pro-v72';
     self.addEventListener('install',e=>{e.waitUntil(caches.open(C).then(c=>c.addAll(['./'])).then(()=>self.skipWaiting()));});
     self.addEventListener('activate',e=>{e.waitUntil(caches.keys().then(ks=>Promise.all(ks.filter(k=>k!==C).map(k=>caches.delete(k)))).then(()=>self.clients.claim()));});
     self.addEventListener('push',e=>{
@@ -2137,6 +2137,7 @@ function Row({match:m, onOpen, isFav, onFav, onTeam}){
   const susp=SUSP_ST.has(sh);
   const canc=sh==="CANC";
   const min=useMinute(s.elapsed,s.short);
+  const liveTime=useLiveTime(s.elapsed,s.short,m.fixture.date);
   const flash=useFlash(m.goals.home,m.goals.away);
   const hg=m.goals.home,ag=m.goals.away,has=hg!==null&&ag!==null,hw=has&&hg>ag,aw=has&&ag>hg;
   const redCards=_redCardsCache.get(m.fixture.id);
@@ -2203,17 +2204,21 @@ function Row({match:m, onOpen, isFav, onFav, onTeam}){
     React.createElement("div", { style: { width: 46, flexShrink: 0, textAlign: "center" } },
       live
         ? React.createElement("div", { style: { display:"flex", flexDirection:"column", alignItems:"center", gap: 2 } },
-            (sh === "2H" && min > 90)
-              ? React.createElement(React.Fragment, null,
-                  React.createElement("div", { style: { fontSize: 10, fontWeight: 700, color: "rgba(229,53,53,.6)", lineHeight: 1 } }, "(+" + (min - 90) + "')"),
-                  React.createElement("div", { style: { fontSize: 12, fontWeight: 900, color: "#e53535", lineHeight: 1 } }, "90+" + (min - 90) + "'")
-                )
-              : (sh === "1H" && min > 45)
-              ? React.createElement(React.Fragment, null,
-                  React.createElement("div", { style: { fontSize: 10, fontWeight: 700, color: "rgba(229,53,53,.6)", lineHeight: 1 } }, "(+" + (min - 45) + "')"),
-                  React.createElement("div", { style: { fontSize: 12, fontWeight: 900, color: "#e53535", lineHeight: 1 } }, "45+" + (min - 45) + "'")
-                )
-              : React.createElement("div", { style: { fontSize: 13, fontWeight: 800, color: "#e53535", lineHeight: 1 } }, min + "'"),
+            (() => {
+              const displayMin = liveTime ? parseInt(liveTime.split(':')[0]) : min;
+              const displaySec = liveTime ? liveTime.split(':')[1] : null;
+              if (sh === "2H" && displayMin > 90)
+                return React.createElement(React.Fragment, null,
+                  React.createElement("div", { style: { fontSize: 10, fontWeight: 700, color: "rgba(229,53,53,.6)", lineHeight: 1 } }, "(+" + (displayMin-90) + "')"),
+                  React.createElement("div", { style: { fontSize: 12, fontWeight: 900, color: "#e53535", lineHeight: 1 } }, `90+${displayMin-90}'`)
+                );
+              if (sh === "1H" && displayMin > 45)
+                return React.createElement(React.Fragment, null,
+                  React.createElement("div", { style: { fontSize: 10, fontWeight: 700, color: "rgba(229,53,53,.6)", lineHeight: 1 } }, "(+" + (displayMin-45) + "')"),
+                  React.createElement("div", { style: { fontSize: 12, fontWeight: 900, color: "#e53535", lineHeight: 1 } }, `45+${displayMin-45}'`)
+                );
+              return React.createElement("div", { style: { fontSize: 13, fontWeight: 800, color: "#e53535", lineHeight: 1 } }, liveTime || (min + "'"));
+            })(),
             React.createElement("div", { style: { width: 6, height: 6, borderRadius: "50%", background: "#e53535", margin: "2px auto 0", animation: "pulse 1.2s infinite" } })
           )
         : sh === "NS"
