@@ -48,7 +48,7 @@
     <script>
         if ("serviceWorker" in navigator) {
             const sw = `
-    const C='wf-pro-v41';
+    const C='wf-pro-v43';
     self.addEventListener('install',e=>{e.waitUntil(caches.open(C).then(c=>c.addAll(['./'])).then(()=>self.skipWaiting()));});
     self.addEventListener('activate',e=>{e.waitUntil(caches.keys().then(ks=>Promise.all(ks.filter(k=>k!==C).map(k=>caches.delete(k)))).then(()=>self.clients.claim()));});
     self.addEventListener('push',e=>{
@@ -547,13 +547,9 @@
     </script>
 
     <script type="text/plain" id="jsx-source">
-// ============================================
-// CODE COMPLET AVEC STATS ARBITRES ET DRAPEAUX DYNAMIQUES
-// ============================================
 
 const {useState,useEffect,useCallback,useRef,useMemo}=React;
 
-// IDs des clubs algériens
 const ALGERIAN_CLUBS = {
   "CR Belouizdad": 904, "ES Setif": 905, "MC Alger": 906, "MC Oran": 907,
   "Olympique Medea": 908, "US Biskra": 909, "USM Alger": 910, "CS Constantine": 911,
@@ -576,7 +572,6 @@ const ALGERIAN_SEASON = 2024;
 
 const isAlgerianTeam = (teamId) => ALGERIAN_CLUB_IDS.includes(teamId);
 
-// CACHE LOCAL
 const CACHE_TTL = 15 * 60 * 1000;
 
 function cacheSet(key, data) {
@@ -601,12 +596,10 @@ function cacheGetStale(key) {
   } catch { return null; }
 }
 
-// CONFIG
 const API_KEY = "3a14b1347c177458e2f23bea7899e9cf";
 const BASE    = "https://v3.football.api-sports.io";
 const REFRESH = 15;
 
-// LIGUES
 const LEAGUES = [
   {id:2, name:"Champions League", country:"Europe", flag:"🏆", region:"Coupes EU", isCup:true, hasGroups:true, hasKnockout:true},
   {id:3, name:"Europa League", country:"Europe", flag:"🟠", region:"Coupes EU", isCup:true, hasGroups:true, hasKnockout:true},
@@ -742,7 +735,6 @@ const NS_ST    = new Set(["NS","TBD","PST","CANC"]);
 const SUSP_ST  = new Set(["SUSP","INT","ABD"]);
 const CANCEL_ST = new Set(["CANC"]);
 
-// API cache
 const _cache = new Map();
 let _apiCallsToday = parseInt(localStorage.getItem('wf_api_calls_'+new Date().toDateString())||'0');
 let _apiCallsDate = new Date().toDateString();
@@ -777,7 +769,6 @@ async function api(path, ttl=TTL.SCORES, signal=null) {
   return d;
 }
 
-// HELPERS
 const today = ()=>new Date().toISOString().slice(0,10);
 const hhmm = s=>{const d=new Date(s); return`${String(d.getHours()).padStart(2,"0")}:${String(d.getMinutes()).padStart(2,"0")}`;};
 const byId = id=>LEAGUES.find(l=>l.id===id);
@@ -786,7 +777,6 @@ const pct = (a,b)=>{const t=a+b; return t?Math.round(a/t*100):50;};
 const num = v=>parseInt(v)||0;
 const fmt = v=>v!=null?v:"—";
 
-// DESIGN TOKENS
 const T = {
   bg0:"#eef0f5", bg1:"#ffffff", bg2:"#f8f9fc", bg3:"#eef0f5", bg4:"#e4e7ef", bg5:"#d8dce8",
   line:"rgba(0,0,0,.07)", lineH:"rgba(0,0,0,.11)", lineA:"rgba(0,0,0,.16)",
@@ -805,15 +795,23 @@ const T = {
   shadowLg:"0 8px 40px rgba(0,0,0,.1),0 2px 8px rgba(0,0,0,.06)",
 };
 
-// HOOKS
-function useMinute(elapsed,status){
-  const[m,setM]=useState(elapsed??0);
-  useEffect(()=>{
-    setM(elapsed??0);
-    if(!LIVE_ST.has(status))return;
-    const id=setInterval(()=>setM(v=>{const c=(status==="2H"||status==="ET")?96:47; return v<c?v+1:v;}),60000);
-    return()=>clearInterval(id);
-  },[elapsed,status]);
+// Timer global — 1 seul interval pour tous les matchs live
+let _globalMinute = Math.floor(Date.now() / 60000);
+const _minuteListeners = new Set();
+setInterval(() => {
+  _globalMinute = Math.floor(Date.now() / 60000);
+  _minuteListeners.forEach(fn => fn(_globalMinute));
+}, 15000);
+
+function useMinute(elapsed, status) {
+  const [m, setM] = useState(elapsed ?? 0);
+  useEffect(() => {
+    setM(elapsed ?? 0);
+    if (!LIVE_ST.has(status)) return;
+    const fn = () => setM(v => { const c = (status === "2H" || status === "ET") ? 96 : 47; return v < c ? v + 1 : v; });
+    _minuteListeners.add(fn);
+    return () => _minuteListeners.delete(fn);
+  }, [elapsed, status]);
   return m;
 }
 
@@ -826,7 +824,6 @@ function useFlash(hg,ag){
   return on;
 }
 
-// ATOMS
 function Spin({s=22,c=T.red}){ return <div style={{width:s,height:s,border:`2px solid ${T.bg4}`,borderTopColor:c,borderRadius:"50%",animation:"spin .55s linear infinite",flexShrink:0}}/>; }
 function Sk({w,h=8,r=5}){ return <div className="sk" style={{width:w,height:h,borderRadius:r,flexShrink:0}}/>; }
 
@@ -848,23 +845,19 @@ function SkRows(){
   ))}</div>;
 }
 
-function Logo({src,size=16}){
+const Logo = React.memo(function Logo({src,size=16}){
   const[e,setE]=useState(false);
   const wrapper={width:size,height:size,flexShrink:0,display:"flex",alignItems:"center",justifyContent:"center"};
   if(!src||e) return <div style={{...wrapper,borderRadius:size/2,background:T.bg3}}/>;
   return <div style={wrapper}>
     <img src={src} width={size} height={size} style={{objectFit:"contain",display:"block",width:"100%",height:"100%"}} alt="" onError={()=>setE(true)}/>
   </div>;
-}
+});
 
-// ============================================
-// SYSTÈME PHOTOS MULTI-SOURCES
-// ============================================
 const AVATAR_COLORS=["#ef4444","#f97316","#f59e0b","#10b981","#3b82f6","#6366f1","#8b5cf6","#ec4899","#14b8a6","#f43f5e","#84cc16","#06b6d4","#d946ef","#fbbf24","#34d399","#60a5fa"];
 function avatarColor(name){if(!name)return AVATAR_COLORS[0];const h=name.split("").reduce((a,c)=>c.charCodeAt(0)+a,0);return AVATAR_COLORS[h%AVATAR_COLORS.length];}
 function avatarInitials(name){if(!name)return"?";const p=name.trim().split(/\s+/);return p.length>=2?(p[0][0]+p[p.length-1][0]).toUpperCase():name.substring(0,2).toUpperCase();}
 
-// Cache mémoire + localStorage
 const _photoCache=new Map();
 const PHOTO_SOURCES=[
   {name:"API-Sports-Proxy",  getUrl:(id)=>id?`https://corsproxy.io/?${encodeURIComponent(`https://media.api-sports.io/football/players/${id}.png`)}`:null},
@@ -895,7 +888,6 @@ async function resolvePlayerPhoto(playerId,playerName){
   return null;
 }
 
-// Composant PlayerImage — async multi-sources
 function PlayerImage({playerId,playerName,size=56,ring="rgba(255,255,255,.15)"}){
   const[url,setUrl]=useState(()=>{
     const key=`pph_${playerId||""}_${playerName}`;
@@ -915,7 +907,6 @@ function PlayerImage({playerId,playerName,size=56,ring="rgba(255,255,255,.15)"})
   return <div style={{...S,background:T.bg3}}><img src={url} style={{width:"100%",height:"100%",objectFit:"cover",display:"block"}} alt="" onError={()=>setUrl(null)}/></div>;
 }
 
-// Avatar classique (logos, petits joueurs — utilise PlayerImage si playerId fourni)
 function Avatar({src,size=40,ring=T.bg4,playerId=null,playerName=""}){
   const[imgSrc,setImgSrc]=useState(()=>{
     if(playerId){
@@ -929,7 +920,7 @@ function Avatar({src,size=40,ring=T.bg4,playerId=null,playerName=""}){
   });
   const[err,setErr]=useState(false);
   const[tried,setTried]=useState(0);
-  // Si on a un playerId et pas de cache → lancer resolvePlayerPhoto
+
   useEffect(()=>{
     if(!playerId||imgSrc)return;
     resolvePlayerPhoto(playerId,playerName).then(u=>{if(u)setImgSrc(u);else setErr(true);});
@@ -986,7 +977,6 @@ function Sheet({open,onClose,children}){
   </div>;
 }
 
-// COULEUR DE NOTE
 const getRatingColor = (rating) => {
   const r = parseFloat(rating) || 0;
   if (r >= 8.5) return "#3f51b5";
@@ -999,7 +989,6 @@ const getRatingColor = (rating) => {
   return "#9e9e9e";
 };
 
-// COMPOSANT JOUEUR FLASHSCORE
 const PlayerFlash = ({ player, rating, isHome }) => {
   const photo = player?.photo;
   const name = player?.name || "";
@@ -1007,7 +996,7 @@ const PlayerFlash = ({ player, rating, isHome }) => {
   const number = player?.number || "?";
   const ratingValue = rating ? parseFloat(rating).toFixed(1) : null;
   const ratingColor = ratingValue ? getRatingColor(ratingValue) : "transparent";
-  
+
   return React.createElement("div", {
     style: {
       display: "flex",
@@ -1033,7 +1022,7 @@ const PlayerFlash = ({ player, rating, isHome }) => {
         boxShadow: "0 2px 4px rgba(0,0,0,0.1)"
       }
     }, ratingValue) : React.createElement("div", { style: { height: 22 } }),
-    
+
     React.createElement("div", {
       style: {
         position: "relative",
@@ -1066,7 +1055,7 @@ const PlayerFlash = ({ player, rating, isHome }) => {
               style: { fontSize: 16, fontWeight: 600, color: "#555" }
             }, number)
       ),
-      
+
       React.createElement("div", {
         style: {
           position: "absolute",
@@ -1087,7 +1076,7 @@ const PlayerFlash = ({ player, rating, isHome }) => {
         }
       }, number)
     ),
-    
+
     React.createElement("div", {
       style: {
         fontSize: 10,
@@ -1104,12 +1093,11 @@ const PlayerFlash = ({ player, rating, isHome }) => {
   );
 };
 
-// ORGANISER LES JOUEURS PAR LIGNE
 const organizePlayersByLine = (players, formation) => {
   if (!players || players.length === 0) return [];
-  
+
   const defaultFormation = [1, 4, 3, 3];
-  
+
   let lines = [];
   if (formation) {
     const parts = formation.split("-").map(Number);
@@ -1117,22 +1105,22 @@ const organizePlayersByLine = (players, formation) => {
   } else {
     lines = defaultFormation;
   }
-  
+
   const result = [];
   let playerIndex = 0;
-  
+
   for (let i = 0; i < lines.length; i++) {
     const lineSize = lines[i];
     const line = [];
-    
+
     for (let j = 0; j < lineSize && playerIndex < players.length; j++) {
       line.push(players[playerIndex]);
       playerIndex++;
     }
-    
+
     result.push(line);
   }
-  
+
   if (playerIndex < players.length) {
     const subs = [];
     while (playerIndex < players.length) {
@@ -1141,22 +1129,21 @@ const organizePlayersByLine = (players, formation) => {
     }
     result.push(subs);
   }
-  
+
   return result;
 };
 
-// VUE TERRAIN FLASHSCORE
 const renderTerrainFlash = (fix, hLu, aLu, players, events, hid, aid, has, hg, ag) => {
   if (!hLu && !aLu) return null;
-  
+
   const getPlayersWithRatings = (teamId, lineup) => {
     if (!lineup?.startXI) return [];
-    
+
     return lineup.startXI.map(item => {
       const player = item.player;
       const playerStats = players.flatMap(t => t.players || []).find(p => p.player?.id === player.id);
       const rating = playerStats?.statistics?.[0]?.games?.rating;
-      
+
       return {
         ...player,
         rating: rating ? parseFloat(rating).toFixed(1) : null,
@@ -1164,20 +1151,20 @@ const renderTerrainFlash = (fix, hLu, aLu, players, events, hid, aid, has, hg, a
       };
     });
   };
-  
+
   const homePlayers = getPlayersWithRatings(hid, hLu);
   const awayPlayers = getPlayersWithRatings(aid, aLu);
-  
+
   const homeFormation = hLu?.formation || "4-3-3";
   const awayFormation = aLu?.formation || "4-3-3";
-  
+
   const homeLines = organizePlayersByLine(homePlayers, homeFormation);
   const awayLines = organizePlayersByLine(awayPlayers, awayFormation);
-  
+
   const getPlayerEvents = (playerId) => {
     return events.filter(e => e.player?.id === playerId || e.assist?.id === playerId);
   };
-  
+
   return React.createElement("div", {
     style: {
       background: "linear-gradient(180deg, #2d6a3a 0%, #1b4d2a 50%, #2d6a3a 100%)",
@@ -1212,7 +1199,7 @@ const renderTerrainFlash = (fix, hLu, aLu, players, events, hid, aid, has, hg, a
       React.createElement("circle", { cx: 28, cy: 556, r: 2, fill: "rgba(255,255,255,0.5)" }),
       React.createElement("circle", { cx: 292, cy: 556, r: 2, fill: "rgba(255,255,255,0.5)" })
     ),
-    
+
     React.createElement("div", {
       style: {
         position: "relative",
@@ -1237,7 +1224,7 @@ const renderTerrainFlash = (fix, hLu, aLu, players, events, hid, aid, has, hg, a
         React.createElement("img", { src: fix.teams.away.logo, style: { width: 24, height: 24, objectFit: "contain" } })
       )
     ),
-    
+
     React.createElement("div", {
       style: {
         position: "relative",
@@ -1249,7 +1236,7 @@ const renderTerrainFlash = (fix, hLu, aLu, players, events, hid, aid, has, hg, a
       }
     },
       React.createElement("div", { style: { flex: 1, display: "flex", flexDirection: "column", justifyContent: "space-around" } },
-        homeLines.map((line, lineIndex) => 
+        homeLines.map((line, lineIndex) =>
           React.createElement("div", {
             key: `home-line-${lineIndex}`,
             style: {
@@ -1264,7 +1251,7 @@ const renderTerrainFlash = (fix, hLu, aLu, players, events, hid, aid, has, hg, a
               const hasGoal = playerEvents.some(e => e.type === "Goal");
               const hasYellow = playerEvents.some(e => e.type === "Card" && e.detail === "Yellow Card");
               const hasRed = playerEvents.some(e => e.type === "Card" && (e.detail === "Red Card" || e.detail === "Second Yellow Card"));
-              
+
               return React.createElement("div", {
                 key: player.id,
                 style: { position: "relative" }
@@ -1292,7 +1279,7 @@ const renderTerrainFlash = (fix, hLu, aLu, players, events, hid, aid, has, hg, a
           )
         )
       ),
-      
+
       React.createElement("div", {
         style: {
           display: "flex",
@@ -1316,9 +1303,9 @@ const renderTerrainFlash = (fix, hLu, aLu, players, events, hid, aid, has, hg, a
           )
         )
       ),
-      
+
       React.createElement("div", { style: { flex: 1, display: "flex", flexDirection: "column", justifyContent: "space-around" } },
-        [...awayLines].reverse().map((line, lineIndex) => 
+        [...awayLines].reverse().map((line, lineIndex) =>
           React.createElement("div", {
             key: `away-line-${lineIndex}`,
             style: {
@@ -1333,7 +1320,7 @@ const renderTerrainFlash = (fix, hLu, aLu, players, events, hid, aid, has, hg, a
               const hasGoal = playerEvents.some(e => e.type === "Goal");
               const hasYellow = playerEvents.some(e => e.type === "Card" && e.detail === "Yellow Card");
               const hasRed = playerEvents.some(e => e.type === "Card" && (e.detail === "Red Card" || e.detail === "Second Yellow Card"));
-              
+
               return React.createElement("div", {
                 key: player.id,
                 style: { position: "relative" }
@@ -1362,7 +1349,7 @@ const renderTerrainFlash = (fix, hLu, aLu, players, events, hid, aid, has, hg, a
         )
       )
     ),
-    
+
     React.createElement("div", {
       style: {
         position: "relative",
@@ -1384,7 +1371,6 @@ const renderTerrainFlash = (fix, hLu, aLu, players, events, hid, aid, has, hg, a
   );
 };
 
-// VUE LISTE FLASHSCORE
 const renderListeFlash = (fix, hLu, aLu, players, events, injuries, hid, aid) => {
   if (!hLu && !aLu && !players.length) {
     return React.createElement("div", { className: "md-empty" },
@@ -1424,27 +1410,27 @@ const renderListeFlash = (fix, hLu, aLu, players, events, injuries, hid, aid) =>
 
   const organizeTeamPlayers = (lineup, teamId) => {
     if (!lineup) return { starters: [], subs: [] };
-    
+
     const starters = (lineup.startXI || []).map(item => {
       const player = item.player;
       const rating = getPlayerRating(player.id);
       const events = getPlayerEvents(player.id);
       return { ...player, rating, events };
     });
-    
+
     const subs = (lineup.substitutes || []).map(item => {
       const player = item.player;
       const rating = getPlayerRating(player.id);
       const events = getPlayerEvents(player.id);
       return { ...player, rating, events };
     });
-    
+
     return { starters, subs };
   };
 
   const homeTeamData = organizeTeamPlayers(hLu, hid);
   const awayTeamData = organizeTeamPlayers(aLu, aid);
-  
+
   const homeAbsent = getAbsentPlayers(hid);
   const awayAbsent = getAbsentPlayers(aid);
 
@@ -1534,7 +1520,7 @@ const renderListeFlash = (fix, hLu, aLu, players, events, injuries, hid, aid) =>
                 flexShrink: 0
               }
             }, `${player.number || "?"}.`),
-            
+
             (() => {
               const photoUrl = getPlayerPhoto(player.id);
               return photoUrl
@@ -1558,7 +1544,7 @@ const renderListeFlash = (fix, hLu, aLu, players, events, injuries, hid, aid) =>
                     }
                   }, player.number || "?");
             })(),
-            
+
             React.createElement("span", {
               style: {
                 fontWeight: 600,
@@ -1569,7 +1555,7 @@ const renderListeFlash = (fix, hLu, aLu, players, events, injuries, hid, aid) =>
                 flex: 1
               }
             }, player.name || "Joueur"),
-            
+
             player.pos === "G"
               ? React.createElement("span", {
                   style: {
@@ -1583,32 +1569,32 @@ const renderListeFlash = (fix, hLu, aLu, players, events, injuries, hid, aid) =>
                   }
                 }, "(G)")
               : null,
-            
+
             player.events && player.events.goals > 0
               ? React.createElement("span", {
                   style: { fontSize: 12, marginLeft: 2, flexShrink: 0 }
                 }, "⚽".repeat(player.events.goals))
               : null,
-            
+
             player.events && player.events.yellow > 0
               ? React.createElement("span", {
                   style: { fontSize: 12, marginLeft: 2, flexShrink: 0 }
                 }, "🟨")
               : null,
-            
+
             player.events && player.events.red > 0
               ? React.createElement("span", {
                   style: { fontSize: 12, marginLeft: 2, flexShrink: 0 }
                 }, "🟥")
               : null,
-            
+
             player.events && player.events.isVar
               ? React.createElement("span", {
                   style: { fontSize: 12, marginLeft: 2, flexShrink: 0, color: "#2563eb" }
                 }, "📺")
               : null
           ),
-          
+
           player.rating
             ? React.createElement("div", {
                 style: {
@@ -1625,7 +1611,7 @@ const renderListeFlash = (fix, hLu, aLu, players, events, injuries, hid, aid) =>
                 }
               }, player.rating)
             : React.createElement("div", { style: { width: 32, marginRight: 8, flexShrink: 0 } }),
-          
+
           React.createElement("span", {
             style: {
               color: "#ccc",
@@ -1634,7 +1620,7 @@ const renderListeFlash = (fix, hLu, aLu, players, events, injuries, hid, aid) =>
               flexShrink: 0
             }
           }, "-"),
-          
+
           React.createElement("div", {
             style: {
               flex: 1,
@@ -1650,19 +1636,19 @@ const renderListeFlash = (fix, hLu, aLu, players, events, injuries, hid, aid) =>
                   awayTeamData.starters[index].events && awayTeamData.starters[index].events.goals > 0
                     ? React.createElement("span", { style: { fontSize: 12, flexShrink: 0 } }, "⚽".repeat(awayTeamData.starters[index].events.goals))
                     : null,
-                  
+
                   awayTeamData.starters[index].events && awayTeamData.starters[index].events.yellow > 0
                     ? React.createElement("span", { style: { fontSize: 12, flexShrink: 0 } }, "🟨")
                     : null,
-                  
+
                   awayTeamData.starters[index].events && awayTeamData.starters[index].events.red > 0
                     ? React.createElement("span", { style: { fontSize: 12, flexShrink: 0 } }, "🟥")
                     : null,
-                  
+
                   awayTeamData.starters[index].events && awayTeamData.starters[index].events.isVar
                     ? React.createElement("span", { style: { fontSize: 12, flexShrink: 0, color: "#2563eb" } }, "📺")
                     : null,
-                  
+
                   React.createElement("span", {
                     style: {
                       fontWeight: 600,
@@ -1674,7 +1660,7 @@ const renderListeFlash = (fix, hLu, aLu, players, events, injuries, hid, aid) =>
                       flex: 1
                     }
                   }, awayTeamData.starters[index].name || "Joueur"),
-                  
+
                   awayTeamData.starters[index].pos === "G"
                     ? React.createElement("span", {
                         style: {
@@ -1688,7 +1674,7 @@ const renderListeFlash = (fix, hLu, aLu, players, events, injuries, hid, aid) =>
                         }
                       }, "(G)")
                     : null,
-                  
+
                   (() => {
                     const photoUrl = getPlayerPhoto(awayTeamData.starters[index].id);
                     return photoUrl
@@ -1712,7 +1698,7 @@ const renderListeFlash = (fix, hLu, aLu, players, events, injuries, hid, aid) =>
                           }
                         }, awayTeamData.starters[index].number || "?");
                   })(),
-                  
+
                   React.createElement("span", {
                     style: {
                       fontSize: 11,
@@ -1726,7 +1712,7 @@ const renderListeFlash = (fix, hLu, aLu, players, events, injuries, hid, aid) =>
                 )
               : React.createElement("span", { style: { color: "#ccc", flex: 1, textAlign: "center" } }, "—")
           ),
-          
+
           awayTeamData.starters[index] && awayTeamData.starters[index].rating
             ? React.createElement("div", {
                 style: {
@@ -1791,7 +1777,7 @@ const renderListeFlash = (fix, hLu, aLu, players, events, injuries, hid, aid) =>
                 flexShrink: 0
               }
             }, `${player.number || "?"}.`),
-            
+
             (() => {
               const photoUrl = getPlayerPhoto(player.id);
               return photoUrl
@@ -1815,7 +1801,7 @@ const renderListeFlash = (fix, hLu, aLu, players, events, injuries, hid, aid) =>
                     }
                   }, player.number || "?");
             })(),
-            
+
             React.createElement("span", {
               style: {
                 fontWeight: 500,
@@ -1826,7 +1812,7 @@ const renderListeFlash = (fix, hLu, aLu, players, events, injuries, hid, aid) =>
                 flex: 1
               }
             }, player.name || "Joueur"),
-            
+
             player.pos === "G"
               ? React.createElement("span", {
                   style: {
@@ -1841,7 +1827,7 @@ const renderListeFlash = (fix, hLu, aLu, players, events, injuries, hid, aid) =>
                 }, "(G)")
               : null
           ),
-          
+
           player.rating
             ? React.createElement("div", {
                 style: {
@@ -1858,7 +1844,7 @@ const renderListeFlash = (fix, hLu, aLu, players, events, injuries, hid, aid) =>
                 }
               }, player.rating)
             : React.createElement("div", { style: { width: 32, marginRight: 8, flexShrink: 0 } }),
-          
+
           React.createElement("span", { style: { width: 32, flexShrink: 0 } })
         )
       ),
@@ -1917,12 +1903,12 @@ const renderListeFlash = (fix, hLu, aLu, players, events, injuries, hid, aid) =>
                     color: "#e53935"
                   }
                 }, "⚠️"),
-            
+
             React.createElement("span", {
               style: { fontWeight: 500, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }
             }, player.name)
           ),
-          
+
           React.createElement("span", {
             style: {
               fontSize: 12,
@@ -1986,12 +1972,12 @@ const renderListeFlash = (fix, hLu, aLu, players, events, injuries, hid, aid) =>
                   flexShrink: 0
                 }
               }, "🧑‍💼"),
-          
+
           React.createElement("span", {
             style: { fontWeight: 600, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap", flex: 1 }
           }, hLu?.coach?.name || "Non communiqué")
         ),
-        
+
         React.createElement("div", {
           style: {
             display: "flex",
@@ -2005,7 +1991,7 @@ const renderListeFlash = (fix, hLu, aLu, players, events, injuries, hid, aid) =>
           React.createElement("span", {
             style: { fontWeight: 600, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap", textAlign: "right", flex: 1 }
           }, aLu?.coach?.name || "Non communiqué"),
-          
+
           aLu?.coach?.photo
             ? React.createElement("img", {
                 src: aLu.coach.photo,
@@ -2030,7 +2016,6 @@ const renderListeFlash = (fix, hLu, aLu, players, events, injuries, hid, aid) =>
   );
 };
 
-// COMPOS PANEL AMÉLIORÉ
 function ComposPanel({lineups, players, homeTeam, awayTeam, isPartial, fix, events, injuries}) {
   const [view, setView] = useState("pitch");
   const hLu = lineups?.find(l => l.team?.id === homeTeam?.id);
@@ -2098,7 +2083,7 @@ function ComposPanel({lineups, players, homeTeam, awayTeam, isPartial, fix, even
         }
       }, "📋 Liste")
     ),
-    
+
     view === "pitch"
       ? renderTerrainFlash(
           fix || { teams: { home: homeTeam, away: awayTeam } },
@@ -2125,8 +2110,7 @@ function ComposPanel({lineups, players, homeTeam, awayTeam, isPartial, fix, even
   );
 }
 
-// MATCH ROW
-function Row({match:m, onOpen, isFav, onFav, onTeam}){
+const Row = React.memo(function Row({match:m, onOpen, isFav, onFav, onTeam}){
   const s=m.fixture.status;
   const sh=s.short;
   const live=["1H","2H","ET","P"].includes(sh);
@@ -2152,16 +2136,16 @@ function Row({match:m, onOpen, isFav, onFav, onTeam}){
     const prevAway = prevGoalsRef.current.away;
     const currentHome = m.goals.home;
     const currentAway = m.goals.away;
-    
+
     if (currentHome > prevHome || currentAway > prevAway) {
       const scoringTeam = currentHome > prevHome ? m.teams.home.id : m.teams.away.id;
-      
+
       setShowBigChance(true);
       setActionTeam(scoringTeam);
-      
+
       setDisplayHomeGoals(prevHome);
       setDisplayAwayGoals(prevAway);
-      
+
       if (timerRef.current) clearTimeout(timerRef.current);
       timerRef.current = setTimeout(() => {
         setShowBigChance(false);
@@ -2169,14 +2153,14 @@ function Row({match:m, onOpen, isFav, onFav, onTeam}){
         setDisplayHomeGoals(currentHome);
         setDisplayAwayGoals(currentAway);
       }, 1500);
-      
+
     } else {
       setDisplayHomeGoals(currentHome);
       setDisplayAwayGoals(currentAway);
     }
-    
+
     prevGoalsRef.current = { home: currentHome, away: currentAway };
-    
+
     return () => {
       if (timerRef.current) clearTimeout(timerRef.current);
     };
@@ -2260,7 +2244,8 @@ function Row({match:m, onOpen, isFav, onFav, onTeam}){
       style: { background: "none", border: "none", color: isFav ? "#f59e0b" : "#ddd", fontSize: 18, padding: "0 14px 0 6px", flexShrink: 0, cursor: "pointer" }
     }, isFav ? "★" : "☆")
   );
-}
+}); // end Row memo
+
 function LeagueBlock({group, onOpen, favs, onFav, onTeam}){
   const[open,setOpen]=useState(true);
   const lv=group.matches.filter(m=>LIVE_ST.has(m.fixture.status.short)).length;
@@ -2279,7 +2264,7 @@ function LeagueBlock({group, onOpen, favs, onFav, onTeam}){
         userSelect: "none"
       }
     },
-      // Logo ligue dans carré arrondi blanc avec ombre
+
       React.createElement("div", { style: {
         width: 44, height: 44, borderRadius: 12,
         overflow: "hidden", flexShrink: 0,
@@ -2290,7 +2275,7 @@ function LeagueBlock({group, onOpen, favs, onFav, onTeam}){
       } },
         React.createElement(Logo, { src: group.lg.logo || group.lg.flag, size: 32 })
       ),
-      // Nom + drapeau + pays
+
       React.createElement("div", { style: { flex: 1, minWidth: 0 } },
         React.createElement("span", { style: {
           fontFamily: "'Plus Jakarta Sans', sans-serif",
@@ -2325,77 +2310,74 @@ function LeagueBlock({group, onOpen, favs, onFav, onTeam}){
   );
 }
 
-// ============================================
-// CACHE POUR LES STATS D'ARBITRES
-// ============================================
 const refereeStatsCache = new Map();
 
 const getRefereeStats = async (refereeName) => {
   if (!refereeName) return null;
-  
+
   if (refereeStatsCache.has(refereeName)) {
     return refereeStatsCache.get(refereeName);
   }
-  
+
   try {
     const cleanName = refereeName.split(',')[0].trim();
-    
+
     let matches = await api(
       `/fixtures?referee=${encodeURIComponent(cleanName)}&last=10&status=FT`,
       86400000
     ).catch(() => []);
-    
+
     if (!matches || matches.length === 0) {
       const fallbackMatches = await api(
         `/fixtures?referee=${encodeURIComponent(cleanName)}&last=5&status=FT`,
         86400000
       ).catch(() => []);
-      
+
       if (!fallbackMatches || fallbackMatches.length === 0) {
         return null;
       }
-      
+
       matches = fallbackMatches;
     }
-    
+
     let totalY = 0, totalR = 0, count = 0;
     let countryCount = {};
-    
+
     const limitedMatches = matches.slice(0, 8);
-    
+
     for (const match of limitedMatches) {
       try {
         const events = await api(
           `/fixtures/events?fixture=${match.fixture.id}`,
           86400000
         ).catch(() => []);
-        
+
         if (events && events.length) {
-          const yellows = events.filter(e => 
+          const yellows = events.filter(e =>
             e.type === "Card" && e.detail === "Yellow Card"
           ).length;
-          
-          const reds = events.filter(e => 
+
+          const reds = events.filter(e =>
             e.type === "Card" && (e.detail === "Red Card" || e.detail === "Second Yellow Card")
           ).length;
-          
+
           totalY += yellows;
           totalR += reds;
           count++;
         }
-        
+
         if (match.league?.country) {
           countryCount[match.league.country] = (countryCount[match.league.country] || 0) + 1;
         }
-        
+
       } catch (e) {}
     }
-    
+
     let countryCode = null;
     if (Object.keys(countryCount).length > 0) {
       const topCountry = Object.entries(countryCount)
         .sort((a, b) => b[1] - a[1])[0][0];
-      
+
       const codeMap = {
         'Brazil': 'br', 'France': 'fr', 'England': 'gb', 'Spain': 'es',
         'Italy': 'it', 'Germany': 'de', 'Turkey': 'tr', 'Portugal': 'pt',
@@ -2407,10 +2389,10 @@ const getRefereeStats = async (refereeName) => {
         'Austria': 'at', 'Scotland': 'gb-sct', 'Ireland': 'ie', 'Israel': 'il',
         'Japan': 'jp', 'South Korea': 'kr', 'China': 'cn', 'Australia': 'au'
       };
-      
+
       countryCode = codeMap[topCountry] || null;
     }
-    
+
     const stats = {
       matches: count || Math.min(matches.length, 5),
       yellow: count > 0 ? (totalY / count).toFixed(2) : "0.00",
@@ -2419,18 +2401,15 @@ const getRefereeStats = async (refereeName) => {
       totalRed: totalR,
       countryCode
     };
-    
+
     refereeStatsCache.set(refereeName, stats);
     return stats;
-    
+
   } catch (error) {
     return null;
   }
 };
 
-// ============================================
-// MATCH DETAIL AMÉLIORÉ
-// ============================================
 function MatchDetailWrapper({state,onClose,onTeam}){
   if(!state)return null;
   return React.createElement(MatchDetail,{state,onClose,onTeam});
@@ -2446,7 +2425,6 @@ function MatchDetail({state,onClose,onTeam}){
   const[refStats,setRefStats]=React.useState(null);
   const contentRef=React.useRef(null);
 
-  // États pour les stats arbitres
   const [refereeStats, setRefereeStats] = useState(null);
   const [refereeCountry, setRefereeCountry] = useState(null);
   const [refereeLoading, setRefereeLoading] = useState(false);
@@ -2509,20 +2487,19 @@ function MatchDetail({state,onClose,onTeam}){
     return()=>{cancelled=true;};
   },[fix?.fixture?.id]);
 
-  // Anciennes stats de l'arbitre
   React.useEffect(() => {
     if (!fix?.fixture?.referee) return;
-    
+
     let mounted = true;
     const refereeName = fix.fixture.referee;
-    
+
     const fetchRefStats = async () => {
       try {
         const matches = await api(`/fixtures?referee=${encodeURIComponent(refereeName)}&last=5&status=FT`, 86400000);
         if (!matches.length) return;
-        
+
         let totalY = 0, totalR = 0, count = 0;
-        
+
         for (const match of matches.slice(0,3)) {
           try {
             const events = await api(`/fixtures/events?fixture=${match.fixture.id}`, 86400000);
@@ -2531,7 +2508,7 @@ function MatchDetail({state,onClose,onTeam}){
             count++;
           } catch(e) {}
         }
-        
+
         if (mounted && count > 0) {
           setRefStats({
             matches: count,
@@ -2541,24 +2518,23 @@ function MatchDetail({state,onClose,onTeam}){
         }
       } catch(e) {}
     };
-    
+
     fetchRefStats();
     return () => { mounted = false; };
   }, [fix?.fixture?.referee, fix?.fixture?.id]);
 
-  // NOUVEAU: Charger les stats détaillées de l'arbitre
   useEffect(() => {
     let mounted = true;
-    
+
     const loadRefereeData = async () => {
       if (!fix?.fixture?.referee) return;
-      
+
       setRefereeLoading(true);
       setRefereeError(false);
-      
+
       try {
         const stats = await getRefereeStats(fix.fixture.referee);
-        
+
         if (mounted && stats) {
           setRefereeStats({
             matches: stats.matches,
@@ -2573,9 +2549,9 @@ function MatchDetail({state,onClose,onTeam}){
         if (mounted) setRefereeLoading(false);
       }
     };
-    
+
     loadRefereeData();
-    
+
     return () => { mounted = false; };
   }, [fix?.fixture?.referee, fix?.fixture?.id]);
 
@@ -2641,79 +2617,78 @@ function MatchDetail({state,onClose,onTeam}){
     {id:"classement", label:"Classement"},
   ];
 
-  // Fonction améliorée pour détecter le pays de l'arbitre (fallback)
   const detectRefereeCountry = (name) => {
     if (!name) return null;
-    
+
     const n = name.toLowerCase();
-    
-    if (n.includes('paulo') || n.includes('zanovelli') || n.includes('silva') || 
+
+    if (n.includes('paulo') || n.includes('zanovelli') || n.includes('silva') ||
         n.includes('daronco') || n.includes('claus') || n.includes('valenzuela')) {
       return 'br';
     }
-    
-    if (n.includes('kendirciler') || n.includes('çakır') || n.includes('bitigen') || 
+
+    if (n.includes('kendirciler') || n.includes('çakır') || n.includes('bitigen') ||
         n.includes('karaoglan') || n.includes('kardeşler') || n.includes('palabıyık') ||
         n.includes('şansalan') || n.includes('türkmen') || n.includes('yıldırım')) {
       return 'tr';
     }
-    
-    if (n.includes('cordero') || n.includes('vega') || n.includes('díaz') || 
-        n.includes('mateu') || n.includes('lahoz') || n.includes('del cerro') || 
+
+    if (n.includes('cordero') || n.includes('vega') || n.includes('díaz') ||
+        n.includes('mateu') || n.includes('lahoz') || n.includes('del cerro') ||
         n.includes('gil') || n.includes('sánchez') || n.includes('martínez') ||
         n.includes('muñiz') || n.includes('de burgos') || n.includes('cuadra')) {
       return 'es';
     }
-    
-    if (n.includes('turpin') || n.includes('bastien') || n.includes('letexier') || 
+
+    if (n.includes('turpin') || n.includes('bastien') || n.includes('letexier') ||
         n.includes('buquet') || n.includes('gautier') || n.includes('delajod') ||
         n.includes('brisard') || n.includes('frappart') || n.includes('wattellier')) {
       return 'fr';
     }
-    
-    if (n.includes('taylor') || n.includes('oliver') || n.includes('atkinson') || 
+
+    if (n.includes('taylor') || n.includes('oliver') || n.includes('atkinson') ||
         n.includes('coote') || n.includes('pawson') || n.includes('mariner') ||
         n.includes('kavanagh') || n.includes('bankes') || n.includes('gillett')) {
       return 'gb';
     }
-    
-    if (n.includes('orsato') || n.includes('rocca') || n.includes('doveri') || 
+
+    if (n.includes('orsato') || n.includes('rocca') || n.includes('doveri') ||
         n.includes('guida') || n.includes('irrati') || n.includes('marcenaro') ||
         n.includes('mariani') || n.includes('sozza') || n.includes('dionisi')) {
       return 'it';
     }
-    
-    if (n.includes('brych') || n.includes('zwayer') || n.includes('stieler') || 
+
+    if (n.includes('brych') || n.includes('zwayer') || n.includes('stieler') ||
         n.includes('aytekin') || n.includes('gräfe') || n.includes('siebert') ||
         n.includes('schröder') || n.includes('welz') || n.includes('schmidt')) {
       return 'de';
     }
-    
-    if (n.includes('kuipers') || n.includes('makkelie') || n.includes('blom') || 
+
+    if (n.includes('kuipers') || n.includes('makkelie') || n.includes('blom') ||
         n.includes('gozubuyuk') || n.includes('higler') || n.includes('kamphuis')) {
       return 'nl';
     }
-    
-    if (n.includes('dias') || n.includes('soares') || n.includes('pinheiro') || 
+
+    if (n.includes('dias') || n.includes('soares') || n.includes('pinheiro') ||
         n.includes('melo') || n.includes('nobre') || n.includes('veríssimo')) {
       return 'pt';
     }
-    
-    if (n.includes('schärer') || n.includes('san') || n.includes('fähndrich') || 
+
+    if (n.includes('schärer') || n.includes('san') || n.includes('fähndrich') ||
         n.includes('klossner') || n.includes('bieri') || n.includes('winkler')) {
       return 'ch';
     }
-    
-    if (n.includes('lardot') || n.includes('lambrechts') || n.includes('d’hondt') || 
+
+    if (n.includes('lardot') || n.includes('lambrechts') || n.includes('d’hondt') ||
         n.includes('verboomen') || n.includes('visser') || n.includes('van damme')) {
       return 'be';
     }
-    
-    if (n.includes('boukhalfa') || n.includes('benbraham') || n.includes('bekouassa') || 
+
+    if (n.includes('boukhalfa') || n.includes('benbraham') || n.includes('bekouassa') ||
         n.includes('athamnia') || n.includes('bendada')) {
       return 'dz';
     }
-    
+
     return null;
   };
 
@@ -2750,12 +2725,12 @@ function MatchDetail({state,onClose,onTeam}){
       const isMiss = e.detail==="Missed Penalty";
       const isYellow = isCard && e.detail?.includes("Yellow");
       const isRed = isCard && (e.detail?.includes("Red") || e.detail?.includes("Second Yellow"));
-      
-      const isBigChance = e.type === "Big Chance" || 
-          e.detail?.includes("Big chance") || 
+
+      const isBigChance = e.type === "Big Chance" ||
+          e.detail?.includes("Big chance") ||
           e.detail?.includes("Hit woodwork") ||
-          e.type === "Big Chance Created" || 
-          e.type === "Big Chance Missed" || 
+          e.type === "Big Chance Created" ||
+          e.type === "Big Chance Missed" ||
           e.type === "Hit Woodwork";
 
       const iconEl = isGoal&&!isMiss
@@ -2773,8 +2748,8 @@ function MatchDetail({state,onClose,onTeam}){
         isBigChance ? "GROSSE OCCASION!" : (e.player?.name||"?"),
         isPen&&!isMiss?React.createElement("span",{style:{fontSize:10,background:"rgba(0,193,112,.12)",color:"#00c170",borderRadius:3,padding:"1px 5px",marginLeft:5,fontWeight:700}},"Pen."):null,
         isCSC?React.createElement("span",{style:{fontSize:10,background:"rgba(229,57,53,.1)",color:"#e53935",borderRadius:3,padding:"1px 5px",marginLeft:5,fontWeight:700}},"CSC"):null,
-        
-        isGoal && e.detail?.includes("VAR") ? 
+
+        isGoal && e.detail?.includes("VAR") ?
           React.createElement("span", {
             style: {
               fontSize: 10,
@@ -2787,7 +2762,7 @@ function MatchDetail({state,onClose,onTeam}){
             }
           }, "⚠️ But après VAR") : null,
 
-        isYellow && e.detail?.includes("VAR") ? 
+        isYellow && e.detail?.includes("VAR") ?
           React.createElement("span", {
             style: {
               fontSize: 10,
@@ -2800,7 +2775,7 @@ function MatchDetail({state,onClose,onTeam}){
             }
           }, "✅ Carton jaune après VAR") : null,
 
-        isRed && e.detail?.includes("VAR") ? 
+        isRed && e.detail?.includes("VAR") ?
           React.createElement("span", {
             style: {
               fontSize: 10,
@@ -2813,7 +2788,7 @@ function MatchDetail({state,onClose,onTeam}){
             }
           }, "✅ Carton rouge après VAR") : null
       );
-      
+
       const subLine = isSubst&&e.assist?.name
         ?React.createElement("div",{style:{fontSize:11,color:"rgba(17,24,39,0.37)",marginTop:1}},`(${e.assist.name})`)
         :e.assist?.name&&!isSubst
@@ -2837,11 +2812,11 @@ function MatchDetail({state,onClose,onTeam}){
         let varSubText = "";
         let varColor = "#ff9800";
         let varBg = "rgba(255,152,0,.1)";
-        
+
         if(e.detail) {
           let detailLower = e.detail.toLowerCase();
-          
-          if(detailLower.includes("but refuse") || detailLower.includes("but refusé") || 
+
+          if(detailLower.includes("but refuse") || detailLower.includes("but refusé") ||
              (detailLower.includes("hors-jeu") && detailLower.includes("refus"))) {
             varIcon = "❌";
             varText = "But Refusé";
@@ -2913,7 +2888,7 @@ function MatchDetail({state,onClose,onTeam}){
             varBg = "rgba(255,152,0,.1)";
           }
         }
-        
+
         return React.createElement("div", {
           key: i,
           style: {
@@ -3012,16 +2987,15 @@ function MatchDetail({state,onClose,onTeam}){
     );
   };
 
-  // ========== STATS ==========
   const renderStats = () => {
     if (!fix || !fix.teams || !fix.teams.home || !fix.teams.away) {
-      return React.createElement("div", { 
-        style: { 
-          padding: 40, 
-          textAlign: "center", 
+      return React.createElement("div", {
+        style: {
+          padding: 40,
+          textAlign: "center",
           color: "#8E96A8",
           fontSize: 14
-        } 
+        }
       }, "📊 Statistiques non disponibles");
     }
 
@@ -3058,52 +3032,52 @@ function MatchDetail({state,onClose,onTeam}){
 
     const possessionH = getPercentStat(hStats, "Ball Possession");
     const possessionA = getPercentStat(aStats, "Ball Possession");
-    
+
     const totalShotsH = parseInt(getStat(hStats, "Total Shots")) || 0;
     const totalShotsA = parseInt(getStat(aStats, "Total Shots")) || 0;
-    
+
     const shotsOffH = parseInt(getStat(hStats, "Shots off Goal")) || 0;
     const shotsOffA = parseInt(getStat(aStats, "Shots off Goal")) || 0;
-    
+
     const shotsOnH = parseInt(getStat(hStats, "Shots on Goal")) || 0;
     const shotsOnA = parseInt(getStat(aStats, "Shots on Goal")) || 0;
-    
+
     const blockedShotsH = parseInt(getStat(hStats, "Blocked Shots")) || 0;
     const blockedShotsA = parseInt(getStat(aStats, "Blocked Shots")) || 0;
-    
+
     const shotsInsideH = parseInt(getStat(hStats, "Shots insidebox")) || 0;
     const shotsInsideA = parseInt(getStat(aStats, "Shots insidebox")) || 0;
-    
+
     const shotsOutsideH = parseInt(getStat(hStats, "Shots outsidebox")) || 0;
     const shotsOutsideA = parseInt(getStat(aStats, "Shots outsidebox")) || 0;
-    
+
     const cornersH = parseInt(getStat(hStats, "Corner Kicks")) || 0;
     const cornersA = parseInt(getStat(aStats, "Corner Kicks")) || 0;
-    
+
     const offsidesH = parseInt(getStat(hStats, "Offsides")) || 0;
     const offsidesA = parseInt(getStat(aStats, "Offsides")) || 0;
-    
+
     const yellowH = parseInt(getStat(hStats, "Yellow Cards")) || 0;
     const yellowA = parseInt(getStat(aStats, "Yellow Cards")) || 0;
-    
+
     const redH = parseInt(getStat(hStats, "Red Cards")) || 0;
     const redA = parseInt(getStat(aStats, "Red Cards")) || 0;
-    
+
     const totalPassesH = parseInt(getStat(hStats, "Total passes")) || 0;
     const totalPassesA = parseInt(getStat(aStats, "Total passes")) || 0;
-    
+
     const accuratePassesH = parseInt(getStat(hStats, "Passes accurate")) || 0;
     const accuratePassesA = parseInt(getStat(aStats, "Passes accurate")) || 0;
-    
+
     const passPercentH = totalPassesH > 0 ? Math.round((accuratePassesH / totalPassesH) * 100) : 0;
     const passPercentA = totalPassesA > 0 ? Math.round((accuratePassesA / totalPassesA) * 100) : 0;
-    
+
     const tacklesH = parseInt(getStat(hStats, "Tackles")) || 0;
     const tacklesA = parseInt(getStat(aStats, "Tackles")) || 0;
-    
+
     const foulsH = parseInt(getStat(hStats, "Fouls")) || 0;
     const foulsA = parseInt(getStat(aStats, "Fouls")) || 0;
-    
+
     const savesH = parseInt(getStat(hStats, "Goalkeeper Saves")) || 0;
     const savesA = parseInt(getStat(aStats, "Goalkeeper Saves")) || 0;
 
@@ -3111,10 +3085,10 @@ function MatchDetail({state,onClose,onTeam}){
       const num = parseInt(value) || 0;
       const maxVal = max !== null ? parseInt(max) : Math.max(num, 1);
       const barCount = Math.min(Math.ceil((num / maxVal) * 8), 8);
-      
-      return React.createElement("div", { 
-        style: { 
-          display: "inline-flex", 
+
+      return React.createElement("div", {
+        style: {
+          display: "inline-flex",
           alignItems: "center",
           gap: 2,
           background: "linear-gradient(135deg, rgba(0,184,107,0.08) 0%, rgba(0,184,107,0.02) 100%)",
@@ -3123,11 +3097,11 @@ function MatchDetail({state,onClose,onTeam}){
           marginLeft: 6,
           border: "1px solid rgba(0,184,107,0.15)",
           backdropFilter: "blur(4px)"
-        } 
+        }
       },
         React.createElement("span", { style: { fontSize: 15, marginRight: 3 } }, "🥅"),
         React.createElement("div", { style: { display: "flex", gap: 2, alignItems: "center" } },
-          Array.from({ length: barCount }).map((_, i) => 
+          Array.from({ length: barCount }).map((_, i) =>
             React.createElement("div", {
               key: i,
               style: {
@@ -3191,117 +3165,117 @@ function MatchDetail({state,onClose,onTeam}){
       padding: "0 8px"
     };
 
-    return React.createElement("div", { 
-      style: { 
-        width: "100%", 
+    return React.createElement("div", {
+      style: {
+        width: "100%",
         backgroundColor: "#f8fafe",
         padding: "0 0 24px 0",
         boxSizing: "border-box"
-      } 
+      }
     },
-      
-      React.createElement("div", { 
-        style: { 
-          backgroundColor: "#fff", 
+
+      React.createElement("div", {
+        style: {
+          backgroundColor: "#fff",
           margin: "8px 12px 2px 12px",
           borderRadius: 20,
           padding: "18px 16px 14px",
           boxShadow: "0 2px 12px rgba(0,0,0,0.02)",
           border: "1px solid rgba(0,0,0,0.04)"
-        } 
+        }
       },
-        React.createElement("div", { 
-          style: { 
-            display: "flex", 
-            alignItems: "center", 
-            justifyContent: "space-between", 
-            marginBottom: 12 
-          } 
+        React.createElement("div", {
+          style: {
+            display: "flex",
+            alignItems: "center",
+            justifyContent: "space-between",
+            marginBottom: 12
+          }
         },
-          React.createElement("span", { 
-            style: { 
-              fontFamily: "'JetBrains Mono', monospace", 
-              fontSize: 26, 
-              fontWeight: 900, 
+          React.createElement("span", {
+            style: {
+              fontFamily: "'JetBrains Mono', monospace",
+              fontSize: 26,
+              fontWeight: 900,
               color: possessionH > possessionA ? "#00b86b" : "#1A1F2E",
               lineHeight: 1
-            } 
+            }
           }, possessionH + "%"),
-          React.createElement("span", { 
-            style: { 
-              fontSize: 12, 
-              fontWeight: 700, 
+          React.createElement("span", {
+            style: {
+              fontSize: 12,
+              fontWeight: 700,
               color: "#8E96A8",
               letterSpacing: 1,
               textTransform: "uppercase"
-            } 
+            }
           }, "POSSESSION"),
-          React.createElement("span", { 
-            style: { 
-              fontFamily: "'JetBrains Mono', monospace", 
-              fontSize: 26, 
-              fontWeight: 900, 
+          React.createElement("span", {
+            style: {
+              fontFamily: "'JetBrains Mono', monospace",
+              fontSize: 26,
+              fontWeight: 900,
               color: possessionA > possessionH ? "#00b86b" : "#1A1F2E",
               lineHeight: 1
-            } 
+            }
           }, possessionA + "%")
         ),
-        React.createElement("div", { 
-          style: { 
-            height: 6, 
-            backgroundColor: "#F0F2F5", 
-            borderRadius: 6, 
-            overflow: "hidden", 
+        React.createElement("div", {
+          style: {
+            height: 6,
+            backgroundColor: "#F0F2F5",
+            borderRadius: 6,
+            overflow: "hidden",
             display: "flex"
-          } 
+          }
         },
-          React.createElement("div", { 
-            style: { 
-              width: possessionH + "%", 
-              height: "100%", 
+          React.createElement("div", {
+            style: {
+              width: possessionH + "%",
+              height: "100%",
               background: "linear-gradient(90deg, #00b86b, #34D399)",
               transition: "width 0.5s ease"
-            } 
+            }
           }),
-          React.createElement("div", { 
-            style: { 
-              width: possessionA + "%", 
-              height: "100%", 
+          React.createElement("div", {
+            style: {
+              width: possessionA + "%",
+              height: "100%",
               background: "linear-gradient(90deg, #2563eb, #60A5FA)",
               transition: "width 0.5s ease"
-            } 
+            }
           })
         )
       ),
 
-      React.createElement("div", { 
-        style: { 
-          backgroundColor: "#fff", 
+      React.createElement("div", {
+        style: {
+          backgroundColor: "#fff",
           margin: "2px 12px 2px 12px",
           borderRadius: 20,
           overflow: "hidden",
           boxShadow: "0 2px 12px rgba(0,0,0,0.02)",
           border: "1px solid rgba(0,0,0,0.04)"
-        } 
+        }
       },
-        React.createElement("div", { 
-          style: { 
-            padding: "12px 16px", 
+        React.createElement("div", {
+          style: {
+            padding: "12px 16px",
             background: "linear-gradient(90deg, #f8fafc, #ffffff)",
             borderBottom: "1px solid rgba(0,0,0,0.04)"
-          } 
+          }
         },
-          React.createElement("span", { 
-            style: { 
-              fontSize: 11, 
-              fontWeight: 700, 
+          React.createElement("span", {
+            style: {
+              fontSize: 11,
+              fontWeight: 700,
               color: "#00b86b",
               textTransform: "uppercase",
               letterSpacing: 1
-            } 
+            }
           }, "ATTAQUE")
         ),
-        
+
         React.createElement("div", { style: statRowStyle },
           React.createElement("div", { style: valueLeftStyle(totalShotsH > totalShotsA) },
             totalShotsH,
@@ -3387,34 +3361,34 @@ function MatchDetail({state,onClose,onTeam}){
         )
       ),
 
-      React.createElement("div", { 
-        style: { 
-          backgroundColor: "#fff", 
+      React.createElement("div", {
+        style: {
+          backgroundColor: "#fff",
           margin: "2px 12px 2px 12px",
           borderRadius: 20,
           overflow: "hidden",
           boxShadow: "0 2px 12px rgba(0,0,0,0.02)",
           border: "1px solid rgba(0,0,0,0.04)"
-        } 
+        }
       },
-        React.createElement("div", { 
-          style: { 
-            padding: "12px 16px", 
+        React.createElement("div", {
+          style: {
+            padding: "12px 16px",
             background: "linear-gradient(90deg, #f8fafc, #ffffff)",
             borderBottom: "1px solid rgba(0,0,0,0.04)"
-          } 
+          }
         },
-          React.createElement("span", { 
-            style: { 
-              fontSize: 11, 
-              fontWeight: 700, 
+          React.createElement("span", {
+            style: {
+              fontSize: 11,
+              fontWeight: 700,
               color: "#f59e0b",
               textTransform: "uppercase",
               letterSpacing: 1
-            } 
+            }
           }, "COUPS DE PIED ARRÊTÉS")
         ),
-        
+
         React.createElement("div", { style: statRowStyle },
           React.createElement("div", { style: valueLeftStyle(cornersH > cornersA) },
             cornersH,
@@ -3452,34 +3426,34 @@ function MatchDetail({state,onClose,onTeam}){
         )
       ),
 
-      React.createElement("div", { 
-        style: { 
-          backgroundColor: "#fff", 
+      React.createElement("div", {
+        style: {
+          backgroundColor: "#fff",
           margin: "2px 12px 2px 12px",
           borderRadius: 20,
           overflow: "hidden",
           boxShadow: "0 2px 12px rgba(0,0,0,0.02)",
           border: "1px solid rgba(0,0,0,0.04)"
-        } 
+        }
       },
-        React.createElement("div", { 
-          style: { 
-            padding: "12px 16px", 
+        React.createElement("div", {
+          style: {
+            padding: "12px 16px",
             background: "linear-gradient(90deg, #f8fafc, #ffffff)",
             borderBottom: "1px solid rgba(0,0,0,0.04)"
-          } 
+          }
         },
-          React.createElement("span", { 
-            style: { 
-              fontSize: 11, 
-              fontWeight: 700, 
+          React.createElement("span", {
+            style: {
+              fontSize: 11,
+              fontWeight: 700,
               color: "#8b5cf6",
               textTransform: "uppercase",
               letterSpacing: 1
-            } 
+            }
           }, "DISTRIBUTION")
         ),
-        
+
         React.createElement("div", { style: statRowStyle },
           React.createElement("span", { style: valueLeftStyle(totalPassesH > totalPassesA) }, totalPassesH),
           React.createElement("span", { style: labelStyle }, "Total Passes"),
@@ -3487,44 +3461,44 @@ function MatchDetail({state,onClose,onTeam}){
         ),
 
         React.createElement("div", { style: { ...statRowStyle, borderBottom: "none" } },
-          React.createElement("span", { style: valueLeftStyle(accuratePassesH > accuratePassesA) }, 
+          React.createElement("span", { style: valueLeftStyle(accuratePassesH > accuratePassesA) },
             `${accuratePassesH} (${passPercentH}%)`
           ),
           React.createElement("span", { style: labelStyle }, "Passes réussies"),
-          React.createElement("span", { style: valueRightStyle(accuratePassesA > accuratePassesH) }, 
+          React.createElement("span", { style: valueRightStyle(accuratePassesA > accuratePassesH) },
             `${accuratePassesA} (${passPercentA}%)`
           )
         )
       ),
 
-      React.createElement("div", { 
-        style: { 
-          backgroundColor: "#fff", 
+      React.createElement("div", {
+        style: {
+          backgroundColor: "#fff",
           margin: "2px 12px 2px 12px",
           borderRadius: 20,
           overflow: "hidden",
           boxShadow: "0 2px 12px rgba(0,0,0,0.02)",
           border: "1px solid rgba(0,0,0,0.04)"
-        } 
+        }
       },
-        React.createElement("div", { 
-          style: { 
-            padding: "12px 16px", 
+        React.createElement("div", {
+          style: {
+            padding: "12px 16px",
             background: "linear-gradient(90deg, #f8fafc, #ffffff)",
             borderBottom: "1px solid rgba(0,0,0,0.04)"
-          } 
+          }
         },
-          React.createElement("span", { 
-            style: { 
-              fontSize: 11, 
-              fontWeight: 700, 
+          React.createElement("span", {
+            style: {
+              fontSize: 11,
+              fontWeight: 700,
               color: "#dc2626",
               textTransform: "uppercase",
               letterSpacing: 1
-            } 
+            }
           }, "DÉFENSE")
         ),
-        
+
         React.createElement("div", { style: statRowStyle },
           React.createElement("span", { style: valueLeftStyle(tacklesH > tacklesA) }, tacklesH),
           React.createElement("span", { style: labelStyle }, "Tacles"),
@@ -3550,34 +3524,34 @@ function MatchDetail({state,onClose,onTeam}){
         )
       ),
 
-      React.createElement("div", { 
-        style: { 
-          backgroundColor: "#fff", 
+      React.createElement("div", {
+        style: {
+          backgroundColor: "#fff",
           margin: "2px 12px 2px 12px",
           borderRadius: 20,
           overflow: "hidden",
           boxShadow: "0 2px 12px rgba(0,0,0,0.02)",
           border: "1px solid rgba(0,0,0,0.04)"
-        } 
+        }
       },
-        React.createElement("div", { 
-          style: { 
-            padding: "12px 16px", 
+        React.createElement("div", {
+          style: {
+            padding: "12px 16px",
             background: "linear-gradient(90deg, #f8fafc, #ffffff)",
             borderBottom: "1px solid rgba(0,0,0,0.04)"
-          } 
+          }
         },
-          React.createElement("span", { 
-            style: { 
-              fontSize: 11, 
-              fontWeight: 700, 
+          React.createElement("span", {
+            style: {
+              fontSize: 11,
+              fontWeight: 700,
               color: "#eab308",
               textTransform: "uppercase",
               letterSpacing: 1
-            } 
+            }
           }, "DISCIPLINE")
         ),
-        
+
         React.createElement("div", { style: statRowStyle },
           React.createElement("span", { style: valueLeftStyle(yellowH > yellowA) }, yellowH),
           React.createElement("span", { style: labelStyle }, "Cartons jaunes"),
@@ -3857,7 +3831,7 @@ function MatchDetail({state,onClose,onTeam}){
         background: "radial-gradient(circle at 80% 20%, rgba(0,184,107,0.03) 0%, transparent 70%)",
         pointerEvents: "none"
       }}),
-      
+
       React.createElement("div", {style:{
         position: "absolute",
         top: 0,
@@ -3919,7 +3893,7 @@ function MatchDetail({state,onClose,onTeam}){
             }}, fix.teams.home.name)
           )
         ),
-        
+
         React.createElement("div", {className:"md-score-center", style:{
           display: "flex",
           flexDirection: "column",
@@ -3946,7 +3920,7 @@ function MatchDetail({state,onClose,onTeam}){
             marginBottom: "2px"
           }}, `${ddmm2(fix.fixture.date)} ${hhmm2(fix.fixture.date)}`)
         ),
-        
+
         React.createElement("div", {className:"md-team-col away", style:{
           flex: 1,
           minWidth: 0,
@@ -4002,7 +3976,7 @@ function MatchDetail({state,onClose,onTeam}){
           gap: "6px"
         }},
           React.createElement("span", null, getStatusLabel(sh)),
-          isLive && s.elapsed ? React.createElement("span", {style:{fontWeight:900}}, 
+          isLive && s.elapsed ? React.createElement("span", {style:{fontWeight:900}},
             sh === "2H" && s.elapsed > 90 ? `· 90+${s.elapsed-90}'` : `· ${s.elapsed}'`
           ) : null
         )
@@ -4024,12 +3998,12 @@ function MatchDetail({state,onClose,onTeam}){
     React.createElement("div",{className:"md-content",ref:contentRef},
       tab==="resume"?React.createElement("div",{className:"md-panel"},
         renderTimeline(),
-        
+
         React.createElement("div", {className:"md-info-section"},
-          
+
           React.createElement("div", {className:"competition-breadcrumb"},
-            fix.league.flag ? 
-              React.createElement("img", {src:fix.league.flag, className:"flag-icon"}) : 
+            fix.league.flag ?
+              React.createElement("img", {src:fix.league.flag, className:"flag-icon"}) :
               React.createElement("span", {style:{fontSize:"14px"}}, "🌍"),
             React.createElement("span", null, "Football"),
             React.createElement("span", {className:"separator"}, "•"),
@@ -4043,7 +4017,7 @@ function MatchDetail({state,onClose,onTeam}){
           React.createElement("div", {className:"datetime-row"},
             React.createElement("div", {className:"datetime-icon"},
               React.createElement("span", {className:"day"}, new Date(fix.fixture.date).getDate()),
-              React.createElement("span", {className:"month"}, 
+              React.createElement("span", {className:"month"},
                 new Date(fix.fixture.date).toLocaleDateString("fr-FR", {month:"short"}).replace(".","")
               )
             ),
@@ -4062,17 +4036,17 @@ function MatchDetail({state,onClose,onTeam}){
             React.createElement("div", {className:"info-content"},
               React.createElement("div", {className:"info-main"},
                 React.createElement("span", {className:"main-text"}, fix.fixture.venue?.name || "Non spécifié"),
-                fix.fixture.venue?.city ? 
+                fix.fixture.venue?.city ?
                   React.createElement("img", {src: `https://flagcdn.com/w20/${fix.league.country === "France" ? "fr" : fix.league.country === "Italy" ? "it" : fix.league.country === "Spain" ? "es" : fix.league.country === "England" ? "gb" : "xx"}.png`, className:"flag-small", onError:(e)=>e.target.style.display="none"}) : null
               ),
               React.createElement("div", {className:"info-secondary"},
-                fix.fixture.venue?.city ? 
+                fix.fixture.venue?.city ?
                   React.createElement(React.Fragment, null,
                     React.createElement("img", {src: `https://flagcdn.com/w20/${fix.league.country === "France" ? "fr" : fix.league.country === "Italy" ? "it" : fix.league.country === "Spain" ? "es" : fix.league.country === "England" ? "gb" : "xx"}.png`, className:"flag-small", style:{marginRight:"4px"}, onError:(e)=>e.target.style.display="none"}),
                     fix.fixture.venue.city
                   ) : null,
-                venueInfo?.capacity ? 
-                  React.createElement("span", {style:{marginLeft: fix.fixture.venue?.city ? "8px" : 0}}, 
+                venueInfo?.capacity ?
+                  React.createElement("span", {style:{marginLeft: fix.fixture.venue?.city ? "8px" : 0}},
                     React.createElement("span", {className:"capacity-badge", style:{marginLeft:0}},
                       React.createElement("span", {className:"label"}, "Capacité"),
                       React.createElement("span", {className:"value"}, Number(venueInfo.capacity).toLocaleString("fr-FR"))
@@ -4082,16 +4056,15 @@ function MatchDetail({state,onClose,onTeam}){
             )
           ),
 
-          // SECTION ARBITRE AMÉLIORÉE AVEC STATS
           fix.fixture?.referee && (() => {
             const refereeName = fix.fixture.referee;
             const finalCountryCode = refereeCountry || detectRefereeCountry(refereeName);
-            
+
             return [
-              React.createElement("div", { 
-                key: "referee", 
+              React.createElement("div", {
+                key: "referee",
                 className: "info-block",
-                style: { 
+                style: {
                   marginBottom: 8,
                   background: "#fff",
                   borderRadius: 12,
@@ -4099,11 +4072,11 @@ function MatchDetail({state,onClose,onTeam}){
                 }
               },
                 React.createElement("div", { style: { display: "flex", alignItems: "center", gap: 12 } },
-                  React.createElement("div", { 
-                    style: { 
-                      width: 36, 
-                      height: 36, 
-                      borderRadius: 18, 
+                  React.createElement("div", {
+                    style: {
+                      width: 36,
+                      height: 36,
+                      borderRadius: 18,
                       background: "#f0f2f5",
                       display: "flex",
                       alignItems: "center",
@@ -4111,27 +4084,26 @@ function MatchDetail({state,onClose,onTeam}){
                       fontSize: 18
                     }
                   }, "⚖️"),
-                  
+
                   React.createElement("div", { style: { flex: 1 } },
                     React.createElement("div", { style: { display: "flex", alignItems: "center", gap: 8 } },
-                      React.createElement("span", { 
-                        style: { fontSize: 14, fontWeight: 600, color: "#1A1F2E" } 
+                      React.createElement("span", {
+                        style: { fontSize: 14, fontWeight: 600, color: "#1A1F2E" }
                       }, refereeName.split(',')[0]),
-                      
+
                       finalCountryCode && React.createElement("img", {
                         src: `https://flagcdn.com/w20/${finalCountryCode}.png`,
                         style: { width: 20, height: 15, borderRadius: 2 },
                         onError: (e) => e.target.style.display = "none"
                       })
                     ),
-                    
-                    refereeLoading && React.createElement("div", { 
-                      style: { fontSize: 11, color: "#999", marginTop: 2 } 
+
+                    refereeLoading && React.createElement("div", {
+                      style: { fontSize: 11, color: "#999", marginTop: 2 }
                     }, "Chargement stats...")
                   )
                 ),
-                
-                // Stats cartons
+
                 (!refereeLoading && refereeStats && !refereeError) ? React.createElement("div", {
                   style: {
                     display: "flex",
@@ -4156,8 +4128,7 @@ function MatchDetail({state,onClose,onTeam}){
                   )
                 ) : null
               ),
-              
-              // Anciennes stats de l'arbitre (si présentes)
+
               refStats && React.createElement("div", {
                 key: "ref-stats-old",
                 style: {
@@ -4263,9 +4234,6 @@ function MatchDetail({state,onClose,onTeam}){
   );
 }
 
-// ============================================
-// ONGLET SCORES
-// ============================================
 function ScoresTab({favs,onFav,onTeam}){
   const[date,setDate]=useState(today()),[data,setData]=useState([]),[st,setSt]=useState("load"),[err,setErr]=useState("");
   const[detail,setDet]=useState(null),[q,setQ]=useState(""),[lg,setLg]=useState(null),[favOnly,setFO]=useState(false);
@@ -4655,9 +4623,6 @@ function ScoresTab({favs,onFav,onTeam}){
   );
 }
 
-// ============================================
-// ONGLET CLASSEMENT (StandingsTab) - ULTRA PREMIUM
-// ============================================
 function StandingsTab({ onTeam }) {
   const [viewMode, setViewMode] = useState("classement");
   const [lid, setLid] = useState(39);
@@ -4673,7 +4638,6 @@ function StandingsTab({ onTeam }) {
   const league = LEAGUES.find(l => l.id === lid) || LEAGUES[0];
   const [leagueLogo, setLeagueLogo] = useState(null);
 
-  // Récupérer le logo depuis les standings
   useEffect(() => {
     if (standings?.length > 0) {
       const logo = standings[0]?.league?.logo;
@@ -4699,7 +4663,7 @@ function StandingsTab({ onTeam }) {
         if (mounted) {
           setRounds(res || []);
           if (res?.length) {
-            // Sélectionner la journée la plus récente avec matchs terminés
+
             const lastRound = [...res].reverse().find(r => r) || res[res.length - 1];
             setSelectedRound(lastRound);
           }
@@ -4741,9 +4705,8 @@ function StandingsTab({ onTeam }) {
     } catch (e) { setDetailMatch({ error: e.message }); }
   };
 
-  // Zones de qualification selon rang et ligue
   const getZoneColor = (rank, leagueId, totalRows) => {
-    // Champions League
+
     if ([39,140,135,78,61].includes(leagueId)) {
       if (rank <= 4) return { bg: "rgba(37,99,235,.07)", bar: "#2563eb", label: "LDC" };
       if (rank === 5) return { bg: "rgba(234,179,8,.07)", bar: "#eab308", label: "LEL" };
@@ -4760,10 +4723,8 @@ function StandingsTab({ onTeam }) {
 
   return React.createElement("div", { style: { height: "100%", display: "flex", flexDirection: "column", overflow: "hidden", background: "#f8fafc" } },
 
-    // ── HEADER ──
     React.createElement("div", { style: { background: "#fff", borderBottom: "1px solid #f1f5f9", flexShrink: 0, padding: "12px 14px" } },
 
-      // Ligue sélectionnée
       React.createElement("div", {
         onClick: () => setShowConfig(true),
         style: { display: "flex", alignItems: "center", gap: 12, background: "#f8fafc", padding: "10px 14px", cursor: "pointer", borderRadius: 14, border: "1px solid #e2e8f0", marginBottom: 12, boxShadow: "0 1px 4px rgba(15,23,42,.06)" }
@@ -4784,7 +4745,6 @@ function StandingsTab({ onTeam }) {
         )
       ),
 
-      // Toggle Classement / Résultats
       React.createElement("div", { style: { display: "flex", background: "#f1f5f9", borderRadius: 12, padding: 3, gap: 2 } },
         [["classement","📊 Classement"],["resultats","📋 Résultats"]].map(([mode, label]) =>
           React.createElement("button", {
@@ -4801,7 +4761,6 @@ function StandingsTab({ onTeam }) {
         )
       ),
 
-      // Navigation journées (résultats)
       viewMode === "resultats" && rounds.length > 0 && React.createElement("div", { style: { marginTop: 10 } },
         React.createElement("div", { style: { display: "flex", alignItems: "center", gap: 8, marginBottom: 8 } },
           React.createElement("button", {
@@ -4827,10 +4786,8 @@ function StandingsTab({ onTeam }) {
       )
     ),
 
-    // ── CONTENU ──
     React.createElement("div", { style: { flex: 1, overflowY: "auto" } },
 
-      // ===== CLASSEMENT =====
       viewMode === "classement" && (
         status === "load" ? React.createElement("div", { style: { display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", padding: 60, gap: 12 } },
           React.createElement(Spin, { s: 28, c: "#00c170" }),
@@ -4848,13 +4805,11 @@ function StandingsTab({ onTeam }) {
 
               return React.createElement("div", { key: groupIdx, style: { background: "#fff", borderRadius: 16, overflow: "hidden", margin: "0 12px 12px", boxShadow: "0 1px 8px rgba(15,23,42,.07)" } },
 
-                // En-tête groupe
                 groupName && React.createElement("div", { style: { padding: "10px 14px", background: "linear-gradient(90deg,rgba(0,193,112,.12),transparent)", borderBottom: "1px solid #f1f5f9", display: "flex", alignItems: "center", gap: 8 } },
                   React.createElement("div", { style: { width: 3, height: 16, background: "#00c170", borderRadius: 2 } }),
                   React.createElement("span", { style: { fontSize: 12, fontWeight: 700, color: "#0f172a" } }, groupName)
                 ),
 
-                // Header colonnes
                 React.createElement("div", { style: { display: "flex", alignItems: "center", padding: "6px 12px", background: "#f8fafc", borderBottom: "1px solid #f1f5f9" } },
                   React.createElement("div", { style: { width: 24, fontSize: 9, fontWeight: 700, color: "#94a3b8", textAlign: "center" } }, "#"),
                   React.createElement("div", { style: { flex: 1, fontSize: 9, fontWeight: 700, color: "#94a3b8", paddingLeft: 8 } }, "ÉQUIPE"),
@@ -4866,7 +4821,6 @@ function StandingsTab({ onTeam }) {
                   React.createElement("div", { style: { width: 32, fontSize: 9, fontWeight: 700, color: "#0f172a", textAlign: "center" } }, "PTS")
                 ),
 
-                // Lignes
                 rows.map((row, rowIdx) => {
                   if (!row) return null;
                   const isJsk = row.team?.id === 918;
@@ -4887,18 +4841,18 @@ function StandingsTab({ onTeam }) {
                     },
                     onClick: () => onTeam && onTeam(row.team?.id, row.team?.name, row.team?.logo, lid, season)
                   },
-                    // Rang
+
                     React.createElement("div", { style: { width: 24, textAlign: "center", flexShrink: 0 } },
                       isFirst
                         ? React.createElement("span", { style: { fontSize: 14 } }, "🥇")
                         : React.createElement("span", { style: { fontSize: 12, fontWeight: 700, color: zone ? zone.bar : "#64748b" } }, row.rank)
                     ),
-                    // Logo + Nom
+
                     React.createElement("div", { style: { flex: 1, display: "flex", alignItems: "center", gap: 8, minWidth: 0, paddingLeft: 4 } },
                       React.createElement(Logo, { src: row.team?.logo, size: 20 }),
                       React.createElement("div", { style: { minWidth: 0 } },
                         React.createElement("div", { style: { fontSize: 13, fontWeight: isFirst || isJsk ? 700 : 500, color: "#0f172a", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" } }, row.team?.name),
-                        // Forme (5 derniers matchs)
+
                         form && React.createElement("div", { style: { display: "flex", gap: 2, marginTop: 2 } },
                           form.slice(-5).split("").map((r, i) =>
                             React.createElement("div", {
@@ -4913,7 +4867,7 @@ function StandingsTab({ onTeam }) {
                         )
                       )
                     ),
-                    // Stats
+
                     React.createElement("div", { style: { width: 26, textAlign: "center", fontSize: 12, color: "#64748b", flexShrink: 0 } }, row.all?.played || 0),
                     React.createElement("div", { style: { width: 26, textAlign: "center", fontSize: 12, fontWeight: 600, color: "#22c55e", flexShrink: 0 } }, row.all?.win || 0),
                     React.createElement("div", { style: { width: 26, textAlign: "center", fontSize: 12, color: "#64748b", flexShrink: 0 } }, row.all?.draw || 0),
@@ -4927,7 +4881,6 @@ function StandingsTab({ onTeam }) {
                   );
                 }),
 
-                // Légende zones
                 React.createElement("div", { style: { display: "flex", gap: 12, padding: "8px 14px", borderTop: "1px solid #f1f5f9", flexWrap: "wrap" } },
                   [["#2563eb","LDC"],["#eab308","LEL"],["#ef4444","Relégation"]].map(([color, label]) =>
                     React.createElement("div", { key: label, style: { display: "flex", alignItems: "center", gap: 4 } },
@@ -4942,7 +4895,6 @@ function StandingsTab({ onTeam }) {
         })
       ),
 
-      // ===== RÉSULTATS =====
       viewMode === "resultats" && (
         matches.length === 0
           ? React.createElement("div", { style: { textAlign: "center", padding: 40, color: "#94a3b8" } },
@@ -4968,11 +4920,11 @@ function StandingsTab({ onTeam }) {
                     overflow: "hidden", cursor: "pointer"
                   }
                 },
-                  // Barre top live
+
                   isLive && React.createElement("div", { style: { height: 2, background: "linear-gradient(90deg,#e53535,#ff6b6b)", animation: "pulse 1.5s infinite" } }),
 
                   React.createElement("div", { style: { display: "flex", alignItems: "stretch", minHeight: 70 } },
-                    // Statut
+
                     React.createElement("div", { style: { width: 52, flexShrink: 0, display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", background: isLive ? "rgba(229,53,53,.05)" : "#f8fafc", borderRight: "1px solid #f1f5f9", gap: 3 } },
                       isLive
                         ? React.createElement(React.Fragment, null,
@@ -4984,21 +4936,19 @@ function StandingsTab({ onTeam }) {
                         : React.createElement("span", { style: { fontSize: 12, fontWeight: 700, color: "#334155" } }, hhmm(match.fixture.date))
                     ),
 
-                    // Équipes
                     React.createElement("div", { style: { flex: 1, minWidth: 0, padding: "10px 10px 10px 12px", display: "flex", flexDirection: "column", justifyContent: "space-between", gap: 6 } },
-                      // Domicile
+
                       React.createElement("div", { style: { display: "flex", alignItems: "center", gap: 8 } },
                         React.createElement(Logo, { src: home.logo, size: 20 }),
                         React.createElement("span", { style: { fontSize: 14, fontWeight: hw ? 700 : 450, color: hw ? "#0f172a" : isFinished ? "#94a3b8" : "#1e293b", flex: 1, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" } }, home.name)
                       ),
-                      // Extérieur
+
                       React.createElement("div", { style: { display: "flex", alignItems: "center", gap: 8 } },
                         React.createElement(Logo, { src: away.logo, size: 20 }),
                         React.createElement("span", { style: { fontSize: 14, fontWeight: aw ? 700 : 450, color: aw ? "#0f172a" : isFinished ? "#94a3b8" : "#1e293b", flex: 1, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" } }, away.name)
                       )
                     ),
 
-                    // Score
                     React.createElement("div", { style: { width: 52, flexShrink: 0, display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", gap: 4 } },
                       hg !== null && ag !== null
                         ? React.createElement(React.Fragment, null,
@@ -5015,7 +4965,6 @@ function StandingsTab({ onTeam }) {
       )
     ),
 
-    // Config sheet
     React.createElement(Sheet, { open: showConfig, onClose: () => setShowConfig(false) },
       React.createElement("div", { style: { padding: "16px" } },
         React.createElement("div", { style: { fontSize: 16, fontWeight: 700, marginBottom: 16 } }, "Configuration")
@@ -5050,20 +4999,14 @@ function StandingsTab({ onTeam }) {
   );
 }
 
-
-// ============================================
-// ONGLET BUTEURS (ScorersTab)
-// ============================================
-// ── Calcul buteurs ligue algérienne depuis les events de la journée ──
 const _algerianScorersCache = { data: null, ts: 0 };
 
 async function buildAlgerianScorers(season) {
-  // Cache 30 min
+
   if (_algerianScorersCache.data && Date.now() - _algerianScorersCache.ts < 1800000) {
     return _algerianScorersCache.data;
   }
 
-  // Étape 1 : charger les matchs de la saison (cache 1h)
   const fixtures = await api(`/fixtures?league=186&season=${season}`, 3600000);
   if (!fixtures || fixtures.length === 0) return [];
 
@@ -5073,7 +5016,6 @@ async function buildAlgerianScorers(season) {
   const scorersMap = new Map();
   const allFinishedIds = finished.map(f => f.fixture.id);
 
-  // Charger les events par lots de 8 — cache 24h
   const BATCH = 8;
   for (let i = 0; i < allFinishedIds.length; i += BATCH) {
     const batch = allFinishedIds.slice(i, i + BATCH);
@@ -5128,16 +5070,16 @@ function ScorersTab() {
     if (!silent) setStatus("load");
     try {
       if (leagueId === 186 && typ === "scorers") {
-        // D'abord essayer l'API standard (1 requête)
+
         const apiResult = await api(`/players/topscorers?league=186&season=${seas}`, 1800000).catch(() => []);
         const apiMax = apiResult?.[0]?.statistics?.[0]?.goals?.total || 0;
 
         if (apiMax >= 5) {
-          // L'API retourne des données valides
+
           setData(apiResult);
           setStatus("ok");
         } else {
-          // L'API ne couvre pas bien — on calcule depuis les events
+
           setBuildProgress("Calcul depuis les matchs…");
           const built = await buildAlgerianScorers(seas);
           setBuildProgress(null);
@@ -5163,7 +5105,6 @@ function ScorersTab() {
     loadScorers(lid, season, type);
   }, [lid, season, type]);
 
-  // Refresh si on revient sur l'onglet après 30 min
   useEffect(() => {
     const onVisible = () => {
       if (!document.hidden && lastUpdate && Date.now() - lastUpdate > 1800000) {
@@ -5175,7 +5116,6 @@ function ScorersTab() {
     return () => document.removeEventListener("visibilitychange", onVisible);
   }, [lid, season, type, lastUpdate, loadScorers]);
 
-  // ── Auto-refresh fin de journée ligue algérienne ──
   useEffect(() => {
     if (lid !== 186 || type !== "scorers") return;
 
@@ -5199,7 +5139,7 @@ function ScorersTab() {
         );
 
         if (justFinished.length > 0) {
-          // Un match vient de se terminer → recalcul automatique
+
           console.log(`✅ ${justFinished.length} match(s) algérien(s) terminé(s) → recalcul buteurs`);
           _algerianScorersCache.ts = 0;
           loadScorers(186, season, "scorers", true);
@@ -5207,8 +5147,6 @@ function ScorersTab() {
 
         prevLiveIds = liveNow;
 
-        // Si des matchs sont en cours → vérifier toutes les 2 min
-        // Sinon → vérifier toutes les 10 min
         const nextInterval = liveNow.size > 0 ? 120000 : 600000;
         intervalId = setTimeout(checkAlgerianMatches, nextInterval);
       } catch {
@@ -5216,14 +5154,12 @@ function ScorersTab() {
       }
     };
 
-    // Démarrer la surveillance
     intervalId = setTimeout(checkAlgerianMatches, 30000);
     return () => { if (intervalId) clearTimeout(intervalId); };
   }, [lid, season, type, loadScorers]);
 
   return React.createElement("div", { style: { height: "100%", display: "flex", flexDirection: "column", overflow: "hidden", background: "#f8fafc" } },
 
-    // ── HEADER ──
     React.createElement("div", { style: { background: "#fff", borderBottom: "1px solid #f1f5f9", flexShrink: 0 } },
       React.createElement("div", { style: { display: "flex", padding: "12px 14px 0" } },
         React.createElement("div", { style: { display: "flex", background: "#f1f5f9", borderRadius: 12, padding: 3, gap: 2 } },
@@ -5268,7 +5204,6 @@ function ScorersTab() {
       )
     ),
 
-    // ── LISTE ──
     React.createElement("div", { style: { flex: 1, overflowY: "auto" } },
       (status === "load" || buildProgress) && React.createElement("div", { style: { display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", padding: 60, gap: 12 } },
         React.createElement(Spin, { s: 28, c: "#e53535" }),
@@ -5326,10 +5261,6 @@ function ScorersTab() {
   );
 }
 
-
-// ============================================
-// ONGLET CALENDRIER (CalendarTab) - CORRIGÉ
-// ============================================
 function CalendarTab({ favs, onFav, onTeam }) {
   const [lid, setLid] = useState(39);
   const [season, setSeason] = useState(CUR_SEASON);
@@ -5337,15 +5268,14 @@ function CalendarTab({ favs, onFav, onTeam }) {
   const [status, setStatus] = useState("load");
   const [detailMatch, setDetailMatch] = useState(null);
   const [favOnly, setFavOnly] = useState(false);
-  const [weekOffset, setWeekOffset] = useState(0); // 0 = semaine courante
-  const [teamForms, setTeamForms] = useState({}); // {teamId: [matches]}
-  const [expandedH2H, setExpandedH2H] = useState(null); // fixture id
+  const [weekOffset, setWeekOffset] = useState(0);
+  const [teamForms, setTeamForms] = useState({});
+  const [expandedH2H, setExpandedH2H] = useState(null);
   const [h2hData, setH2hData] = useState({});
 
-  // Calcul plage de la semaine affichée
   const getWeekRange = (offset) => {
     const now = new Date();
-    const day = now.getDay(); // 0=dim
+    const day = now.getDay();
     const monday = new Date(now);
     monday.setDate(now.getDate() - (day === 0 ? 6 : day - 1) + offset * 7);
     monday.setHours(0, 0, 0, 0);
@@ -5387,7 +5317,6 @@ function CalendarTab({ favs, onFav, onTeam }) {
         setData(sorted);
         setStatus(sorted.length ? "ok" : "empty");
 
-        // Charger les formes en arrière-plan
         const teamIds = [...new Set(sorted.flatMap(m => [m.teams.home.id, m.teams.away.id]))];
         teamIds.forEach(tid => {
           if (teamForms[tid]) return;
@@ -5474,7 +5403,6 @@ function CalendarTab({ favs, onFav, onTeam }) {
     outline: "none", cursor: "pointer"
   };
 
-  // Grouper par date
   const displayed = favOnly ? data.filter(m => favs.has(m.fixture.id)) : data;
   const groupedByDate = {};
   displayed.forEach(match => {
@@ -5486,7 +5414,6 @@ function CalendarTab({ favs, onFav, onTeam }) {
 
   return React.createElement("div", { style: { height: "100%", display: "flex", flexDirection: "column", overflow: "hidden" } },
 
-    // — Filtres —
     React.createElement("div", { style: { padding: "10px 12px", borderBottom: `1px solid ${T.line}`, background: T.bg1, flexShrink: 0 } },
       React.createElement("div", { style: { display: "flex", gap: 8, marginBottom: 8 } },
         React.createElement("select", {
@@ -5511,7 +5438,6 @@ function CalendarTab({ favs, onFav, onTeam }) {
         )
       ),
 
-      // Navigation semaine + filtre favoris
       React.createElement("div", { style: { display: "flex", alignItems: "center", gap: 8 } },
         React.createElement("button", {
           onClick: () => setWeekOffset(w => w - 1),
@@ -5538,7 +5464,6 @@ function CalendarTab({ favs, onFav, onTeam }) {
       )
     ),
 
-    // — Contenu —
     React.createElement("div", { style: { flex: 1, overflowY: "auto", background: T.bg2 } },
       status === "load" && React.createElement("div", { style: { textAlign: "center", padding: 40 } }, React.createElement(Spin, null)),
       status === "err"  && React.createElement("div", { style: { textAlign: "center", padding: 40, color: T.t3, fontSize: 13 } }, "Erreur de chargement"),
@@ -5551,7 +5476,6 @@ function CalendarTab({ favs, onFav, onTeam }) {
       status === "ok" && sortedDates.map(date =>
         React.createElement("div", { key: date, style: { marginBottom: 2 } },
 
-          // Header date
           React.createElement("div", { style: {
             padding: "7px 14px", background: T.bg1,
             borderBottom: `1px solid ${T.line}`,
@@ -5580,12 +5504,11 @@ function CalendarTab({ favs, onFav, onTeam }) {
 
             return React.createElement("div", { key: fid, style: { background: T.bg1, borderBottom: `1px solid ${T.line}` } },
 
-              // Ligne principale
               React.createElement("div", {
                 onClick: () => openMatchDetail(fid),
                 style: { display: "flex", alignItems: "stretch", cursor: "pointer", padding: "10px 0" }
               },
-                // Heure / Score
+
                 React.createElement("div", { style: {
                   width: 52, flexShrink: 0, display: "flex", flexDirection: "column",
                   alignItems: "center", justifyContent: "center", gap: 4,
@@ -5602,9 +5525,8 @@ function CalendarTab({ favs, onFav, onTeam }) {
                     : React.createElement("div", { style: { fontSize: 13, fontWeight: 700, color: T.blue } }, hhmm(match.fixture.date))
                 ),
 
-                // Équipes + forme
                 React.createElement("div", { style: { flex: 1, minWidth: 0, padding: "0 10px", display: "flex", flexDirection: "column", gap: 6 } },
-                  // Équipe domicile
+
                   React.createElement("div", { style: { display: "flex", alignItems: "center", gap: 7 } },
                     React.createElement("div", {
                       onClick: e => { e.stopPropagation(); onTeam && onTeam(hid, match.teams.home.name, match.teams.home.logo, match.league?.id, match.league?.season); },
@@ -5624,7 +5546,7 @@ function CalendarTab({ favs, onFav, onTeam }) {
                       }))
                     )
                   ),
-                  // Équipe extérieur
+
                   React.createElement("div", { style: { display: "flex", alignItems: "center", gap: 7 } },
                     React.createElement("div", {
                       onClick: e => { e.stopPropagation(); onTeam && onTeam(aid, match.teams.away.name, match.teams.away.logo, match.league?.id, match.league?.season); },
@@ -5646,7 +5568,6 @@ function CalendarTab({ favs, onFav, onTeam }) {
                   )
                 ),
 
-                // Actions droite
                 React.createElement("div", { style: { display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", gap: 4, paddingRight: 4 } },
                   React.createElement("button", {
                     onClick: e => { e.stopPropagation(); onFav(fid); },
@@ -5665,12 +5586,10 @@ function CalendarTab({ favs, onFav, onTeam }) {
                 )
               ),
 
-              // Sous-ligne info (round)
               round && React.createElement("div", { style: { padding: "0 12px 6px 62px", fontSize: 10, color: T.t3, fontWeight: 600 } },
                 round
               ),
 
-              // Panel H2H dépliable
               isH2HOpen && React.createElement("div", { style: {
                 background: T.bg2, borderTop: `1px solid ${T.line}`,
                 padding: "10px 12px"
@@ -5699,7 +5618,7 @@ function CalendarTab({ favs, onFav, onTeam }) {
                         const total = last10.length || 1;
 
                         return React.createElement(React.Fragment, null,
-                          // Barre
+
                           React.createElement("div", { style: { display: "flex", borderRadius: 6, overflow: "hidden", height: 22, marginBottom: 6 } },
                             React.createElement("div", { style: { flex: hW, background: T.green, display: "flex", alignItems: "center", justifyContent: "center" } },
                               hW > 0 && React.createElement("span", { style: { fontSize: 10, fontWeight: 800, color: "#fff" } }, hW)
@@ -5711,13 +5630,13 @@ function CalendarTab({ favs, onFav, onTeam }) {
                               aW > 0 && React.createElement("span", { style: { fontSize: 10, fontWeight: 800, color: "#fff" } }, aW)
                             )
                           ),
-                          // Labels
+
                           React.createElement("div", { style: { display: "flex", justifyContent: "space-between", marginBottom: 10 } },
                             React.createElement("span", { style: { fontSize: 10, color: T.green, fontWeight: 700 } }, match.teams.home.name.split(" ").pop()),
                             React.createElement("span", { style: { fontSize: 10, color: T.gold, fontWeight: 700 } }, "Nuls"),
                             React.createElement("span", { style: { fontSize: 10, color: "#e53535", fontWeight: 700 } }, match.teams.away.name.split(" ").pop())
                           ),
-                          // Derniers matchs
+
                           last10.slice(0, 5).map((m, i) => {
                             const isH = m.teams.home.id === hid;
                             const gF = isH ? m.goals.home : m.goals.away;
@@ -5756,10 +5675,6 @@ function CalendarTab({ favs, onFav, onTeam }) {
   );
 }
 
-
-// ============================================
-// ONGLET TRANSFERTS (TransfersTab)
-// ============================================
 const SB_KEY = "sb_publishable_IS9q0rpm-NFpEm_jNoKTTA_q_xX4-0m";
 
 async function sbGet(table) {
@@ -5770,7 +5685,6 @@ async function sbGet(table) {
   } catch { return []; }
 }
 
-// ── Couleurs sections ──────────────────────────────────────────────────────
 const TYPE_MAP = {
   "free":  { label: "Gratuit",  bg: "linear-gradient(135deg,#00c170,#009e5c)", icon: "🆓" },
   "loan":  { label: "Prêt",     bg: "linear-gradient(135deg,#2563eb,#1d4ed8)", icon: "🔄" },
@@ -5783,7 +5697,6 @@ function getTypeInfo(type) {
   return { label: type, bg: "linear-gradient(135deg,#f59e0b,#d97706)", icon: "💶" };
 }
 
-// ── Carte Mercato Premium ─────────────────────────────────────────────────
 function MercatoCard({ transfer, onTeam }) {
   const { player, teams, date, type } = transfer;
   const info = getTypeInfo(type);
@@ -5801,15 +5714,15 @@ function MercatoCard({ transfer, onTeam }) {
       position: "relative",
     }
   },
-    // ── Bande supérieure colorée ──
+
     React.createElement("div", {
       style: { height: 4, background: info.bg }
     }),
 
     React.createElement("div", { style: { padding: "14px 14px 0" } },
-      // ── Ligne joueur ──
+
       React.createElement("div", { style: { display: "flex", alignItems: "center", gap: 12, marginBottom: 12 } },
-        // Photo joueur — PlayerImage multi-sources async
+
         React.createElement(PlayerImage, {
           playerId: player?.id,
           playerName: player?.name || "",
@@ -5817,7 +5730,6 @@ function MercatoCard({ transfer, onTeam }) {
           ring: "#e8edf3"
         }),
 
-        // Nom + position + date
         React.createElement("div", { style: { flex: 1, minWidth: 0 } },
           React.createElement("div", {
             style: { fontSize: 15, fontWeight: 800, color: "#0f1117", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap", lineHeight: 1.2 }
@@ -5827,7 +5739,6 @@ function MercatoCard({ transfer, onTeam }) {
           )
         ),
 
-        // Badge montant/type
         React.createElement("div", {
           style: {
             background: info.bg, borderRadius: 10, padding: "5px 11px",
@@ -5837,7 +5748,6 @@ function MercatoCard({ transfer, onTeam }) {
         }, info.icon ? `${info.icon} ${info.label}` : info.label)
       ),
 
-      // ── Ligne clubs ──
       React.createElement("div", {
         style: {
           display: "flex", alignItems: "center", gap: 8,
@@ -5845,7 +5755,7 @@ function MercatoCard({ transfer, onTeam }) {
           marginBottom: 14, border: "1px solid #e8edf3"
         }
       },
-        // Club départ
+
         React.createElement("div", {
           onClick: () => onTeam && teams?.out?.id && onTeam(teams.out.id, teams.out.name, teams.out.logo),
           style: { display: "flex", flexDirection: "column", alignItems: "center", gap: 4, flex: 1, minWidth: 0, cursor: onTeam && teams?.out?.id ? "pointer" : "default" }
@@ -5858,7 +5768,6 @@ function MercatoCard({ transfer, onTeam }) {
           }, teams?.out?.name || "?")
         ),
 
-        // Flèche centrale
         React.createElement("div", {
           style: {
             flexShrink: 0, width: 28, height: 28, borderRadius: "50%",
@@ -5870,7 +5779,6 @@ function MercatoCard({ transfer, onTeam }) {
           React.createElement("span", { style: { color: "#fff", fontSize: 12, fontWeight: 900 } }, "→")
         ),
 
-        // Club arrivée
         React.createElement("div", {
           onClick: () => onTeam && teams?.in?.id && onTeam(teams.in.id, teams.in.name, teams.in.logo),
           style: { display: "flex", flexDirection: "column", alignItems: "center", gap: 4, flex: 1, minWidth: 0, cursor: onTeam && teams?.in?.id ? "pointer" : "default" }
@@ -5887,7 +5795,6 @@ function MercatoCard({ transfer, onTeam }) {
   );
 }
 
-// ── Carte Actualité Supabase (inchangée, améliorée visuellement) ──────────
 function AfricaTransferCard({ t, onOpen }) {
   const SOURCE_COLORS = { "Dzfoot": "#00883a", "El Heddaf": "#c8002d", "MarocSport": "#c8002d", "KingFut": "#1a1a2e", "BBC Afrique": "#bb1919", "FootMercato": "#ff6b00" };
   const srcColor = SOURCE_COLORS[t.source_name] || "#e53535";
@@ -5912,7 +5819,6 @@ function AfricaTransferCard({ t, onOpen }) {
   );
 }
 
-// ── Clubs suivis ────────────────────────────────────────────────────────────
 const MERCATO_CLUBS = [
   { id: 918, name: "JS Kabylie",    algerian: true },
   { id: 906, name: "MC Alger",      algerian: true },
@@ -5934,7 +5840,6 @@ const MERCATO_CLUBS = [
 ];
 const ALGERIAN_IDS = new Set(MERCATO_CLUBS.filter(c => c.algerian).map(c => c.id));
 
-// ── Header section "Arrivées / Départs" style TM ─────────────────────────
 function SectionHeader({ label, color, count }) {
   return React.createElement("div", {
     style: {
@@ -5951,7 +5856,6 @@ function SectionHeader({ label, color, count }) {
   );
 }
 
-// ── Composant principal ───────────────────────────────────────────────────
 function TransfersTab({ onTeam }) {
   const [mainTab,       setMainTab]       = useState("mercato");
   const [clubFilter,    setClubFilter]    = useState("algerie");
@@ -5963,9 +5867,8 @@ function TransfersTab({ onTeam }) {
   const [actuStatus,    setActuStatus]    = useState("idle");
   const [actuFilter,    setActuFilter]    = useState("all");
   const [selectedUrl,   setSelectedUrl]   = useState(null);
-  const [viewMode,      setViewMode]      = useState("sections"); // "sections" | "list"
+  const [viewMode,      setViewMode]      = useState("sections");
 
-  // Chargement Mercato
   useEffect(() => {
     if (mainTab !== "mercato") return;
     const clubs = MERCATO_CLUBS.filter(c => clubFilter === "algerie" ? c.algerian : !c.algerian);
@@ -6003,7 +5906,6 @@ function TransfersTab({ onTeam }) {
     });
   }, [mainTab, clubFilter]);
 
-  // Chargement Actu
   useEffect(() => {
     if (mainTab !== "actu" || actuData.length) return;
     setActuStatus("load");
@@ -6012,7 +5914,6 @@ function TransfersTab({ onTeam }) {
       .catch(() => setActuStatus("err"));
   }, [mainTab]);
 
-  // Filtrage mercato
   const filteredMercato = mercatoData.filter(t => {
     if (clubFilter === "algerie" && !ALGERIAN_IDS.has(t._clubId)) return false;
     if (clubFilter === "europe"  &&  ALGERIAN_IDS.has(t._clubId)) return false;
@@ -6022,20 +5923,17 @@ function TransfersTab({ onTeam }) {
     return true;
   });
 
-  // Séparation arrivées / départs pour viewMode "sections"
   const arrivals  = filteredMercato.filter(t => t.teams?.in  && MERCATO_CLUBS.some(c => c.id === t._clubId && (clubFilter === "algerie" ? c.algerian : !c.algerian) && c.id === t.teams?.in?.id));
   const departures = filteredMercato.filter(t => t.teams?.out && MERCATO_CLUBS.some(c => c.id === t._clubId && (clubFilter === "algerie" ? c.algerian : !c.algerian) && c.id === t.teams?.out?.id));
-  // Si pas de distinction nette, tout afficher chronologiquement
+
   const hasArrivals  = arrivals.length  > 0;
   const hasDepartures = departures.length > 0;
   const showSections = viewMode === "sections" && (hasArrivals || hasDepartures);
 
-  // Actu filtrage
   const countries = ["all", "Algérie", "Maroc", "Tunisie", "Égypte"];
   const flags = { all: "🌍", "Algérie": "🇩🇿", "Maroc": "🇲🇦", "Tunisie": "🇹🇳", "Égypte": "🇪🇬" };
   const filteredActu = actuFilter === "all" ? actuData : actuData.filter(t => t.country === actuFilter);
 
-  // Vue article
   if (selectedUrl) {
     return React.createElement("div", { style: { height: "100%", display: "flex", flexDirection: "column" } },
       React.createElement("div", { style: { padding: "12px 16px", background: "#e53535", display: "flex", alignItems: "center", gap: 12, flexShrink: 0 } },
@@ -6048,7 +5946,6 @@ function TransfersTab({ onTeam }) {
 
   return React.createElement("div", { style: { height: "100%", display: "flex", flexDirection: "column", overflow: "hidden", background: "#f1f4f9" } },
 
-    // ── Header ──────────────────────────────────────────────────────────────
     React.createElement("div", {
       style: { background: "linear-gradient(160deg,#1a1d23 0%,#0f1117 100%)", flexShrink: 0, paddingBottom: 0 }
     },
@@ -6061,7 +5958,7 @@ function TransfersTab({ onTeam }) {
           }, viewMode === "sections" ? "≡ Liste" : "⊞ Sections")
         )
       ),
-      // Tabs principaux
+
       React.createElement("div", { style: { display: "flex", marginTop: 10 } },
         [{ id: "mercato", label: "⚽ Mercato" }, { id: "actu", label: "📰 Actualités" }].map(t =>
           React.createElement("button", {
@@ -6077,7 +5974,6 @@ function TransfersTab({ onTeam }) {
       )
     ),
 
-    // ── Filtres Mercato ────────────────────────────────────────────────────
     mainTab === "mercato" && React.createElement("div", {
       style: { background: "#fff", borderBottom: "1px solid #e8edf3", padding: "10px 12px", flexShrink: 0 }
     },
@@ -6110,7 +6006,6 @@ function TransfersTab({ onTeam }) {
       )
     ),
 
-    // ── Contenu Mercato ────────────────────────────────────────────────────
     mainTab === "mercato" && React.createElement("div", { style: { flex: 1, overflowY: "auto", paddingTop: 4 } },
       mercatoStatus === "load" && React.createElement("div", { style: { display: "flex", flexDirection: "column", alignItems: "center", padding: 50, gap: 12 } },
         React.createElement(Spin, { s: 30, c: "#00c170" }),
@@ -6138,7 +6033,6 @@ function TransfersTab({ onTeam }) {
       React.createElement("div", { style: { height: 20 } })
     ),
 
-    // ── Filtres Actualités ─────────────────────────────────────────────────
     mainTab === "actu" && React.createElement("div", {
       style: { background: "#fff", borderBottom: "1px solid #e8edf3", padding: "10px 12px", flexShrink: 0 }
     },
@@ -6166,20 +6060,16 @@ function TransfersTab({ onTeam }) {
   );
 }
 
-
-// ============================================
-// ONGLET ACTUALITÉS (ActuTab)
-// ============================================
 function ActuTab() {
   const [data, setData] = useState([]);
   const [status, setStatus] = useState("load");
   const [view, setView] = useState("afrique");
   const [selected, setSelected] = useState(null);
-  
+
   useEffect(() => {
     let mounted = true;
     setStatus("load");
-    
+
     fetch("https://iqeqlsxjiklygywjirqs.supabase.co/rest/v1/transfers_feed?order=published_at.desc&limit=30", {
       headers: {
         "apikey": SB_KEY,
@@ -6196,10 +6086,10 @@ function ActuTab() {
       .catch(() => {
         if (mounted) setStatus("err");
       });
-    
+
     return () => { mounted = false; };
   }, []);
-  
+
   const getFiltered = () => {
     if (view === "afrique") {
       return data.filter(item => {
@@ -6213,14 +6103,14 @@ function ActuTab() {
     }
     return data;
   };
-  
+
   const filtered = getFiltered();
   const VIEWS = [
     { id: "afrique", icon: "🇩🇿", label: "Algérie", color: T.red },
     { id: "europe", icon: "🏆", label: "Europe", color: "#1877f2" }
   ];
   const currentView = VIEWS.find(v => v.id === view) || VIEWS[0];
-  
+
   if (selected) {
     return React.createElement("div", { style: { height: "100%", display: "flex", flexDirection: "column" } },
       React.createElement("div", { style: { padding: "12px", background: currentView.color, display: "flex", alignItems: "center", gap: 12 } },
@@ -6252,12 +6142,12 @@ function ActuTab() {
       )
     );
   }
-  
+
   return React.createElement("div", { style: { height: "100%", display: "flex", flexDirection: "column", overflow: "hidden" } },
     React.createElement("div", { style: { padding: "16px", background: "linear-gradient(160deg,#1a1d23,#0f1117)", color: "#fff", flexShrink: 0 } },
       React.createElement("div", { style: { fontSize: 20, fontWeight: 900, marginBottom: 12 } }, "Actualités"),
       React.createElement("div", { style: { display: "flex", gap: 8 } },
-        VIEWS.map(v => 
+        VIEWS.map(v =>
           React.createElement("button", {
             key: v.id,
             onClick: () => setView(v.id),
@@ -6280,21 +6170,21 @@ function ActuTab() {
         )
       )
     ),
-    
+
     React.createElement("div", { style: { flex: 1, overflowY: "auto", padding: "12px" } },
       status === "load" && React.createElement("div", { style: { textAlign: "center", padding: 40 } },
         React.createElement(Spin, null)
       ),
-      
+
       status === "err" && React.createElement("div", { style: { textAlign: "center", padding: 40, color: T.t3 } },
         "Erreur de chargement"
       ),
-      
+
       status === "empty" && React.createElement("div", { style: { textAlign: "center", padding: 40, color: T.t3 } },
         "Aucune actualité disponible"
       ),
-      
-      status === "ok" && filtered.map(item => 
+
+      status === "ok" && filtered.map(item =>
         React.createElement("div", {
           key: item.id,
           onClick: () => setSelected(item),
@@ -6328,9 +6218,6 @@ function ActuTab() {
   );
 }
 
-// ============================================
-// ONGLET JSK (JSKTab)
-// ============================================
 const JSK_GREEN = "#006B3C";
 const JSK_YELLOW = "#FFD700";
 const JSK_LOGO = "https://i.imgur.com/TkG4iVH_d.webp?maxwidth=760&fidelity=grand";
@@ -6342,7 +6229,7 @@ function JSKCard({ article, onOpen }) {
     "Google News": "#1a73e8"
   };
   const color = sourceColors[article.source] || JSK_GREEN;
-  
+
   return React.createElement("div", {
     onClick: () => onOpen(article),
     style: {
@@ -6381,11 +6268,11 @@ function JSKTab() {
   const [status, setStatus] = useState("load");
   const [selected, setSelected] = useState(null);
   const [view, setView] = useState("actualites");
-  
+
   useEffect(() => {
     let mounted = true;
     setStatus("load");
-    
+
     fetch("https://iqeqlsxjiklygywjirqs.supabase.co/functions/v1/jsk-news")
       .then(r => r.json())
       .then(data => {
@@ -6397,10 +6284,10 @@ function JSKTab() {
       .catch(() => {
         if (mounted) setStatus("err");
       });
-    
+
     return () => { mounted = false; };
   }, []);
-  
+
   if (selected) {
     return React.createElement("div", { style: { height: "100%", display: "flex", flexDirection: "column" } },
       React.createElement("div", { style: { padding: "12px", background: JSK_GREEN, display: "flex", alignItems: "center", gap: 12 } },
@@ -6447,7 +6334,7 @@ function JSKTab() {
       )
     );
   }
-  
+
   return React.createElement("div", { style: { height: "100%", display: "flex", flexDirection: "column", overflow: "hidden" } },
     React.createElement("div", { style: { background: `linear-gradient(160deg,${JSK_GREEN},#004d2a)`, padding: "16px", flexShrink: 0 } },
       React.createElement("div", { style: { display: "flex", alignItems: "center", gap: 12, marginBottom: 12 } },
@@ -6457,7 +6344,7 @@ function JSKTab() {
           React.createElement("div", { style: { fontSize: 10, color: JSK_YELLOW, fontWeight: 700 } }, "Actualités · Interviews · Rumeurs")
         )
       ),
-      
+
       React.createElement("div", { style: { display: "flex", gap: 8, background: "rgba(0,0,0,0.2)", borderRadius: 14, padding: 3 } },
         React.createElement("button", {
           onClick: () => setView("actualites"),
@@ -6489,7 +6376,7 @@ function JSKTab() {
         }, "📰 La Une")
       )
     ),
-    
+
     React.createElement("div", { style: { flex: 1, overflowY: "auto", paddingTop: 12 } },
       view === "actualites" && (
         status === "load" ? React.createElement("div", { style: { textAlign: "center", padding: 40 } },
@@ -6501,11 +6388,11 @@ function JSKTab() {
         status === "empty" ? React.createElement("div", { style: { textAlign: "center", padding: 40, color: T.t3 } },
           "Aucune actualité disponible"
         ) :
-        articles.map((a, i) => 
+        articles.map((a, i) =>
           React.createElement(JSKCard, { key: i, article: a, onOpen: setSelected })
         )
       ),
-      
+
       view === "une" && React.createElement("div", { style: { padding: "12px" } },
         React.createElement("div", { style: { background: "#fff", borderRadius: 16, padding: 20, textAlign: "center" } },
           React.createElement("div", { style: { fontSize: 40, marginBottom: 12 } }, "📰"),
@@ -6516,9 +6403,6 @@ function JSKTab() {
   );
 }
 
-// ============================================
-// FICHE ÉQUIPE (TeamPage)
-// ============================================
 function TeamPage({ teamId, teamName, teamLogo, leagueId, season, onClose }) {
   const [info,     setInfo]     = useState(null);
   const [results,  setResults]  = useState([]);
@@ -6533,7 +6417,6 @@ function TeamPage({ teamId, teamName, teamLogo, leagueId, season, onClose }) {
     let cancelled = false;
     setLoading(true);
 
-    // Étape 1 : infos équipe + fixtures (pour détecter la vraie ligue/saison)
     Promise.allSettled([
       api(`/teams?id=${teamId}`, 86400000),
       api(`/fixtures?team=${teamId}&last=6`, TTL.DONE),
@@ -6546,13 +6429,11 @@ function TeamPage({ teamId, teamName, teamLogo, leagueId, season, onClose }) {
       if (recentFix.length) setResults(recentFix);
       if (nextFix.length)   setNext(nextFix);
 
-      // Détection automatique ligue + saison depuis les fixtures réels
       const allFix = [...recentFix, ...nextFix];
       const detectedLeague = allFix.find(f => f.league?.id)?.league;
       const lid  = leagueId  || detectedLeague?.id     || 39;
       const seas = season    || detectedLeague?.season  || new Date().getFullYear();
 
-      // Étape 2 : standings + joueurs avec les vraies valeurs ligue/saison
       const [rStand, rPlayers] = await Promise.allSettled([
         api(`/standings?league=${lid}&season=${seas}`, TTL.STANDING),
         api(`/players?team=${teamId}&season=${seas}`, 3600000),
@@ -6576,7 +6457,6 @@ function TeamPage({ teamId, teamName, teamLogo, leagueId, season, onClose }) {
     return () => { cancelled = true; };
   }, [teamId, leagueId, season]);
 
-  // Couleurs et helpers
   const FC = { W: "#00c170", D: "#f59e0b", L: "#ef4444" };
   const FL = { W: "V", D: "N", L: "D" };
   const getRes = (m) => {
@@ -6592,11 +6472,8 @@ function TeamPage({ teamId, teamName, teamLogo, leagueId, season, onClose }) {
     ? Math.round((results.filter(m => getRes(m) === "W").length / results.length) * 100)
     : null;
 
-  // ── HERO BACKGROUND COLOR from logo (use team primary color heuristic)
-  // We use a dark gradient always, accent with green
   const heroGrad = "linear-gradient(180deg, #0b0f1a 0%, #111827 60%, #1a1d23 100%)";
 
-  // ── Render form dots
   const FormDots = ({ matches, size = 26 }) => {
     const last = [...matches].reverse().slice(0, 5);
     return (
@@ -6618,7 +6495,6 @@ function TeamPage({ teamId, teamName, teamLogo, leagueId, season, onClose }) {
     );
   };
 
-  // ── Match row premium
   const MatchRow = ({ m, idx }) => {
     const isHome  = m.teams?.home?.id === teamId;
     const opp     = isHome ? m.teams?.away : m.teams?.home;
@@ -6636,7 +6512,7 @@ function TeamPage({ teamId, teamName, teamLogo, leagueId, season, onClose }) {
         borderBottom: "1px solid rgba(0,0,0,.05)",
         background: "#fff",
       }}>
-        {/* Résultat badge */}
+        {}
         <div style={{
           width: 28, height: 28, borderRadius: 8, flexShrink: 0,
           background: res ? FC[res] : ns ? "#f1f5f9" : "#f1f5f9",
@@ -6649,10 +6525,10 @@ function TeamPage({ teamId, teamName, teamLogo, leagueId, season, onClose }) {
           }
         </div>
 
-        {/* Logo adversaire */}
+        {}
         <Logo src={opp?.logo} size={26} />
 
-        {/* Infos match */}
+        {}
         <div style={{ flex: 1, minWidth: 0 }}>
           <div style={{ fontSize: 13, fontWeight: 700, color: "#0f1117", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
             <span style={{ fontSize: 10, color: "#94a3b8", fontWeight: 600, marginRight: 4 }}>{isHome ? "DOM" : "EXT"}</span>
@@ -6664,7 +6540,7 @@ function TeamPage({ teamId, teamName, teamLogo, leagueId, season, onClose }) {
           </div>
         </div>
 
-        {/* Score */}
+        {}
         {done && gF != null && (
           <div style={{
             fontFamily: "monospace", fontSize: 15, fontWeight: 900,
@@ -6716,7 +6592,7 @@ function TeamPage({ teamId, teamName, teamLogo, leagueId, season, onClose }) {
   return (
     <div className="md-overlay" style={{ background: "#f1f4f9" }}>
 
-      {/* ── TOP BAR ── */}
+      {}
       <div style={{
         position: "relative", zIndex: 2,
         background: "transparent",
@@ -6735,14 +6611,14 @@ function TeamPage({ teamId, teamName, teamLogo, leagueId, season, onClose }) {
         }}>←</button>
       </div>
 
-      {/* ── HERO SECTION ── */}
+      {}
       <div style={{
         background: heroGrad,
         padding: "12px 16px 0",
         flexShrink: 0,
         position: "relative", overflow: "hidden",
       }}>
-        {/* Cercle déco derrière le logo */}
+        {}
         <div style={{
           position: "absolute", right: -30, top: -30,
           width: 180, height: 180, borderRadius: "50%",
@@ -6756,9 +6632,9 @@ function TeamPage({ teamId, teamName, teamLogo, leagueId, season, onClose }) {
           pointerEvents: "none"
         }} />
 
-        {/* Ligne principale : logo + nom + rang */}
+        {}
         <div style={{ display: "flex", alignItems: "center", gap: 16, marginBottom: 16, position: "relative" }}>
-          {/* Logo dans un halo */}
+          {}
           <div style={{
             width: 76, height: 76, borderRadius: 20, flexShrink: 0,
             background: "rgba(255,255,255,.06)",
@@ -6782,7 +6658,7 @@ function TeamPage({ teamId, teamName, teamLogo, leagueId, season, onClose }) {
               </div>
             )}
 
-            {/* Rang + points */}
+            {}
             {st && (
               <div style={{ display: "flex", alignItems: "center", gap: 6, marginTop: 8 }}>
                 <div style={{
@@ -6804,7 +6680,7 @@ function TeamPage({ teamId, teamName, teamLogo, leagueId, season, onClose }) {
             )}
           </div>
 
-          {/* Forme récente colonne droite */}
+          {}
           {last5.length > 0 && (
             <div style={{ flexShrink: 0, display: "flex", flexDirection: "column", alignItems: "flex-end", gap: 6 }}>
               <div style={{ fontSize: 8, color: "rgba(255,255,255,.3)", fontWeight: 700, textTransform: "uppercase", letterSpacing: ".8px" }}>Forme</div>
@@ -6816,7 +6692,7 @@ function TeamPage({ teamId, teamName, teamLogo, leagueId, season, onClose }) {
           )}
         </div>
 
-        {/* ── BARRE DE STATS ── */}
+        {}
         {st && (
           <div style={{
             display: "grid", gridTemplateColumns: "repeat(5,1fr)",
@@ -6848,7 +6724,7 @@ function TeamPage({ teamId, teamName, teamLogo, leagueId, season, onClose }) {
           </div>
         )}
 
-        {/* Tabs collés en bas du hero */}
+        {}
         <div style={{ display: "flex", marginTop: 14, borderTop: "1px solid rgba(255,255,255,.06)", marginLeft: -16, marginRight: -16, paddingLeft: 16 }}>
           {TABS.map(t => (
             <button key={t.id} onClick={() => setTab(t.id)} style={{
@@ -6863,10 +6739,10 @@ function TeamPage({ teamId, teamName, teamLogo, leagueId, season, onClose }) {
         </div>
       </div>
 
-      {/* ── CONTENT ── */}
+      {}
       <div style={{ flex: 1, overflowY: "auto" }}>
 
-        {/* RÉSULTATS */}
+        {}
         {tab === "resultats" && (
           <div style={{ paddingBottom: 16 }}>
             {results.length === 0
@@ -6876,7 +6752,7 @@ function TeamPage({ teamId, teamName, teamLogo, leagueId, season, onClose }) {
           </div>
         )}
 
-        {/* PROCHAINS */}
+        {}
         {tab === "prochains" && (
           <div style={{ paddingBottom: 16 }}>
             {next.length === 0
@@ -6886,10 +6762,10 @@ function TeamPage({ teamId, teamName, teamLogo, leagueId, season, onClose }) {
           </div>
         )}
 
-        {/* STATS */}
+        {}
         {tab === "stats" && (
           <div style={{ padding: 14 }}>
-            {/* Bilan domicile / extérieur */}
+            {}
             {st && (
               <>
                 <div style={{ fontSize: 10, fontWeight: 800, color: "#94a3b8", textTransform: "uppercase", letterSpacing: ".8px", marginBottom: 10 }}>Bilan</div>
@@ -6920,7 +6796,7 @@ function TeamPage({ teamId, teamName, teamLogo, leagueId, season, onClose }) {
                   ))}
                 </div>
 
-                {/* Barre de forme visuelle */}
+                {}
                 <div style={{ fontSize: 10, fontWeight: 800, color: "#94a3b8", textTransform: "uppercase", letterSpacing: ".8px", marginBottom: 10 }}>Répartition saison</div>
                 <div style={{ background: "#fff", borderRadius: 14, padding: 16, boxShadow: "0 2px 8px rgba(0,0,0,.06)", marginBottom: 16 }}>
                   {[
@@ -6945,7 +6821,7 @@ function TeamPage({ teamId, teamName, teamLogo, leagueId, season, onClose }) {
               </>
             )}
 
-            {/* Top buteurs de la ligue (filtrés par club) */}
+            {}
             {topScore.length > 0 && (
               <>
                 <div style={{ fontSize: 10, fontWeight: 800, color: "#94a3b8", textTransform: "uppercase", letterSpacing: ".8px", marginBottom: 10 }}>Buteurs du club</div>
@@ -6982,10 +6858,10 @@ function TeamPage({ teamId, teamName, teamLogo, leagueId, season, onClose }) {
           </div>
         )}
 
-        {/* INFOS */}
+        {}
         {tab === "infos" && (
           <div style={{ padding: 14, paddingBottom: 24 }}>
-            {/* Stade — card premium */}
+            {}
             {venue && (
               <div style={{ background: "#fff", borderRadius: 16, overflow: "hidden", boxShadow: "0 4px 20px rgba(0,0,0,.08)", marginBottom: 14 }}>
                 {venue.image && (
@@ -7017,7 +6893,7 @@ function TeamPage({ teamId, teamName, teamLogo, leagueId, season, onClose }) {
               </div>
             )}
 
-            {/* Club infos */}
+            {}
             {team && (
               <div style={{ background: "#fff", borderRadius: 16, overflow: "hidden", boxShadow: "0 4px 20px rgba(0,0,0,.08)" }}>
                 <div style={{ padding: "14px 16px 10px", borderBottom: "1px solid #f1f5f9", display: "flex", alignItems: "center", gap: 12 }}>
@@ -7055,18 +6931,14 @@ function TeamPage({ teamId, teamName, teamLogo, leagueId, season, onClose }) {
   );
 }
 
-
-// ============================================
-// APP PRINCIPALE
-// ============================================
 function App() {
   const [currentTab, setCurrentTab] = useState(() => {
     try { return sessionStorage.getItem("wf_last_tab") || "scores"; }
     catch { return "scores"; }
   });
-  
+
   const [apiCallsToday, setApiCallsToday] = useState(0);
-  
+
   useEffect(() => {
     try {
       const today = new Date().toDateString();
@@ -7075,7 +6947,7 @@ function App() {
     } catch {
       setApiCallsToday(0);
     }
-    
+
     const interval = setInterval(() => {
       try {
         const today = new Date().toDateString();
@@ -7083,15 +6955,15 @@ function App() {
         setApiCallsToday(parseInt(calls) || 0);
       } catch {}
     }, 30000);
-    
+
     return () => clearInterval(interval);
   }, []);
-  
+
   useEffect(() => {
     try { sessionStorage.setItem("wf_last_tab", currentTab); }
     catch {}
   }, [currentTab]);
-  
+
   const [teamPage, setTeamPage] = useState(null);
   const openTeam = useCallback((teamId, teamName, teamLogo, leagueId, season) => {
     setTeamPage({ teamId, teamName, teamLogo, leagueId, season });
@@ -7105,12 +6977,12 @@ function App() {
       return new Set();
     }
   });
-  
+
   useEffect(() => {
     try { localStorage.setItem("wf_favs", JSON.stringify([...favs])); }
     catch {}
   }, [favs]);
-  
+
   const toggleFav = useCallback((id) => {
     setFavs(prev => {
       const newSet = new Set(prev);
@@ -7119,7 +6991,7 @@ function App() {
       return newSet;
     });
   }, []);
-  
+
   const tabs = [
     { id: "scores", label: "SCORES" },
     { id: "standings", label: "CLASSEMENT" },
@@ -7129,7 +7001,7 @@ function App() {
     { id: "actu", label: "ACTUALITÉS" },
     { id: "jsk", label: "JSK" }
   ];
-  
+
   const renderContent = () => {
     switch (currentTab) {
       case "scores": return React.createElement(ScoresTab, { favs, onFav: toggleFav, onTeam: openTeam });
@@ -7142,10 +7014,9 @@ function App() {
       default: return React.createElement(ScoresTab, { favs, onFav: toggleFav });
     }
   };
-  
+
   return React.createElement("div", { style: { height: "100%", display: "flex", flexDirection: "column", background: "var(--c-base)" } },
 
-    /* ══ HEADER PREMIUM ══ */
     React.createElement("div", { style: {
       flexShrink: 0,
       background: "#fff",
@@ -7155,7 +7026,7 @@ function App() {
       position: "relative",
       overflow: "hidden"
     } },
-      /* Accent stripe top */
+
       React.createElement("div", { style: {
         position: "absolute", top: 0, left: 0, right: 0, height: 2,
         background: "linear-gradient(90deg, var(--c-jade) 0%, #10B981 35%, #059669 65%, var(--c-jade) 100%)",
@@ -7163,10 +7034,8 @@ function App() {
         animation: "stripeShift 6s linear infinite"
       } }),
 
-      /* Top row: logo + badges */
       React.createElement("div", { style: { display: "flex", alignItems: "center", justifyContent: "space-between", padding: "0 18px 14px" } },
 
-        /* Logo */
         React.createElement("div", { style: { display: "flex", alignItems: "center", gap: 11 } },
           React.createElement("div", { style: {
             width: 38, height: 38, borderRadius: 12,
@@ -7189,10 +7058,8 @@ function App() {
           )
         ),
 
-        /* Badges droite */
         React.createElement("div", { style: { display: "flex", alignItems: "center", gap: 7 } },
 
-          /* Badge LIVE */
           React.createElement("div", { style: {
             display: "flex", alignItems: "center", gap: 5,
             padding: "5px 11px", borderRadius: 20,
@@ -7206,7 +7073,6 @@ function App() {
             } }, "LIVE")
           ),
 
-          /* Badge API calls */
           React.createElement("div", { style: {
             padding: "5px 9px", borderRadius: 10,
             background: "var(--c-base)",
@@ -7221,7 +7087,6 @@ function App() {
             )
           ),
 
-          /* Bouton Power (déconnexion) */
           React.createElement("button", {
             title: "Déconnexion",
             onClick: () => { localStorage.removeItem("wf_auth"); window.location.href = "login.html"; },
@@ -7245,7 +7110,6 @@ function App() {
         )
       ),
 
-      /* Tab bar */
       React.createElement("div", { style: {
         display: "flex", gap: 4,
         overflowX: "auto", scrollbarWidth: "none",
@@ -7292,12 +7156,11 @@ function App() {
   );
 }
 
-// Vérifier auth avant d'afficher l'app
 if (localStorage.getItem('wf_auth') !== '1') {
   window.location.href = 'login.html';
 } else {
   ReactDOM.render(React.createElement(App, null), document.getElementById('root'));
 }
-    </script>
+</script>
 </body>
 </html>
