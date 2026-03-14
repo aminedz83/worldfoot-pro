@@ -48,7 +48,7 @@
     <script>
         if ("serviceWorker" in navigator) {
             const sw = `
-    const C='wf-pro-v75';
+    const C='wf-pro-v77';
     self.addEventListener('install',e=>{e.waitUntil(caches.open(C).then(c=>c.addAll(['./'])).then(()=>self.skipWaiting()));});
     self.addEventListener('activate',e=>{e.waitUntil(caches.keys().then(ks=>Promise.all(ks.filter(k=>k!==C).map(k=>caches.delete(k)))).then(()=>self.clients.claim()));});
     self.addEventListener('push',e=>{
@@ -7181,6 +7181,52 @@ function App() {
             } },
               React.createElement("strong", { style: { color: "var(--c-ink-2)", fontWeight: 600 } }, apiCallsToday),
               "/7.5k"
+            )
+          ),
+
+          React.createElement("button", {
+            title: "Activer les notifications",
+            onClick: () => {
+              if (!("Notification" in window)) {
+                alert("Notifications non supportées sur cet appareil.");
+                return;
+              }
+              if (Notification.permission === "granted") {
+                alert("✅ Notifications déjà activées !");
+                return;
+              }
+              Notification.requestPermission().then(p => {
+                if (p === "granted") alert("✅ Notifications activées ! Tu recevras une alerte pour chaque but de tes matchs favoris.");
+                else alert("❌ Notifications refusées. Va dans Réglages → Notifications → minedz83.github.io pour les activer.");
+              });
+            },
+            style: {
+              width: 34, height: 34,
+              borderRadius: 10,
+              background: "Notification" in window && Notification.permission === "granted"
+                ? "linear-gradient(135deg,#00c170,#009e5c)"
+                : "var(--c-base)",
+              border: "Notification" in window && Notification.permission === "granted"
+                ? "none"
+                : "1px solid var(--c-border)",
+              boxShadow: "Notification" in window && Notification.permission === "granted"
+                ? "0 2px 8px rgba(0,193,112,.35)"
+                : "none",
+              display: "flex", alignItems: "center", justifyContent: "center",
+              cursor: "pointer",
+              transition: "all .2s"
+            }
+          },
+            React.createElement("svg", {
+              width: 15, height: 15, viewBox: "0 0 24 24", fill: "none",
+              stroke: "Notification" in window && Notification.permission === "granted" ? "#fff" : "var(--c-ink-3)",
+              strokeWidth: 2.2, strokeLinecap: "round", strokeLinejoin: "round"
+            },
+              React.createElement("path", { d: "M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9" }),
+              React.createElement("path", { d: "M13.73 21a2 2 0 0 1-3.46 0" }),
+              "Notification" in window && Notification.permission === "granted"
+                ? null
+                : React.createElement("line", { x1: 1, y1: 1, x2: 23, y2: 23 })
             )
           ),
 
