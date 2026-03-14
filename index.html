@@ -48,7 +48,7 @@
     <script>
         if ("serviceWorker" in navigator) {
             const sw = `
-    const C='wf-pro-v66';
+    const C='wf-pro-v67';
     self.addEventListener('install',e=>{e.waitUntil(caches.open(C).then(c=>c.addAll(['./'])).then(()=>self.skipWaiting()));});
     self.addEventListener('activate',e=>{e.waitUntil(caches.keys().then(ks=>Promise.all(ks.filter(k=>k!==C).map(k=>caches.delete(k)))).then(()=>self.clients.claim()));});
     self.addEventListener('push',e=>{
@@ -2881,21 +2881,14 @@ function MatchDetail({state,onClose,onTeam}){
 
       if(isVar){
         const d = (e.detail||"").toLowerCase();
-        const playerName = e.player?.name || e.assist?.name || e.comments || null;
-        const assistName = (!e.player?.name && !e.assist?.name) ? null : (e.assist?.name || null);
-
-        // Déterminer si c'est une décision finale ou une vérification en cours
-        const isDecision = d.includes("goal cancelled")||d.includes("cancelled")||d.includes("no goal")||
-          d.includes("goal ok")||d.includes("goal stands")||d.includes("goal confirmed")||
-          d.includes("penalty cancel")||d.includes("no penalty")||
-          d.includes("penalty ok")||d.includes("penalty confirm")||
-          d.includes("red card cancel")||d.includes("red card ok");
+        const c = (e.comments||"").toLowerCase();
+        const full = d + " " + c;
 
         // Motif
-        const reason = d.includes("handball")||d.includes("main") ? "main"
-          : d.includes("offside")||d.includes("hors") ? "hors-jeu"
-          : d.includes("foul")||d.includes("faute") ? "faute"
-          : d.includes("simulation")||d.includes("diving") ? "simulation"
+        const reason = full.includes("handball")||full.includes("main") ? "main"
+          : full.includes("offside")||full.includes("hors") ? "hors-jeu"
+          : full.includes("foul")||full.includes("faute") ? "faute"
+          : full.includes("simulation")||full.includes("diving") ? "simulation"
           : "";
 
         let varText = "";
@@ -2903,39 +2896,45 @@ function MatchDetail({state,onClose,onTeam}){
         let varBg = "rgba(245,158,11,.06)";
         let isFinal = false;
 
-        if(d.includes("goal cancelled")||d.includes("cancelled")||d.includes("no goal")) {
+        // Décision finale — but refusé
+        if(full.includes("goal cancelled")||full.includes("cancelled")||full.includes("no goal")||
+           full.includes("but refus")||full.includes("goal disallowed")) {
           varText = reason ? `But Refusé - ${reason}` : "But Refusé";
           varColor = "#ef4444"; varBg = "rgba(239,68,68,.06)"; isFinal = true;
-        } else if(d.includes("goal ok")||d.includes("goal stands")||d.includes("goal confirmed")) {
+        }
+        // But accordé
+        else if(full.includes("goal ok")||full.includes("goal stands")||full.includes("goal confirmed")||full.includes("but accord")) {
           varText = "But Accordé";
           varColor = "#22c55e"; varBg = "rgba(34,197,94,.06)"; isFinal = true;
-        } else if(d.includes("penalty cancel")||d.includes("no penalty")) {
+        }
+        // Penalty annulé
+        else if(full.includes("penalty cancel")||full.includes("no penalty")||full.includes("penalty annul")) {
           varText = reason ? `Penalty Annulé - ${reason}` : "Penalty Annulé";
           varColor = "#ef4444"; varBg = "rgba(239,68,68,.06)"; isFinal = true;
-        } else if(d.includes("penalty ok")||d.includes("penalty confirm")) {
+        }
+        // Penalty confirmé
+        else if(full.includes("penalty ok")||full.includes("penalty confirm")||full.includes("penalty stands")) {
           varText = "Penalty Confirmé";
           varColor = "#22c55e"; varBg = "rgba(34,197,94,.06)"; isFinal = true;
-        } else if(d.includes("red card cancel")) {
+        }
+        // Carton rouge annulé
+        else if(full.includes("red card cancel")||full.includes("rouge annul")) {
           varText = "Carton Rouge Annulé";
           varColor = "#ef4444"; varBg = "rgba(239,68,68,.06)"; isFinal = true;
-        } else if(d.includes("red card ok")) {
+        }
+        // Carton rouge confirmé
+        else if(full.includes("red card ok")||full.includes("rouge confirm")) {
           varText = "Carton Rouge Confirmé";
           varColor = "#ef4444"; varBg = "rgba(239,68,68,.06)"; isFinal = true;
-        } else if(d.includes("hand")||d.includes("main")) {
-          varText = "Vérification main";
-        } else if(d.includes("offside")||d.includes("hors")) {
-          varText = "Vérification hors-jeu";
-        } else if(d.includes("foul")||d.includes("faute")) {
-          varText = "Vérification faute";
-        } else if(d.includes("penalty")) {
-          varText = "Vérification penalty";
-        } else if(d.includes("goal")||d.includes("but")) {
-          varText = "Vérification but";
-        } else if(d.includes("red")||d.includes("rouge")) {
-          varText = "Vérification carton rouge";
-        } else {
-          varText = e.detail ? `VAR · ${e.detail}` : "Vérification VAR";
         }
+        // Si detail contient directement le motif sans "goal cancelled" — c'est quand même final
+        else if(reason) {
+          varText = `But Refusé - ${reason}`;
+          varColor = "#ef4444"; varBg = "rgba(239,68,68,.06)"; isFinal = true;
+        }
+
+        const playerName = e.player?.name || e.assist?.name || e.comments || null;
+        const assistName = e.assist?.name || null;
 
         // Badge VAR
         const varBadge = React.createElement("span", {style:{
