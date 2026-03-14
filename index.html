@@ -48,7 +48,7 @@
     <script>
         if ("serviceWorker" in navigator) {
             const sw = `
-    const C='wf-pro-v68';
+    const C='wf-pro-v69';
     self.addEventListener('install',e=>{e.waitUntil(caches.open(C).then(c=>c.addAll(['./'])).then(()=>self.skipWaiting()));});
     self.addEventListener('activate',e=>{e.waitUntil(caches.keys().then(ks=>Promise.all(ks.filter(k=>k!==C).map(k=>caches.delete(k)))).then(()=>self.clients.claim()));});
     self.addEventListener('push',e=>{
@@ -736,6 +736,8 @@ const SUSP_ST  = new Set(["SUSP","INT","ABD"]);
 const CANCEL_ST = new Set(["CANC"]);
 
 const _cache = new Map();
+// Cache cartons rouges par fixture id : { home: N, away: N }
+const _redCardsCache = new Map();
 let _apiCallsToday = parseInt(localStorage.getItem('wf_api_calls_'+new Date().toDateString())||'0');
 let _apiCallsDate = new Date().toDateString();
 
@@ -2137,6 +2139,8 @@ function Row({match:m, onOpen, isFav, onFav, onTeam}){
   const min=useMinute(s.elapsed,s.short);
   const flash=useFlash(m.goals.home,m.goals.away);
   const hg=m.goals.home,ag=m.goals.away,has=hg!==null&&ag!==null,hw=has&&hg>ag,aw=has&&ag>hg;
+  const redCards=_redCardsCache.get(m.fixture.id);
+  const homeRed=redCards?.home||0, awayRed=redCards?.away||0;
   const stLabel=sh==="HT"?"MT":sh==="BT"?"Pause":sh==="P"?"Tab":sh==="SUSP"?"Susp.":sh==="INT"?"Inter.":sh==="ABD"?"Arr.":sh==="CANC"?"Ann.":sh==="PST"?"Rep.":sh==="TBD"?"TBD":sh==="AET"?"Ap.Pr.":sh==="PEN"?"Tab":"FT";
   const hn=m.teams.home.name,an=m.teams.away.name;
   const hRank=m.teams.home.rank,aRank=m.teams.away.rank;
@@ -2226,7 +2230,8 @@ function Row({match:m, onOpen, isFav, onFav, onTeam}){
           React.createElement("span", { style: { fontSize: 14, fontWeight: hw ? 800 : 500, color: hw ? "#111" : aw ? "#bbb" : "#222", flex: 1, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" } },
             hn,
             hRank ? React.createElement("span", { style: { fontSize: 11, color: "#bbb", fontWeight: 400 } }, " [" + hRank + "]") : null
-          )
+          ),
+          homeRed > 0 ? React.createElement("span", { style: { fontSize: 10, fontWeight: 800, color: "#fff", background: "#e53535", borderRadius: 4, padding: "1px 5px", flexShrink: 0, marginLeft: 2 } }, homeRed) : null
         ),
         showBigChance && actionTeam === m.teams.home.id && React.createElement("span", {
           style: { position: "absolute", right: 0, color: "#e53935", fontSize: 10, fontWeight: 800, textTransform: "uppercase", zIndex: 5, whiteSpace: "nowrap", animation: "blink-3 1.5s ease-in-out" }
@@ -2241,7 +2246,8 @@ function Row({match:m, onOpen, isFav, onFav, onTeam}){
           React.createElement("span", { style: { fontSize: 14, fontWeight: aw ? 800 : 500, color: aw ? "#111" : hw ? "#bbb" : "#222", flex: 1, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" } },
             an,
             aRank ? React.createElement("span", { style: { fontSize: 11, color: "#bbb", fontWeight: 400 } }, " [" + aRank + "]") : null
-          )
+          ),
+          awayRed > 0 ? React.createElement("span", { style: { fontSize: 10, fontWeight: 800, color: "#fff", background: "#e53535", borderRadius: 4, padding: "1px 5px", flexShrink: 0, marginLeft: 2 } }, awayRed) : null
         ),
         showBigChance && actionTeam === m.teams.away.id && React.createElement("span", {
           style: { position: "absolute", right: 0, color: "#e53935", fontSize: 10, fontWeight: 800, textTransform: "uppercase", zIndex: 5, whiteSpace: "nowrap", animation: "blink-3 1.5s ease-in-out" }
@@ -4357,7 +4363,15 @@ function ScoresTab({favs,onFav,onTeam}){
 
       const update=patch=>setDet(prev=>prev?.data?{...prev,partial:true,data:{...prev.data,...patch}}:prev);
 
-      const p_events  =started?api(`/fixtures/events?fixture=${fid}`,detailTTL,sig).then(d=>update({events:d})).catch(()=>{}):Promise.resolve();
+      const p_events  =started?api(`/fixtures/events?fixture=${fid}`,detailTTL,sig).then(d=>{
+        update({events:d});
+        // Stocker les cartons rouges dans le cache global
+        if(d && d.length) {
+          const homeRed = d.filter(e=>e.team?.id===fix.teams.home.id && e.type==="Card" && (e.detail?.includes("Red")||e.detail?.includes("Second Yellow"))).length;
+          const awayRed = d.filter(e=>e.team?.id===fix.teams.away.id && e.type==="Card" && (e.detail?.includes("Red")||e.detail?.includes("Second Yellow"))).length;
+          if(homeRed > 0 || awayRed > 0) _redCardsCache.set(fid, {home: homeRed, away: awayRed});
+        }
+      }).catch(()=>{}):Promise.resolve();
       const p_stats   =started?api(`/fixtures/statistics?fixture=${fid}`,detailTTL,sig).then(d=>update({stats:d})).catch(()=>{}):Promise.resolve();
       const lineupsTTL=isLive?detailTTL:isDone?detailTTL:300000;
       const p_lineups =api(`/fixtures/lineups?fixture=${fid}`,lineupsTTL,sig).then(d=>update({lineups:d})).catch(()=>{});
