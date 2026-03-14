@@ -48,7 +48,7 @@
     <script>
         if ("serviceWorker" in navigator) {
             const sw = `
-    const C='wf-pro-v55';
+    const C='wf-pro-v56';
     self.addEventListener('install',e=>{e.waitUntil(caches.open(C).then(c=>c.addAll(['./'])).then(()=>self.skipWaiting()));});
     self.addEventListener('activate',e=>{e.waitUntil(caches.keys().then(ks=>Promise.all(ks.filter(k=>k!==C).map(k=>caches.delete(k)))).then(()=>self.clients.claim()));});
     self.addEventListener('push',e=>{
@@ -804,6 +804,32 @@ function useMinute(elapsed,status){
     return()=>clearInterval(id);
   },[elapsed,status]);
   return m;
+}
+
+// Hook pour afficher minutes:secondes en temps réel (comme Flashscore)
+function useLiveTime(elapsed, status, fixtureDate) {
+  const [display, setDisplay] = useState("");
+  useEffect(() => {
+    if (!LIVE_ST.has(status) || elapsed == null) {
+      setDisplay("");
+      return;
+    }
+    // Calculer le décalage : on sait que à l'instant t0, elapsed = N minutes
+    const t0 = Date.now();
+    const baseSeconds = elapsed * 60;
+    const maxSeconds = (status === "2H" || status === "ET") ? 96 * 60 : 47 * 60;
+
+    const tick = () => {
+      const nowSeconds = Math.min(baseSeconds + Math.floor((Date.now() - t0) / 1000), maxSeconds);
+      const m = Math.floor(nowSeconds / 60);
+      const s = nowSeconds % 60;
+      setDisplay(`${m}:${String(s).padStart(2, "0")}`);
+    };
+    tick();
+    const id = setInterval(tick, 1000);
+    return () => clearInterval(id);
+  }, [elapsed, status]);
+  return display;
 }
 
 function useFlash(hg,ag){
@@ -2439,6 +2465,7 @@ function MatchDetail({state,onClose,onTeam}){
   const isNS = ["NS","TBD","PST","CANC"].includes(sh);
 
   const min = useMinute(s.elapsed,sh);
+  const liveTime = useLiveTime(s.elapsed, sh, fix?.fixture?.date);
 
   React.useEffect(()=>{
     if(!fix)return;
@@ -3893,7 +3920,7 @@ function MatchDetail({state,onClose,onTeam}){
             fontSize:13, fontWeight:600, textAlign:"center",
             color: isLive ? "#e53535" : isDone ? "#64748b" : "#94a3b8"
           }}, isLive
-            ? `${getStatusLabel(sh)} · ${sh==="2H"&&s.elapsed>90?`90+${s.elapsed-90}'`:`${s.elapsed}'`}`
+            ? `${getStatusLabel(sh)} · ${liveTime || (sh==="2H"&&s.elapsed>90?`90+${s.elapsed-90}'`:`${s.elapsed}'`)}`
             : isDone ? getStatusLabel(sh)
             : isNS ? hhmm2(fix.fixture.date) : getStatusLabel(sh)
           ),
