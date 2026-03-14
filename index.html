@@ -48,7 +48,7 @@
     <script>
         if ("serviceWorker" in navigator) {
             const sw = `
-    const C='wf-pro-v47';
+    const C='wf-pro-v48';
     self.addEventListener('install',e=>{e.waitUntil(caches.open(C).then(c=>c.addAll(['./'])).then(()=>self.skipWaiting()));});
     self.addEventListener('activate',e=>{e.waitUntil(caches.keys().then(ks=>Promise.all(ks.filter(k=>k!==C).map(k=>caches.delete(k)))).then(()=>self.clients.claim()));});
     self.addEventListener('push',e=>{
@@ -4661,13 +4661,26 @@ function StandingsTab({ onTeam }) {
     if (viewMode !== "resultats") return;
     let mounted = true;
     api(`/fixtures/rounds?league=${lid}&season=${season}`, 3600000)
-      .then(res => {
+      .then(async res => {
         if (mounted) {
           setRounds(res || []);
           if (res?.length) {
-
-            const lastRound = [...res].reverse().find(r => r) || res[res.length - 1];
-            setSelectedRound(lastRound);
+            // Chercher la dernière journée avec des matchs terminés
+            try {
+              const fixtures = await api(`/fixtures?league=${lid}&season=${season}&last=10`, 3600000);
+              if (fixtures?.length) {
+                // Prendre le round du match le plus récent terminé
+                const lastPlayed = fixtures
+                  .filter(f => DONE_ST.has(f.fixture.status.short) || LIVE_ST.has(f.fixture.status.short))
+                  .sort((a, b) => new Date(b.fixture.date) - new Date(a.fixture.date))[0];
+                if (lastPlayed?.league?.round && res.includes(lastPlayed.league.round)) {
+                  setSelectedRound(lastPlayed.league.round);
+                  return;
+                }
+              }
+            } catch {}
+            // Fallback : première journée
+            setSelectedRound(res[0]);
           }
         }
       });
