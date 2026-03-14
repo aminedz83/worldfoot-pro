@@ -48,7 +48,7 @@
     <script>
         if ("serviceWorker" in navigator) {
             const sw = `
-    const C='wf-pro-v57';
+    const C='wf-pro-v58';
     self.addEventListener('install',e=>{e.waitUntil(caches.open(C).then(c=>c.addAll(['./'])).then(()=>self.skipWaiting()));});
     self.addEventListener('activate',e=>{e.waitUntil(caches.keys().then(ks=>Promise.all(ks.filter(k=>k!==C).map(k=>caches.delete(k)))).then(()=>self.clients.claim()));});
     self.addEventListener('push',e=>{
@@ -3741,6 +3741,7 @@ function MatchDetail({state,onClose,onTeam}){
     const curHg=fix?.goals?.home??null;
     const curAg=fix?.goals?.away??null;
     const hasScore=curHg!==null&&curAg!==null;
+    const total=st.length;
 
     const projH = (r)=>{
       if(!isLive||!hasScore||r.team?.id!==hid&&r.team?.id!==aid) return null;
@@ -3751,54 +3752,93 @@ function MatchDetail({state,onClose,onTeam}){
       return r.points;
     };
 
+    const getZone = (rank) => {
+      const lid = fix?.league?.id;
+      if ([39,140,135,78,61].includes(lid)) {
+        if (rank <= 4) return { bar: "#2563eb", bg: "rgba(37,99,235,.06)" };
+        if (rank === 5) return { bar: "#eab308", bg: "rgba(234,179,8,.06)" };
+        if (rank >= total - 2) return { bar: "#ef4444", bg: "rgba(239,68,68,.06)" };
+      }
+      if (lid === 186) {
+        if (rank <= 2) return { bar: "#2563eb", bg: "rgba(37,99,235,.06)" };
+        if (rank >= total - 2) return { bar: "#ef4444", bg: "rgba(239,68,68,.06)" };
+      }
+      return null;
+    };
+
     return React.createElement(React.Fragment,null,
-      isLive?React.createElement("div",{style:{display:"flex",alignItems:"center",gap:6,padding:"7px 12px",background:"rgba(229,57,53,.06)",borderRadius:8,marginBottom:8,border:"1px solid rgba(229,57,53,.15)"}},
-        React.createElement("div",{style:{width:7,height:7,borderRadius:"50%",background:"#e53935",animation:"pulse 1.2s infinite",flexShrink:0}}),
-        React.createElement("span",{style:{fontSize:11,fontWeight:700,color:"#e53935",letterSpacing:.5}},"CLASSEMENT MIS À JOUR EN LIVE"),
-        React.createElement("span",{style:{fontSize:10,color:"rgba(229,57,53,.6)",marginLeft:"auto"}},"↻ 60s")
-      ):null,
-      React.createElement("div",{style:{overflowX:"auto"}},
-        React.createElement("table",{style:{width:"100%",borderCollapse:"collapse"}},
-          React.createElement("thead",null,
-            React.createElement("tr",null,
-              [{w:28,label:"#"},{w:null,label:"Équipe",cls:"team-col"},{w:null,label:"MJ"},{w:null,label:"G/N/P"},{w:null,label:"Buts"},{w:null,label:"PTS"}].map((h,i)=>
-                React.createElement("th",{key:i,style:{background:"rgba(0,0,0,.04)",fontFamily:"'Barlow Condensed',sans-serif",fontSize:9,fontWeight:700,color:"rgba(17,24,39,0.69)",letterSpacing:1,textTransform:"uppercase",padding:"8px 4px",textAlign:h.cls?"left":"center",paddingLeft:h.cls?10:4,borderBottom:"1px solid rgba(0,0,0,.07)",width:h.w||undefined}},[h.label])
+
+      // Badge live
+      isLive ? React.createElement("div",{style:{display:"flex",alignItems:"center",gap:6,padding:"7px 14px",background:"rgba(229,57,53,.06)",marginBottom:8,borderBottom:"1px solid rgba(229,57,53,.12)"}},
+        React.createElement("div",{style:{width:6,height:6,borderRadius:"50%",background:"#e53535",animation:"pulse 1.2s infinite",flexShrink:0}}),
+        React.createElement("span",{style:{fontSize:11,fontWeight:700,color:"#e53535",letterSpacing:.5}},"LIVE · mise à jour toutes les 60s")
+      ) : null,
+
+      // Header colonnes
+      React.createElement("div",{style:{display:"flex",alignItems:"center",padding:"6px 14px",background:"#f8fafc",borderBottom:"1px solid #f1f5f9"}},
+        React.createElement("div",{style:{width:24,fontSize:9,fontWeight:700,color:"#94a3b8",textAlign:"center",flexShrink:0}},"#"),
+        React.createElement("div",{style:{flex:1,fontSize:9,fontWeight:700,color:"#94a3b8",paddingLeft:8}},"ÉQUIPE"),
+        React.createElement("div",{style:{width:26,fontSize:9,fontWeight:700,color:"#94a3b8",textAlign:"center",flexShrink:0}},"MJ"),
+        React.createElement("div",{style:{width:26,fontSize:9,fontWeight:700,color:"#22c55e",textAlign:"center",flexShrink:0}},"V"),
+        React.createElement("div",{style:{width:26,fontSize:9,fontWeight:700,color:"#94a3b8",textAlign:"center",flexShrink:0}},"N"),
+        React.createElement("div",{style:{width:26,fontSize:9,fontWeight:700,color:"#ef4444",textAlign:"center",flexShrink:0}},"D"),
+        React.createElement("div",{style:{width:26,fontSize:9,fontWeight:700,color:"#94a3b8",textAlign:"center",flexShrink:0}},"DB"),
+        React.createElement("div",{style:{width:36,fontSize:9,fontWeight:700,color:"#0f172a",textAlign:"center",flexShrink:0}},"PTS")
+      ),
+
+      // Lignes
+      React.createElement("div",null,
+        st.map(r=>{
+          const isHm=r.team?.id===hid, isAw=r.team?.id===aid;
+          const proj=projH(r);
+          const zone=getZone(r.rank);
+          const gd=(r.all?.goals?.for||0)-(r.all?.goals?.against||0);
+          const form=r.form||"";
+          const rowBg = isHm?"rgba(0,193,112,.07)":isAw?"rgba(37,99,235,.06)":zone?zone.bg:"#fff";
+          const barColor = isHm?"#00c170":isAw?"#2563eb":zone?zone.bar:"transparent";
+
+          return React.createElement("div",{
+            key:r.team?.id,
+            style:{display:"flex",alignItems:"center",padding:"9px 14px",borderBottom:"1px solid #f8fafc",background:rowBg,borderLeft:`3px solid ${barColor}`}
+          },
+            React.createElement("div",{style:{width:24,flexShrink:0,textAlign:"center"}},
+              r.rank===1
+                ? React.createElement("span",{style:{fontSize:14}},"🥇")
+                : React.createElement("span",{style:{fontSize:12,fontWeight:700,color:zone?zone.bar:"#64748b"}},[r.rank])
+            ),
+            React.createElement("div",{style:{flex:1,display:"flex",alignItems:"center",gap:8,minWidth:0,paddingLeft:4}},
+              React.createElement("img",{src:r.team?.logo,style:{width:20,height:20,objectFit:"contain",flexShrink:0},onError:e=>{e.target.style.display="none"}}),
+              React.createElement("div",{style:{minWidth:0}},
+                React.createElement("div",{style:{fontSize:13,fontWeight:isHm||isAw?700:500,color:"#0f172a",overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap"}},
+                  r.team?.name,
+                  isLive&&hasScore&&(isHm||isAw)
+                    ? React.createElement("span",{style:{fontSize:10,fontWeight:800,color:"#e53535",background:"rgba(229,53,53,.1)",borderRadius:4,padding:"1px 5px",marginLeft:6,animation:"pulse 1.4s infinite"}},
+                        isHm?`${curHg}-${curAg}`:`${curAg}-${curHg}`
+                      )
+                    : null
+                ),
+                form ? React.createElement("div",{style:{display:"flex",gap:2,marginTop:2}},
+                  form.slice(-5).split("").map((fc,i)=>
+                    React.createElement("div",{key:i,style:{width:8,height:8,borderRadius:2,flexShrink:0,background:fc==="W"?"#22c55e":fc==="D"?"#f59e0b":"#ef4444"}})
+                  )
+                ) : null
+              )
+            ),
+            React.createElement("div",{style:{width:26,textAlign:"center",fontSize:12,color:"#64748b",flexShrink:0}},[r.all?.played||0]),
+            React.createElement("div",{style:{width:26,textAlign:"center",fontSize:12,fontWeight:600,color:"#22c55e",flexShrink:0}},[r.all?.win||0]),
+            React.createElement("div",{style:{width:26,textAlign:"center",fontSize:12,color:"#64748b",flexShrink:0}},[r.all?.draw||0]),
+            React.createElement("div",{style:{width:26,textAlign:"center",fontSize:12,fontWeight:600,color:"#ef4444",flexShrink:0}},[r.all?.lose||0]),
+            React.createElement("div",{style:{width:26,textAlign:"center",fontSize:11,color:"#64748b",flexShrink:0}},`${gd>=0?"+":""}${gd}`),
+            React.createElement("div",{style:{width:36,textAlign:"center",flexShrink:0}},
+              React.createElement("div",{style:{background:r.rank===1?"#00c170":zone?zone.bar:"#f1f5f9",color:r.rank===1||zone?"#fff":"#0f172a",borderRadius:8,padding:"3px 0",fontSize:13,fontWeight:900,display:"inline-block",minWidth:28,textAlign:"center"}},
+                r.points,
+                proj!==null&&proj!==r.points
+                  ? React.createElement("div",{style:{fontSize:9,fontWeight:700,color:proj>r.points?"#fff":"rgba(0,0,0,.4)"}},`→${proj}`)
+                  : null
               )
             )
-          ),
-          React.createElement("tbody",null,
-            st.map(r=>{
-              const isHm=r.team?.id===hid,isAw=r.team?.id===aid;
-              const proj=projH(r);
-              const gd=r.goalsDiff;
-              const bFor=r.all?.goals?.for??0,bAga=r.all?.goals?.against??0;
-              const descC=(d=>{d=((d)??"").toLowerCase(); return d.includes("champions league")||d.includes("ligue des champions")||(d.includes("champions")&&!d.includes("conf"))?"#1a56db":d.includes("europa league")||d.includes("ligue europa")?"#e53935":d.includes("conference")||d.includes("conf")?"#f59e0b":d.includes("promotion")?"#00c170":d.includes("releg")||d.includes("relégation")?"#dc2626":d.includes("playoff")||d.includes("play-off")||d.includes("barrage")?"#f59e0b":d.includes("europa")?"#e53935":d.includes("qualif")?"#1a56db":null;})(r.description);
-              const rowBg=isHm?"rgba(0,193,112,.08)":isAw?"rgba(37,99,235,.06)":descC?descC+"12":"#fff";
-              const borderLeft=isHm?"3px solid #00c170":isAw?"3px solid #2563eb":descC?"3px solid "+descC:"3px solid transparent";
-              return React.createElement("tr",{key:r.team?.id,style:{borderBottom:"1px solid rgba(0,0,0,.05)",background:rowBg}},
-                React.createElement("td",{style:{padding:"9px 4px",textAlign:"center",borderLeft}},
-                  React.createElement("span",{style:{fontFamily:"'Barlow Condensed',sans-serif",fontSize:13,fontWeight:800,color:descC||"rgba(17,24,39,.45)"}},[r.rank])
-                ),
-                React.createElement("td",{style:{padding:"9px 4px 9px 10px"}},
-                  React.createElement("div",{style:{display:"flex",alignItems:"center",gap:7}},
-                    React.createElement("img",{src:r.team?.logo,style:{width:18,height:18,objectFit:"contain",flexShrink:0},onError:e=>{e.target.style.display="none"}}),
-                    React.createElement("span",{style:{fontSize:12,fontWeight:isHm||isAw?700:500,color:"#111827",whiteSpace:"nowrap",overflow:"hidden",textOverflow:"ellipsis",maxWidth:95}},[r.team?.name]),
-                    isLive&&hasScore&&(isHm||isAw)?React.createElement("span",{style:{fontSize:10,fontWeight:800,color:"#e53935",background:"rgba(229,57,53,.1)",borderRadius:4,padding:"1px 5px",flexShrink:0,animation:"pulse 1.4s infinite"}},[isHm?`${curHg}-${curAg}`:`${curAg}-${curHg}`]):null
-                  )
-                ),
-                React.createElement("td",{style:{padding:"9px 4px",textAlign:"center",fontSize:12,color:"#111827"}},[r.all?.played??"-"]),
-                React.createElement("td",{style:{padding:"9px 4px",textAlign:"center",fontSize:11,color:"#111827",whiteSpace:"nowrap"}},[`${r.all?.win??0}/${r.all?.draw??0}/${r.all?.lose??0}`]),
-                React.createElement("td",{style:{padding:"9px 4px",textAlign:"center",fontSize:11,color:"#111827",whiteSpace:"nowrap"}},[`${bFor}:${bAga}`]),
-                React.createElement("td",{style:{padding:"9px 4px",textAlign:"center"}},
-                  React.createElement("div",{style:{display:"flex",flexDirection:"column",alignItems:"center",gap:1}},
-                    React.createElement("span",{style:{fontFamily:"'Barlow Condensed',sans-serif",fontSize:14,fontWeight:900,color:isHm||isAw?"#0f1117":"#111827"}},[r.points]),
-                    proj!==null&&proj!==r.points?React.createElement("span",{style:{fontSize:9,fontWeight:700,color:proj>r.points?"#00c170":"rgba(17,24,39,0.51)",background:proj>r.points?"rgba(0,193,112,.1)":"rgba(0,0,0,.04)",borderRadius:3,padding:"0 4px",lineHeight:1.6}},[`→${proj}`]):null
-                  )
-                )
-              );
-            })
-          )
-        )
+          );
+        })
       ),
       (()=>{
         const zcL=desc=>{const d=(desc??"").toLowerCase(); if(d.includes("champions league")||d.includes("ligue des champions")||(d.includes("champions")&&!d.includes("conf"))) return{color:"#1a56db",label:"Ligue des Champions"}; if(d.includes("europa league")||d.includes("ligue europa")) return{color:"#e53935",label:"UEFA Europa League"}; if(d.includes("conference")||d.includes("conf")) return{color:"#f59e0b",label:"Conference League / Qualification"}; if(d.includes("promotion")) return{color:"#00c170",label:desc}; if(d.includes("releg")||d.includes("relégation")) return{color:"#e53935",label:desc}; if(d.includes("playoff")||d.includes("play-off")||d.includes("barrage")) return{color:"#f59e0b",label:desc}; if(d.includes("europa")) return{color:"#e53935",label:desc}; if(d.includes("qualif")) return{color:"#1a56db",label:desc}; return null;};
