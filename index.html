@@ -48,7 +48,7 @@
     <script>
         if ("serviceWorker" in navigator) {
             const sw = `
-    const C='wf-pro-v54';
+    const C='wf-pro-v55';
     self.addEventListener('install',e=>{e.waitUntil(caches.open(C).then(c=>c.addAll(['./'])).then(()=>self.skipWaiting()));});
     self.addEventListener('activate',e=>{e.waitUntil(caches.keys().then(ks=>Promise.all(ks.filter(k=>k!==C).map(k=>caches.delete(k)))).then(()=>self.clients.claim()));});
     self.addEventListener('push',e=>{
@@ -3835,13 +3835,7 @@ function MatchDetail({state,onClose,onTeam}){
       ),
 
       // Date centré
-      React.createElement("div", {style:{
-        textAlign: "center",
-        fontSize: 12,
-        color: "#94a3b8",
-        marginBottom: 14,
-        letterSpacing: 0.3
-      }}, `${ddmm2(fix.fixture.date)} ${hhmm2(fix.fixture.date)}`),
+      React.createElement("div", {style:{ height: 8 }}),
 
       // Logos + Score + Noms
       React.createElement("div", {style:{
@@ -3875,6 +3869,10 @@ function MatchDetail({state,onClose,onTeam}){
           display:"flex", flexDirection:"column", alignItems:"center",
           gap:6, paddingTop:8, flexShrink:0
         }},
+          // Date au-dessus du score
+          React.createElement("span", {style:{
+            fontSize:12, color:"#94a3b8", letterSpacing:0.3, marginBottom:4
+          }}, `${ddmm2(fix.fixture.date)} ${hhmm2(fix.fixture.date)}`),
           React.createElement("div", {style:{
             display:"flex", alignItems:"center", gap:10
           }},
