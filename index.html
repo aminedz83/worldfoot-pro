@@ -48,7 +48,7 @@
     <script>
         if ("serviceWorker" in navigator) {
             const sw = `
-    const C='wf-pro-v63';
+    const C='wf-pro-v66';
     self.addEventListener('install',e=>{e.waitUntil(caches.open(C).then(c=>c.addAll(['./'])).then(()=>self.skipWaiting()));});
     self.addEventListener('activate',e=>{e.waitUntil(caches.keys().then(ks=>Promise.all(ks.filter(k=>k!==C).map(k=>caches.delete(k)))).then(()=>self.clients.claim()));});
     self.addEventListener('push',e=>{
@@ -2995,21 +2995,10 @@ function MatchDetail({state,onClose,onTeam}){
           }
         }
 
-        // Vérification en cours → centré
-        return React.createElement("div", {key:i, style:{
-          display:"flex", alignItems:"center", gap:10,
-          padding:"10px 14px",
-          background: varBg, borderBottom:"1px solid rgba(0,0,0,0.03)",
-          borderLeft:`3px solid ${varColor}`
-        }},
-          React.createElement("span",{style:{fontSize:12,fontWeight:700,color:"rgba(17,24,39,0.4)",minWidth:32,flexShrink:0,fontFamily:"'Barlow Condensed',sans-serif"}}, minStr),
-          varIconEl,
-          React.createElement("div",{style:{flex:1,minWidth:0}},
-            React.createElement("div",{style:{fontSize:13,fontWeight:700,color:varColor}}, varText),
-            playerName ? React.createElement("div",{style:{fontSize:12,color:"rgba(17,24,39,0.5)",marginTop:2}}, playerName) : null
-          )
-        );
-      }
+        // Vérification en cours → ne pas afficher
+        if (!isFinal) return null;
+
+      } // end isVar
 
       const eventClass = isBigChance ? "md-evt-row big-chance" : "md-evt-row";
 
@@ -6603,7 +6592,6 @@ function TeamPage({ teamId, teamName, teamLogo, leagueId, season, onClose }) {
         borderBottom: "1px solid rgba(0,0,0,.05)",
         background: "#fff",
       }}>
-        {}
         <div style={{
           width: 28, height: 28, borderRadius: 8, flexShrink: 0,
           background: res ? FC[res] : ns ? "#f1f5f9" : "#f1f5f9",
@@ -6615,11 +6603,7 @@ function TeamPage({ teamId, teamName, teamLogo, leagueId, season, onClose }) {
             : <span style={{ color: "#94a3b8", fontSize: 9, fontWeight: 700 }}>{ns ? hhmm(m.fixture?.date) : "—"}</span>
           }
         </div>
-
-        {}
         <Logo src={opp?.logo} size={26} />
-
-        {}
         <div style={{ flex: 1, minWidth: 0 }}>
           <div style={{ fontSize: 13, fontWeight: 700, color: "#0f1117", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
             <span style={{ fontSize: 10, color: "#94a3b8", fontWeight: 600, marginRight: 4 }}>{isHome ? "DOM" : "EXT"}</span>
@@ -6630,8 +6614,6 @@ function TeamPage({ teamId, teamName, teamLogo, leagueId, season, onClose }) {
             {m.league?.name} · {DL(m.fixture?.date?.slice(0, 10))}
           </div>
         </div>
-
-        {}
         {done && gF != null && (
           <div style={{
             fontFamily: "monospace", fontSize: 15, fontWeight: 900,
@@ -6682,8 +6664,6 @@ function TeamPage({ teamId, teamName, teamLogo, leagueId, season, onClose }) {
 
   return (
     <div className="md-overlay" style={{ background: "#f1f4f9" }}>
-
-      {}
       <div style={{
         position: "relative", zIndex: 2,
         background: "transparent",
@@ -6701,15 +6681,12 @@ function TeamPage({ teamId, teamName, teamLogo, leagueId, season, onClose }) {
           flexShrink: 0,
         }}>←</button>
       </div>
-
-      {}
       <div style={{
         background: heroGrad,
         padding: "12px 16px 0",
         flexShrink: 0,
         position: "relative", overflow: "hidden",
       }}>
-        {}
         <div style={{
           position: "absolute", right: -30, top: -30,
           width: 180, height: 180, borderRadius: "50%",
@@ -6722,10 +6699,7 @@ function TeamPage({ teamId, teamName, teamLogo, leagueId, season, onClose }) {
           background: "rgba(0,193,112,.05)",
           pointerEvents: "none"
         }} />
-
-        {}
         <div style={{ display: "flex", alignItems: "center", gap: 16, marginBottom: 16, position: "relative" }}>
-          {}
           <div style={{
             width: 76, height: 76, borderRadius: 20, flexShrink: 0,
             background: "rgba(255,255,255,.06)",
@@ -6748,8 +6722,6 @@ function TeamPage({ teamId, teamName, teamLogo, leagueId, season, onClose }) {
                 {team.national && <span style={{ background: "rgba(255,255,255,.1)", borderRadius: 4, padding: "1px 6px", fontSize: 9, fontWeight: 700 }}>NATIONAL</span>}
               </div>
             )}
-
-            {}
             {st && (
               <div style={{ display: "flex", alignItems: "center", gap: 6, marginTop: 8 }}>
                 <div style={{
@@ -6770,8 +6742,6 @@ function TeamPage({ teamId, teamName, teamLogo, leagueId, season, onClose }) {
               </div>
             )}
           </div>
-
-          {}
           {last5.length > 0 && (
             <div style={{ flexShrink: 0, display: "flex", flexDirection: "column", alignItems: "flex-end", gap: 6 }}>
               <div style={{ fontSize: 8, color: "rgba(255,255,255,.3)", fontWeight: 700, textTransform: "uppercase", letterSpacing: ".8px" }}>Forme</div>
@@ -6782,8 +6752,6 @@ function TeamPage({ teamId, teamName, teamLogo, leagueId, season, onClose }) {
             </div>
           )}
         </div>
-
-        {}
         {st && (
           <div style={{
             display: "grid", gridTemplateColumns: "repeat(5,1fr)",
@@ -6814,8 +6782,6 @@ function TeamPage({ teamId, teamName, teamLogo, leagueId, season, onClose }) {
             ))}
           </div>
         )}
-
-        {}
         <div style={{ display: "flex", marginTop: 14, borderTop: "1px solid rgba(255,255,255,.06)", marginLeft: -16, marginRight: -16, paddingLeft: 16 }}>
           {TABS.map(t => (
             <button key={t.id} onClick={() => setTab(t.id)} style={{
@@ -6829,11 +6795,7 @@ function TeamPage({ teamId, teamName, teamLogo, leagueId, season, onClose }) {
           ))}
         </div>
       </div>
-
-      {}
       <div style={{ flex: 1, overflowY: "auto" }}>
-
-        {}
         {tab === "resultats" && (
           <div style={{ paddingBottom: 16 }}>
             {results.length === 0
@@ -6842,8 +6804,6 @@ function TeamPage({ teamId, teamName, teamLogo, leagueId, season, onClose }) {
             }
           </div>
         )}
-
-        {}
         {tab === "prochains" && (
           <div style={{ paddingBottom: 16 }}>
             {next.length === 0
@@ -6852,11 +6812,8 @@ function TeamPage({ teamId, teamName, teamLogo, leagueId, season, onClose }) {
             }
           </div>
         )}
-
-        {}
         {tab === "stats" && (
           <div style={{ padding: 14 }}>
-            {}
             {st && (
               <>
                 <div style={{ fontSize: 10, fontWeight: 800, color: "#94a3b8", textTransform: "uppercase", letterSpacing: ".8px", marginBottom: 10 }}>Bilan</div>
@@ -6886,8 +6843,6 @@ function TeamPage({ teamId, teamName, teamLogo, leagueId, season, onClose }) {
                     </div>
                   ))}
                 </div>
-
-                {}
                 <div style={{ fontSize: 10, fontWeight: 800, color: "#94a3b8", textTransform: "uppercase", letterSpacing: ".8px", marginBottom: 10 }}>Répartition saison</div>
                 <div style={{ background: "#fff", borderRadius: 14, padding: 16, boxShadow: "0 2px 8px rgba(0,0,0,.06)", marginBottom: 16 }}>
                   {[
@@ -6911,8 +6866,6 @@ function TeamPage({ teamId, teamName, teamLogo, leagueId, season, onClose }) {
                 </div>
               </>
             )}
-
-            {}
             {topScore.length > 0 && (
               <>
                 <div style={{ fontSize: 10, fontWeight: 800, color: "#94a3b8", textTransform: "uppercase", letterSpacing: ".8px", marginBottom: 10 }}>Buteurs du club</div>
@@ -6948,11 +6901,8 @@ function TeamPage({ teamId, teamName, teamLogo, leagueId, season, onClose }) {
             )}
           </div>
         )}
-
-        {}
         {tab === "infos" && (
           <div style={{ padding: 14, paddingBottom: 24 }}>
-            {}
             {venue && (
               <div style={{ background: "#fff", borderRadius: 16, overflow: "hidden", boxShadow: "0 4px 20px rgba(0,0,0,.08)", marginBottom: 14 }}>
                 {venue.image && (
@@ -6983,8 +6933,6 @@ function TeamPage({ teamId, teamName, teamLogo, leagueId, season, onClose }) {
                 </div>
               </div>
             )}
-
-            {}
             {team && (
               <div style={{ background: "#fff", borderRadius: 16, overflow: "hidden", boxShadow: "0 4px 20px rgba(0,0,0,.08)" }}>
                 <div style={{ padding: "14px 16px 10px", borderBottom: "1px solid #f1f5f9", display: "flex", alignItems: "center", gap: 12 }}>
