@@ -48,7 +48,7 @@
     <script>
         if ("serviceWorker" in navigator) {
             const sw = `
-    const C='wf-pro-v60';
+    const C='wf-pro-v63';
     self.addEventListener('install',e=>{e.waitUntil(caches.open(C).then(c=>c.addAll(['./'])).then(()=>self.skipWaiting()));});
     self.addEventListener('activate',e=>{e.waitUntil(caches.keys().then(ks=>Promise.all(ks.filter(k=>k!==C).map(k=>caches.delete(k)))).then(()=>self.clients.claim()));});
     self.addEventListener('push',e=>{
@@ -2880,117 +2880,135 @@ function MatchDetail({state,onClose,onTeam}){
           }, "❌ Pénalty manqué") : null;
 
       if(isVar){
-        let varIcon = "📺";
-        let varText = "";
-        let varSubText = "";
-        let varColor = "#ff9800";
-        let varBg = "rgba(255,152,0,.1)";
-
         const d = (e.detail||"").toLowerCase();
-        const comments = (e.comments||"").toLowerCase();
+        const playerName = e.player?.name || e.assist?.name || e.comments || null;
+        const assistName = (!e.player?.name && !e.assist?.name) ? null : (e.assist?.name || null);
 
-        // Décisions finales (rouge/vert)
-        if(d.includes("goal cancelled") || d.includes("but refus") || d.includes("no goal") ||
-           (d.includes("offside") && d.includes("goal")) || d.includes("cancelled")) {
-          varIcon = "❌"; varText = "But Refusé";
-          varSubText = d.includes("offside")||d.includes("hors") ? "Hors-jeu" : d.includes("main")||d.includes("hand") ? "Main" : d.includes("foul")||d.includes("faute") ? "Faute" : "";
-          varColor = "#ef4444"; varBg = "rgba(239,68,68,.08)";
-        }
-        else if(d.includes("goal ok") || d.includes("but accord") || d.includes("goal stands") || d.includes("goal confirmed")) {
-          varIcon = "✅"; varText = "But Accordé";
-          varColor = "#22c55e"; varBg = "rgba(34,197,94,.08)";
-        }
-        else if(d.includes("penalty cancel") || d.includes("penalty annul") || d.includes("no penalty")) {
-          varIcon = "❌"; varText = "Penalty Annulé";
-          varColor = "#ef4444"; varBg = "rgba(239,68,68,.08)";
-        }
-        else if(d.includes("penalty ok") || d.includes("penalty confirm") || d.includes("penalty stands")) {
-          varIcon = "✅"; varText = "Penalty Confirmé";
-          varColor = "#22c55e"; varBg = "rgba(34,197,94,.08)";
-        }
-        else if(d.includes("red card cancel") || d.includes("rouge annul")) {
-          varIcon = "❌"; varText = "Carton Rouge Annulé";
-          varColor = "#ef4444"; varBg = "rgba(239,68,68,.08)";
-        }
-        else if(d.includes("red card ok") || d.includes("rouge confirm")) {
-          varIcon = "🟥"; varText = "Carton Rouge Confirmé";
-          varColor = "#ef4444"; varBg = "rgba(239,68,68,.08)";
-        }
-        // Vérifications en cours (orange)
-        else if(d.includes("offside") || d.includes("hors-jeu") || d.includes("hors jeu")) {
-          varIcon = "📺"; varText = "Vérification hors-jeu";
-          varColor = "#f59e0b"; varBg = "rgba(245,158,11,.08)";
-        }
-        else if(d.includes("hand") || d.includes("main")) {
-          varIcon = "📺"; varText = "Vérification main";
-          varColor = "#f59e0b"; varBg = "rgba(245,158,11,.08)";
-        }
-        else if(d.includes("foul") || d.includes("faute")) {
-          varIcon = "📺"; varText = "Vérification faute";
-          varColor = "#f59e0b"; varBg = "rgba(245,158,11,.08)";
-        }
-        else if(d.includes("penalty")) {
-          varIcon = "📺"; varText = "Vérification penalty";
-          varColor = "#f59e0b"; varBg = "rgba(245,158,11,.08)";
-        }
-        else if(d.includes("goal") || d.includes("but")) {
-          varIcon = "📺"; varText = "Vérification but";
-          varColor = "#f59e0b"; varBg = "rgba(245,158,11,.08)";
-        }
-        else if(d.includes("red") || d.includes("rouge")) {
-          varIcon = "📺"; varText = "Vérification carton rouge";
-          varColor = "#f59e0b"; varBg = "rgba(245,158,11,.08)";
-        }
-        else {
-          varIcon = "📺";
-          varText = e.detail ? `VAR · ${e.detail}` : "Vérification VAR";
-          varColor = "#f59e0b"; varBg = "rgba(245,158,11,.08)";
-        }
+        // Déterminer si c'est une décision finale ou une vérification en cours
+        const isDecision = d.includes("goal cancelled")||d.includes("cancelled")||d.includes("no goal")||
+          d.includes("goal ok")||d.includes("goal stands")||d.includes("goal confirmed")||
+          d.includes("penalty cancel")||d.includes("no penalty")||
+          d.includes("penalty ok")||d.includes("penalty confirm")||
+          d.includes("red card cancel")||d.includes("red card ok");
 
-        const playerName = e.player?.name || e.assist?.name || null;
+        // Motif
+        const reason = d.includes("handball")||d.includes("main") ? "main"
+          : d.includes("offside")||d.includes("hors") ? "hors-jeu"
+          : d.includes("foul")||d.includes("faute") ? "faute"
+          : d.includes("simulation")||d.includes("diving") ? "simulation"
+          : "";
 
-        // Afficher du bon côté selon l'équipe
-        if (isHome) {
-          return React.createElement("div", {
-            key: i,
-            style: {
-              display: "flex", alignItems: "center", gap: 8,
-              padding: "9px 12px 9px 14px",
-              background: varBg,
-              borderBottom: "1px solid rgba(0,0,0,0.03)",
-              borderLeft: `3px solid ${varColor}`
-            }
-          },
-            React.createElement("span", {style:{fontSize:12,fontWeight:700,color:"rgba(17,24,39,0.4)",minWidth:32,flexShrink:0,fontFamily:"'Barlow Condensed',sans-serif"}}, minStr),
-            React.createElement("div", {style:{width:28,height:28,borderRadius:"50%",background:varColor+"20",display:"flex",alignItems:"center",justifyContent:"center",flexShrink:0,fontSize:14}}, varIcon),
-            React.createElement("div", {style:{flex:1,minWidth:0}},
-              React.createElement("div", {style:{fontSize:12,fontWeight:700,color:varColor}}, varText),
-              playerName ? React.createElement("div", {style:{fontSize:11,color:"rgba(17,24,39,0.5)",marginTop:1}}, playerName) : null,
-              varSubText ? React.createElement("div", {style:{fontSize:10,color:"rgba(17,24,39,0.4)",marginTop:1}}, varSubText) : null
-            ),
-            React.createElement("div", {style:{flex:1}})
-          );
+        let varText = "";
+        let varColor = "#f59e0b";
+        let varBg = "rgba(245,158,11,.06)";
+        let isFinal = false;
+
+        if(d.includes("goal cancelled")||d.includes("cancelled")||d.includes("no goal")) {
+          varText = reason ? `But Refusé - ${reason}` : "But Refusé";
+          varColor = "#ef4444"; varBg = "rgba(239,68,68,.06)"; isFinal = true;
+        } else if(d.includes("goal ok")||d.includes("goal stands")||d.includes("goal confirmed")) {
+          varText = "But Accordé";
+          varColor = "#22c55e"; varBg = "rgba(34,197,94,.06)"; isFinal = true;
+        } else if(d.includes("penalty cancel")||d.includes("no penalty")) {
+          varText = reason ? `Penalty Annulé - ${reason}` : "Penalty Annulé";
+          varColor = "#ef4444"; varBg = "rgba(239,68,68,.06)"; isFinal = true;
+        } else if(d.includes("penalty ok")||d.includes("penalty confirm")) {
+          varText = "Penalty Confirmé";
+          varColor = "#22c55e"; varBg = "rgba(34,197,94,.06)"; isFinal = true;
+        } else if(d.includes("red card cancel")) {
+          varText = "Carton Rouge Annulé";
+          varColor = "#ef4444"; varBg = "rgba(239,68,68,.06)"; isFinal = true;
+        } else if(d.includes("red card ok")) {
+          varText = "Carton Rouge Confirmé";
+          varColor = "#ef4444"; varBg = "rgba(239,68,68,.06)"; isFinal = true;
+        } else if(d.includes("hand")||d.includes("main")) {
+          varText = "Vérification main";
+        } else if(d.includes("offside")||d.includes("hors")) {
+          varText = "Vérification hors-jeu";
+        } else if(d.includes("foul")||d.includes("faute")) {
+          varText = "Vérification faute";
+        } else if(d.includes("penalty")) {
+          varText = "Vérification penalty";
+        } else if(d.includes("goal")||d.includes("but")) {
+          varText = "Vérification but";
+        } else if(d.includes("red")||d.includes("rouge")) {
+          varText = "Vérification carton rouge";
         } else {
-          return React.createElement("div", {
-            key: i,
-            style: {
-              display: "flex", alignItems: "center", gap: 8,
-              padding: "9px 14px 9px 12px",
-              background: varBg,
-              borderBottom: "1px solid rgba(0,0,0,0.03)",
-              borderRight: `3px solid ${varColor}`
-            }
-          },
-            React.createElement("div", {style:{flex:1}}),
-            React.createElement("div", {style:{flex:1,minWidth:0,textAlign:"right"}},
-              React.createElement("div", {style:{fontSize:12,fontWeight:700,color:varColor}}, varText),
-              playerName ? React.createElement("div", {style:{fontSize:11,color:"rgba(17,24,39,0.5)",marginTop:1}}, playerName) : null,
-              varSubText ? React.createElement("div", {style:{fontSize:10,color:"rgba(17,24,39,0.4)",marginTop:1}}, varSubText) : null
-            ),
-            React.createElement("div", {style:{width:28,height:28,borderRadius:"50%",background:varColor+"20",display:"flex",alignItems:"center",justifyContent:"center",flexShrink:0,fontSize:14}}, varIcon),
-            React.createElement("span", {style:{fontSize:12,fontWeight:700,color:"rgba(17,24,39,0.4)",minWidth:32,flexShrink:0,textAlign:"right",fontFamily:"'Barlow Condensed',sans-serif"}}, minStr)
-          );
+          varText = e.detail ? `VAR · ${e.detail}` : "Vérification VAR";
         }
+
+        // Badge VAR
+        const varBadge = React.createElement("span", {style:{
+          fontSize:9, fontWeight:800, color:"#fff",
+          background: varColor,
+          borderRadius:3, padding:"1px 5px", marginLeft:6, flexShrink:0
+        }}, "VAR");
+
+        // Icon
+        const varIconEl = React.createElement("div", {style:{
+          width:30, height:30, borderRadius:"50%",
+          background: varColor+"22",
+          display:"flex", alignItems:"center", justifyContent:"center",
+          flexShrink:0, fontSize:15
+        }}, "📺");
+
+        // Si décision finale → du côté de l'équipe
+        if (isFinal) {
+          if (isHome) {
+            return React.createElement("div", {key:i, style:{
+              display:"flex", alignItems:"center", gap:8,
+              padding:"9px 12px 9px 14px",
+              background: varBg, borderBottom:"1px solid rgba(0,0,0,0.03)",
+              borderLeft:`3px solid ${varColor}`
+            }},
+              React.createElement("span",{style:{fontSize:12,fontWeight:700,color:"rgba(17,24,39,0.4)",minWidth:32,flexShrink:0,fontFamily:"'Barlow Condensed',sans-serif"}}, minStr),
+              varIconEl,
+              React.createElement("div",{style:{flex:1,minWidth:0}},
+                React.createElement("div",{style:{display:"flex",alignItems:"center",gap:0}},
+                  React.createElement("span",{style:{fontSize:13,fontWeight:700,color:varColor}},[varText]),
+                  varBadge
+                ),
+                playerName ? React.createElement("div",{style:{fontSize:12,color:"rgba(17,24,39,0.5)",marginTop:2}}, playerName) : null,
+                assistName ? React.createElement("div",{style:{fontSize:11,color:"rgba(17,24,39,0.35)",marginTop:1}}, `(${assistName})`) : null
+              ),
+              React.createElement("div",{style:{flex:1}})
+            );
+          } else {
+            return React.createElement("div", {key:i, style:{
+              display:"flex", alignItems:"center", gap:8,
+              padding:"9px 14px 9px 12px",
+              background: varBg, borderBottom:"1px solid rgba(0,0,0,0.03)",
+              borderRight:`3px solid ${varColor}`
+            }},
+              React.createElement("div",{style:{flex:1}}),
+              React.createElement("div",{style:{flex:1,minWidth:0,textAlign:"right"}},
+                React.createElement("div",{style:{display:"flex",alignItems:"center",justifyContent:"flex-end",gap:0}},
+                  varBadge,
+                  React.createElement("span",{style:{fontSize:13,fontWeight:700,color:varColor,marginLeft:6}},[varText])
+                ),
+                playerName ? React.createElement("div",{style:{fontSize:12,color:"rgba(17,24,39,0.5)",marginTop:2}}, playerName) : null,
+                assistName ? React.createElement("div",{style:{fontSize:11,color:"rgba(17,24,39,0.35)",marginTop:1}}, `(${assistName})`) : null
+              ),
+              varIconEl,
+              React.createElement("span",{style:{fontSize:12,fontWeight:700,color:"rgba(17,24,39,0.4)",minWidth:32,flexShrink:0,textAlign:"right",fontFamily:"'Barlow Condensed',sans-serif"}}, minStr)
+            );
+          }
+        }
+
+        // Vérification en cours → centré
+        return React.createElement("div", {key:i, style:{
+          display:"flex", alignItems:"center", gap:10,
+          padding:"10px 14px",
+          background: varBg, borderBottom:"1px solid rgba(0,0,0,0.03)",
+          borderLeft:`3px solid ${varColor}`
+        }},
+          React.createElement("span",{style:{fontSize:12,fontWeight:700,color:"rgba(17,24,39,0.4)",minWidth:32,flexShrink:0,fontFamily:"'Barlow Condensed',sans-serif"}}, minStr),
+          varIconEl,
+          React.createElement("div",{style:{flex:1,minWidth:0}},
+            React.createElement("div",{style:{fontSize:13,fontWeight:700,color:varColor}}, varText),
+            playerName ? React.createElement("div",{style:{fontSize:12,color:"rgba(17,24,39,0.5)",marginTop:2}}, playerName) : null
+          )
+        );
       }
 
       const eventClass = isBigChance ? "md-evt-row big-chance" : "md-evt-row";
