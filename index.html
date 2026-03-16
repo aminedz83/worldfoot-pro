@@ -2850,7 +2850,7 @@ function MatchDetail({state,onClose,onTeam}){
     return()=>{stCancelled=true;if(stIv)clearInterval(stIv);};
   },[fix?.fixture?.id,isLive]);
 
-  // CLASSEMENT APRÈS CETTE JOURNÉE SPÉCIFIQUE
+  // CLASSEMENT APRÈS CETTE JOURNÉE SPÉCIFIQUE - VERSION CORRIGÉE
   React.useEffect(() => {
     if (!fix || !fix.league?.round) return;
     
@@ -2870,25 +2870,53 @@ function MatchDetail({state,onClose,onTeam}){
         const roundIndex = roundsList.findIndex(r => r === round);
         if (roundIndex === -1 || cancelled) return;
         
-        // 3. Récupérer TOUS les rounds JUSQU'À ce round inclus
-        const allMatchesUpToNow = [];
+        console.log(`Chargement classement après ${round} (journée ${roundIndex + 1})`);
         
-        for (let i = 0; i <= roundIndex; i++) {
-          const currentRound = roundsList[i];
-          try {
-            const roundMatches = await api(`/fixtures?league=${lid}&season=${season}&round=${encodeURIComponent(currentRound)}`, 3600000);
+        // 3. Récupérer TOUS les matchs de la saison
+        const allMatches = [];
+        
+        // Option 1: Récupérer tous les matchs de la saison en une seule requête (plus fiable)
+        try {
+          const seasonMatches = await api(`/fixtures?league=${lid}&season=${season}`, 3600000);
+          if (seasonMatches && seasonMatches.length > 0) {
+            // Filtrer pour ne garder que les matchs terminés
+            const finishedMatches = seasonMatches.filter(m => DONE_ST.has(m.fixture.status.short));
             
-            if (roundMatches && roundMatches.length > 0) {
-              // Ne prendre que les matchs terminés
-              const finishedMatches = roundMatches.filter(m => DONE_ST.has(m.fixture.status.short));
-              allMatchesUpToNow.push(...finishedMatches);
+            // Ne garder que les matchs jusqu'au round actuel inclus
+            for (const match of finishedMatches) {
+              // Trouver le round de ce match
+              const matchRound = match.league?.round;
+              if (matchRound) {
+                const matchRoundIndex = roundsList.findIndex(r => r === matchRound);
+                if (matchRoundIndex !== -1 && matchRoundIndex <= roundIndex) {
+                  allMatches.push(match);
+                }
+              }
             }
-          } catch (e) {
-            console.log(`Erreur chargement round ${currentRound}`, e);
+          }
+        } catch (e) {
+          console.log("Erreur chargement tous les matchs", e);
+          
+          // Option 2: Fallback - charger round par round
+          for (let i = 0; i <= roundIndex; i++) {
+            const currentRound = roundsList[i];
+            try {
+              const roundMatches = await api(`/fixtures?league=${lid}&season=${season}&round=${encodeURIComponent(currentRound)}`, 3600000);
+              
+              if (roundMatches && roundMatches.length > 0) {
+                // Ne prendre que les matchs terminés
+                const finishedMatches = roundMatches.filter(m => DONE_ST.has(m.fixture.status.short));
+                allMatches.push(...finishedMatches);
+              }
+            } catch (e) {
+              console.log(`Erreur chargement round ${currentRound}`, e);
+            }
           }
         }
         
-        if (allMatchesUpToNow.length === 0 || cancelled) return;
+        console.log(`${allMatches.length} matchs trouvés jusqu'à la J${roundIndex + 1}`);
+        
+        if (allMatches.length === 0 || cancelled) return;
         
         // 4. Récupérer la liste de toutes les équipes de la ligue
         const fullStandings = await api(`/standings?league=${lid}&season=${season}`, 3600000);
@@ -2913,7 +2941,7 @@ function MatchDetail({state,onClose,onTeam}){
         }));
         
         // 6. Calculer les stats pour chaque équipe à partir de TOUS les matchs joués jusqu'à maintenant
-        for (const match of allMatchesUpToNow) {
+        for (const match of allMatches) {
           const homeId = match.teams.home.id;
           const awayId = match.teams.away.id;
           const homeGoals = match.goals.home || 0;
@@ -2988,7 +3016,7 @@ function MatchDetail({state,onClose,onTeam}){
         });
         
         // 9. Calculer la forme (les 5 derniers matchs)
-        const last5Matches = [...allMatchesUpToNow]
+        const last5Matches = [...allMatches]
           .sort((a, b) => new Date(b.fixture.date) - new Date(a.fixture.date))
           .slice(0, 5);
         
@@ -3014,11 +3042,11 @@ function MatchDetail({state,onClose,onTeam}){
             standings: [roundStandingsData]
           });
           
-          // DEBUG: Afficher dans la console pour vérifier
-          console.log(`Classement après ${round} (${roundIndex + 1} journées jouées)`);
-          console.log(roundStandingsData.slice(0, 5).map(t => 
-            `${t.rank}. ${t.team.name} - ${t.points} pts (${t.all.played} MJ)`
-          ));
+          // Afficher les stats pour vérification
+          console.log(`=== CLASSEMENT APRÈS J${roundIndex + 1} ===`);
+          roundStandingsData.slice(0, 5).forEach(t => {
+            console.log(`${t.rank}. ${t.team.name} - ${t.points} pts (${t.all.played} MJ)`);
+          });
         }
       } catch (e) {
         console.log("Erreur chargement classement journée", e);
