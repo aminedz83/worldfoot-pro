@@ -553,7 +553,7 @@
         .md-stat-val-a { text-align: right; }
         .md-stat-bar { height: 3px; background: var(--c-base); border-radius: 4px; overflow: hidden; display: flex; }
         .md-stat-h { height: 100%; background: linear-gradient(90deg, var(--c-jade), var(--c-jade-light)); transform-origin: left; animation: mdBarGrow 0.7s cubic-bezier(0.4,0,0.2,1) forwards; }
-        .md-stat-a { height: 100%; background: linear-gradient(90deg, #3B82F6, #60A5FA); transform-origin: right; animation: mdBarGrow 0.7s cubic-bezier(0.4,0,0.2,1) forwards; margin-left: auto; }
+        .md-stat-a { height: 100%; background: linear-gradient(90deg, #3B82F6, #60A5FA)); transform-origin: right; animation: mdBarGrow 0.7s cubic-bezier(0.4,0,0.2,1) forwards; margin-left: auto; }
 
         .md-info-section { background: var(--c-surface); border-radius: 20px; margin: 12px 12px 8px; padding: 16px; border: 1px solid var(--c-border); box-shadow: var(--s-card); }
         .competition-breadcrumb { display: flex; align-items: center; flex-wrap: wrap; gap: 4px; font-size: 11px; color: var(--c-ink-3); margin-bottom: 12px; padding-bottom: 8px; border-bottom: 1px solid var(--c-border); }
@@ -1465,6 +1465,7 @@ const renderTerrainFlash = (fix, hLu, aLu, players, events, hid, aid, has, hg, a
   );
 };
 
+// VERSION ULTRA PREMIUM - AFFICHE LES DEUX ÉQUIPES CÔTE À CÔTE
 const renderListeFlash = (fix, hLu, aLu, players, events, injuries, hid, aid) => {
   if (!hLu && !aLu && !players.length) {
     return React.createElement("div", { className: "md-empty" },
@@ -1537,574 +1538,789 @@ const renderListeFlash = (fix, hLu, aLu, players, events, injuries, hid, aid) =>
       overflowX: "hidden"
     }
   },
-    React.createElement("div", { style: { marginBottom: 16, width: "100%" } },
+
+    // EN-TÊTE DOUBLE AVEC LOGOS
+    React.createElement("div", {
+      style: {
+        display: "flex",
+        alignItems: "center",
+        justifyContent: "space-between",
+        gap: 16,
+        marginBottom: 20,
+        padding: "16px",
+        background: "linear-gradient(135deg, #f8fafc, #ffffff)",
+        borderBottom: "2px solid #e0e4e8",
+        borderRadius: "12px 12px 0 0",
+        boxShadow: "0 2px 8px rgba(0,0,0,0.05)"
+      }
+    },
+      // Équipe domicile
       React.createElement("div", {
         style: {
+          flex: 1,
           display: "flex",
           alignItems: "center",
-          gap: 10,
-          padding: "10px 8px",
-          background: "linear-gradient(90deg, #f0f2f5, #fff)",
-          borderBottom: "1px solid #e0e4e8",
-          marginBottom: 8,
-          width: "100%",
-          boxSizing: "border-box"
+          gap: 12
         }
       },
         React.createElement("img", {
           src: fix.teams.home.logo,
-          style: { width: 28, height: 28, objectFit: "contain", flexShrink: 0 }
+          style: { width: 48, height: 48, objectFit: "contain", flexShrink: 0 }
         }),
-        React.createElement("span", {
-          style: { fontSize: 16, fontWeight: 800, color: "#1a1d23", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap", flex: 1 }
-        }, fix.teams.home.name),
-        hLu?.formation
-          ? React.createElement("span", {
-              style: {
-                fontSize: 12,
-                color: "#666",
-                background: "#e8eaef",
-                padding: "2px 8px",
-                borderRadius: 12,
-                flexShrink: 0
-              }
-            }, hLu.formation)
-          : null
-      ),
-
-      React.createElement("div", {
-        style: {
-          fontSize: 11,
-          fontWeight: 700,
-          color: "#666",
-          textTransform: "uppercase",
-          letterSpacing: 0.5,
-          padding: "8px 8px 4px"
-        }
-      }, "Compositions de départ"),
-
-      homeTeamData.starters.map((player, index) =>
-        React.createElement("div", {
-          key: `home-starter-${player.id || index}`,
-          style: {
-            display: "flex",
-            alignItems: "center",
-            padding: "6px 8px",
-            borderBottom: "1px solid #f0f2f5",
-            fontSize: 13,
-            width: "100%",
-            boxSizing: "border-box"
-          }
-        },
+        React.createElement("div", { style: { flex: 1 } },
           React.createElement("div", {
-            style: {
-              flex: 1,
-              display: "flex",
-              alignItems: "center",
-              gap: 6,
-              minWidth: 0
-            }
-          },
-            React.createElement("span", {
-              style: {
-                fontSize: 11,
-                color: "#999",
-                minWidth: 24,
-                fontFamily: "monospace",
-                flexShrink: 0
-              }
-            }, `${player.number || "?"}.`),
-
-            (() => {
-              const photoUrl = getPlayerPhoto(player.id);
-              return photoUrl
-                ? React.createElement("img", {
-                    src: photoUrl,
-                    style: { width: 24, height: 24, borderRadius: "50%", objectFit: "cover", flexShrink: 0 },
-                    onError: e => { e.target.style.display = "none"; }
-                  })
-                : React.createElement("div", {
-                    style: {
-                      width: 24,
-                      height: 24,
-                      borderRadius: "50%",
-                      background: "#e8eaef",
-                      display: "flex",
-                      alignItems: "center",
-                      justifyContent: "center",
-                      fontSize: 10,
-                      color: "#666",
-                      flexShrink: 0
-                    }
-                  }, player.number || "?");
-            })(),
-
-            React.createElement("span", {
-              style: {
-                fontWeight: 600,
-                color: "#1a1d23",
-                overflow: "hidden",
-                textOverflow: "ellipsis",
-                whiteSpace: "nowrap",
-                flex: 1
-              }
-            }, player.name || "Joueur"),
-
-            player.pos === "G"
-              ? React.createElement("span", {
-                  style: {
-                    fontSize: 10,
-                    color: "#666",
-                    background: "#f0f2f5",
-                    padding: "1px 4px",
-                    borderRadius: 3,
-                    marginLeft: 4,
-                    flexShrink: 0
-                  }
-                }, "(G)")
-              : null,
-
-            player.events && player.events.goals > 0
-              ? React.createElement("span", {
-                  style: { fontSize: 12, marginLeft: 2, flexShrink: 0 }
-                }, "⚽".repeat(player.events.goals))
-              : null,
-
-            player.events && player.events.yellow > 0
-              ? React.createElement("span", {
-                  style: { fontSize: 12, marginLeft: 2, flexShrink: 0 }
-                }, "🟨")
-              : null,
-
-            player.events && player.events.red > 0
-              ? React.createElement("span", {
-                  style: { fontSize: 12, marginLeft: 2, flexShrink: 0 }
-                }, "🟥")
-              : null,
-
-            player.events && player.events.isVar
-              ? React.createElement("span", {
-                  style: { fontSize: 12, marginLeft: 2, flexShrink: 0, color: "#2563eb" }
-                }, null)
-              : null
-          ),
-
-          player.rating
-            ? React.createElement("div", {
-                style: {
-                  background: getRatingColor(player.rating),
-                  color: "#fff",
-                  fontSize: 11,
-                  fontWeight: 700,
-                  padding: "2px 6px",
-                  borderRadius: 4,
-                  minWidth: 32,
-                  textAlign: "center",
-                  marginRight: 8,
-                  flexShrink: 0
-                }
-              }, player.rating)
-            : React.createElement("div", { style: { width: 32, marginRight: 8, flexShrink: 0 } }),
-
-          React.createElement("span", {
-            style: {
-              color: "#ccc",
-              margin: "0 4px",
-              fontSize: 12,
-              flexShrink: 0
-            }
-          }, "-"),
-
-          React.createElement("div", {
-            style: {
-              flex: 1,
-              display: "flex",
-              alignItems: "center",
-              justifyContent: "flex-end",
-              gap: 6,
-              minWidth: 0
-            }
-          },
-            awayTeamData.starters[index]
-              ? React.createElement(React.Fragment, null,
-                  awayTeamData.starters[index].events && awayTeamData.starters[index].events.goals > 0
-                    ? React.createElement("span", { style: { fontSize: 12, flexShrink: 0 } }, "⚽".repeat(awayTeamData.starters[index].events.goals))
-                    : null,
-
-                  awayTeamData.starters[index].events && awayTeamData.starters[index].events.yellow > 0
-                    ? React.createElement("span", { style: { fontSize: 12, flexShrink: 0 } }, "🟨")
-                    : null,
-
-                  awayTeamData.starters[index].events && awayTeamData.starters[index].events.red > 0
-                    ? React.createElement("span", { style: { fontSize: 12, flexShrink: 0 } }, "🟥")
-                    : null,
-
-                  awayTeamData.starters[index].events && awayTeamData.starters[index].events.isVar
-                    ? React.createElement("span", { style: { fontSize: 12, flexShrink: 0, color: "#2563eb" } }, null)
-                    : null,
-
-                  React.createElement("span", {
-                    style: {
-                      fontWeight: 600,
-                      color: "#1a1d23",
-                      overflow: "hidden",
-                      textOverflow: "ellipsis",
-                      whiteSpace: "nowrap",
-                      textAlign: "right",
-                      flex: 1
-                    }
-                  }, awayTeamData.starters[index].name || "Joueur"),
-
-                  awayTeamData.starters[index].pos === "G"
-                    ? React.createElement("span", {
-                        style: {
-                          fontSize: 10,
-                          color: "#666",
-                          background: "#f0f2f5",
-                          padding: "1px 4px",
-                          borderRadius: 3,
-                          marginRight: 4,
-                          flexShrink: 0
-                        }
-                      }, "(G)")
-                    : null,
-
-                  (() => {
-                    const photoUrl = getPlayerPhoto(awayTeamData.starters[index].id);
-                    return photoUrl
-                      ? React.createElement("img", {
-                          src: photoUrl,
-                          style: { width: 24, height: 24, borderRadius: "50%", objectFit: "cover", flexShrink: 0 },
-                          onError: e => { e.target.style.display = "none"; }
-                        })
-                      : React.createElement("div", {
-                          style: {
-                            width: 24,
-                            height: 24,
-                            borderRadius: "50%",
-                            background: "#e8eaef",
-                            display: "flex",
-                            alignItems: "center",
-                            justifyContent: "center",
-                            fontSize: 10,
-                            color: "#666",
-                            flexShrink: 0
-                          }
-                        }, awayTeamData.starters[index].number || "?");
-                  })(),
-
-                  React.createElement("span", {
-                    style: {
-                      fontSize: 11,
-                      color: "#999",
-                      minWidth: 24,
-                      fontFamily: "monospace",
-                      textAlign: "right",
-                      flexShrink: 0
-                    }
-                  }, `${awayTeamData.starters[index].number || "?"}.`)
-                )
-              : React.createElement("span", { style: { color: "#ccc", flex: 1, textAlign: "center" } }, "—")
-          ),
-
-          awayTeamData.starters[index] && awayTeamData.starters[index].rating
-            ? React.createElement("div", {
-                style: {
-                  background: getRatingColor(awayTeamData.starters[index].rating),
-                  color: "#fff",
-                  fontSize: 11,
-                  fontWeight: 700,
-                  padding: "2px 6px",
-                  borderRadius: 4,
-                  minWidth: 32,
-                  textAlign: "center",
-                  marginLeft: 8,
-                  flexShrink: 0
-                }
-              }, awayTeamData.starters[index].rating)
-            : React.createElement("div", { style: { width: 32, marginLeft: 8, flexShrink: 0 } })
-        )
-      ),
-
-      React.createElement("div", {
-        style: {
-          fontSize: 11,
-          fontWeight: 700,
-          color: "#666",
-          textTransform: "uppercase",
-          letterSpacing: 0.5,
-          padding: "16px 8px 4px",
-          marginTop: 8,
-          borderTop: "1px solid #e0e4e8"
-        }
-      }, "Remplaçants"),
-
-      homeTeamData.subs.map((player, index) =>
-        React.createElement("div", {
-          key: `home-sub-${player.id || index}`,
-          style: {
-            display: "flex",
-            alignItems: "center",
-            padding: "6px 8px",
-            borderBottom: "1px solid #f0f2f5",
-            fontSize: 13,
-            opacity: 0.9,
-            width: "100%",
-            boxSizing: "border-box"
-          }
-        },
-          React.createElement("div", {
-            style: {
-              flex: 1,
-              display: "flex",
-              alignItems: "center",
-              gap: 6,
-              minWidth: 0
-            }
-          },
-            React.createElement("span", {
-              style: {
-                fontSize: 11,
-                color: "#999",
-                minWidth: 24,
-                fontFamily: "monospace",
-                flexShrink: 0
-              }
-            }, `${player.number || "?"}.`),
-
-            (() => {
-              const photoUrl = getPlayerPhoto(player.id);
-              return photoUrl
-                ? React.createElement("img", {
-                    src: photoUrl,
-                    style: { width: 24, height: 24, borderRadius: "50%", objectFit: "cover", flexShrink: 0 },
-                    onError: e => { e.target.style.display = "none"; }
-                  })
-                : React.createElement("div", {
-                    style: {
-                      width: 24,
-                      height: 24,
-                      borderRadius: "50%",
-                      background: "#e8eaef",
-                      display: "flex",
-                      alignItems: "center",
-                      justifyContent: "center",
-                      fontSize: 10,
-                      color: "#666",
-                      flexShrink: 0
-                    }
-                  }, player.number || "?");
-            })(),
-
-            React.createElement("span", {
-              style: {
-                fontWeight: 500,
-                color: "#1a1d23",
-                overflow: "hidden",
-                textOverflow: "ellipsis",
-                whiteSpace: "nowrap",
-                flex: 1
-              }
-            }, player.name || "Joueur"),
-
-            player.pos === "G"
-              ? React.createElement("span", {
-                  style: {
-                    fontSize: 10,
-                    color: "#666",
-                    background: "#f0f2f5",
-                    padding: "1px 4px",
-                    borderRadius: 3,
-                    marginLeft: 4,
-                    flexShrink: 0
-                  }
-                }, "(G)")
-              : null
-          ),
-
-          player.rating
-            ? React.createElement("div", {
-                style: {
-                  background: getRatingColor(player.rating),
-                  color: "#fff",
-                  fontSize: 11,
-                  fontWeight: 700,
-                  padding: "2px 6px",
-                  borderRadius: 4,
-                  minWidth: 32,
-                  textAlign: "center",
-                  marginRight: 8,
-                  flexShrink: 0
-                }
-              }, player.rating)
-            : React.createElement("div", { style: { width: 32, marginRight: 8, flexShrink: 0 } }),
-
-          React.createElement("span", { style: { width: 32, flexShrink: 0 } })
-        )
-      ),
-
-      (homeAbsent.length > 0 || awayAbsent.length > 0) &&
-        React.createElement("div", {
-          style: {
-            fontSize: 11,
-            fontWeight: 700,
-            color: "#666",
-            textTransform: "uppercase",
-            letterSpacing: 0.5,
-            padding: "16px 8px 4px",
-            marginTop: 8,
-            borderTop: "1px solid #e0e4e8"
-          }
-        }, "Joueurs absents"),
-
-      homeAbsent.map((player, index) =>
-        React.createElement("div", {
-          key: `home-absent-${index}`,
-          style: {
-            display: "flex",
-            alignItems: "center",
-            padding: "6px 8px",
-            borderBottom: "1px solid #f0f2f5",
-            fontSize: 13,
-            color: "#e53935",
-            width: "100%",
-            boxSizing: "border-box"
-          }
-        },
-          React.createElement("div", {
-            style: {
-              flex: 1,
-              display: "flex",
-              alignItems: "center",
-              gap: 8
-            }
-          },
-            player.photo
-              ? React.createElement("img", {
-                  src: player.photo,
-                  style: { width: 24, height: 24, borderRadius: "50%", objectFit: "cover" }
-                })
-              : React.createElement("div", {
-                  style: {
-                    width: 24,
-                    height: 24,
-                    borderRadius: "50%",
-                    background: "#ffe5e5",
-                    display: "flex",
-                    alignItems: "center",
-                    justifyContent: "center",
-                    fontSize: 10,
-                    color: "#e53935"
-                  }
-                }, "⚠️"),
-
-            React.createElement("span", {
-              style: { fontWeight: 500, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }
-            }, player.name)
-          ),
-
-          React.createElement("span", {
+            style: { fontSize: 18, fontWeight: 800, color: "#1a1d23", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }
+          }, fix.teams.home.name),
+          hLu?.formation && React.createElement("span", {
             style: {
               fontSize: 12,
-              color: "#e53935",
-              background: "#ffe5e5",
-              padding: "2px 8px",
-              borderRadius: 12,
-              flexShrink: 0
+              color: "#00c170",
+              background: "rgba(0,193,112,0.1)",
+              padding: "2px 10px",
+              borderRadius: 16,
+              display: "inline-block",
+              marginTop: 4,
+              fontWeight: 700
             }
-          }, player.reason)
+          }, `⚽ ${hLu.formation}`)
         )
       ),
 
+      // Séparateur VS
       React.createElement("div", {
         style: {
-          fontSize: 11,
-          fontWeight: 700,
-          color: "#666",
-          textTransform: "uppercase",
-          letterSpacing: 0.5,
-          padding: "16px 8px 4px",
-          marginTop: 8,
-          borderTop: "1px solid #e0e4e8"
+          background: "#00c170",
+          color: "#fff",
+          padding: "4px 12px",
+          borderRadius: 20,
+          fontSize: 12,
+          fontWeight: 900,
+          letterSpacing: 1,
+          flexShrink: 0
         }
-      }, "Entraineurs"),
+      }, "VS"),
 
+      // Équipe extérieure
       React.createElement("div", {
+        style: {
+          flex: 1,
+          display: "flex",
+          alignItems: "center",
+          gap: 12,
+          justifyContent: "flex-end"
+        }
+      },
+        React.createElement("div", { style: { textAlign: "right", flex: 1 } },
+          React.createElement("div", {
+            style: { fontSize: 18, fontWeight: 800, color: "#1a1d23", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }
+          }, fix.teams.away.name),
+          aLu?.formation && React.createElement("span", {
+            style: {
+              fontSize: 12,
+              color: "#2563eb",
+              background: "rgba(37,99,235,0.1)",
+              padding: "2px 10px",
+              borderRadius: 16,
+              display: "inline-block",
+              marginTop: 4,
+              fontWeight: 700
+            }
+          }, `⚽ ${aLu.formation}`)
+        ),
+        React.createElement("img", {
+          src: fix.teams.away.logo,
+          style: { width: 48, height: 48, objectFit: "contain", flexShrink: 0 }
+        })
+      )
+    ),
+
+    // SECTION TITULAIRES
+    React.createElement("div", {
+      style: {
+        display: "flex",
+        alignItems: "center",
+        padding: "10px 16px",
+        background: "linear-gradient(90deg, #00c170, #2563eb)",
+        color: "#fff",
+        fontWeight: 800,
+        fontSize: 13,
+        textTransform: "uppercase",
+        letterSpacing: 1,
+        marginBottom: 8,
+        borderRadius: "8px 8px 0 0"
+      }
+    },
+      React.createElement("span", { style: { flex: 1 } }, "TITULAIRES"),
+      React.createElement("span", { style: { fontSize: 11, opacity: 0.9 } }, "NOTES"),
+      React.createElement("span", { style: { width: 40, textAlign: "center", marginLeft: 8 } }, "")
+    ),
+
+    // TITULAIRES DES DEUX ÉQUIPES
+    Array.from({ length: Math.max(homeTeamData.starters.length, awayTeamData.starters.length) }).map((_, index) => {
+      const homePlayer = homeTeamData.starters[index];
+      const awayPlayer = awayTeamData.starters[index];
+
+      return React.createElement("div", {
+        key: `starter-row-${index}`,
         style: {
           display: "flex",
           alignItems: "center",
-          justifyContent: "space-between",
-          padding: "8px 8px",
-          width: "100%",
-          boxSizing: "border-box"
+          borderBottom: "1px solid #f0f2f5",
+          background: index % 2 === 0 ? "#fff" : "#fafbfc"
         }
       },
+        // Joueur domicile
         React.createElement("div", {
           style: {
+            flex: 1,
             display: "flex",
             alignItems: "center",
-            gap: 8,
-            flex: 1,
-            minWidth: 0
+            padding: "10px 12px",
+            borderRight: "1px solid #f0f2f5"
           }
         },
-          hLu?.coach?.photo
-            ? React.createElement("img", {
-                src: hLu.coach.photo,
-                style: { width: 28, height: 28, borderRadius: "50%", objectFit: "cover", flexShrink: 0 }
-              })
-            : React.createElement("div", {
-                style: {
-                  width: 28,
-                  height: 28,
-                  borderRadius: "50%",
-                  background: "#f0f2f5",
-                  display: "flex",
-                  alignItems: "center",
-                  justifyContent: "center",
-                  fontSize: 14,
-                  flexShrink: 0
-                }
-              }, "🧑‍💼"),
+          homePlayer ? React.createElement(React.Fragment, null,
+            React.createElement("span", {
+              style: {
+                fontSize: 12,
+                color: "#999",
+                minWidth: 30,
+                fontFamily: "monospace",
+                flexShrink: 0
+              }
+            }, `${homePlayer.number || "?"}.`),
 
-          React.createElement("span", {
-            style: { fontWeight: 600, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap", flex: 1 }
-          }, hLu?.coach?.name || "Non communiqué")
+            (() => {
+              const photoUrl = getPlayerPhoto(homePlayer.id);
+              return photoUrl
+                ? React.createElement("img", {
+                    src: photoUrl,
+                    style: { width: 32, height: 32, borderRadius: "50%", objectFit: "cover", flexShrink: 0, marginRight: 8 },
+                    onError: e => { e.target.style.display = "none"; }
+                  })
+                : React.createElement("div", {
+                    style: {
+                      width: 32,
+                      height: 32,
+                      borderRadius: "50%",
+                      background: "#e8eaef",
+                      display: "flex",
+                      alignItems: "center",
+                      justifyContent: "center",
+                      fontSize: 12,
+                      color: "#666",
+                      flexShrink: 0,
+                      marginRight: 8
+                    }
+                  }, homePlayer.number || "?");
+            })(),
+
+            React.createElement("div", { style: { flex: 1, minWidth: 0 } },
+              React.createElement("div", {
+                style: {
+                  fontWeight: 600,
+                  color: "#1a1d23",
+                  overflow: "hidden",
+                  textOverflow: "ellipsis",
+                  whiteSpace: "nowrap",
+                  fontSize: 13
+                }
+              }, homePlayer.name || "Joueur"),
+              React.createElement("div", {
+                style: {
+                  display: "flex",
+                  gap: 4,
+                  marginTop: 2
+                }
+              },
+                homePlayer.pos === "G" && React.createElement("span", {
+                  style: {
+                    fontSize: 9,
+                    color: "#666",
+                    background: "#f0f2f5",
+                    padding: "1px 6px",
+                    borderRadius: 4
+                  }
+                }, "G"),
+                homePlayer.events && homePlayer.events.goals > 0 && React.createElement("span", {
+                  style: { fontSize: 10 }
+                }, "⚽".repeat(homePlayer.events.goals)),
+                homePlayer.events && homePlayer.events.yellow > 0 && React.createElement("span", {
+                  style: { fontSize: 10 }
+                }, "🟨"),
+                homePlayer.events && homePlayer.events.red > 0 && React.createElement("span", {
+                  style: { fontSize: 10 }
+                }, "🟥")
+              )
+            ),
+
+            homePlayer.rating && React.createElement("div", {
+              style: {
+                background: getRatingColor(homePlayer.rating),
+                color: "#fff",
+                fontSize: 11,
+                fontWeight: 700,
+                padding: "2px 8px",
+                borderRadius: 6,
+                minWidth: 36,
+                textAlign: "center",
+                marginLeft: 8,
+                flexShrink: 0
+              }
+            }, homePlayer.rating)
+          ) : React.createElement("div", { style: { height: 42 } })
         ),
 
+        // Joueur extérieur
         React.createElement("div", {
           style: {
+            flex: 1,
             display: "flex",
             alignItems: "center",
-            gap: 8,
-            flex: 1,
-            minWidth: 0,
+            padding: "10px 12px",
             justifyContent: "flex-end"
           }
         },
-          React.createElement("span", {
-            style: { fontWeight: 600, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap", textAlign: "right", flex: 1 }
-          }, aLu?.coach?.name || "Non communiqué"),
+          awayPlayer ? React.createElement(React.Fragment, null,
+            awayPlayer.rating && React.createElement("div", {
+              style: {
+                background: getRatingColor(awayPlayer.rating),
+                color: "#fff",
+                fontSize: 11,
+                fontWeight: 700,
+                padding: "2px 8px",
+                borderRadius: 6,
+                minWidth: 36,
+                textAlign: "center",
+                marginRight: 8,
+                flexShrink: 0
+              }
+            }, awayPlayer.rating),
 
-          aLu?.coach?.photo
-            ? React.createElement("img", {
-                src: aLu.coach.photo,
-                style: { width: 28, height: 28, borderRadius: "50%", objectFit: "cover", flexShrink: 0 }
-              })
-            : React.createElement("div", {
+            React.createElement("div", { style: { textAlign: "right", flex: 1, minWidth: 0 } },
+              React.createElement("div", {
                 style: {
-                  width: 28,
-                  height: 28,
-                  borderRadius: "50%",
-                  background: "#f0f2f5",
-                  display: "flex",
-                  alignItems: "center",
-                  justifyContent: "center",
-                  fontSize: 14,
-                  flexShrink: 0
+                  fontWeight: 600,
+                  color: "#1a1d23",
+                  overflow: "hidden",
+                  textOverflow: "ellipsis",
+                  whiteSpace: "nowrap",
+                  fontSize: 13
                 }
-              }, "🧑‍💼")
+              }, awayPlayer.name || "Joueur"),
+              React.createElement("div", {
+                style: {
+                  display: "flex",
+                  gap: 4,
+                  marginTop: 2,
+                  justifyContent: "flex-end"
+                }
+              },
+                awayPlayer.events && awayPlayer.events.red > 0 && React.createElement("span", {
+                  style: { fontSize: 10 }
+                }, "🟥"),
+                awayPlayer.events && awayPlayer.events.yellow > 0 && React.createElement("span", {
+                  style: { fontSize: 10 }
+                }, "🟨"),
+                awayPlayer.events && awayPlayer.events.goals > 0 && React.createElement("span", {
+                  style: { fontSize: 10 }
+                }, "⚽".repeat(awayPlayer.events.goals)),
+                awayPlayer.pos === "G" && React.createElement("span", {
+                  style: {
+                    fontSize: 9,
+                    color: "#666",
+                    background: "#f0f2f5",
+                    padding: "1px 6px",
+                    borderRadius: 4
+                  }
+                }, "G")
+              )
+            ),
+
+            (() => {
+              const photoUrl = getPlayerPhoto(awayPlayer.id);
+              return photoUrl
+                ? React.createElement("img", {
+                    src: photoUrl,
+                    style: { width: 32, height: 32, borderRadius: "50%", objectFit: "cover", flexShrink: 0, marginLeft: 8, order: 3 },
+                    onError: e => { e.target.style.display = "none"; }
+                  })
+                : React.createElement("div", {
+                    style: {
+                      width: 32,
+                      height: 32,
+                      borderRadius: "50%",
+                      background: "#e8eaef",
+                      display: "flex",
+                      alignItems: "center",
+                      justifyContent: "center",
+                      fontSize: 12,
+                      color: "#666",
+                      flexShrink: 0,
+                      marginLeft: 8,
+                      order: 3
+                    }
+                  }, awayPlayer.number || "?");
+            })(),
+
+            React.createElement("span", {
+              style: {
+                fontSize: 12,
+                color: "#999",
+                minWidth: 30,
+                fontFamily: "monospace",
+                textAlign: "right",
+                flexShrink: 0,
+                marginLeft: 8,
+                order: 4
+              }
+            }, `${awayPlayer.number || "?"}.`)
+          ) : React.createElement("div", { style: { height: 42 } })
         )
+      );
+    }),
+
+    // SECTION REMPLAÇANTS
+    React.createElement("div", {
+      style: {
+        display: "flex",
+        alignItems: "center",
+        padding: "10px 16px",
+        background: "linear-gradient(90deg, #64748b, #475569)",
+        color: "#fff",
+        fontWeight: 800,
+        fontSize: 13,
+        textTransform: "uppercase",
+        letterSpacing: 1,
+        marginTop: 20,
+        marginBottom: 8,
+        borderRadius: "8px 8px 0 0"
+      }
+    },
+      React.createElement("span", { style: { flex: 1 } }, "REMPLAÇANTS"),
+      React.createElement("span", { style: { width: 40, textAlign: "center" } }, "")
+    ),
+
+    // REMPLAÇANTS DES DEUX ÉQUIPES
+    Array.from({ length: Math.max(homeTeamData.subs.length, awayTeamData.subs.length) }).map((_, index) => {
+      const homeSub = homeTeamData.subs[index];
+      const awaySub = awayTeamData.subs[index];
+
+      return React.createElement("div", {
+        key: `sub-row-${index}`,
+        style: {
+          display: "flex",
+          alignItems: "center",
+          borderBottom: index < Math.max(homeTeamData.subs.length, awayTeamData.subs.length) - 1 ? "1px solid #f0f2f5" : "none",
+          background: index % 2 === 0 ? "#fff" : "#fafbfc"
+        }
+      },
+        // Remplaçant domicile
+        React.createElement("div", {
+          style: {
+            flex: 1,
+            display: "flex",
+            alignItems: "center",
+            padding: "8px 12px",
+            borderRight: "1px solid #f0f2f5"
+          }
+        },
+          homeSub ? React.createElement(React.Fragment, null,
+            React.createElement("span", {
+              style: {
+                fontSize: 12,
+                color: "#999",
+                minWidth: 30,
+                fontFamily: "monospace",
+                flexShrink: 0
+              }
+            }, `${homeSub.number || "?"}.`),
+
+            (() => {
+              const photoUrl = getPlayerPhoto(homeSub.id);
+              return photoUrl
+                ? React.createElement("img", {
+                    src: photoUrl,
+                    style: { width: 28, height: 28, borderRadius: "50%", objectFit: "cover", flexShrink: 0, marginRight: 8 },
+                    onError: e => { e.target.style.display = "none"; }
+                  })
+                : React.createElement("div", {
+                    style: {
+                      width: 28,
+                      height: 28,
+                      borderRadius: "50%",
+                      background: "#e8eaef",
+                      display: "flex",
+                      alignItems: "center",
+                      justifyContent: "center",
+                      fontSize: 11,
+                      color: "#666",
+                      flexShrink: 0,
+                      marginRight: 8
+                    }
+                  }, homeSub.number || "?");
+            })(),
+
+            React.createElement("div", { style: { flex: 1, minWidth: 0 } },
+              React.createElement("div", {
+                style: {
+                  fontWeight: 500,
+                  color: "#1a1d23",
+                  overflow: "hidden",
+                  textOverflow: "ellipsis",
+                  whiteSpace: "nowrap",
+                  fontSize: 13
+                }
+              }, homeSub.name || "Joueur"),
+              homeSub.pos === "G" && React.createElement("span", {
+                style: {
+                  fontSize: 9,
+                  color: "#666",
+                  background: "#f0f2f5",
+                  padding: "1px 6px",
+                  borderRadius: 4,
+                  marginTop: 2,
+                  display: "inline-block"
+                }
+              }, "G")
+            )
+          ) : React.createElement("div", { style: { height: 40 } })
+        ),
+
+        // Remplaçant extérieur
+        React.createElement("div", {
+          style: {
+            flex: 1,
+            display: "flex",
+            alignItems: "center",
+            padding: "8px 12px",
+            justifyContent: "flex-end"
+          }
+        },
+          awaySub ? React.createElement(React.Fragment, null,
+            React.createElement("div", { style: { textAlign: "right", flex: 1, minWidth: 0 } },
+              React.createElement("div", {
+                style: {
+                  fontWeight: 500,
+                  color: "#1a1d23",
+                  overflow: "hidden",
+                  textOverflow: "ellipsis",
+                  whiteSpace: "nowrap",
+                  fontSize: 13
+                }
+              }, awaySub.name || "Joueur"),
+              awaySub.pos === "G" && React.createElement("span", {
+                style: {
+                  fontSize: 9,
+                  color: "#666",
+                  background: "#f0f2f5",
+                  padding: "1px 6px",
+                  borderRadius: 4,
+                  marginTop: 2,
+                  display: "inline-block"
+                }
+              }, "G")
+            ),
+
+            (() => {
+              const photoUrl = getPlayerPhoto(awaySub.id);
+              return photoUrl
+                ? React.createElement("img", {
+                    src: photoUrl,
+                    style: { width: 28, height: 28, borderRadius: "50%", objectFit: "cover", flexShrink: 0, marginLeft: 8 },
+                    onError: e => { e.target.style.display = "none"; }
+                  })
+                : React.createElement("div", {
+                    style: {
+                      width: 28,
+                      height: 28,
+                      borderRadius: "50%",
+                      background: "#e8eaef",
+                      display: "flex",
+                      alignItems: "center",
+                      justifyContent: "center",
+                      fontSize: 11,
+                      color: "#666",
+                      flexShrink: 0,
+                      marginLeft: 8
+                    }
+                  }, awaySub.number || "?");
+            })(),
+
+            React.createElement("span", {
+              style: {
+                fontSize: 12,
+                color: "#999",
+                minWidth: 30,
+                fontFamily: "monospace",
+                textAlign: "right",
+                flexShrink: 0,
+                marginLeft: 8,
+                order: -1
+              }
+            }, `${awaySub.number || "?"}.`)
+          ) : React.createElement("div", { style: { height: 40 } })
+        )
+      );
+    }),
+
+    // SECTION BLESSURES
+    (homeAbsent.length > 0 || awayAbsent.length > 0) && React.createElement("div", {
+      style: {
+        display: "flex",
+        alignItems: "center",
+        padding: "10px 16px",
+        background: "linear-gradient(90deg, #ef4444, #dc2626)",
+        color: "#fff",
+        fontWeight: 800,
+        fontSize: 13,
+        textTransform: "uppercase",
+        letterSpacing: 1,
+        marginTop: 20,
+        marginBottom: 8,
+        borderRadius: "8px 8px 0 0"
+      }
+    },
+      React.createElement("span", { style: { flex: 1 } }, "BLESSURES"),
+      React.createElement("span", { style: { width: 40, textAlign: "center" } }, "")
+    ),
+
+    // BLESSURES DES DEUX ÉQUIPES
+    Array.from({ length: Math.max(homeAbsent.length, awayAbsent.length) }).map((_, index) => {
+      const homeAbs = homeAbsent[index];
+      const awayAbs = awayAbsent[index];
+
+      return React.createElement("div", {
+        key: `absent-row-${index}`,
+        style: {
+          display: "flex",
+          alignItems: "center",
+          borderBottom: index < Math.max(homeAbsent.length, awayAbsent.length) - 1 ? "1px solid #fee2e2" : "none",
+          background: index % 2 === 0 ? "#fff" : "#fff1f1"
+        }
+      },
+        // Blessure domicile
+        React.createElement("div", {
+          style: {
+            flex: 1,
+            display: "flex",
+            alignItems: "center",
+            padding: "10px 12px",
+            borderRight: "1px solid #fee2e2"
+          }
+        },
+          homeAbs ? React.createElement(React.Fragment, null,
+            homeAbs.photo
+              ? React.createElement("img", {
+                  src: homeAbs.photo,
+                  style: { width: 28, height: 28, borderRadius: "50%", objectFit: "cover", marginRight: 10 },
+                  onError: e => { e.target.style.display = "none"; }
+                })
+              : React.createElement("div", {
+                  style: {
+                    width: 28,
+                    height: 28,
+                    borderRadius: "50%",
+                    background: "#fee2e2",
+                    display: "flex",
+                    alignItems: "center",
+                    justifyContent: "center",
+                    fontSize: 14,
+                    color: "#ef4444",
+                    marginRight: 10,
+                    flexShrink: 0
+                  }
+                }, "⚠️"),
+            React.createElement("div", { style: { flex: 1, minWidth: 0 } },
+              React.createElement("div", {
+                style: {
+                  fontWeight: 600,
+                  color: "#1a1d23",
+                  overflow: "hidden",
+                  textOverflow: "ellipsis",
+                  whiteSpace: "nowrap"
+                }
+              }, homeAbs.name),
+              React.createElement("div", {
+                style: {
+                  fontSize: 11,
+                  color: "#ef4444",
+                  marginTop: 2
+                }
+              }, homeAbs.reason)
+            )
+          ) : React.createElement("div", { style: { height: 44 } })
+        ),
+
+        // Blessure extérieur
+        React.createElement("div", {
+          style: {
+            flex: 1,
+            display: "flex",
+            alignItems: "center",
+            padding: "10px 12px",
+            justifyContent: "flex-end"
+          }
+        },
+          awayAbs ? React.createElement(React.Fragment, null,
+            React.createElement("div", { style: { textAlign: "right", flex: 1, minWidth: 0 } },
+              React.createElement("div", {
+                style: {
+                  fontWeight: 600,
+                  color: "#1a1d23",
+                  overflow: "hidden",
+                  textOverflow: "ellipsis",
+                  whiteSpace: "nowrap"
+                }
+              }, awayAbs.name),
+              React.createElement("div", {
+                style: {
+                  fontSize: 11,
+                  color: "#ef4444",
+                  marginTop: 2
+                }
+              }, awayAbs.reason)
+            ),
+            awayAbs.photo
+              ? React.createElement("img", {
+                  src: awayAbs.photo,
+                  style: { width: 28, height: 28, borderRadius: "50%", objectFit: "cover", marginLeft: 10 },
+                  onError: e => { e.target.style.display = "none"; }
+                })
+              : React.createElement("div", {
+                  style: {
+                    width: 28,
+                    height: 28,
+                    borderRadius: "50%",
+                    background: "#fee2e2",
+                    display: "flex",
+                    alignItems: "center",
+                    justifyContent: "center",
+                    fontSize: 14,
+                    color: "#ef4444",
+                    marginLeft: 10,
+                    flexShrink: 0
+                  }
+                }, "⚠️")
+          ) : React.createElement("div", { style: { height: 44 } })
+        )
+      );
+    }),
+
+    // SECTION ENTRAÎNEURS
+    (hLu?.coach || aLu?.coach) && React.createElement("div", {
+      style: {
+        display: "flex",
+        alignItems: "center",
+        padding: "10px 16px",
+        background: "linear-gradient(90deg, #8b5cf6, #7c3aed)",
+        color: "#fff",
+        fontWeight: 800,
+        fontSize: 13,
+        textTransform: "uppercase",
+        letterSpacing: 1,
+        marginTop: 20,
+        marginBottom: 8,
+        borderRadius: "8px 8px 0 0"
+      }
+    },
+      React.createElement("span", { style: { flex: 1 } }, "ENTRAÎNEURS"),
+      React.createElement("span", { style: { width: 40, textAlign: "center" } }, "")
+    ),
+
+    // ENTRAÎNEURS DES DEUX ÉQUIPES
+    React.createElement("div", {
+      style: {
+        display: "flex",
+        alignItems: "center",
+        background: "#fff",
+        padding: "16px",
+        borderRadius: "0 0 8px 8px",
+        boxShadow: "0 2px 8px rgba(0,0,0,0.05)"
+      }
+    },
+      React.createElement("div", {
+        style: {
+          flex: 1,
+          display: "flex",
+          alignItems: "center",
+          gap: 12,
+          borderRight: "1px solid #f0f2f5",
+          paddingRight: 16
+        }
+      },
+        hLu?.coach?.photo
+          ? React.createElement("img", {
+              src: hLu.coach.photo,
+              style: { width: 40, height: 40, borderRadius: "50%", objectFit: "cover", flexShrink: 0 }
+            })
+          : React.createElement("div", {
+              style: {
+                width: 40,
+                height: 40,
+                borderRadius: "50%",
+                background: "#f0f2f5",
+                display: "flex",
+                alignItems: "center",
+                justifyContent: "center",
+                fontSize: 20,
+                flexShrink: 0
+              }
+            }, "🧑‍💼"),
+        React.createElement("div", { style: { flex: 1, minWidth: 0 } },
+          React.createElement("div", {
+            style: {
+              fontWeight: 700,
+              color: "#1a1d23",
+              overflow: "hidden",
+              textOverflow: "ellipsis",
+              whiteSpace: "nowrap",
+              fontSize: 14
+            }
+          }, hLu?.coach?.name || "Non communiqué")
+        )
+      ),
+
+      React.createElement("div", {
+        style: {
+          flex: 1,
+          display: "flex",
+          alignItems: "center",
+          gap: 12,
+          justifyContent: "flex-end",
+          paddingLeft: 16
+        }
+      },
+        React.createElement("div", { style: { textAlign: "right", flex: 1, minWidth: 0 } },
+          React.createElement("div", {
+            style: {
+              fontWeight: 700,
+              color: "#1a1d23",
+              overflow: "hidden",
+              textOverflow: "ellipsis",
+              whiteSpace: "nowrap",
+              fontSize: 14
+            }
+          }, aLu?.coach?.name || "Non communiqué")
+        ),
+        aLu?.coach?.photo
+          ? React.createElement("img", {
+              src: aLu.coach.photo,
+              style: { width: 40, height: 40, borderRadius: "50%", objectFit: "cover", flexShrink: 0 }
+            })
+          : React.createElement("div", {
+              style: {
+                width: 40,
+                height: 40,
+                borderRadius: "50%",
+                background: "#f0f2f5",
+                display: "flex",
+                alignItems: "center",
+                justifyContent: "center",
+                fontSize: 20,
+                flexShrink: 0
+              }
+            }, "🧑‍💼")
       )
     )
   );
