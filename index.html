@@ -553,7 +553,7 @@
         .md-stat-val-a { text-align: right; }
         .md-stat-bar { height: 3px; background: var(--c-base); border-radius: 4px; overflow: hidden; display: flex; }
         .md-stat-h { height: 100%; background: linear-gradient(90deg, var(--c-jade), var(--c-jade-light)); transform-origin: left; animation: mdBarGrow 0.7s cubic-bezier(0.4,0,0.2,1) forwards; }
-        .md-stat-a { height: 100%; background: linear-gradient(90deg, #3B82F6, #60A5FA)); transform-origin: right; animation: mdBarGrow 0.7s cubic-bezier(0.4,0,0.2,1) forwards; margin-left: auto; }
+        .md-stat-a { height: 100%; background: linear-gradient(90deg, #3B82F6, #60A5FA); transform-origin: right; animation: mdBarGrow 0.7s cubic-bezier(0.4,0,0.2,1) forwards; margin-left: auto; }
 
         .md-info-section { background: var(--c-surface); border-radius: 20px; margin: 12px 12px 8px; padding: 16px; border: 1px solid var(--c-border); box-shadow: var(--s-card); }
         .competition-breadcrumb { display: flex; align-items: center; flex-wrap: wrap; gap: 4px; font-size: 11px; color: var(--c-ink-3); margin-bottom: 12px; padding-bottom: 8px; border-bottom: 1px solid var(--c-border); }
@@ -2765,6 +2765,7 @@ function MatchDetail({state,onClose,onTeam}){
   const[period,setPeriod]=React.useState("all");
   const[playerSheet,setPlayerSheet]=React.useState(null);
   const[standings,setStandings]=React.useState([]);
+  const[roundStandings,setRoundStandings]=React.useState(null); // Classement de la journée
   const[venueInfo,setVenueInfo]=React.useState(null);
   const[teamStats,setTeamStats]=React.useState({h:null,a:null});
   const[refStats,setRefStats]=React.useState(null);
@@ -2795,6 +2796,7 @@ function MatchDetail({state,onClose,onTeam}){
   const min = useMinute(s.elapsed,sh);
   const liveTime = useMinute(s.elapsed, sh);
 
+  // Classement général
   React.useEffect(()=>{
     if(!fix)return;
     const lid=fix.league?.id,season=fix.league?.season;
@@ -2808,6 +2810,127 @@ function MatchDetail({state,onClose,onTeam}){
     const stIv=isLive?setInterval(fetchSt,60000):null;
     return()=>{stCancelled=true;if(stIv)clearInterval(stIv);};
   },[fix?.fixture?.id,isLive]);
+
+  // CLASSEMENT APRÈS CETTE JOURNÉE SPÉCIFIQUE
+  React.useEffect(() => {
+    if (!fix || !fix.league?.round) return;
+    
+    let cancelled = false;
+    const round = fix.league.round;
+    const lid = fix.league.id;
+    const season = fix.league.season;
+    
+    const fetchRoundStandings = async () => {
+      try {
+        // Récupérer tous les matchs de cette journée
+        const roundMatches = await api(`/fixtures?league=${lid}&season=${season}&round=${encodeURIComponent(round)}`, 3600000);
+        
+        if (!roundMatches || roundMatches.length === 0 || cancelled) return;
+        
+        // Trouver l'index de ce match dans la journée
+        const matchIndex = roundMatches.findIndex(m => m.fixture.id === fix.fixture.id);
+        if (matchIndex === -1 || cancelled) return;
+        
+        // Prendre tous les matchs jusqu'à celui-ci inclus (journée partiellement jouée)
+        const matchesUpToNow = roundMatches.slice(0, matchIndex + 1);
+        
+        // Récupérer le classement général
+        const fullStandings = await api(`/standings?league=${lid}&season=${season}`, 3600000);
+        if (!fullStandings || fullStandings.length === 0 || cancelled) return;
+        
+        // Créer un classement simulé après cette journée
+        const standingsData = fullStandings[0]?.league?.standings?.[0] || [];
+        if (standingsData.length === 0 || cancelled) return;
+        
+        // Copier les équipes avec leurs stats de base
+        const roundStandingsData = standingsData.map(team => ({
+          ...team,
+          all: { ...team.all },
+          home: { ...team.home },
+          away: { ...team.away },
+          points: 0,
+          played: 0,
+          win: 0,
+          draw: 0,
+          lose: 0,
+          goalsFor: 0,
+          goalsAgainst: 0
+        }));
+        
+        // Calculer les stats uniquement pour les matchs joués jusqu'à maintenant
+        for (const match of matchesUpToNow) {
+          if (!DONE_ST.has(match.fixture.status.short)) continue;
+          
+          const homeId = match.teams.home.id;
+          const awayId = match.teams.away.id;
+          const homeGoals = match.goals.home || 0;
+          const awayGoals = match.goals.away || 0;
+          
+          const homeTeam = roundStandingsData.find(t => t.team.id === homeId);
+          const awayTeam = roundStandingsData.find(t => t.team.id === awayId);
+          
+          if (homeTeam) {
+            homeTeam.played++;
+            homeTeam.goalsFor += homeGoals;
+            homeTeam.goalsAgainst += awayGoals;
+            
+            if (homeGoals > awayGoals) {
+              homeTeam.win++;
+              homeTeam.points += 3;
+            } else if (homeGoals === awayGoals) {
+              homeTeam.draw++;
+              homeTeam.points += 1;
+            } else {
+              homeTeam.lose++;
+            }
+          }
+          
+          if (awayTeam) {
+            awayTeam.played++;
+            awayTeam.goalsFor += awayGoals;
+            awayTeam.goalsAgainst += homeGoals;
+            
+            if (awayGoals > homeGoals) {
+              awayTeam.win++;
+              awayTeam.points += 3;
+            } else if (awayGoals === homeGoals) {
+              awayTeam.draw++;
+              awayTeam.points += 1;
+            } else {
+              awayTeam.lose++;
+            }
+          }
+        }
+        
+        // Trier par points
+        roundStandingsData.sort((a, b) => {
+          if (a.points !== b.points) return b.points - a.points;
+          const gdA = (a.goalsFor - a.goalsAgainst);
+          const gdB = (b.goalsFor - b.goalsAgainst);
+          if (gdA !== gdB) return gdB - gdA;
+          return (b.goalsFor || 0) - (a.goalsFor || 0);
+        });
+        
+        // Mettre à jour les rangs
+        roundStandingsData.forEach((team, idx) => {
+          team.rank = idx + 1;
+        });
+        
+        if (!cancelled) {
+          setRoundStandings({
+            league: fullStandings[0].league,
+            standings: [roundStandingsData]
+          });
+        }
+      } catch (e) {
+        console.log("Erreur chargement classement journée", e);
+      }
+    };
+    
+    fetchRoundStandings();
+    
+    return () => { cancelled = true; };
+  }, [fix?.fixture?.id]);
 
   React.useEffect(()=>{
     if(!fix?.fixture?.venue?.id)return;
@@ -4092,14 +4215,21 @@ function MatchDetail({state,onClose,onTeam}){
   };
 
   const renderStandings = ()=>{
-    if(!standings.length) return React.createElement("div",{className:"md-empty"},"📊 Classement non disponible");
-    const st=standings[0]?.league?.standings?.[0]||[];
+    // Utiliser le classement de la journée s'il est disponible, sinon le classement général
+    const standingsToUse = roundStandings || (standings.length ? standings[0] : null);
+    
+    if(!standingsToUse) return React.createElement("div",{className:"md-empty"},"📊 Classement non disponible");
+    const st=standingsToUse?.league?.standings?.[0]||[];
     if(!st.length) return React.createElement("div",{className:"md-empty"},"📊 Classement non disponible");
 
     const curHg=fix?.goals?.home??null;
     const curAg=fix?.goals?.away??null;
     const hasScore=curHg!==null&&curAg!==null;
     const total=st.length;
+
+    // Afficher un badge indiquant le type de classement
+    const isRoundStanding = roundStandings !== null;
+    const roundLabel = fix?.league?.round ? fix.league.round.replace("Regular Season - ", "Après J") : "";
 
     const projH = (r)=>{
       if(!isLive||!hasScore||r.team?.id!==hid&&r.team?.id!==aid) return null;
@@ -4126,6 +4256,14 @@ function MatchDetail({state,onClose,onTeam}){
 
     return React.createElement(React.Fragment,null,
 
+      // Badge indiquant si c'est le classement général ou après cette journée
+      React.createElement("div",{style:{display:"flex",alignItems:"center",gap:6,padding:"7px 14px",background: isRoundStanding ? "rgba(0,193,112,.06)" : "rgba(37,99,235,.06)",marginBottom:8,borderBottom:`1px solid ${isRoundStanding ? "rgba(0,193,112,.12)" : "rgba(37,99,235,.12)"}`}},
+        React.createElement("div",{style:{width:6,height:6,borderRadius:"50%",background: isRoundStanding ? "#00c170" : "#2563eb",flexShrink:0}}),
+        React.createElement("span",{style:{fontSize:11,fontWeight:700,color: isRoundStanding ? "#00c170" : "#2563eb",letterSpacing:.5}},
+          isRoundStanding ? `📋 CLASSEMENT ${roundLabel}` : "📊 CLASSEMENT GÉNÉRAL"
+        )
+      ),
+
       // Badge live
       isLive ? React.createElement("div",{style:{display:"flex",alignItems:"center",gap:6,padding:"7px 14px",background:"rgba(229,57,53,.06)",marginBottom:8,borderBottom:"1px solid rgba(229,57,53,.12)"}},
         React.createElement("div",{style:{width:6,height:6,borderRadius:"50%",background:"#e53535",animation:"pulse 1.2s infinite",flexShrink:0}}),
@@ -4150,7 +4288,7 @@ function MatchDetail({state,onClose,onTeam}){
           const isHm=r.team?.id===hid, isAw=r.team?.id===aid;
           const proj=projH(r);
           const zone=getZone(r.rank);
-          const gd=(r.all?.goals?.for||0)-(r.all?.goals?.against||0);
+          const gd=(r.goalsFor || r.all?.goals?.for||0)-(r.goalsAgainst || r.all?.goals?.against||0);
           const form=r.form||"";
           const rowBg = isHm?"rgba(0,193,112,.07)":isAw?"rgba(37,99,235,.06)":zone?zone.bg:"#fff";
           const barColor = isHm?"#00c170":isAw?"#2563eb":zone?zone.bar:"transparent";
@@ -4182,15 +4320,17 @@ function MatchDetail({state,onClose,onTeam}){
                 ) : null
               )
             ),
-            React.createElement("div",{style:{width:26,textAlign:"center",fontSize:12,color:"#64748b",flexShrink:0}},[r.all?.played||0]),
-            React.createElement("div",{style:{width:26,textAlign:"center",fontSize:12,fontWeight:600,color:"#22c55e",flexShrink:0}},[r.all?.win||0]),
-            React.createElement("div",{style:{width:26,textAlign:"center",fontSize:12,color:"#64748b",flexShrink:0}},[r.all?.draw||0]),
-            React.createElement("div",{style:{width:26,textAlign:"center",fontSize:12,fontWeight:600,color:"#ef4444",flexShrink:0}},[r.all?.lose||0]),
-            React.createElement("div",{style:{width:26,textAlign:"center",fontSize:11,color:"#64748b",flexShrink:0}},`${gd>=0?"+":""}${gd}`),
+            React.createElement("div",{style:{width:26,textAlign:"center",fontSize:12,color:"#64748b",flexShrink:0}},[r.played || r.all?.played||0]),
+            React.createElement("div",{style:{width:26,textAlign:"center",fontSize:12,fontWeight:600,color:"#22c55e",flexShrink:0}},[r.win || r.all?.win||0]),
+            React.createElement("div",{style:{width:26,textAlign:"center",fontSize:12,color:"#64748b",flexShrink:0}},[r.draw || r.all?.draw||0]),
+            React.createElement("div",{style:{width:26,textAlign:"center",fontSize:12,fontWeight:600,color:"#ef4444",flexShrink:0}},[r.lose || r.all?.lose||0]),
+            React.createElement("div",{style:{width:26,textAlign:"center",fontSize:11,color:"#64748b",flexShrink:0}},
+              `${gd>=0?"+":""}${gd}`
+            ),
             React.createElement("div",{style:{width:36,textAlign:"center",flexShrink:0}},
               React.createElement("div",{style:{background:r.rank===1?"#00c170":zone?zone.bar:"#f1f5f9",color:r.rank===1||zone?"#fff":"#0f172a",borderRadius:8,padding:"3px 0",fontSize:13,fontWeight:900,display:"inline-block",minWidth:28,textAlign:"center"}},
-                r.points,
-                proj!==null&&proj!==r.points
+                r.points || r.points,
+                proj!==null&&proj!==(r.points || r.points)
                   ? React.createElement("div",{style:{fontSize:9,fontWeight:700,color:proj>r.points?"#fff":"rgba(0,0,0,.4)"}},`→${proj}`)
                   : null
               )
@@ -5058,6 +5198,7 @@ function StandingsTab({ onTeam }) {
   useEffect(() => {
     if (viewMode !== "resultats") return;
     let mounted = true;
+    setStatus("load");
     api(`/fixtures/rounds?league=${lid}&season=${season}`, 3600000)
       .then(res => {
         if (mounted) {
