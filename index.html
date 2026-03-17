@@ -4384,6 +4384,30 @@ function MatchDetail({state, onClose, onTeam, fromStandings = false}){
     const hasScore = curHg !== null && curAg !== null;
     const total = st.length;
 
+    // Fonction getZoneColor locale pour éviter l'erreur
+    const getZoneColorLocal = (rank, leagueId, totalRows) => {
+      if ([39,140,135,78,61].includes(leagueId)) {
+        if (rank <= 4) return { bg: "rgba(37,99,235,.07)", bar: "#2563eb", label: "LDC" };
+        if (rank === 5) return { bg: "rgba(234,179,8,.07)", bar: "#eab308", label: "LEL" };
+        if (rank >= totalRows - 2) return { bg: "rgba(239,68,68,.07)", bar: "#ef4444", label: "REL" };
+      }
+      if (leagueId === 186) {
+        if (rank <= 2) return { bg: "rgba(37,99,235,.07)", bar: "#2563eb", label: "CCL" };
+        if (rank >= totalRows - 2) return { bg: "rgba(239,68,68,.07)", bar: "#ef4444", label: "REL" };
+      }
+      return null;
+    };
+
+    // Fonction projH locale
+    const projHLocal = (r) => {
+      if(!isLive||!hasScore||r.team?.id!==hid&&r.team?.id!==aid) return null;
+      const isHome=r.team?.id===hid;
+      const myG=isHome?curHg:curAg, oppG=isHome?curAg:curHg;
+      if(myG>oppG) return r.points+3;
+      if(myG===oppG) return r.points+1;
+      return r.points;
+    };
+
     // Afficher un badge pour indiquer que c'est le classement après cette journée
     const roundLabel = fix?.league?.round 
       ? fix.league.round.replace("Regular Season - ", "J") 
@@ -4435,8 +4459,8 @@ function MatchDetail({state, onClose, onTeam, fromStandings = false}){
       React.createElement("div",null,
         st.map(r=>{
           const isHm=r.team?.id===hid, isAw=r.team?.id===aid;
-          const proj=projH(r);
-          const zone=getZoneColor(r.rank, lid, total);
+          const proj=projHLocal(r);
+          const zone=getZoneColorLocal(r.rank, fix?.league?.id || lid, total);
           const gd=(r.all?.goals?.for||0)-(r.all?.goals?.against||0);
           const form=r.form||"";
           const rowBg = isHm?"rgba(0,193,112,.07)":isAw?"rgba(37,99,235,.06)":zone?zone.bg:"#fff";
