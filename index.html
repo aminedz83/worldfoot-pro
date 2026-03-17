@@ -2936,7 +2936,9 @@ function MatchDetail({state, onClose, onTeam, fromStandings = false}){
         
         // 5. Initialiser chaque équipe avec ZÉRO partout
         const roundStandingsData = standingsData.map(team => ({
-          ...team,
+          team: team.team,
+          rank: 0,
+          points: 0,
           all: { 
             played: 0, 
             win: 0, 
@@ -2958,11 +2960,8 @@ function MatchDetail({state, onClose, onTeam, fromStandings = false}){
             lose: 0, 
             goals: { for: 0, against: 0 } 
           },
-          points: 0,
           form: "",
           description: team.description,
-          rank: 0,
-          team: team.team,
           group: team.group
         }));
         
@@ -5714,7 +5713,7 @@ function StandingsTab({ onTeam }) {
       state: detailMatch, 
       onClose: () => setDetailMatch(null), 
       onTeam: onTeam,
-      fromStandings: true // Important pour identifier que ça vient de l'onglet CLASSEMENT
+      fromStandings // Important pour identifier que ça vient de l'onglet CLASSEMENT
     })
   );
 }
