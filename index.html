@@ -2794,22 +2794,17 @@ const getRefereeStats = async (refereeName) => {
   }
 };
 
-function MatchDetailWrapper({state, onClose, onTeam, fromStandings = false}){
+function MatchDetailWrapper({state,onClose,onTeam}){
   if(!state)return null;
-  return React.createElement(MatchDetail, {
-    state, 
-    onClose, 
-    onTeam,
-    fromStandings
-  });
+  return React.createElement(MatchDetail,{state,onClose,onTeam});
 }
 
-function MatchDetail({state, onClose, onTeam, fromStandings = false}){
+function MatchDetail({state,onClose,onTeam}){
   const[tab,setTab]=React.useState("resume");
   const[period,setPeriod]=React.useState("all");
   const[playerSheet,setPlayerSheet]=React.useState(null);
   const[standings,setStandings]=React.useState([]);
-  const[roundStandings,setRoundStandings]=React.useState(null);
+  const[roundStandings,setRoundStandings]=React.useState(null); // Classement de la journée
   const[venueInfo,setVenueInfo]=React.useState(null);
   const[teamStats,setTeamStats]=React.useState({h:null,a:null});
   const[refStats,setRefStats]=React.useState(null);
@@ -2855,10 +2850,9 @@ function MatchDetail({state, onClose, onTeam, fromStandings = false}){
     return()=>{stCancelled=true;if(stIv)clearInterval(stIv);};
   },[fix?.fixture?.id,isLive]);
 
-  // CLASSEMENT APRÈS CETTE JOURNÉE SPÉCIFIQUE - UNIQUEMENT POUR fromStandings
+  // CLASSEMENT APRÈS CETTE JOURNÉE SPÉCIFIQUE - VERSION CORRIGÉE
   React.useEffect(() => {
-    // Ne s'exécute que si on vient de l'onglet CLASSEMENT
-    if (!fromStandings || !fix || !fix.league?.round) return;
+    if (!fix || !fix.league?.round) return;
     
     let cancelled = false;
     const round = fix.league.round;
@@ -2867,143 +2861,202 @@ function MatchDetail({state, onClose, onTeam, fromStandings = false}){
     
     const fetchRoundStandings = async () => {
       try {
-        console.log(`[Journée précise] Calcul classement après ${round}`);
-        
-        // 1. Récupérer la liste des rounds
+        // 1. Récupérer la liste de TOUS les rounds de la saison dans l'ordre
         const roundsList = await api(`/fixtures/rounds?league=${lid}&season=${season}`, 3600000);
+        
         if (!roundsList || roundsList.length === 0 || cancelled) return;
         
-        // 2. Trouver l'index du round actuel
+        // 2. Trouver l'index du round actuel (celui du match)
         const roundIndex = roundsList.findIndex(r => r === round);
         if (roundIndex === -1 || cancelled) return;
         
-        // 3. Récupérer TOUS les matchs de la saison (sans filtre de statut)
-        const allMatches = await api(`/fixtures?league=${lid}&season=${season}`, 3600000);
+        console.log(`Chargement classement après ${round} (journée ${roundIndex + 1})`);
         
-        // 4. Créer une MAP pour stocker les stats par équipe
-        const teamsMap = new Map();
+        // 3. Récupérer TOUS les matchs de la saison
+        const allMatches = [];
         
-        // 5. Parcourir tous les matchs jusqu'au round actuel
-        allMatches.forEach(match => {
-          // Ne garder que les matchs terminés
-          if (!DONE_ST.has(match.fixture.status.short)) return;
+        // Option 1: Récupérer tous les matchs de la saison en une seule requête (plus fiable)
+        try {
+          const seasonMatches = await api(`/fixtures?league=${lid}&season=${season}`, 3600000);
+          if (seasonMatches && seasonMatches.length > 0) {
+            // Filtrer pour ne garder que les matchs terminés
+            const finishedMatches = seasonMatches.filter(m => DONE_ST.has(m.fixture.status.short));
+            
+            // Ne garder que les matchs jusqu'au round actuel inclus
+            for (const match of finishedMatches) {
+              // Trouver le round de ce match
+              const matchRound = match.league?.round;
+              if (matchRound) {
+                const matchRoundIndex = roundsList.findIndex(r => r === matchRound);
+                if (matchRoundIndex !== -1 && matchRoundIndex <= roundIndex) {
+                  allMatches.push(match);
+                }
+              }
+            }
+          }
+        } catch (e) {
+          console.log("Erreur chargement tous les matchs", e);
           
-          // Vérifier le round du match
-          const matchRound = match.league?.round;
-          if (!matchRound) return;
-          
-          const matchRoundIndex = roundsList.findIndex(r => r === matchRound);
-          if (matchRoundIndex === -1 || matchRoundIndex > roundIndex) return;
-          
-          // Traiter le match
+          // Option 2: Fallback - charger round par round
+          for (let i = 0; i <= roundIndex; i++) {
+            const currentRound = roundsList[i];
+            try {
+              const roundMatches = await api(`/fixtures?league=${lid}&season=${season}&round=${encodeURIComponent(currentRound)}`, 3600000);
+              
+              if (roundMatches && roundMatches.length > 0) {
+                // Ne prendre que les matchs terminés
+                const finishedMatches = roundMatches.filter(m => DONE_ST.has(m.fixture.status.short));
+                allMatches.push(...finishedMatches);
+              }
+            } catch (e) {
+              console.log(`Erreur chargement round ${currentRound}`, e);
+            }
+          }
+        }
+        
+        console.log(`${allMatches.length} matchs trouvés jusqu'à la J${roundIndex + 1}`);
+        
+        if (allMatches.length === 0 || cancelled) return;
+        
+        // 4. Récupérer la liste de toutes les équipes de la ligue
+        const fullStandings = await api(`/standings?league=${lid}&season=${season}`, 3600000);
+        if (!fullStandings || fullStandings.length === 0 || cancelled) return;
+        
+        const standingsData = fullStandings[0]?.league?.standings?.[0] || [];
+        if (standingsData.length === 0 || cancelled) return;
+        
+        // 5. Initialiser chaque équipe avec ZÉRO partout
+        const roundStandingsData = standingsData.map(team => ({
+          ...team,
+          all: { 
+            played: 0, win: 0, draw: 0, lose: 0,
+            goals: { for: 0, against: 0 }
+          },
+          home: { played: 0, win: 0, draw: 0, lose: 0, goals: { for: 0, against: 0 } },
+          away: { played: 0, win: 0, draw: 0, lose: 0, goals: { for: 0, against: 0 } },
+          points: 0,
+          form: "",
+          description: team.description,
+          rank: 0
+        }));
+        
+        // 6. Calculer les stats pour chaque équipe à partir de TOUS les matchs joués jusqu'à maintenant
+        for (const match of allMatches) {
           const homeId = match.teams.home.id;
           const awayId = match.teams.away.id;
           const homeGoals = match.goals.home || 0;
           const awayGoals = match.goals.away || 0;
           
-          // Initialiser les équipes si nécessaire
-          if (!teamsMap.has(homeId)) {
-            teamsMap.set(homeId, {
-              team: match.teams.home,
-              points: 0,
-              played: 0,
-              win: 0,
-              draw: 0,
-              lose: 0,
-              goalsFor: 0,
-              goalsAgainst: 0
-            });
-          }
+          const homeTeam = roundStandingsData.find(t => t.team.id === homeId);
+          const awayTeam = roundStandingsData.find(t => t.team.id === awayId);
           
-          if (!teamsMap.has(awayId)) {
-            teamsMap.set(awayId, {
-              team: match.teams.away,
-              points: 0,
-              played: 0,
-              win: 0,
-              draw: 0,
-              lose: 0,
-              goalsFor: 0,
-              goalsAgainst: 0
-            });
-          }
-          
-          // Mettre à jour les stats
-          const homeTeam = teamsMap.get(homeId);
-          const awayTeam = teamsMap.get(awayId);
-          
-          homeTeam.played++;
-          homeTeam.goalsFor += homeGoals;
-          homeTeam.goalsAgainst += awayGoals;
-          
-          awayTeam.played++;
-          awayTeam.goalsFor += awayGoals;
-          awayTeam.goalsAgainst += homeGoals;
-          
-          if (homeGoals > awayGoals) {
-            homeTeam.win++;
-            homeTeam.points += 3;
-            awayTeam.lose++;
-          } else if (homeGoals < awayGoals) {
-            awayTeam.win++;
-            awayTeam.points += 3;
-            homeTeam.lose++;
-          } else {
-            homeTeam.draw++;
-            awayTeam.draw++;
-            homeTeam.points += 1;
-            awayTeam.points += 1;
-          }
-        });
-        
-        // 6. Convertir la Map en tableau
-        const standingsArray = Array.from(teamsMap.values());
-        
-        // 7. Trier le tableau
-        standingsArray.sort((a, b) => {
-          if (a.points !== b.points) return b.points - a.points;
-          const gdA = a.goalsFor - a.goalsAgainst;
-          const gdB = b.goalsFor - b.goalsAgainst;
-          if (gdA !== gdB) return gdB - gdA;
-          return b.goalsFor - a.goalsFor;
-        });
-        
-        // 8. Ajouter les rangs
-        standingsArray.forEach((team, index) => {
-          team.rank = index + 1;
-        });
-        
-        // 9. Formater pour correspondre à la structure attendue
-        const formattedStandings = {
-          league: { id: lid, name: fix.league.name, logo: fix.league.logo, flag: fix.league.flag },
-          standings: [standingsArray.map(team => ({
-            rank: team.rank,
-            team: team.team,
-            points: team.points,
-            all: {
-              played: team.played,
-              win: team.win,
-              draw: team.draw,
-              lose: team.lose,
-              goals: { for: team.goalsFor, against: team.goalsAgainst }
+          if (homeTeam) {
+            // Mise à jour stats domicile
+            homeTeam.home.played++;
+            homeTeam.home.goals.for += homeGoals;
+            homeTeam.home.goals.against += awayGoals;
+            
+            // Mise à jour stats générales
+            homeTeam.all.played++;
+            homeTeam.all.goals.for += homeGoals;
+            homeTeam.all.goals.against += awayGoals;
+            
+            if (homeGoals > awayGoals) {
+              homeTeam.home.win++;
+              homeTeam.all.win++;
+              homeTeam.points += 3;
+            } else if (homeGoals === awayGoals) {
+              homeTeam.home.draw++;
+              homeTeam.all.draw++;
+              homeTeam.points += 1;
+            } else {
+              homeTeam.home.lose++;
+              homeTeam.all.lose++;
             }
-          }))]
-        };
-        
-        if (!cancelled) {
-          setRoundStandings(formattedStandings);
-          console.log(`Classement après J${roundIndex + 1} calculé avec ${standingsArray.length} équipes`);
+          }
+          
+          if (awayTeam) {
+            // Mise à jour stats extérieur
+            awayTeam.away.played++;
+            awayTeam.away.goals.for += awayGoals;
+            awayTeam.away.goals.against += homeGoals;
+            
+            // Mise à jour stats générales
+            awayTeam.all.played++;
+            awayTeam.all.goals.for += awayGoals;
+            awayTeam.all.goals.against += homeGoals;
+            
+            if (awayGoals > homeGoals) {
+              awayTeam.away.win++;
+              awayTeam.all.win++;
+              awayTeam.points += 3;
+            } else if (awayGoals === homeGoals) {
+              awayTeam.away.draw++;
+              awayTeam.all.draw++;
+              awayTeam.points += 1;
+            } else {
+              awayTeam.away.lose++;
+              awayTeam.all.lose++;
+            }
+          }
         }
         
-      } catch (error) {
-        console.error("Erreur lors du calcul du classement:", error);
+        // 7. Trier par points (et critères de départage)
+        roundStandingsData.sort((a, b) => {
+          if (a.points !== b.points) return b.points - a.points;
+          const gdA = (a.all.goals.for - a.all.goals.against);
+          const gdB = (b.all.goals.for - b.all.goals.against);
+          if (gdA !== gdB) return gdB - gdA;
+          return (b.all.goals.for || 0) - (a.all.goals.for || 0);
+        });
+        
+        // 8. Mettre à jour les rangs
+        roundStandingsData.forEach((team, idx) => {
+          team.rank = idx + 1;
+        });
+        
+        // 9. Calculer la forme (les 5 derniers matchs)
+        const last5Matches = [...allMatches]
+          .sort((a, b) => new Date(b.fixture.date) - new Date(a.fixture.date))
+          .slice(0, 5);
+        
+        roundStandingsData.forEach(team => {
+          const teamLast5 = last5Matches
+            .filter(m => m.teams.home.id === team.team.id || m.teams.away.id === team.team.id)
+            .map(m => {
+              const isHome = m.teams.home.id === team.team.id;
+              const gF = isHome ? m.goals.home : m.goals.away;
+              const gA = isHome ? m.goals.away : m.goals.home;
+              if (gF > gA) return "W";
+              if (gF < gA) return "L";
+              return "D";
+            })
+            .join('');
+          
+          team.form = teamLast5 || "";
+        });
+        
+        if (!cancelled) {
+          setRoundStandings({
+            league: fullStandings[0].league,
+            standings: [roundStandingsData]
+          });
+          
+          // Afficher les stats pour vérification
+          console.log(`=== CLASSEMENT APRÈS J${roundIndex + 1} ===`);
+          roundStandingsData.slice(0, 5).forEach(t => {
+            console.log(`${t.rank}. ${t.team.name} - ${t.points} pts (${t.all.played} MJ)`);
+          });
+        }
+      } catch (e) {
+        console.log("Erreur chargement classement journée", e);
       }
     };
     
     fetchRoundStandings();
     
     return () => { cancelled = true; };
-  }, [fix?.fixture?.id, fromStandings]);
+  }, [fix?.fixture?.id]);
 
   React.useEffect(()=>{
     if(!fix?.fixture?.venue?.id)return;
@@ -4288,36 +4341,21 @@ function MatchDetail({state, onClose, onTeam, fromStandings = false}){
   };
 
   const renderStandings = ()=>{
-    // Utiliser le classement de la journée s'il est disponible ET qu'on vient de l'onglet CLASSEMENT
-    const standingsToUse = fromStandings && roundStandings 
-      ? roundStandings 
-      : (standings.length ? standings[0] : null);
+    // Utiliser le classement de la journée s'il est disponible, sinon le classement général
+    const standingsToUse = roundStandings || (standings.length ? standings[0] : null);
     
     if(!standingsToUse) return React.createElement("div",{className:"md-empty"},"📊 Classement non disponible");
-    const st = standingsToUse?.league?.standings?.[0] || [];
+    const st=standingsToUse?.league?.standings?.[0]||[];
     if(!st.length) return React.createElement("div",{className:"md-empty"},"📊 Classement non disponible");
 
-    const curHg = fix?.goals?.home ?? null;
-    const curAg = fix?.goals?.away ?? null;
-    const hasScore = curHg !== null && curAg !== null;
-    const total = st.length;
+    const curHg=fix?.goals?.home??null;
+    const curAg=fix?.goals?.away??null;
+    const hasScore=curHg!==null&&curAg!==null;
+    const total=st.length;
 
-    // Fonction getZoneColor locale pour éviter l'erreur
-    const getZoneColorLocal = (rank, leagueId, totalRows) => {
-      if ([39,140,135,78,61].includes(leagueId)) {
-        if (rank <= 4) return { bg: "rgba(37,99,235,.07)", bar: "#2563eb", label: "LDC" };
-        if (rank === 5) return { bg: "rgba(234,179,8,.07)", bar: "#eab308", label: "LEL" };
-        if (rank >= totalRows - 2) return { bg: "rgba(239,68,68,.07)", bar: "#ef4444", label: "REL" };
-      }
-      if (leagueId === 186) {
-        if (rank <= 2) return { bg: "rgba(37,99,235,.07)", bar: "#2563eb", label: "CCL" };
-        if (rank >= totalRows - 2) return { bg: "rgba(239,68,68,.07)", bar: "#ef4444", label: "REL" };
-      }
-      return null;
-    };
+    // BADGE SUPPRIMÉ - PLUS D'AFFICHAGE "CLASSEMENT Après Jxx"
 
-    // Fonction projH locale
-    const projHLocal = (r) => {
+    const projH = (r)=>{
       if(!isLive||!hasScore||r.team?.id!==hid&&r.team?.id!==aid) return null;
       const isHome=r.team?.id===hid;
       const myG=isHome?curHg:curAg, oppG=isHome?curAg:curHg;
@@ -4326,36 +4364,23 @@ function MatchDetail({state, onClose, onTeam, fromStandings = false}){
       return r.points;
     };
 
-    // Afficher un badge pour indiquer que c'est le classement après cette journée
-    const roundLabel = fix?.league?.round 
-      ? fix.league.round.replace("Regular Season - ", "J") 
-      : "cette journée";
+    const getZone = (rank) => {
+      const lid = fix?.league?.id;
+      if ([39,140,135,78,61].includes(lid)) {
+        if (rank <= 4) return { bar: "#2563eb", bg: "rgba(37,99,235,.06)" };
+        if (rank === 5) return { bar: "#eab308", bg: "rgba(234,179,8,.06)" };
+        if (rank >= total - 2) return { bar: "#ef4444", bg: "rgba(239,68,68,.06)" };
+      }
+      if (lid === 186) {
+        if (rank <= 2) return { bar: "#2563eb", bg: "rgba(37,99,235,.06)" };
+        if (rank >= total - 2) return { bar: "#ef4444", bg: "rgba(239,68,68,.06)" };
+      }
+      return null;
+    };
 
-    return React.createElement(React.Fragment, null,
+    return React.createElement(React.Fragment,null,
 
-      // Badge indicateur - UNIQUEMENT pour fromStandings
-      fromStandings && roundStandings && React.createElement("div", {
-        style: {
-          display: "flex",
-          alignItems: "center",
-          gap: 6,
-          padding: "8px 14px",
-          margin: "8px 12px 4px",
-          background: "linear-gradient(135deg, rgba(0,193,112,0.1) 0%, rgba(0,193,112,0.03) 100%)",
-          borderRadius: 12,
-          border: "1px solid rgba(0,193,112,0.2)"
-        }
-      },
-        React.createElement("span", { style: { fontSize: 14 } }, "📊"),
-        React.createElement("span", { style: { fontSize: 11, fontWeight: 700, color: "#00c170", flex: 1 } },
-          `Classement après ${roundLabel}`
-        ),
-        React.createElement("span", { style: { fontSize: 10, color: "#64748b", fontWeight: 600 } },
-          `${st.length} équipes`
-        )
-      ),
-
-      // Badge live
+      // Badge live (à conserver)
       isLive ? React.createElement("div",{style:{display:"flex",alignItems:"center",gap:6,padding:"7px 14px",background:"rgba(229,57,53,.06)",marginBottom:8,borderBottom:"1px solid rgba(229,57,53,.12)"}},
         React.createElement("div",{style:{width:6,height:6,borderRadius:"50%",background:"#e53535",animation:"pulse 1.2s infinite",flexShrink:0}}),
         React.createElement("span",{style:{fontSize:11,fontWeight:700,color:"#e53535",letterSpacing:.5}},"LIVE · mise à jour toutes les 60s")
@@ -4377,9 +4402,9 @@ function MatchDetail({state, onClose, onTeam, fromStandings = false}){
       React.createElement("div",null,
         st.map(r=>{
           const isHm=r.team?.id===hid, isAw=r.team?.id===aid;
-          const proj=projHLocal(r);
-          const zone=getZoneColorLocal(r.rank, fix?.league?.id || lid, total);
-          const gd=(r.all?.goals?.for||0)-(r.all?.goals?.against||0);
+          const proj=projH(r);
+          const zone=getZone(r.rank);
+          const gd=(r.goalsFor || r.all?.goals?.for||0)-(r.goalsAgainst || r.all?.goals?.against||0);
           const form=r.form||"";
           const rowBg = isHm?"rgba(0,193,112,.07)":isAw?"rgba(37,99,235,.06)":zone?zone.bg:"#fff";
           const barColor = isHm?"#00c170":isAw?"#2563eb":zone?zone.bar:"transparent";
@@ -4411,17 +4436,17 @@ function MatchDetail({state, onClose, onTeam, fromStandings = false}){
                 ) : null
               )
             ),
-            React.createElement("div",{style:{width:26,textAlign:"center",fontSize:12,color:"#64748b",flexShrink:0}},[r.all?.played||0]),
-            React.createElement("div",{style:{width:26,textAlign:"center",fontSize:12,fontWeight:600,color:"#22c55e",flexShrink:0}},[r.all?.win||0]),
-            React.createElement("div",{style:{width:26,textAlign:"center",fontSize:12,color:"#64748b",flexShrink:0}},[r.all?.draw||0]),
-            React.createElement("div",{style:{width:26,textAlign:"center",fontSize:12,fontWeight:600,color:"#ef4444",flexShrink:0}},[r.all?.lose||0]),
+            React.createElement("div",{style:{width:26,textAlign:"center",fontSize:12,color:"#64748b",flexShrink:0}},[r.played || r.all?.played||0]),
+            React.createElement("div",{style:{width:26,textAlign:"center",fontSize:12,fontWeight:600,color:"#22c55e",flexShrink:0}},[r.win || r.all?.win||0]),
+            React.createElement("div",{style:{width:26,textAlign:"center",fontSize:12,color:"#64748b",flexShrink:0}},[r.draw || r.all?.draw||0]),
+            React.createElement("div",{style:{width:26,textAlign:"center",fontSize:12,fontWeight:600,color:"#ef4444",flexShrink:0}},[r.lose || r.all?.lose||0]),
             React.createElement("div",{style:{width:26,textAlign:"center",fontSize:11,color:"#64748b",flexShrink:0}},
               `${gd>=0?"+":""}${gd}`
             ),
             React.createElement("div",{style:{width:36,textAlign:"center",flexShrink:0}},
-              React.createElement("div",{style:{background:r.rank===1?"#00c170":zone?.bar||"#f1f5f9",color:r.rank===1||zone?"#fff":"#0f172a",borderRadius:8,padding:"3px 0",fontSize:13,fontWeight:900,display:"inline-block",minWidth:28,textAlign:"center"}},
-                r.points,
-                proj!==null&&proj!==(r.points)
+              React.createElement("div",{style:{background:r.rank===1?"#00c170":zone?zone.bar:"#f1f5f9",color:r.rank===1||zone?"#fff":"#0f172a",borderRadius:8,padding:"3px 0",fontSize:13,fontWeight:900,display:"inline-block",minWidth:28,textAlign:"center"}},
+                r.points || r.points,
+                proj!==null&&proj!==(r.points || r.points)
                   ? React.createElement("div",{style:{fontSize:9,fontWeight:700,color:proj>r.points?"#fff":"rgba(0,0,0,.4)"}},`→${proj}`)
                   : null
               )
@@ -4429,8 +4454,6 @@ function MatchDetail({state, onClose, onTeam, fromStandings = false}){
           );
         })
       ),
-
-      // Légende
       (()=>{
         const zcL=desc=>{const d=(desc??"").toLowerCase(); if(d.includes("champions league")||d.includes("ligue des champions")||(d.includes("champions")&&!d.includes("conf"))) return{color:"#1a56db",label:"Ligue des Champions"}; if(d.includes("europa league")||d.includes("ligue europa")) return{color:"#e53935",label:"UEFA Europa League"}; if(d.includes("conference")||d.includes("conf")) return{color:"#f59e0b",label:"Conference League / Qualification"}; if(d.includes("promotion")) return{color:"#00c170",label:desc}; if(d.includes("releg")||d.includes("relégation")) return{color:"#e53935",label:desc}; if(d.includes("playoff")||d.includes("play-off")||d.includes("barrage")) return{color:"#f59e0b",label:desc}; if(d.includes("europa")) return{color:"#e53935",label:desc}; if(d.includes("qualif")) return{color:"#1a56db",label:desc}; return null;};
         const seen=new Map();
@@ -5628,12 +5651,7 @@ function StandingsTab({ onTeam }) {
       )
     ),
 
-    detailMatch && React.createElement(MatchDetailWrapper, { 
-      state: detailMatch, 
-      onClose: () => setDetailMatch(null), 
-      onTeam: onTeam,
-      fromStandings: true // Important pour identifier que ça vient de l'onglet CLASSEMENT
-    })
+    detailMatch && React.createElement(MatchDetailWrapper, { state: detailMatch, onClose: () => setDetailMatch(null), onTeam: onTeam })
   );
 }
 
