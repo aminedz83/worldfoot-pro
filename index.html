@@ -54,7 +54,7 @@
     let prevScores = {};
     let checkInterval = null;
 
-    self.addEventListener('install',e=>{e.waitUntil(caches.open(C).then(c=>c.addAll(['./'])).then(()=>self.skipWaiting()));});
+    self.addEventListener('install',e=>{e.waitUntil(caches.open(C).then(c=>c.addAll(['./'])).then(()=>self.skipWaiting());});
     self.addEventListener('activate',e=>{e.waitUntil(caches.keys().then(ks=>Promise.all(ks.filter(k=>k!==C).map(k=>caches.delete(k)))).then(()=>self.clients.claim()));});
 
     // Vérifier les buts en arrière-plan
@@ -5279,6 +5279,10 @@ function ScoresTab({favs,onFav,onTeam}){
   );
 }
 
+// ==============================================================
+// VERSION MODIFIÉE DE STANDINGSTAB AVEC CLASSEMENT PAR JOURNÉE
+// ==============================================================
+
 function StandingsTab({ onTeam }) {
   const [viewMode, setViewMode] = useState("classement");
   const [lid, setLid] = useState(39);
@@ -5286,10 +5290,12 @@ function StandingsTab({ onTeam }) {
   const [standings, setStandings] = useState([]);
   const [rounds, setRounds] = useState([]);
   const [selectedRound, setSelectedRound] = useState("");
+  const [roundStandings, setRoundStandings] = useState(null);
   const [matches, setMatches] = useState([]);
   const [status, setStatus] = useState("load");
   const [detailMatch, setDetailMatch] = useState(null);
   const [showConfig, setShowConfig] = useState(false);
+  const [loadingRound, setLoadingRound] = useState(false);
 
   const league = LEAGUES.find(l => l.id === lid) || LEAGUES[0];
   const [leagueLogo, setLeagueLogo] = useState(null);
@@ -5301,6 +5307,7 @@ function StandingsTab({ onTeam }) {
     }
   }, [standings]);
 
+  // Charger le classement général
   useEffect(() => {
     if (viewMode !== "classement") return;
     let mounted = true;
@@ -5311,8 +5318,9 @@ function StandingsTab({ onTeam }) {
     return () => { mounted = false; };
   }, [lid, season, viewMode]);
 
+  // Charger la liste des journées
   useEffect(() => {
-    if (viewMode !== "resultats") return;
+    if (viewMode !== "resultats" && viewMode !== "classement-journee") return;
     let mounted = true;
     setStatus("load");
     api(`/fixtures/rounds?league=${lid}&season=${season}`, 3600000)
@@ -5328,6 +5336,7 @@ function StandingsTab({ onTeam }) {
     return () => { mounted = false; };
   }, [lid, season, viewMode]);
 
+  // Charger les matchs d'une journée spécifique
   useEffect(() => {
     if (!selectedRound || viewMode !== "resultats") return;
     let mounted = true;
@@ -5336,6 +5345,173 @@ function StandingsTab({ onTeam }) {
       .catch(() => {});
     return () => { mounted = false; };
   }, [selectedRound, lid, season, viewMode]);
+
+  // Calculer le classement après une journée spécifique
+  const loadRoundStandings = async (roundName) => {
+    if (!roundName) return;
+    
+    setLoadingRound(true);
+    setRoundStandings(null);
+    
+    try {
+      const roundIndex = rounds.findIndex(r => r === roundName);
+      if (roundIndex === -1) return;
+      
+      console.log(`📊 Calcul du classement après ${roundName} (journée ${roundIndex + 1})`);
+      
+      const allSeasonMatches = await api(`/fixtures?league=${lid}&season=${season}`, 3600000);
+      if (!allSeasonMatches || allSeasonMatches.length === 0) return;
+      
+      const fullStandings = await api(`/standings?league=${lid}&season=${season}`, 3600000);
+      if (!fullStandings || fullStandings.length === 0) return;
+      
+      const standingsData = fullStandings[0]?.league?.standings?.[0] || [];
+      if (standingsData.length === 0) return;
+      
+      const roundStandingsData = standingsData.map(team => ({
+        ...team,
+        all: { 
+          played: 0, win: 0, draw: 0, lose: 0,
+          goals: { for: 0, against: 0 }
+        },
+        home: { played: 0, win: 0, draw: 0, lose: 0, goals: { for: 0, against: 0 } },
+        away: { played: 0, win: 0, draw: 0, lose: 0, goals: { for: 0, against: 0 } },
+        points: 0,
+        form: "",
+        description: team.description,
+        rank: 0
+      }));
+      
+      const matchesUpToRound = [];
+      
+      for (let i = 0; i <= roundIndex; i++) {
+        const currentRound = rounds[i];
+        try {
+          const roundMatches = await api(`/fixtures?league=${lid}&season=${season}&round=${encodeURIComponent(currentRound)}`, 3600000);
+          
+          if (roundMatches && roundMatches.length > 0) {
+            const finishedMatches = roundMatches.filter(m => DONE_ST.has(m.fixture.status.short));
+            matchesUpToRound.push(...finishedMatches);
+          }
+        } catch (e) {
+          console.log(`Erreur chargement round ${currentRound}`, e);
+        }
+      }
+      
+      console.log(`${matchesUpToRound.length} matchs trouvés jusqu'à la J${roundIndex + 1}`);
+      
+      for (const match of matchesUpToRound) {
+        const homeId = match.teams.home.id;
+        const awayId = match.teams.away.id;
+        const homeGoals = match.goals.home || 0;
+        const awayGoals = match.goals.away || 0;
+        
+        const homeTeam = roundStandingsData.find(t => t.team.id === homeId);
+        const awayTeam = roundStandingsData.find(t => t.team.id === awayId);
+        
+        if (homeTeam) {
+          homeTeam.home.played++;
+          homeTeam.home.goals.for += homeGoals;
+          homeTeam.home.goals.against += awayGoals;
+          
+          homeTeam.all.played++;
+          homeTeam.all.goals.for += homeGoals;
+          homeTeam.all.goals.against += awayGoals;
+          
+          if (homeGoals > awayGoals) {
+            homeTeam.home.win++;
+            homeTeam.all.win++;
+            homeTeam.points += 3;
+          } else if (homeGoals === awayGoals) {
+            homeTeam.home.draw++;
+            homeTeam.all.draw++;
+            homeTeam.points += 1;
+          } else {
+            homeTeam.home.lose++;
+            homeTeam.all.lose++;
+          }
+        }
+        
+        if (awayTeam) {
+          awayTeam.away.played++;
+          awayTeam.away.goals.for += awayGoals;
+          awayTeam.away.goals.against += homeGoals;
+          
+          awayTeam.all.played++;
+          awayTeam.all.goals.for += awayGoals;
+          awayTeam.all.goals.against += homeGoals;
+          
+          if (awayGoals > homeGoals) {
+            awayTeam.away.win++;
+            awayTeam.all.win++;
+            awayTeam.points += 3;
+          } else if (awayGoals === homeGoals) {
+            awayTeam.away.draw++;
+            awayTeam.all.draw++;
+            awayTeam.points += 1;
+          } else {
+            awayTeam.away.lose++;
+            awayTeam.all.lose++;
+          }
+        }
+      }
+      
+      roundStandingsData.sort((a, b) => {
+        if (a.points !== b.points) return b.points - a.points;
+        const gdA = (a.all.goals.for - a.all.goals.against);
+        const gdB = (b.all.goals.for - b.all.goals.against);
+        if (gdA !== gdB) return gdB - gdA;
+        return (b.all.goals.for || 0) - (a.all.goals.for || 0);
+      });
+      
+      roundStandingsData.forEach((team, idx) => {
+        team.rank = idx + 1;
+      });
+      
+      const last5Matches = [...matchesUpToRound]
+        .sort((a, b) => new Date(b.fixture.date) - new Date(a.fixture.date))
+        .slice(0, 5);
+      
+      roundStandingsData.forEach(team => {
+        const teamLast5 = last5Matches
+          .filter(m => m.teams.home.id === team.team.id || m.teams.away.id === team.team.id)
+          .map(m => {
+            const isHome = m.teams.home.id === team.team.id;
+            const gF = isHome ? m.goals.home : m.goals.away;
+            const gA = isHome ? m.goals.away : m.goals.home;
+            if (gF > gA) return "W";
+            if (gF < gA) return "L";
+            return "D";
+          })
+          .join('');
+        
+        team.form = teamLast5 || "";
+      });
+      
+      setRoundStandings({
+        league: fullStandings[0].league,
+        standings: [roundStandingsData],
+        roundName: roundName,
+        roundIndex: roundIndex + 1
+      });
+      
+      console.log(`✅ Classement après J${roundIndex + 1} calculé`);
+      
+    } catch (error) {
+      console.error("Erreur lors du calcul du classement:", error);
+    } finally {
+      setLoadingRound(false);
+    }
+  };
+
+  // Quand on change de journée, recalculer le classement
+  useEffect(() => {
+    if (viewMode === "classement-journee" && selectedRound) {
+      loadRoundStandings(selectedRound);
+    } else {
+      setRoundStandings(null);
+    }
+  }, [selectedRound, viewMode, lid, season]);
 
   const openMatchDetail = async (id) => {
     setDetailMatch({ loading: true });
@@ -5362,7 +5538,6 @@ function StandingsTab({ onTeam }) {
   };
 
   const getZoneColor = (rank, leagueId, totalRows) => {
-
     if ([39,140,135,78,61].includes(leagueId)) {
       if (rank <= 4) return { bg: "rgba(37,99,235,.07)", bar: "#2563eb", label: "LDC" };
       if (rank === 5) return { bg: "rgba(234,179,8,.07)", bar: "#eab308", label: "LEL" };
@@ -5402,22 +5577,27 @@ function StandingsTab({ onTeam }) {
       ),
 
       React.createElement("div", { style: { display: "flex", background: "#f1f5f9", borderRadius: 12, padding: 3, gap: 2 } },
-        [["classement","📊 Classement"],["resultats","📋 Résultats"]].map(([mode, label]) =>
+        [
+          ["classement", "📊 Classement général"],
+          ["resultats", "📋 Résultats journée"],
+          ["classement-journee", "📈 Classement par journée"]
+        ].map(([mode, label]) =>
           React.createElement("button", {
             key: mode, onClick: () => setViewMode(mode),
             style: {
               flex: 1, padding: "9px 0", borderRadius: 10, border: "none",
               background: viewMode === mode ? "#fff" : "transparent",
               color: viewMode === mode ? "#0f172a" : "#94a3b8",
-              fontWeight: viewMode === mode ? 700 : 500, fontSize: 13, cursor: "pointer",
+              fontWeight: viewMode === mode ? 700 : 500, fontSize: 12, cursor: "pointer",
               boxShadow: viewMode === mode ? "0 1px 4px rgba(15,23,42,.1)" : "none",
-              transition: "all .2s"
+              transition: "all .2s",
+              whiteSpace: "nowrap"
             }
           }, label)
         )
       ),
 
-      viewMode === "resultats" && rounds.length > 0 && React.createElement("div", { style: { marginTop: 10 } },
+      (viewMode === "resultats" || viewMode === "classement-journee") && rounds.length > 0 && React.createElement("div", { style: { marginTop: 10 } },
         React.createElement("div", { style: { display: "flex", alignItems: "center", gap: 8, marginBottom: 8 } },
           React.createElement("button", {
             onClick: () => { const i = rounds.indexOf(selectedRound); if (i > 0) setSelectedRound(rounds[i-1]); },
@@ -5432,11 +5612,11 @@ function StandingsTab({ onTeam }) {
           }, "→")
         ),
         React.createElement("div", { style: { display: "flex", gap: 5, overflowX: "auto", paddingBottom: 2 } },
-          rounds.map(r =>
+          rounds.map((r, idx) =>
             React.createElement("button", {
               key: r, onClick: () => setSelectedRound(r),
               style: { padding: "5px 10px", borderRadius: 20, border: "none", background: selectedRound === r ? "#0f172a" : "#f1f5f9", color: selectedRound === r ? "#fff" : "#64748b", fontSize: 11, fontWeight: selectedRound === r ? 700 : 500, cursor: "pointer", whiteSpace: "nowrap", flexShrink: 0 }
-            }, r.replace("Regular Season - ", "J"))
+            }, `J${idx+1}`)
           )
         )
       )
@@ -5444,6 +5624,7 @@ function StandingsTab({ onTeam }) {
 
     React.createElement("div", { style: { flex: 1, overflowY: "auto" } },
 
+      // === MODE CLASSEMENT GÉNÉRAL ===
       viewMode === "classement" && (
         status === "load" ? React.createElement("div", { style: { display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", padding: 60, gap: 12 } },
           React.createElement(Spin, { s: 28, c: "#00c170" }),
@@ -5551,6 +5732,7 @@ function StandingsTab({ onTeam }) {
         })
       ),
 
+      // === MODE RÉSULTATS JOURNÉE ===
       viewMode === "resultats" && (
         matches.length === 0
           ? React.createElement("div", { style: { textAlign: "center", padding: 40, color: "#94a3b8" } },
@@ -5564,7 +5746,6 @@ function StandingsTab({ onTeam }) {
                 const isFinished = DONE_ST.has(sh), isLive = LIVE_ST.has(sh);
                 const hw = hg !== null && ag !== null && hg > ag;
                 const aw = hg !== null && ag !== null && ag > hg;
-                const scoreColor = isLive ? "#e53535" : isFinished ? "#0f172a" : "#94a3b8";
 
                 return React.createElement("div", {
                   key: match.fixture.id,
@@ -5618,6 +5799,94 @@ function StandingsTab({ onTeam }) {
                 );
               })
             )
+      ),
+
+      // === NOUVEAU : CLASSEMENT PAR JOURNÉE ===
+      viewMode === "classement-journee" && (
+        !selectedRound
+          ? React.createElement("div", { style: { textAlign: "center", padding: 40, color: "#94a3b8" } }, "Sélectionne une journée")
+          : loadingRound
+          ? React.createElement("div", { style: { display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", padding: 60, gap: 12 } },
+              React.createElement(Spin, { s: 28, c: "#00c170" }),
+              React.createElement("span", { style: { fontSize: 13, color: "#94a3b8" } }, `Calcul du classement après ${selectedRound.replace("Regular Season - ", "J")}...`)
+            )
+          : !roundStandings
+          ? React.createElement("div", { style: { textAlign: "center", padding: 40, color: "#94a3b8" } }, "Classement non disponible")
+          : React.createElement("div", { style: { padding: "12px" } },
+              React.createElement("div", { style: { background: "linear-gradient(135deg,#00c170,#009e5c)", borderRadius: 12, padding: "12px 16px", marginBottom: 12, color: "#fff" } },
+                React.createElement("div", { style: { fontSize: 12, fontWeight: 700, textTransform: "uppercase", letterSpacing: 1, opacity: 0.9 } }, "CLASSEMENT APRÈS"),
+                React.createElement("div", { style: { fontSize: 20, fontWeight: 900, marginTop: 2 } }, selectedRound.replace("Regular Season - ", "JOURNÉE "))
+              ),
+              
+              React.createElement("div", { style: { background: "#fff", borderRadius: 16, overflow: "hidden", boxShadow: "0 1px 8px rgba(15,23,42,.07)" } },
+                
+                React.createElement("div", { style: { display: "flex", alignItems: "center", padding: "8px 12px", background: "#f8fafc", borderBottom: "1px solid #f1f5f9" } },
+                  React.createElement("div", { style: { width: 24, fontSize: 9, fontWeight: 700, color: "#94a3b8", textAlign: "center" } }, "#"),
+                  React.createElement("div", { style: { flex: 1, fontSize: 9, fontWeight: 700, color: "#94a3b8", paddingLeft: 8 } }, "ÉQUIPE"),
+                  React.createElement("div", { style: { width: 26, fontSize: 9, fontWeight: 700, color: "#94a3b8", textAlign: "center" } }, "MJ"),
+                  React.createElement("div", { style: { width: 26, fontSize: 9, fontWeight: 700, color: "#22c55e", textAlign: "center" } }, "V"),
+                  React.createElement("div", { style: { width: 26, fontSize: 9, fontWeight: 700, color: "#94a3b8", textAlign: "center" } }, "N"),
+                  React.createElement("div", { style: { width: 26, fontSize: 9, fontWeight: 700, color: "#ef4444", textAlign: "center" } }, "D"),
+                  React.createElement("div", { style: { width: 26, fontSize: 9, fontWeight: 700, color: "#94a3b8", textAlign: "center" } }, "DB"),
+                  React.createElement("div", { style: { width: 32, fontSize: 9, fontWeight: 700, color: "#0f172a", textAlign: "center" } }, "PTS")
+                ),
+
+                roundStandings.standings[0].map((row, idx) => {
+                  const isFirst = idx === 0;
+                  const isLast = idx === roundStandings.standings[0].length - 1;
+                  const gd = (row.all.goals.for - row.all.goals.against);
+
+                  return React.createElement("div", {
+                    key: row.team.id,
+                    style: {
+                      display: "flex", alignItems: "center",
+                      padding: "10px 12px",
+                      borderBottom: idx < roundStandings.standings[0].length - 1 ? "1px solid #f8fafc" : "none",
+                      background: isFirst ? "rgba(0,193,112,.05)" : "#fff",
+                      borderLeft: isFirst ? "3px solid #00c170" : "3px solid transparent",
+                      cursor: "pointer",
+                      transition: "background .15s"
+                    },
+                    onClick: () => onTeam && onTeam(row.team.id, row.team.name, row.team.logo, lid, season)
+                  },
+                    React.createElement("div", { style: { width: 24, textAlign: "center", flexShrink: 0 } },
+                      isFirst
+                        ? React.createElement("span", { style: { fontSize: 14 } }, "🥇")
+                        : React.createElement("span", { style: { fontSize: 12, fontWeight: 700, color: "#64748b" } }, idx + 1)
+                    ),
+
+                    React.createElement("div", { style: { flex: 1, display: "flex", alignItems: "center", gap: 8, minWidth: 0, paddingLeft: 4 } },
+                      React.createElement(Logo, { src: row.team.logo, size: 20 }),
+                      React.createElement("div", { style: { minWidth: 0 } },
+                        React.createElement("div", { style: { fontSize: 13, fontWeight: isFirst ? 700 : 500, color: "#0f172a", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" } }, row.team.name),
+                        row.form && React.createElement("div", { style: { display: "flex", gap: 2, marginTop: 2 } },
+                          row.form.slice(-5).split("").map((r, i) =>
+                            React.createElement("div", {
+                              key: i,
+                              style: {
+                                width: 8, height: 8, borderRadius: 2,
+                                background: r === "W" ? "#22c55e" : r === "D" ? "#f59e0b" : "#ef4444"
+                              }
+                            })
+                          )
+                        )
+                      )
+                    ),
+
+                    React.createElement("div", { style: { width: 26, textAlign: "center", fontSize: 12, color: "#64748b", flexShrink: 0 } }, row.all.played),
+                    React.createElement("div", { style: { width: 26, textAlign: "center", fontSize: 12, fontWeight: 600, color: "#22c55e", flexShrink: 0 } }, row.all.win),
+                    React.createElement("div", { style: { width: 26, textAlign: "center", fontSize: 12, color: "#64748b", flexShrink: 0 } }, row.all.draw),
+                    React.createElement("div", { style: { width: 26, textAlign: "center", fontSize: 12, fontWeight: 600, color: "#ef4444", flexShrink: 0 } }, row.all.lose),
+                    React.createElement("div", { style: { width: 26, textAlign: "center", fontSize: 11, color: "#64748b", flexShrink: 0 } },
+                      `${gd >= 0 ? "+" : ""}${gd}`
+                    ),
+                    React.createElement("div", { style: { width: 32, textAlign: "center", flexShrink: 0 } },
+                      React.createElement("div", { style: { background: isFirst ? "#00c170" : "#f1f5f9", color: isFirst ? "#fff" : "#0f172a", borderRadius: 8, padding: "3px 0", fontSize: 13, fontWeight: 900, minWidth: 28, display: "inline-block" } }, row.points)
+                    )
+                  );
+                })
+              )
+            )
       )
     ),
 
@@ -5654,6 +5923,10 @@ function StandingsTab({ onTeam }) {
     detailMatch && React.createElement(MatchDetailWrapper, { state: detailMatch, onClose: () => setDetailMatch(null), onTeam: onTeam })
   );
 }
+
+// ==============================================================
+// FIN DE LA VERSION MODIFIÉE
+// ==============================================================
 
 const _algerianScorersCache = { data: null, ts: 0 };
 
