@@ -48,7 +48,7 @@
     <script>
         if ("serviceWorker" in navigator) {
             const sw = `
-    const C='wf-pro-v102';
+    const C='wf-pro-v103';
     const API_KEY='3a14b1347c177458e2f23bea7899e9cf';
     const BASE='https://v3.football.api-sports.io';
     let prevScores = {};
@@ -7108,10 +7108,16 @@ function TransfersTab({ onTeam }) {
               ? React.createElement("div", { style: { fontSize: 12, color: "#94a3b8", padding: "8px 0" } }, "Aucune donnée")
               : coachesData.filter(e => e.isCurrent).map((entry, i) =>
                   React.createElement("div", { key: "cur-"+i, style: { background: "#fff", borderRadius: 12, padding: "12px 14px", display: "flex", alignItems: "center", gap: 12, boxShadow: "0 1px 4px rgba(15,23,42,.06)", borderLeft: "3px solid #00c170" } },
-                    React.createElement("div", { style: { width: 56, height: 56, borderRadius: "50%", overflow: "hidden", flexShrink: 0, background: "#f1f5f9", display: "flex", alignItems: "center", justifyContent: "center" } },
-                      entry.coach.photo
-                        ? React.createElement("img", { src: entry.coach.photo, style: { width: "100%", height: "100%", objectFit: "cover" }, onError: e => { e.target.style.display="none"; e.target.parentNode.innerHTML=`<span style="font-size:20px;font-weight:700;color:#64748b">${getCoachInitials(entry.coach.name)}</span>`; } })
-                        : React.createElement("span", { style: { fontSize: 20, fontWeight: 700, color: "#64748b" } }, getCoachInitials(entry.coach.name))
+                    React.createElement("div", { style: { width: 56, height: 56, borderRadius: "50%", overflow: "hidden", flexShrink: 0, background: "linear-gradient(135deg,#00c170,#009e5c)", display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0 } },
+                      React.createElement("img", {
+                        src: entry.coach.photo || `https://media.api-sports.io/football/coachs/${entry.coach.id}.png`,
+                        style: { width: "100%", height: "100%", objectFit: "cover" },
+                        onError: e => {
+                          e.target.style.display = "none";
+                          e.target.parentNode.style.background = "linear-gradient(135deg,#00c170,#009e5c)";
+                          e.target.parentNode.innerHTML = `<span style="font-size:20px;font-weight:800;color:#fff">${getCoachInitials(entry.coach.name)}</span>`;
+                        }
+                      })
                     ),
                     React.createElement("div", { style: { flex: 1, minWidth: 0 } },
                       React.createElement("div", { style: { fontSize: 14, fontWeight: 700, color: "#0f172a" } }, entry.coach.name),
@@ -7132,10 +7138,15 @@ function TransfersTab({ onTeam }) {
               React.createElement("div", { style: { fontSize: 11, fontWeight: 800, color: "#64748b", textTransform: "uppercase", letterSpacing: 1, padding: "8px 0 2px" } }, "📋 Anciens entraîneurs"),
               coachesData.filter(e => !e.isCurrent).map((entry, i) =>
                 React.createElement("div", { key: "old-"+i, style: { background: "#fff", borderRadius: 12, padding: "12px 14px", display: "flex", alignItems: "center", gap: 12, boxShadow: "0 1px 4px rgba(15,23,42,.04)", borderLeft: "3px solid #e2e8f0", opacity: 0.85 } },
-                  React.createElement("div", { style: { width: 46, height: 46, borderRadius: "50%", overflow: "hidden", flexShrink: 0, background: "#f1f5f9", display: "flex", alignItems: "center", justifyContent: "center" } },
-                    entry.coach.photo
-                      ? React.createElement("img", { src: entry.coach.photo, style: { width: "100%", height: "100%", objectFit: "cover" }, onError: e => { e.target.style.display="none"; e.target.parentNode.innerHTML=`<span style="font-size:18px;font-weight:600">${getCoachInitials(entry.coach.name)}</span>`; } })
-                      : React.createElement("span", { style: { fontSize: 18, fontWeight: 600 } }, getCoachInitials(entry.coach.name))
+                  React.createElement("div", { style: { width: 46, height: 46, borderRadius: "50%", overflow: "hidden", flexShrink: 0, background: "linear-gradient(135deg,#94a3b8,#64748b)", display: "flex", alignItems: "center", justifyContent: "center" } },
+                    React.createElement("img", {
+                      src: entry.coach.photo || `https://media.api-sports.io/football/coachs/${entry.coach.id}.png`,
+                      style: { width: "100%", height: "100%", objectFit: "cover" },
+                      onError: e => {
+                        e.target.style.display = "none";
+                        e.target.parentNode.innerHTML = `<span style="font-size:16px;font-weight:800;color:#fff">${getCoachInitials(entry.coach.name)}</span>`;
+                      }
+                    })
                   ),
                   React.createElement("div", { style: { flex: 1, minWidth: 0 } },
                     React.createElement("div", { style: { fontSize: 14, fontWeight: 700, color: "#0f172a" } }, entry.coach.name),
