@@ -48,7 +48,7 @@
     <script>
         if ("serviceWorker" in navigator) {
             const sw = `
-    const C='wf-pro-v101';
+    const C='wf-pro-v102';
     const API_KEY='3a14b1347c177458e2f23bea7899e9cf';
     const BASE='https://v3.football.api-sports.io';
     let prevScores = {};
@@ -980,6 +980,51 @@ async function resolvePlayerPhoto(playerId,playerName){
   }
   _photoCache.set(key,null);
   return null;
+}
+
+// Cache pour les photos d'entraîneurs
+const _coachPhotoCache = new Map();
+
+async function getCoachPhoto(coachName, coachId = null) {
+  if (!coachName) return null;
+  const cacheKey = `coach_${coachId || coachName.replace(/\s/g, '_')}`;
+  if (_coachPhotoCache.has(cacheKey)) return _coachPhotoCache.get(cacheKey);
+  const cleanName = coachName.split(',')[0].trim();
+
+  if (coachId) {
+    const url = `https://media.api-sports.io/football/coachs/${coachId}.png`;
+    const ok = await checkImg(url);
+    if (ok) { _coachPhotoCache.set(cacheKey, url); return url; }
+  }
+
+  try {
+    const response = await fetch(`https://www.thesportsdb.com/api/v1/json/3/searchplayers.php?p=${encodeURIComponent(cleanName)}`);
+    const data = await response.json();
+    if (data.player && data.player[0]) {
+      const photo = data.player[0].strCutout || data.player[0].strThumb || data.player[0].strRender;
+      if (photo) { _coachPhotoCache.set(cacheKey, photo); return photo; }
+    }
+  } catch(e) {}
+
+  const slug = cleanName.toLowerCase().replace(/\s+/g, '-').replace(/[^a-z-]/g, '');
+  for (const url of [
+    `https://tmssl.akamaized.net/images/portrait/header/${slug}-2025.jpg`,
+    `https://tmssl.akamaized.net/images/portrait/header/${slug}-2024.jpg`,
+    `https://img.fotmob.com/image/coach/${slug}.png`,
+  ]) {
+    const ok = await checkImg(url);
+    if (ok) { _coachPhotoCache.set(cacheKey, url); return url; }
+  }
+
+  _coachPhotoCache.set(cacheKey, null);
+  return null;
+}
+
+function getCoachInitials(name) {
+  if (!name) return "?";
+  const parts = name.trim().split(' ');
+  if (parts.length >= 2) return (parts[0][0] + parts[parts.length-1][0]).toUpperCase();
+  return name.substring(0, 2).toUpperCase();
 }
 
 function PlayerImage({playerId,playerName,size=56,ring="rgba(255,255,255,.15)"}){
@@ -6810,7 +6855,19 @@ function TransfersTab({ onTeam }) {
     Promise.allSettled(
       clubs.map(c =>
         api(`/coachs?team=${c.id}`, 86400000)
-          .then(res => ({ clubId: c.id, clubName: c.name, clubLogo: c.logo, coaches: res || [] }))
+          .then(async res => {
+            const coachesData = res || [];
+            const coachesWithPhotos = await Promise.all(
+              coachesData.map(async coach => {
+                let photo = coach.photo || null;
+                if (!photo && coach.name) {
+                  photo = await getCoachPhoto(coach.name, coach.id);
+                }
+                return { ...coach, photo };
+              })
+            );
+            return { clubId: c.id, clubName: c.name, clubLogo: c.logo, coaches: coachesWithPhotos };
+          })
           .catch(() => ({ clubId: c.id, clubName: c.name, clubLogo: c.logo, coaches: [] }))
       )
     ).then(results => {
@@ -6818,22 +6875,14 @@ function TransfersTab({ onTeam }) {
       results.forEach(r => {
         if (r.status !== "fulfilled") return;
         const { clubId, clubName, clubLogo, coaches } = r.value;
-        // Prendre tous les coachs, pas seulement le current
         coaches.forEach(coach => {
           if (!coach.career) return;
           const stint = coach.career.find(c => c.team?.id === clubId);
           if (!stint) return;
           const isCurrent = !stint.end;
-          entries.push({
-            coach,
-            clubId, clubName, clubLogo,
-            start: stint.start,
-            end: stint.end,
-            isCurrent
-          });
+          entries.push({ coach, clubId, clubName, clubLogo, start: stint.start, end: stint.end, isCurrent });
         });
       });
-      // Trier : actuels en premier, puis par date de départ décroissante
       entries.sort((a, b) => {
         if (a.isCurrent && !b.isCurrent) return -1;
         if (!a.isCurrent && b.isCurrent) return 1;
@@ -7059,10 +7108,10 @@ function TransfersTab({ onTeam }) {
               ? React.createElement("div", { style: { fontSize: 12, color: "#94a3b8", padding: "8px 0" } }, "Aucune donnée")
               : coachesData.filter(e => e.isCurrent).map((entry, i) =>
                   React.createElement("div", { key: "cur-"+i, style: { background: "#fff", borderRadius: 12, padding: "12px 14px", display: "flex", alignItems: "center", gap: 12, boxShadow: "0 1px 4px rgba(15,23,42,.06)", borderLeft: "3px solid #00c170" } },
-                    React.createElement("div", { style: { width: 46, height: 46, borderRadius: "50%", overflow: "hidden", flexShrink: 0, background: "#f1f5f9", display: "flex", alignItems: "center", justifyContent: "center" } },
+                    React.createElement("div", { style: { width: 56, height: 56, borderRadius: "50%", overflow: "hidden", flexShrink: 0, background: "#f1f5f9", display: "flex", alignItems: "center", justifyContent: "center" } },
                       entry.coach.photo
-                        ? React.createElement("img", { src: entry.coach.photo, style: { width: "100%", height: "100%", objectFit: "cover" } })
-                        : React.createElement("span", { style: { fontSize: 22 } }, "🧑‍💼")
+                        ? React.createElement("img", { src: entry.coach.photo, style: { width: "100%", height: "100%", objectFit: "cover" }, onError: e => { e.target.style.display="none"; e.target.parentNode.innerHTML=`<span style="font-size:20px;font-weight:700;color:#64748b">${getCoachInitials(entry.coach.name)}</span>`; } })
+                        : React.createElement("span", { style: { fontSize: 20, fontWeight: 700, color: "#64748b" } }, getCoachInitials(entry.coach.name))
                     ),
                     React.createElement("div", { style: { flex: 1, minWidth: 0 } },
                       React.createElement("div", { style: { fontSize: 14, fontWeight: 700, color: "#0f172a" } }, entry.coach.name),
@@ -7085,8 +7134,8 @@ function TransfersTab({ onTeam }) {
                 React.createElement("div", { key: "old-"+i, style: { background: "#fff", borderRadius: 12, padding: "12px 14px", display: "flex", alignItems: "center", gap: 12, boxShadow: "0 1px 4px rgba(15,23,42,.04)", borderLeft: "3px solid #e2e8f0", opacity: 0.85 } },
                   React.createElement("div", { style: { width: 46, height: 46, borderRadius: "50%", overflow: "hidden", flexShrink: 0, background: "#f1f5f9", display: "flex", alignItems: "center", justifyContent: "center" } },
                     entry.coach.photo
-                      ? React.createElement("img", { src: entry.coach.photo, style: { width: "100%", height: "100%", objectFit: "cover" } })
-                      : React.createElement("span", { style: { fontSize: 22 } }, "🧑‍💼")
+                      ? React.createElement("img", { src: entry.coach.photo, style: { width: "100%", height: "100%", objectFit: "cover" }, onError: e => { e.target.style.display="none"; e.target.parentNode.innerHTML=`<span style="font-size:18px;font-weight:600">${getCoachInitials(entry.coach.name)}</span>`; } })
+                      : React.createElement("span", { style: { fontSize: 18, fontWeight: 600 } }, getCoachInitials(entry.coach.name))
                   ),
                   React.createElement("div", { style: { flex: 1, minWidth: 0 } },
                     React.createElement("div", { style: { fontSize: 14, fontWeight: 700, color: "#0f172a" } }, entry.coach.name),
