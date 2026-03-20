@@ -48,7 +48,7 @@
     <script>
         if ("serviceWorker" in navigator) {
             const sw = `
-    const C='wf-pro-v78';
+    const C='wf-pro-v79';
     const API_KEY='3a14b1347c177458e2f23bea7899e9cf';
     const BASE='https://v3.football.api-sports.io';
     let prevScores = {};
@@ -5576,24 +5576,30 @@ function StandingsTab({ onTeam }) {
         )
       ),
 
-      React.createElement("div", { style: { display: "flex", background: "#f1f5f9", borderRadius: 12, padding: 3, gap: 2 } },
-        [
-          ["classement", "📊 Classement général"],
-          ["resultats", "📋 Résultats journée"],
-          ["classement-journee", "📈 Classement par journée"]
-        ].map(([mode, label]) =>
-          React.createElement("button", {
-            key: mode, onClick: () => setViewMode(mode),
-            style: {
-              flex: 1, padding: "9px 0", borderRadius: 10, border: "none",
-              background: viewMode === mode ? "#fff" : "transparent",
-              color: viewMode === mode ? "#0f172a" : "#94a3b8",
-              fontWeight: viewMode === mode ? 700 : 500, fontSize: 12, cursor: "pointer",
-              boxShadow: viewMode === mode ? "0 1px 4px rgba(15,23,42,.1)" : "none",
-              transition: "all .2s",
-              whiteSpace: "nowrap"
-            }
-          }, label)
+      React.createElement("div", { style: { overflowX: "auto", scrollbarWidth: "none", WebkitOverflowScrolling: "touch", marginBottom: 0 } },
+        React.createElement("div", { style: { display: "flex", background: "#f1f5f9", borderRadius: 12, padding: 3, gap: 2, minWidth: "max-content" } },
+          [
+            ["classement", "📊", "Classement"],
+            ["resultats", "📋", "Résultats"],
+            ["classement-journee", "📈", "Par journée"]
+          ].map(([mode, icon, label]) =>
+            React.createElement("button", {
+              key: mode, onClick: () => setViewMode(mode),
+              style: {
+                display: "flex", alignItems: "center", gap: 5,
+                padding: "9px 14px", borderRadius: 10, border: "none",
+                background: viewMode === mode ? "#fff" : "transparent",
+                color: viewMode === mode ? "#0f172a" : "#94a3b8",
+                fontWeight: viewMode === mode ? 700 : 500,
+                fontSize: 12, cursor: "pointer", whiteSpace: "nowrap",
+                boxShadow: viewMode === mode ? "0 1px 4px rgba(15,23,42,.1)" : "none",
+                transition: "all .2s", flexShrink: 0
+              }
+            },
+              React.createElement("span", { style: { fontSize: 13 } }, icon),
+              label
+            )
+          )
         )
       ),
 
@@ -5808,83 +5814,120 @@ function StandingsTab({ onTeam }) {
           : loadingRound
           ? React.createElement("div", { style: { display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", padding: 60, gap: 12 } },
               React.createElement(Spin, { s: 28, c: "#00c170" }),
-              React.createElement("span", { style: { fontSize: 13, color: "#94a3b8" } }, `Calcul du classement après ${selectedRound.replace("Regular Season - ", "J")}...`)
+              React.createElement("span", { style: { fontSize: 13, color: "#94a3b8" } }, `Calcul après ${selectedRound.replace("Regular Season - ", "J")}...`)
             )
           : !roundStandings
           ? React.createElement("div", { style: { textAlign: "center", padding: 40, color: "#94a3b8" } }, "Classement non disponible")
           : React.createElement("div", { style: { padding: "12px" } },
-              React.createElement("div", { style: { background: "linear-gradient(135deg,#00c170,#009e5c)", borderRadius: 12, padding: "12px 16px", marginBottom: 12, color: "#fff" } },
-                React.createElement("div", { style: { fontSize: 12, fontWeight: 700, textTransform: "uppercase", letterSpacing: 1, opacity: 0.9 } }, "CLASSEMENT APRÈS"),
-                React.createElement("div", { style: { fontSize: 20, fontWeight: 900, marginTop: 2 } }, selectedRound.replace("Regular Season - ", "JOURNÉE "))
+
+              // Badge journée
+              React.createElement("div", { style: {
+                background: "linear-gradient(135deg,#00c170,#009e5c)",
+                borderRadius: 14, padding: "12px 16px", marginBottom: 12,
+                display: "flex", alignItems: "center", justifyContent: "space-between",
+                boxShadow: "0 4px 16px rgba(0,193,112,.3)"
+              } },
+                React.createElement("div", null,
+                  React.createElement("div", { style: { fontSize: 10, fontWeight: 700, color: "rgba(255,255,255,.7)", textTransform: "uppercase", letterSpacing: 1 } }, "Classement après"),
+                  React.createElement("div", { style: { fontSize: 18, fontWeight: 900, color: "#fff", marginTop: 2 } },
+                    selectedRound.replace("Regular Season - ", "Journée ")
+                  )
+                ),
+                React.createElement("div", { style: { fontSize: 32, opacity: 0.6 } }, "📈")
               ),
-              
+
+              // Table
               React.createElement("div", { style: { background: "#fff", borderRadius: 16, overflow: "hidden", boxShadow: "0 1px 8px rgba(15,23,42,.07)" } },
-                
-                React.createElement("div", { style: { display: "flex", alignItems: "center", padding: "8px 12px", background: "#f8fafc", borderBottom: "1px solid #f1f5f9" } },
-                  React.createElement("div", { style: { width: 24, fontSize: 9, fontWeight: 700, color: "#94a3b8", textAlign: "center" } }, "#"),
+
+                // Header colonnes
+                React.createElement("div", { style: { display: "flex", alignItems: "center", padding: "7px 12px", background: "#f8fafc", borderBottom: "1px solid #f1f5f9" } },
+                  React.createElement("div", { style: { width: 24, fontSize: 9, fontWeight: 700, color: "#94a3b8", textAlign: "center", flexShrink: 0 } }, "#"),
                   React.createElement("div", { style: { flex: 1, fontSize: 9, fontWeight: 700, color: "#94a3b8", paddingLeft: 8 } }, "ÉQUIPE"),
-                  React.createElement("div", { style: { width: 26, fontSize: 9, fontWeight: 700, color: "#94a3b8", textAlign: "center" } }, "MJ"),
-                  React.createElement("div", { style: { width: 26, fontSize: 9, fontWeight: 700, color: "#22c55e", textAlign: "center" } }, "V"),
-                  React.createElement("div", { style: { width: 26, fontSize: 9, fontWeight: 700, color: "#94a3b8", textAlign: "center" } }, "N"),
-                  React.createElement("div", { style: { width: 26, fontSize: 9, fontWeight: 700, color: "#ef4444", textAlign: "center" } }, "D"),
-                  React.createElement("div", { style: { width: 26, fontSize: 9, fontWeight: 700, color: "#94a3b8", textAlign: "center" } }, "DB"),
-                  React.createElement("div", { style: { width: 32, fontSize: 9, fontWeight: 700, color: "#0f172a", textAlign: "center" } }, "PTS")
+                  React.createElement("div", { style: { width: 26, fontSize: 9, fontWeight: 700, color: "#94a3b8", textAlign: "center", flexShrink: 0 } }, "MJ"),
+                  React.createElement("div", { style: { width: 26, fontSize: 9, fontWeight: 700, color: "#22c55e", textAlign: "center", flexShrink: 0 } }, "V"),
+                  React.createElement("div", { style: { width: 26, fontSize: 9, fontWeight: 700, color: "#94a3b8", textAlign: "center", flexShrink: 0 } }, "N"),
+                  React.createElement("div", { style: { width: 26, fontSize: 9, fontWeight: 700, color: "#ef4444", textAlign: "center", flexShrink: 0 } }, "D"),
+                  React.createElement("div", { style: { width: 26, fontSize: 9, fontWeight: 700, color: "#94a3b8", textAlign: "center", flexShrink: 0 } }, "DB"),
+                  React.createElement("div", { style: { width: 32, fontSize: 9, fontWeight: 700, color: "#0f172a", textAlign: "center", flexShrink: 0 } }, "PTS")
                 ),
 
                 roundStandings.standings[0].map((row, idx) => {
+                  const total = roundStandings.standings[0].length;
                   const isFirst = idx === 0;
-                  const isLast = idx === roundStandings.standings[0].length - 1;
                   const gd = (row.all.goals.for - row.all.goals.against);
+
+                  // Zones colorées
+                  const getZone = (rank) => {
+                    if ([39,140,135,78,61].includes(lid)) {
+                      if (rank <= 4) return { bar: "#2563eb", bg: "rgba(37,99,235,.06)" };
+                      if (rank === 5) return { bar: "#eab308", bg: "rgba(234,179,8,.06)" };
+                      if (rank >= total - 2) return { bar: "#ef4444", bg: "rgba(239,68,68,.06)" };
+                    }
+                    if (lid === 186) {
+                      if (rank <= 2) return { bar: "#2563eb", bg: "rgba(37,99,235,.06)" };
+                      if (rank >= total - 2) return { bar: "#ef4444", bg: "rgba(239,68,68,.06)" };
+                    }
+                    return null;
+                  };
+                  const zone = getZone(idx + 1);
+                  const barColor = isFirst ? "#00c170" : zone ? zone.bar : "transparent";
+                  const rowBg = isFirst ? "rgba(0,193,112,.05)" : zone ? zone.bg : "#fff";
 
                   return React.createElement("div", {
                     key: row.team.id,
                     style: {
                       display: "flex", alignItems: "center",
                       padding: "10px 12px",
-                      borderBottom: idx < roundStandings.standings[0].length - 1 ? "1px solid #f8fafc" : "none",
-                      background: isFirst ? "rgba(0,193,112,.05)" : "#fff",
-                      borderLeft: isFirst ? "3px solid #00c170" : "3px solid transparent",
-                      cursor: "pointer",
-                      transition: "background .15s"
+                      borderBottom: idx < total - 1 ? "1px solid #f8fafc" : "none",
+                      background: rowBg,
+                      borderLeft: `3px solid ${barColor}`,
+                      cursor: "pointer", transition: "background .15s"
                     },
                     onClick: () => onTeam && onTeam(row.team.id, row.team.name, row.team.logo, lid, season)
                   },
+                    // Rang
                     React.createElement("div", { style: { width: 24, textAlign: "center", flexShrink: 0 } },
                       isFirst
                         ? React.createElement("span", { style: { fontSize: 14 } }, "🥇")
-                        : React.createElement("span", { style: { fontSize: 12, fontWeight: 700, color: "#64748b" } }, idx + 1)
+                        : React.createElement("span", { style: { fontSize: 12, fontWeight: 700, color: zone ? zone.bar : "#64748b" } }, idx + 1)
                     ),
-
+                    // Logo + Nom + Forme
                     React.createElement("div", { style: { flex: 1, display: "flex", alignItems: "center", gap: 8, minWidth: 0, paddingLeft: 4 } },
                       React.createElement(Logo, { src: row.team.logo, size: 20 }),
                       React.createElement("div", { style: { minWidth: 0 } },
                         React.createElement("div", { style: { fontSize: 13, fontWeight: isFirst ? 700 : 500, color: "#0f172a", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" } }, row.team.name),
                         row.form && React.createElement("div", { style: { display: "flex", gap: 2, marginTop: 2 } },
                           row.form.slice(-5).split("").map((r, i) =>
-                            React.createElement("div", {
-                              key: i,
-                              style: {
-                                width: 8, height: 8, borderRadius: 2,
-                                background: r === "W" ? "#22c55e" : r === "D" ? "#f59e0b" : "#ef4444"
-                              }
-                            })
+                            React.createElement("div", { key: i, style: { width: 8, height: 8, borderRadius: 2, background: r === "W" ? "#22c55e" : r === "D" ? "#f59e0b" : "#ef4444" } })
                           )
                         )
                       )
                     ),
-
                     React.createElement("div", { style: { width: 26, textAlign: "center", fontSize: 12, color: "#64748b", flexShrink: 0 } }, row.all.played),
                     React.createElement("div", { style: { width: 26, textAlign: "center", fontSize: 12, fontWeight: 600, color: "#22c55e", flexShrink: 0 } }, row.all.win),
                     React.createElement("div", { style: { width: 26, textAlign: "center", fontSize: 12, color: "#64748b", flexShrink: 0 } }, row.all.draw),
                     React.createElement("div", { style: { width: 26, textAlign: "center", fontSize: 12, fontWeight: 600, color: "#ef4444", flexShrink: 0 } }, row.all.lose),
-                    React.createElement("div", { style: { width: 26, textAlign: "center", fontSize: 11, color: "#64748b", flexShrink: 0 } },
-                      `${gd >= 0 ? "+" : ""}${gd}`
-                    ),
+                    React.createElement("div", { style: { width: 26, textAlign: "center", fontSize: 11, color: "#64748b", flexShrink: 0 } }, `${gd >= 0 ? "+" : ""}${gd}`),
                     React.createElement("div", { style: { width: 32, textAlign: "center", flexShrink: 0 } },
-                      React.createElement("div", { style: { background: isFirst ? "#00c170" : "#f1f5f9", color: isFirst ? "#fff" : "#0f172a", borderRadius: 8, padding: "3px 0", fontSize: 13, fontWeight: 900, minWidth: 28, display: "inline-block" } }, row.points)
+                      React.createElement("div", { style: {
+                        background: isFirst ? "#00c170" : zone ? zone.bar : "#f1f5f9",
+                        color: isFirst || zone ? "#fff" : "#0f172a",
+                        borderRadius: 8, padding: "3px 0", fontSize: 13, fontWeight: 900,
+                        minWidth: 28, display: "inline-block", textAlign: "center"
+                      } }, row.points)
                     )
                   );
-                })
+                }),
+
+                // Légende zones
+                React.createElement("div", { style: { display: "flex", gap: 12, padding: "8px 14px", borderTop: "1px solid #f1f5f9", flexWrap: "wrap" } },
+                  [["#2563eb","LDC/CCL"],["#eab308","Europa"],["#ef4444","Relégation"]].map(([color, label]) =>
+                    React.createElement("div", { key: label, style: { display: "flex", alignItems: "center", gap: 4 } },
+                      React.createElement("div", { style: { width: 8, height: 8, borderRadius: 2, background: color } }),
+                      React.createElement("span", { style: { fontSize: 9, color: "#94a3b8", fontWeight: 600 } }, label)
+                    )
+                  )
+                )
               )
             )
       )
