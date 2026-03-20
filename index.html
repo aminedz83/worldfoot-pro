@@ -48,7 +48,7 @@
     <script>
         if ("serviceWorker" in navigator) {
             const sw = `
-    const C='wf-pro-v91';
+    const C='wf-pro-v92';
     const API_KEY='3a14b1347c177458e2f23bea7899e9cf';
     const BASE='https://v3.football.api-sports.io';
     let prevScores = {};
@@ -6828,6 +6828,38 @@ function TransfersTab({ onTeam }) {
   const [actuFilter,    setActuFilter]    = useState("all");
   const [selectedUrl,   setSelectedUrl]   = useState(null);
   const [viewMode,      setViewMode]      = useState("sections");
+  const [coachesData,   setCoachesData]   = useState([]);
+  const [coachesStatus, setCoachesStatus] = useState("idle");
+  const [coachFilter,   setCoachFilter]   = useState("algerie");
+
+  useEffect(() => {
+    if (mainTab !== "coaches" || coachesStatus !== "idle") return;
+    setCoachesStatus("load");
+    const clubs = MERCATO_CLUBS.filter(c => coachFilter === "algerie" ? c.algerian : !c.algerian);
+    Promise.allSettled(
+      clubs.map(c =>
+        api(`/coachs?team=${c.id}`, 86400000)
+          .then(res => ({ clubId: c.id, clubName: c.name, clubLogo: c.logo, coaches: res || [] }))
+          .catch(() => ({ clubId: c.id, clubName: c.name, clubLogo: c.logo, coaches: [] }))
+      )
+    ).then(results => {
+      const entries = [];
+      results.forEach(r => {
+        if (r.status !== "fulfilled") return;
+        const { clubId, clubName, clubLogo, coaches } = r.value;
+        coaches.forEach(coach => {
+          if (!coach.career) return;
+          const current = coach.career.find(c => c.team?.id === clubId && !c.end);
+          if (current) {
+            entries.push({ coach, clubId, clubName, clubLogo, start: current.start });
+          }
+        });
+      });
+      entries.sort((a, b) => new Date(b.start) - new Date(a.start));
+      setCoachesData(entries);
+      setCoachesStatus(entries.length ? "ok" : "empty");
+    });
+  }, [mainTab, coachFilter]);
 
   useEffect(() => {
     if (mainTab !== "mercato") return;
@@ -6920,7 +6952,7 @@ function TransfersTab({ onTeam }) {
       ),
 
       React.createElement("div", { style: { display: "flex", marginTop: 10 } },
-        [{ id: "mercato", label: "⚽ Mercato" }, { id: "actu", label: "📰 Actualités" }].map(t =>
+        [{ id: "mercato", label: "⚽ Mercato" }, { id: "coaches", label: "🧑‍💼 Entraîneurs" }, { id: "actu", label: "📰 Actualités" }].map(t =>
           React.createElement("button", {
             key: t.id, onClick: () => setMainTab(t.id),
             style: {
@@ -7016,6 +7048,55 @@ function TransfersTab({ onTeam }) {
         React.createElement(AfricaTransferCard, { key: t.id, t: t, onOpen: setSelectedUrl })
       ),
       React.createElement("div", { style: { height: 20 } })
+    ),
+
+    mainTab === "coaches" && React.createElement("div", { style: { flex: 1, overflowY: "auto" } },
+      // Filtre Algérie / Europe
+      React.createElement("div", { style: { background: "#fff", borderBottom: "1px solid #e8edf3", padding: "10px 12px", flexShrink: 0, display: "flex", gap: 6 } },
+        [{ id: "algerie", label: "🇩🇿 Algérie" }, { id: "europe", label: "🌍 Europe" }].map(f =>
+          React.createElement("button", {
+            key: f.id, onClick: () => { setCoachFilter(f.id); setCoachesStatus("idle"); setCoachesData([]); },
+            style: { padding: "6px 14px", borderRadius: 20, border: "none", cursor: "pointer", fontSize: 12, fontWeight: 700, background: coachFilter === f.id ? "#0f172a" : "#f1f5f9", color: coachFilter === f.id ? "#fff" : "#64748b" }
+          }, f.label)
+        )
+      ),
+
+      coachesStatus === "idle" || coachesStatus === "load"
+        ? React.createElement("div", { style: { display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", padding: 60, gap: 12 } },
+            React.createElement(Spin, { s: 28, c: "#00c170" }),
+            React.createElement("span", { style: { fontSize: 13, color: "#94a3b8" } }, "Chargement des entraîneurs…")
+          )
+        : coachesStatus === "empty"
+        ? React.createElement("div", { style: { textAlign: "center", padding: 40, color: "#94a3b8" } }, "Aucun entraîneur disponible")
+        : React.createElement("div", { style: { padding: "8px 12px", display: "flex", flexDirection: "column", gap: 8 } },
+            coachesData.map((entry, i) =>
+              React.createElement("div", { key: i, style: { background: "#fff", borderRadius: 12, padding: "12px 14px", display: "flex", alignItems: "center", gap: 12, boxShadow: "0 1px 4px rgba(15,23,42,.06)" } },
+                // Photo coach
+                React.createElement("div", { style: { width: 48, height: 48, borderRadius: "50%", overflow: "hidden", flexShrink: 0, background: "#f1f5f9", display: "flex", alignItems: "center", justifyContent: "center" } },
+                  entry.coach.photo
+                    ? React.createElement("img", { src: entry.coach.photo, style: { width: "100%", height: "100%", objectFit: "cover" }, onError: e => { e.target.style.display = "none"; } })
+                    : React.createElement("span", { style: { fontSize: 22 } }, "🧑‍💼")
+                ),
+                // Infos coach
+                React.createElement("div", { style: { flex: 1, minWidth: 0 } },
+                  React.createElement("div", { style: { fontSize: 14, fontWeight: 700, color: "#0f172a" } }, entry.coach.name),
+                  React.createElement("div", { style: { fontSize: 11, color: "#64748b", marginTop: 2 } },
+                    entry.coach.nationality || "",
+                    entry.coach.age ? ` · ${entry.coach.age} ans` : ""
+                  ),
+                  entry.start && React.createElement("div", { style: { fontSize: 11, color: "#00c170", fontWeight: 600, marginTop: 3 } },
+                    `En poste depuis ${new Date(entry.start).toLocaleDateString("fr-FR", { month: "long", year: "numeric" })}`
+                  )
+                ),
+                // Logo club
+                React.createElement("div", { style: { display: "flex", flexDirection: "column", alignItems: "center", gap: 4, flexShrink: 0 } },
+                  React.createElement(Logo, { src: entry.clubLogo, size: 32 }),
+                  React.createElement("span", { style: { fontSize: 10, color: "#94a3b8", fontWeight: 600, textAlign: "center", maxWidth: 60, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" } }, entry.clubName)
+                )
+              )
+            ),
+            React.createElement("div", { style: { height: 20 } })
+          )
     )
   );
 }
