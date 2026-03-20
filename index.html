@@ -48,7 +48,7 @@
     <script>
         if ("serviceWorker" in navigator) {
             const sw = `
-    const C='wf-pro-v79';
+    const C='wf-pro-v80';
     const API_KEY='3a14b1347c177458e2f23bea7899e9cf';
     const BASE='https://v3.football.api-sports.io';
     let prevScores = {};
@@ -2464,7 +2464,6 @@ function Row({match:m, onOpen, isFav, onFav, onTeam}){
   const sh=s.short;
   const live=["1H","2H","ET","P"].includes(sh);
   const done=DONE_ST.has(sh);
-  const susp=SUSP_ST.has(sh);
   const canc=sh==="CANC";
   const min=useMinute(s.elapsed,s.short);
   const flash=useFlash(m.goals.home,m.goals.away);
@@ -2490,209 +2489,181 @@ function Row({match:m, onOpen, isFav, onFav, onTeam}){
 
     if (currentHome > prevHome || currentAway > prevAway) {
       const scoringTeam = currentHome > prevHome ? m.teams.home.id : m.teams.away.id;
-
       setShowBigChance(true);
       setActionTeam(scoringTeam);
-
       setDisplayHomeGoals(prevHome);
       setDisplayAwayGoals(prevAway);
 
-      // 🔔 Notification de but si match favori
       if (isFav && "Notification" in window && Notification.permission === "granted") {
         const scoringTeamId = scoringTeam;
         const scoringTeamName = scoringTeam === m.teams.home.id ? m.teams.home.name : m.teams.away.name;
         const title = `⚽ But ! ${m.teams.home.name} ${currentHome} - ${currentAway} ${m.teams.away.name}`;
-
-        // Chercher le buteur dans le cache events
         const eventsKey = `/fixtures/events?fixture=${m.fixture.id}`;
         const cachedEvents = _cache.get(eventsKey)?.d || [];
-        const lastGoal = [...cachedEvents]
-          .filter(e => e.type === "Goal" && e.detail !== "Missed Penalty" && e.team?.id === scoringTeamId)
-          .sort((a, b) => (b.time?.elapsed||0) - (a.time?.elapsed||0))[0];
-        const scorerName = lastGoal?.player?.name || scoringTeamName;
-        const body = lastGoal ? `${scorerName} ${lastGoal.time?.elapsed}'` : `${scoringTeamName} marque !`;
+        const lastGoal = [...cachedEvents].filter(e => e.type === "Goal" && e.detail !== "Missed Penalty" && e.team?.id === scoringTeamId).sort((a, b) => (b.time?.elapsed||0) - (a.time?.elapsed||0))[0];
+        const body = lastGoal ? `${lastGoal.player?.name} ${lastGoal.time?.elapsed}'` : `${scoringTeamName} marque !`;
         const icon = `https://media.api-sports.io/football/teams/${scoringTeamId}.png`;
-
         if (navigator.serviceWorker?.controller) {
-          navigator.serviceWorker.ready.then(reg => {
-            reg.showNotification(title, {
-              body,
-              icon,
-              badge: icon,
-              tag: `goal-${m.fixture.id}-${currentHome}-${currentAway}`,
-              vibrate: [200, 100, 200]
-            });
-          }).catch(() => new Notification(title, { body, icon }));
-        } else {
-          new Notification(title, { body, icon });
-        }
+          navigator.serviceWorker.ready.then(reg => reg.showNotification(title, { body, icon, badge: icon, tag: `goal-${m.fixture.id}-${currentHome}-${currentAway}`, vibrate: [200,100,200] })).catch(() => new Notification(title, { body, icon }));
+        } else { new Notification(title, { body, icon }); }
       }
 
       if (timerRef.current) clearTimeout(timerRef.current);
       timerRef.current = setTimeout(() => {
-        setShowBigChance(false);
-        setActionTeam(null);
-        setDisplayHomeGoals(currentHome);
-        setDisplayAwayGoals(currentAway);
+        setShowBigChance(false); setActionTeam(null);
+        setDisplayHomeGoals(currentHome); setDisplayAwayGoals(currentAway);
       }, 1500);
-
     } else {
       setDisplayHomeGoals(currentHome);
       setDisplayAwayGoals(currentAway);
     }
-
     prevGoalsRef.current = { home: currentHome, away: currentAway };
-
-    return () => {
-      if (timerRef.current) clearTimeout(timerRef.current);
-    };
+    return () => { if (timerRef.current) clearTimeout(timerRef.current); };
   }, [m.goals.home, m.goals.away]);
+
+  // Couleur score style Flashscore
+  const scoreColor = live ? "#e53535" : done ? "#333" : "#aaa";
+  const homeW = has && hg > ag;
+  const awayW = has && ag > hg;
 
   return React.createElement("div", {
     onClick: onOpen,
     style: {
-      display: "flex",
-      alignItems: "center",
-      minHeight: 58,
-      cursor: "pointer",
-      borderBottom: "1px solid #f0f1f5",
-      background: flash ? "rgba(229,53,53,.05)" : "#fff",
-      padding: "0 0 0 12px",
+      display: "flex", alignItems: "center",
+      minHeight: 52, cursor: "pointer",
+      borderBottom: "1px solid #ebebeb",
+      background: flash ? "rgba(229,53,53,.04)" : "#fff",
       opacity: canc ? 0.5 : 1
     }
   },
-    React.createElement("div", { style: { width: 46, flexShrink: 0, textAlign: "center" } },
+    // Étoile favori à GAUCHE
+    React.createElement("button", {
+      onClick: e => { e.stopPropagation(); onFav(); },
+      style: { background: "none", border: "none", color: isFav ? "#f59e0b" : "#d0d0d0", fontSize: 16, padding: "0 8px 0 10px", flexShrink: 0, cursor: "pointer", lineHeight: 1 }
+    }, isFav ? "★" : "☆"),
+
+    // Colonne temps/statut
+    React.createElement("div", { style: { width: 44, flexShrink: 0, textAlign: "center" } },
       live
-        ? React.createElement("div", { style: { display:"flex", flexDirection:"column", alignItems:"center", gap: 2 } },
+        ? React.createElement("div", { style: { display:"flex", flexDirection:"column", alignItems:"center", gap: 1 } },
             (sh === "2H" && min > 90)
               ? React.createElement(React.Fragment, null,
-                  React.createElement("div", { style: { fontSize: 10, fontWeight: 700, color: "rgba(229,53,53,.6)", lineHeight: 1 } }, "(+" + (min - 90) + "')"),
-                  React.createElement("div", { style: { fontSize: 12, fontWeight: 900, color: "#e53535", lineHeight: 1 } }, "90+" + (min - 90) + "'")
+                  React.createElement("div", { style: { fontSize: 9, fontWeight: 700, color: "rgba(229,53,53,.7)", lineHeight: 1 } }, "(+" + (min-90) + "')"),
+                  React.createElement("div", { style: { fontSize: 12, fontWeight: 800, color: "#e53535", lineHeight: 1 } }, "90+" + (min-90) + "'")
                 )
               : (sh === "1H" && min > 45)
               ? React.createElement(React.Fragment, null,
-                  React.createElement("div", { style: { fontSize: 10, fontWeight: 700, color: "rgba(229,53,53,.6)", lineHeight: 1 } }, "(+" + (min - 45) + "')"),
-                  React.createElement("div", { style: { fontSize: 12, fontWeight: 900, color: "#e53535", lineHeight: 1 } }, "45+" + (min - 45) + "'")
+                  React.createElement("div", { style: { fontSize: 9, fontWeight: 700, color: "rgba(229,53,53,.7)", lineHeight: 1 } }, "(+" + (min-45) + "')"),
+                  React.createElement("div", { style: { fontSize: 12, fontWeight: 800, color: "#e53535", lineHeight: 1 } }, "45+" + (min-45) + "'")
                 )
-              : React.createElement("div", { style: { fontSize: 13, fontWeight: 800, color: "#e53535", lineHeight: 1 } }, min + "'"),
-            React.createElement("div", { style: { width: 6, height: 6, borderRadius: "50%", background: "#e53535", margin: "2px auto 0", animation: "pulse 1.2s infinite" } })
+              : React.createElement("div", { style: { fontSize: 12, fontWeight: 800, color: "#e53535", lineHeight: 1 } }, min + "'"),
+            React.createElement("div", { style: { width: 5, height: 5, borderRadius: "50%", background: "#e53535", margin: "2px auto 0", animation: "pulse 1.2s infinite" } })
           )
         : sh === "NS"
-        ? React.createElement("span", { style: { fontSize: 13, fontWeight: 700, color: "#333" } }, hhmm(m.fixture.date))
-        : React.createElement("span", { style: { fontSize: 11, fontWeight: 800, color: sh === "HT" || sh === "BT" ? "#f59e0b" : sh === "CANC" || sh === "ABD" ? "#e53535" : "#888" } }, stLabel)
+        ? React.createElement("span", { style: { fontSize: 12, fontWeight: 600, color: "#555" } }, hhmm(m.fixture.date))
+        : sh === "HT" || sh === "BT"
+        ? React.createElement("span", { style: { fontSize: 11, fontWeight: 800, color: "#f59e0b" } }, stLabel)
+        : React.createElement("span", { style: { fontSize: 11, fontWeight: 600, color: "#888" } }, stLabel)
     ),
-    React.createElement("div", { style: { flex: 1, minWidth: 0, padding: "8px 0 8px 6px", display: "flex", flexDirection: "column", gap: 7 } },
-      React.createElement("div", { style: { display: "flex", alignItems: "center", gap: 8, position: "relative" } },
+
+    // Colonne équipes
+    React.createElement("div", { style: { flex: 1, minWidth: 0, padding: "7px 0 7px 4px", display: "flex", flexDirection: "column", gap: 5 } },
+      // Domicile
+      React.createElement("div", { style: { display: "flex", alignItems: "center", gap: 7, position: "relative" } },
         React.createElement("div", {
           onClick: (e) => { e.stopPropagation(); onTeam && onTeam(m.teams.home.id, m.teams.home.name, m.teams.home.logo, m.league?.id, m.league?.season); },
-          style: { display:"flex", alignItems:"center", gap:8, flex:1, minWidth:0, cursor: onTeam?"pointer":"default" }
+          style: { display:"flex", alignItems:"center", gap:7, flex:1, minWidth:0, cursor: onTeam?"pointer":"default" }
         },
-          React.createElement(Logo, { src: m.teams.home.logo, size: 20 }),
-          React.createElement("span", { style: { fontSize: 14, fontWeight: hw ? 800 : 500, color: hw ? "#111" : aw ? "#bbb" : "#222", flex: 1, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap", display: "flex", alignItems: "center", gap: 4 } },
+          React.createElement(Logo, { src: m.teams.home.logo, size: 18 }),
+          React.createElement("span", { style: { fontSize: 13, fontWeight: homeW ? 700 : 400, color: homeW ? "#111" : (has && awayW) ? "#aaa" : "#222", flex: 1, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap", display: "flex", alignItems: "center", gap: 4 } },
             hn,
-            hRank ? React.createElement("span", { style: { fontSize: 11, color: "#bbb", fontWeight: 400 } }, " [" + hRank + "]") : null,
-            homeRed > 0 ? React.createElement("span", { style: { fontSize: 10, fontWeight: 800, color: "#fff", background: "#e53535", borderRadius: 4, padding: "1px 5px", flexShrink: 0 } }, homeRed) : null
+            homeRed > 0 ? React.createElement("span", { style: { fontSize: 9, fontWeight: 800, color: "#fff", background: "#e53535", borderRadius: 3, padding: "1px 4px", flexShrink: 0 } }, homeRed) : null
           )
         ),
-        showBigChance && actionTeam === m.teams.home.id && React.createElement("span", {
-          style: { position: "absolute", right: 0, color: "#e53935", fontSize: 10, fontWeight: 800, textTransform: "uppercase", zIndex: 5, whiteSpace: "nowrap", animation: "blink-3 1.5s ease-in-out" }
-        }, "GROSSE OCCASION!")
+        showBigChance && actionTeam === m.teams.home.id && React.createElement("span", { style: { position:"absolute", right:0, color:"#e53935", fontSize:9, fontWeight:800, textTransform:"uppercase", zIndex:5, whiteSpace:"nowrap", animation:"blink-3 1.5s ease-in-out", background:"linear-gradient(90deg,transparent,#fff 30%)", paddingLeft:12 } }, "GROSSE OCCASION!")
       ),
-      React.createElement("div", { style: { display: "flex", alignItems: "center", gap: 8, position: "relative" } },
+      // Extérieur
+      React.createElement("div", { style: { display: "flex", alignItems: "center", gap: 7, position: "relative" } },
         React.createElement("div", {
           onClick: (e) => { e.stopPropagation(); onTeam && onTeam(m.teams.away.id, m.teams.away.name, m.teams.away.logo, m.league?.id, m.league?.season); },
-          style: { display:"flex", alignItems:"center", gap:8, flex:1, minWidth:0, cursor: onTeam?"pointer":"default" }
+          style: { display:"flex", alignItems:"center", gap:7, flex:1, minWidth:0, cursor: onTeam?"pointer":"default" }
         },
-          React.createElement(Logo, { src: m.teams.away.logo, size: 20 }),
-          React.createElement("span", { style: { fontSize: 14, fontWeight: aw ? 800 : 500, color: aw ? "#111" : hw ? "#bbb" : "#222", flex: 1, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap", display: "flex", alignItems: "center", gap: 4 } },
+          React.createElement(Logo, { src: m.teams.away.logo, size: 18 }),
+          React.createElement("span", { style: { fontSize: 13, fontWeight: awayW ? 700 : 400, color: awayW ? "#111" : (has && homeW) ? "#aaa" : "#222", flex: 1, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap", display: "flex", alignItems: "center", gap: 4 } },
             an,
-            aRank ? React.createElement("span", { style: { fontSize: 11, color: "#bbb", fontWeight: 400 } }, " [" + aRank + "]") : null,
-            awayRed > 0 ? React.createElement("span", { style: { fontSize: 10, fontWeight: 800, color: "#fff", background: "#e53535", borderRadius: 4, padding: "1px 5px", flexShrink: 0 } }, awayRed) : null
+            awayRed > 0 ? React.createElement("span", { style: { fontSize: 9, fontWeight: 800, color: "#fff", background: "#e53535", borderRadius: 3, padding: "1px 4px", flexShrink: 0 } }, awayRed) : null
           )
         ),
-        showBigChance && actionTeam === m.teams.away.id && React.createElement("span", {
-          style: { position: "absolute", right: 0, color: "#e53935", fontSize: 10, fontWeight: 800, textTransform: "uppercase", zIndex: 5, whiteSpace: "nowrap", animation: "blink-3 1.5s ease-in-out" }
-        }, "GROSSE OCCASION!")
+        showBigChance && actionTeam === m.teams.away.id && React.createElement("span", { style: { position:"absolute", right:0, color:"#e53935", fontSize:9, fontWeight:800, textTransform:"uppercase", zIndex:5, whiteSpace:"nowrap", animation:"blink-3 1.5s ease-in-out", background:"linear-gradient(90deg,transparent,#fff 30%)", paddingLeft:12 } }, "GROSSE OCCASION!")
       )
     ),
-    React.createElement("div", { style: { width: 32, display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", gap: 7, flexShrink: 0 } },
+
+    // Colonne scores — à DROITE, couleur rouge si live
+    React.createElement("div", { style: { width: 28, display: "flex", flexDirection: "column", alignItems: "flex-end", justifyContent: "center", gap: 5, flexShrink: 0, paddingRight: 12 } },
       has
         ? React.createElement(React.Fragment, null,
-            React.createElement("span", { style: { fontSize: 16, fontWeight: hw ? 900 : 500, color: flash ? "#e53535" : hw ? "#111" : "#999", lineHeight: 1 } }, displayHomeGoals),
-            React.createElement("span", { style: { fontSize: 16, fontWeight: aw ? 900 : 500, color: flash ? "#e53535" : aw ? "#111" : "#999", lineHeight: 1 } }, displayAwayGoals)
+            React.createElement("span", { style: { fontSize: 14, fontWeight: homeW ? 800 : 500, color: live ? "#e53535" : homeW ? "#111" : "#888", lineHeight: 1, fontVariantNumeric: "tabular-nums" } }, displayHomeGoals),
+            React.createElement("span", { style: { fontSize: 14, fontWeight: awayW ? 800 : 500, color: live ? "#e53535" : awayW ? "#111" : "#888", lineHeight: 1, fontVariantNumeric: "tabular-nums" } }, displayAwayGoals)
           )
-        : React.createElement("span", { style: { fontSize: 13, color: "#ccc" } }, "-")
-    ),
-    React.createElement("button", {
-      onClick: e => { e.stopPropagation(); onFav(); },
-      style: { background: "none", border: "none", color: isFav ? "#f59e0b" : "#ddd", fontSize: 18, padding: "0 14px 0 6px", flexShrink: 0, cursor: "pointer" }
-    }, isFav ? "★" : "☆")
+        : React.createElement("span", { style: { fontSize: 12, color: "#ccc" } }, "-")
+    )
   );
 }
+
 
 function LeagueBlock({group, onOpen, favs, onFav, onTeam}){
   const[open,setOpen]=useState(true);
   const lv=group.matches.filter(m=>LIVE_ST.has(m.fixture.status.short)).length;
-  return React.createElement("div", { style: { background: "var(--c-surface)", marginBottom: 2 } },
+  return React.createElement("div", { style: { background: "#fff", marginBottom: 8 } },
+    // Header ligue — style Flashscore exact
     React.createElement("div", {
       onClick: () => setOpen(v => !v),
       style: {
-        display: "flex",
-        alignItems: "center",
-        gap: 14,
-        padding: "10px 14px",
-        background: "var(--c-base)",
-        borderBottom: "1px solid var(--c-border)",
-        borderTop: "1px solid var(--c-border)",
-        cursor: "pointer",
-        userSelect: "none"
+        display: "flex", alignItems: "center", gap: 10,
+        padding: "9px 12px",
+        background: "#fff",
+        borderTop: "1px solid #e8e8e8",
+        borderBottom: "1px solid #e8e8e8",
+        cursor: "pointer", userSelect: "none"
       }
     },
-
+      // Logo ligue dans carré blanc arrondi
       React.createElement("div", { style: {
-        width: 44, height: 44, borderRadius: 12,
-        overflow: "hidden", flexShrink: 0,
-        background: "#fff",
-        border: "1px solid rgba(15,23,42,0.08)",
-        boxShadow: "0 2px 8px rgba(15,23,42,0.10)",
-        display: "flex", alignItems: "center", justifyContent: "center"
+        width: 40, height: 40, borderRadius: 10,
+        background: "#fff", border: "1px solid #e8e8e8",
+        display: "flex", alignItems: "center", justifyContent: "center",
+        flexShrink: 0, overflow: "hidden"
       } },
-        React.createElement(Logo, { src: group.lg.logo || group.lg.flag, size: 32 })
+        React.createElement(Logo, { src: group.lg.logo || group.lg.flag, size: 28 })
       ),
-
+      // Nom + pays
       React.createElement("div", { style: { flex: 1, minWidth: 0 } },
-        React.createElement("span", { style: {
-          fontFamily: "'Plus Jakarta Sans', sans-serif",
-          fontSize: 14, fontWeight: 700,
-          color: "var(--c-ink)",
-          overflow: "hidden", textOverflow: "ellipsis",
-          whiteSpace: "nowrap", display: "block",
-          letterSpacing: "-0.2px"
+        React.createElement("div", { style: {
+          fontSize: 14, fontWeight: 700, color: "#111",
+          overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap"
         } }, group.lg.name),
-        React.createElement("div", { style: { display: "flex", alignItems: "center", gap: 5, marginTop: 3 } },
+        React.createElement("div", { style: { display: "flex", alignItems: "center", gap: 5, marginTop: 2 } },
           group.lg.flag && group.lg.flag.startsWith("http")
-            ? React.createElement("img", { src: group.lg.flag, style: { width: 16, height: 11, borderRadius: 2, objectFit: "cover", flexShrink: 0 } })
-            : React.createElement("span", { style: { fontSize: 13, lineHeight: 1 } }, group.lg.flag || ""),
-          React.createElement("span", { style: { fontSize: 11, fontWeight: 600, color: "var(--c-ink-3)", textTransform: "uppercase", letterSpacing: 0.6 } }, group.lg.country)
+            ? React.createElement("img", { src: group.lg.flag, style: { width: 14, height: 10, borderRadius: 1, objectFit: "cover", flexShrink: 0 } })
+            : React.createElement("span", { style: { fontSize: 12, lineHeight: 1 } }, group.lg.flag || ""),
+          React.createElement("span", { style: { fontSize: 10, fontWeight: 600, color: "#999", textTransform: "uppercase", letterSpacing: 0.5 } }, group.lg.country)
         )
       ),
+      // Badge LIVE
       lv > 0
         ? React.createElement("span", { style: {
-            fontSize: 9, fontWeight: 700,
-            fontFamily: "'JetBrains Mono', monospace",
-            letterSpacing: "0.5px",
-            color: "var(--c-live)",
-            background: "var(--c-live-dim)",
-            border: "1px solid rgba(229,62,62,0.22)",
-            padding: "3px 9px", borderRadius: 20,
-            animation: "pulse 1.5s infinite", flexShrink: 0
+            fontSize: 9, fontWeight: 700, letterSpacing: 0.5,
+            color: "#e53535", background: "rgba(229,53,53,.08)",
+            border: "1px solid rgba(229,53,53,.2)",
+            padding: "3px 8px", borderRadius: 20, flexShrink: 0
           } }, "● LIVE " + lv)
         : null,
-      React.createElement("span", { style: { fontSize: 10, color: "var(--c-ink-4)", flexShrink: 0, marginLeft: 2 } }, open ? "▾" : "▸")
+      React.createElement("span", { style: { fontSize: 10, color: "#bbb", flexShrink: 0, marginLeft: 2 } }, open ? "▾" : "▸")
     ),
     open ? group.matches.map(m => React.createElement(Row, { key: m.fixture.id, match: m, onOpen: () => onOpen(m.fixture.id), isFav: favs.has(m.fixture.id), onFav: () => onFav(m.fixture.id), onTeam: onTeam })) : null
   );
 }
+
 
 const refereeStatsCache = new Map();
 
@@ -5221,7 +5192,7 @@ function ScoresTab({favs,onFav,onTeam}){
         )
       )
     ),
-    React.createElement("div", { style: { flex: 1, overflowY: "auto" } },
+    React.createElement("div", { style: { flex: 1, overflowY: "auto", background: "#f2f4f6" } },
       st === "load" ? React.createElement(SkRows, null)
       : st === "err" ? React.createElement("div", { style: { textAlign: "center", padding: "52px 24px" } },
           React.createElement("div", { style: { fontSize: 44, marginBottom: 16 } }, "⚠️"),
