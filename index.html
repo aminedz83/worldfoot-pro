@@ -48,7 +48,7 @@
     <script>
         if ("serviceWorker" in navigator) {
             const sw = `
-    const C='wf-pro-v95';
+    const C='wf-pro-v96';
     const API_KEY='3a14b1347c177458e2f23bea7899e9cf';
     const BASE='https://v3.football.api-sports.io';
     let prevScores = {};
@@ -4766,8 +4766,24 @@ function ScoresTab({favs,onFav,onTeam}){
   const[detail,setDet]=useState(null),[q,setQ]=useState(""),[lg,setLg]=useState(null),[favOnly,setFO]=useState(false);
   const[picker,setPicker]=useState(false),[cd,setCd]=useState(15),[spin,setSpin]=useState(false),[statusFilter,setStatusFilter]=useState("all");
   const[visibleLimit,setVisibleLimit]=useState(30);
+  const[teamResults,setTeamResults]=useState([]),[teamSearching,setTeamSearching]=useState(false);
+  const searchTimerRef=useRef(null);
   const stripRef=useRef(null),timerRef=useRef(null),cdRef=useRef(null),loadRef=useRef(null);
   const isToday=date===today();
+
+  // Recherche d'équipes via API quand q change
+  useEffect(()=>{
+    if(searchTimerRef.current) clearTimeout(searchTimerRef.current);
+    if(!q.trim()||q.length<2){setTeamResults([]);return;}
+    setTeamSearching(true);
+    searchTimerRef.current=setTimeout(async()=>{
+      try{
+        const res=await api(`/teams?search=${encodeURIComponent(q.trim())}`,300000);
+        setTeamResults((res||[]).slice(0,8));
+      }catch{setTeamResults([]);}
+      setTeamSearching(false);
+    },400);
+  },[q]);
 
   const hasLive=useMemo(()=>data.some(f=>LIVE_ST.has(f?.fixture?.status?.short)),[data]);
 
@@ -4927,7 +4943,6 @@ function ScoresTab({favs,onFav,onTeam}){
   const groups=useMemo(()=>{
     let list=data;
     if(lg)list=list.filter(f=>f.league.id===lg);
-    if(q.trim()){const s=q.toLowerCase();list=list.filter(f=>f.teams.home.name.toLowerCase().includes(s)||f.teams.away.name.toLowerCase().includes(s)||f.league.name.toLowerCase().includes(s));}
     if(favOnly)list=list.filter(f=>favs.has(f.fixture.id));
     if(statusFilter==="live")list=list.filter(f=>LIVE_ST.has(f.fixture.status.short));
     if(statusFilter==="upcoming")list=list.filter(f=>NS_ST.has(f.fixture.status.short));
@@ -5034,6 +5049,44 @@ function ScoresTab({favs,onFav,onTeam}){
           style: { position: "absolute", right: 8, top: "50%", transform: "translateY(-50%)", background: "none", border: "none", color: T.t3, fontSize: 13, cursor: "pointer" }
         }, "✕") : null
       ),
+
+      // Résultats de recherche équipes
+      q.length >= 2 && React.createElement("div", { style: {
+        position: "absolute", top: "100%", left: 0, right: 0, zIndex: 100,
+        background: "#fff", borderRadius: 12, boxShadow: "0 4px 20px rgba(0,0,0,.15)",
+        marginTop: 6, overflow: "hidden", border: "1px solid #e8e8e8"
+      } },
+        teamSearching
+          ? React.createElement("div", { style: { padding: "14px", textAlign: "center", fontSize: 12, color: "#94a3b8" } }, "Recherche...")
+          : teamResults.length === 0
+          ? React.createElement("div", { style: { padding: "14px", textAlign: "center", fontSize: 12, color: "#94a3b8" } }, "Aucune équipe trouvée")
+          : teamResults.map((r, i) =>
+              React.createElement("div", {
+                key: i,
+                onClick: () => {
+                  setQ("");
+                  setTeamResults([]);
+                  onTeam && onTeam(r.team.id, r.team.name, r.team.logo, r.team.country, null);
+                },
+                style: {
+                  display: "flex", alignItems: "center", gap: 10,
+                  padding: "10px 14px", cursor: "pointer",
+                  borderBottom: i < teamResults.length-1 ? "1px solid #f5f5f5" : "none",
+                  transition: "background .1s"
+                },
+                onMouseEnter: e => e.currentTarget.style.background = "#f8fafc",
+                onMouseLeave: e => e.currentTarget.style.background = "#fff"
+              },
+                React.createElement("img", { src: r.team.logo, style: { width: 28, height: 28, objectFit: "contain", flexShrink: 0 }, onError: e => e.target.style.display="none" }),
+                React.createElement("div", { style: { flex: 1, minWidth: 0 } },
+                  React.createElement("div", { style: { fontSize: 13, fontWeight: 600, color: "#0f172a" } }, r.team.name),
+                  React.createElement("div", { style: { fontSize: 11, color: "#94a3b8", marginTop: 1 } }, r.team.country || "")
+                ),
+                React.createElement("span", { style: { fontSize: 11, color: "#94a3b8" } }, "→")
+              )
+            )
+      ),
+
       React.createElement("button", {
         onClick: () => setPicker(true),
         style: {
