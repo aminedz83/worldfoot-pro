@@ -48,7 +48,7 @@
     <script>
         if ("serviceWorker" in navigator) {
             const sw = `
-    const C='wf-pro-v97';
+    const C='wf-pro-v98';
     const API_KEY='3a14b1347c177458e2f23bea7899e9cf';
     const BASE='https://v3.football.api-sports.io';
     let prevScores = {};
@@ -7466,14 +7466,16 @@ function TeamPage({ teamId, teamName, teamLogo, leagueId, season, onClose }) {
     let cancelled = false;
     setLoading(true);
 
+    const currentSeason = season || new Date().getFullYear();
+
     Promise.allSettled([
       api(`/teams?id=${teamId}`, 86400000),
-      api(`/fixtures?team=${teamId}&last=6`, TTL.DONE),
-      api(`/fixtures?team=${teamId}&next=5`, TTL.UPCOMING),
+      api(`/fixtures?team=${teamId}&season=${currentSeason}`, TTL.DONE),
+      api(`/fixtures?team=${teamId}&next=10`, TTL.UPCOMING),
     ]).then(async ([rInfo, rRes, rNext]) => {
       if (cancelled) return;
       if (rInfo.status === "fulfilled") setInfo(rInfo.value?.[0] || null);
-      const recentFix = rRes.status === "fulfilled" ? (rRes.value || []) : [];
+      const recentFix = rRes.status === "fulfilled" ? (rRes.value || []).filter(f => DONE_ST.has(f.fixture?.status?.short)).sort((a,b) => new Date(b.fixture.date) - new Date(a.fixture.date)) : [];
       const nextFix   = rNext.status === "fulfilled" ? (rNext.value || []) : [];
       if (recentFix.length) setResults(recentFix);
       if (nextFix.length)   setNext(nextFix);
