@@ -48,7 +48,7 @@
     <script>
         if ("serviceWorker" in navigator) {
             const sw = `
-    const C='wf-pro-v99';
+    const C='wf-pro-v100';
     const API_KEY='3a14b1347c177458e2f23bea7899e9cf';
     const BASE='https://v3.football.api-sports.io';
     let prevScores = {};
@@ -7777,7 +7777,35 @@ function TeamPage({ teamId, teamName, teamLogo, leagueId, season, onClose }) {
           <div style={{ paddingBottom: 16 }}>
             {results.length === 0
               ? <div style={{ textAlign: "center", padding: 40, color: "#94a3b8" }}>Aucun résultat</div>
-              : [...results].reverse().map((m, i) => <MatchRow key={m.fixture?.id || i} m={m} idx={i} />)
+              : (() => {
+                  // Grouper par compétition
+                  const grouped = [];
+                  const seen = new Map();
+                  [...results].sort((a,b) => new Date(b.fixture.date)-new Date(a.fixture.date)).forEach(m => {
+                    const lid = m.league?.id;
+                    if (!seen.has(lid)) {
+                      seen.set(lid, grouped.length);
+                      grouped.push({ league: m.league, matches: [] });
+                    }
+                    grouped[seen.get(lid)].matches.push(m);
+                  });
+                  return grouped.map((g, gi) => (
+                    <div key={gi}>
+                      {/* Header compétition */}
+                      <div style={{ display: "flex", alignItems: "center", gap: 10, padding: "10px 14px", background: "#f5f5f5", borderBottom: "1px solid #e8e8e8", borderTop: gi > 0 ? "1px solid #e8e8e8" : "none" }}>
+                        <div style={{ width: 36, height: 36, borderRadius: 8, background: "#fff", border: "1px solid #e8e8e8", display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0 }}>
+                          <img src={g.league?.logo} style={{ width: 24, height: 24, objectFit: "contain" }} onError={e => e.target.style.display="none"} />
+                        </div>
+                        <div>
+                          <div style={{ fontSize: 13, fontWeight: 700, color: "#0f172a" }}>{g.league?.name}</div>
+                          <div style={{ fontSize: 10, fontWeight: 600, color: "#94a3b8", textTransform: "uppercase", letterSpacing: 0.5 }}>{g.league?.country}</div>
+                        </div>
+                      </div>
+                      {/* Matchs */}
+                      {g.matches.map((m, i) => <MatchRow key={m.fixture?.id || i} m={m} idx={i} />)}
+                    </div>
+                  ));
+                })()
             }
           </div>
         )}
@@ -7785,7 +7813,29 @@ function TeamPage({ teamId, teamName, teamLogo, leagueId, season, onClose }) {
           <div style={{ paddingBottom: 16 }}>
             {next.length === 0
               ? <div style={{ textAlign: "center", padding: 40, color: "#94a3b8" }}>Aucun match à venir</div>
-              : next.map((m, i) => <MatchRow key={m.fixture?.id || i} m={m} idx={i} />)
+              : (() => {
+                  const grouped = [];
+                  const seen = new Map();
+                  next.forEach(m => {
+                    const lid = m.league?.id;
+                    if (!seen.has(lid)) { seen.set(lid, grouped.length); grouped.push({ league: m.league, matches: [] }); }
+                    grouped[seen.get(lid)].matches.push(m);
+                  });
+                  return grouped.map((g, gi) => (
+                    <div key={gi}>
+                      <div style={{ display: "flex", alignItems: "center", gap: 10, padding: "10px 14px", background: "#f5f5f5", borderBottom: "1px solid #e8e8e8", borderTop: gi > 0 ? "1px solid #e8e8e8" : "none" }}>
+                        <div style={{ width: 36, height: 36, borderRadius: 8, background: "#fff", border: "1px solid #e8e8e8", display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0 }}>
+                          <img src={g.league?.logo} style={{ width: 24, height: 24, objectFit: "contain" }} onError={e => e.target.style.display="none"} />
+                        </div>
+                        <div>
+                          <div style={{ fontSize: 13, fontWeight: 700, color: "#0f172a" }}>{g.league?.name}</div>
+                          <div style={{ fontSize: 10, fontWeight: 600, color: "#94a3b8", textTransform: "uppercase", letterSpacing: 0.5 }}>{g.league?.country}</div>
+                        </div>
+                      </div>
+                      {g.matches.map((m, i) => <MatchRow key={m.fixture?.id || i} m={m} idx={i} />)}
+                    </div>
+                  ));
+                })()
             }
           </div>
         )}
