@@ -48,7 +48,7 @@
     <script>
         if ("serviceWorker" in navigator) {
             const sw = `
-    const C='wf-pro-v109';
+    const C='wf-pro-v110';
     const API_KEY='3a14b1347c177458e2f23bea7899e9cf';
     const BASE='https://v3.football.api-sports.io';
     let prevScores = {};
@@ -3096,7 +3096,8 @@ function MatchDetail({state,onClose,onTeam}){
   // Charger le score du match aller pour les matchs aller/retour
   React.useEffect(()=>{
     const round = (fix?.league?.round||"").toLowerCase();
-    const isLeg2 = round.includes("leg 2")||round.includes("2nd leg")||round.includes("2ème manche");
+    const isLeg2 = round.includes("leg 2")||round.includes("2nd leg")||round.includes("2ème manche")||
+      !!round.match(/[-–]\s*2$/)||round.includes("retour")||round.includes("return");
     if(!isLeg2||!fix?.teams?.home?.id||!fix?.teams?.away?.id)return;
     let cancelled=false;
     api(`/fixtures?team=${fix.teams.home.id}&last=20`,86400000)
@@ -3104,7 +3105,8 @@ function MatchDetail({state,onClose,onTeam}){
         if(cancelled)return;
         const leg1 = (fixtures||[]).find(f=>{
           const r=(f.league?.round||"").toLowerCase();
-          const isL1=r.includes("leg 1")||r.includes("1st leg")||r.includes("1ère manche");
+          const isL1=r.includes("leg 1")||r.includes("1st leg")||r.includes("1ère manche")||
+            !!r.match(/[-–]\s*1$/)||r.includes("aller");
           const sameTeams=(f.teams?.home?.id===fix.teams.home.id&&f.teams?.away?.id===fix.teams.away.id)||(f.teams?.home?.id===fix.teams.away.id&&f.teams?.away?.id===fix.teams.home.id);
           return isL1&&sameTeams&&f.league?.id===fix.league?.id;
         });
@@ -4645,8 +4647,10 @@ function MatchDetail({state,onClose,onTeam}){
           // Info manche (1er/2ème leg)
           (() => {
             const round = (fix.league?.round || "").toLowerCase();
-            const isSecondLeg = round.includes("2nd") || round.includes("second leg") || round.includes("leg 2");
-            const isFirstLeg = round.includes("1st") || round.includes("first leg") || round.includes("leg 1");
+            const isSecondLeg = round.includes("2nd") || round.includes("second leg") || round.includes("leg 2") ||
+              round.match(/[-–]\s*2$/) || round.includes("retour") || round.includes("return");
+            const isFirstLeg = round.includes("1st") || round.includes("first leg") || round.includes("leg 1") ||
+              round.match(/[-–]\s*1$/) || round.includes("aller");
             if (!isSecondLeg && !isFirstLeg) return null;
             const label = isFirstLeg ? "1ère manche" : "2ème manche";
             const scoreH = fix.goals?.home ?? 0;
