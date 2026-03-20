@@ -48,7 +48,7 @@
     <script>
         if ("serviceWorker" in navigator) {
             const sw = `
-    const C='wf-pro-v105';
+    const C='wf-pro-v108';
     const API_KEY='3a14b1347c177458e2f23bea7899e9cf';
     const BASE='https://v3.football.api-sports.io';
     let prevScores = {};
@@ -2595,7 +2595,7 @@ function Row({match:m, onOpen, isFav, onFav, onTeam}){
     // Colonne équipes — flex:1 prend tout l'espace dispo
     React.createElement("div", { style: { flex: 1, minWidth: 0, padding: "7px 0 7px 2px", display: "flex", flexDirection: "column", gap: 5 } },
       // Domicile
-      React.createElement("div", { style: { display: "flex", alignItems: "center", gap: 6, position: "relative" } },
+      React.createElement("div", { style: { display: "flex", alignItems: "center", gap: 6 } },
         React.createElement("div", {
           onClick: (e) => { e.stopPropagation(); onTeam && onTeam(m.teams.home.id, m.teams.home.name, m.teams.home.logo, m.league?.id, m.league?.season); },
           style: { display:"flex", alignItems:"center", gap:6, flex:1, minWidth:0, cursor: onTeam?"pointer":"default" }
@@ -2605,11 +2605,10 @@ function Row({match:m, onOpen, isFav, onFav, onTeam}){
             hn,
             homeRed > 0 ? React.createElement("span", { style: { fontSize: 9, fontWeight: 800, color: "#fff", background: "#e53535", borderRadius: 3, padding: "1px 4px", flexShrink: 0 } }, homeRed) : null
           )
-        ),
-        showBigChance && actionTeam === m.teams.home.id && React.createElement("span", { style: { position:"absolute", right:0, color:"#e53935", fontSize:9, fontWeight:800, textTransform:"uppercase", zIndex:5, whiteSpace:"nowrap", animation:"blink-3 1.5s ease-in-out", background:"linear-gradient(90deg,transparent,#fff 30%)", paddingLeft:12 } }, "GROSSE OCCASION!")
+        )
       ),
       // Extérieur
-      React.createElement("div", { style: { display: "flex", alignItems: "center", gap: 6, position: "relative" } },
+      React.createElement("div", { style: { display: "flex", alignItems: "center", gap: 6 } },
         React.createElement("div", {
           onClick: (e) => { e.stopPropagation(); onTeam && onTeam(m.teams.away.id, m.teams.away.name, m.teams.away.logo, m.league?.id, m.league?.season); },
           style: { display:"flex", alignItems:"center", gap:6, flex:1, minWidth:0, cursor: onTeam?"pointer":"default" }
@@ -2619,10 +2618,22 @@ function Row({match:m, onOpen, isFav, onFav, onTeam}){
             an,
             awayRed > 0 ? React.createElement("span", { style: { fontSize: 9, fontWeight: 800, color: "#fff", background: "#e53535", borderRadius: 3, padding: "1px 4px", flexShrink: 0 } }, awayRed) : null
           )
-        ),
-        showBigChance && actionTeam === m.teams.away.id && React.createElement("span", { style: { position:"absolute", right:0, color:"#e53935", fontSize:9, fontWeight:800, textTransform:"uppercase", zIndex:5, whiteSpace:"nowrap", animation:"blink-3 1.5s ease-in-out", background:"linear-gradient(90deg,transparent,#fff 30%)", paddingLeft:12 } }, "GROSSE OCCASION!")
+        )
       )
     ),
+
+    // GROSSE OCCASION — entre noms et scores
+    showBigChance ? React.createElement("div", { style: {
+      display: "flex", alignItems: "center", justifyContent: "center",
+      flexShrink: 0, paddingRight: 6
+    } },
+      React.createElement("span", { style: {
+        fontSize: 9, fontWeight: 900, color: "#e53935",
+        textTransform: "uppercase", whiteSpace: "nowrap",
+        animation: "blink-3 1.5s ease-in-out",
+        letterSpacing: 0.5
+      } }, "⚡ Grosse occasion !")
+    ) : null,
 
     // Scores — collés aux noms, pas tout à droite
     React.createElement("div", { style: { width: 24, display: "flex", flexDirection: "column", alignItems: "flex-end", justifyContent: "center", gap: 5, flexShrink: 0, paddingRight: 14 } },
