@@ -24,12 +24,12 @@
             orientation: "portrait",
             icons: [
                 {
-                    src: "data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 192 192'><rect width='192' height='192' rx='40' fill='%2300b86b'/><text y='140' x='96' text-anchor='middle' font-size='120'>⚡</text></svg>",
+                    src: "data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 192 192'><rect width='192' height='192' rx='40' fill='%2368a832'/><text y='125' x='96' text-anchor='middle' font-size='90' font-weight='bold' fill='white' font-family='monospace'>[o]</text></svg>",
                     sizes: "192x192",
                     type: "image/svg+xml",
                 },
                 {
-                    src: "data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 512 512'><rect width='512' height='512' rx='100' fill='%2300b86b'/><text y='380' x='256' text-anchor='middle' font-size='320'>⚡</text></svg>",
+                    src: "data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 512 512'><rect width='512' height='512' rx='100' fill='%2368a832'/><text y='330' x='256' text-anchor='middle' font-size='240' font-weight='bold' fill='white' font-family='monospace'>[o]</text></svg>",
                     sizes: "512x512",
                     type: "image/svg+xml",
                 },
@@ -44,11 +44,11 @@
     <link rel="preconnect" href="https://fonts.googleapis.com" />
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
     <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:ital,wght@0,300;0,400;0,500;0,600;0,700;0,800;1,400&family=Instrument+Serif:ital@0;1&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet" />
-    <link rel="apple-touch-icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 180 180'><rect width='180' height='180' rx='36' fill='%2300b86b'/><text y='130' x='90' text-anchor='middle' font-size='100'>⚡</text></svg>" />
+    <link rel="apple-touch-icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 180 180'><rect width='180' height='180' rx='36' fill='%2368a832'/><text y='118' x='90' text-anchor='middle' font-size='85' font-weight='bold' fill='white' font-family='monospace'>[o]</text></svg>" />
     <script>
         if ("serviceWorker" in navigator) {
             const sw = `
-    const C='wf-pro-v104';
+    const C='wf-pro-v105';
     const API_KEY='3a14b1347c177458e2f23bea7899e9cf';
     const BASE='https://v3.football.api-sports.io';
     let prevScores = {};
@@ -130,8 +130,8 @@
       const d=e.data?.json()||{};
       e.waitUntil(self.registration.showNotification(d.title||'WorldFoot Pro',{
         body:d.body||'',
-        icon:'data:image/svg+xml,<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 192 192"><rect width="192" height="192" rx="40" fill="%2300b86b"/><text y="140" x="96" text-anchor="middle" font-size="120">⚡</text></svg>',
-        badge:'data:image/svg+xml,<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 96 96"><rect width="96" height="96" rx="20" fill="%2300b86b"/><text y="70" x="48" text-anchor="middle" font-size="60">⚡</text></svg>',
+        icon:'data:image/svg+xml,<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 192 192"><rect width="192" height="192" rx="40" fill="%2368a832"/><text y="125" x="96" text-anchor="middle" font-size="90" font-weight="bold" fill="white" font-family="monospace">[o]</text></svg>',
+        badge:'data:image/svg+xml,<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 96 96"><rect width="96" height="96" rx="20" fill="%2368a832"/><text y="63" x="48" text-anchor="middle" font-size="45" font-weight="bold" fill="white" font-family="monospace">[o]</text></svg>',
         tag:d.tag||'wf',
         vibrate:[200,100,200],
         data:d.data||{},
@@ -7169,23 +7169,7 @@ function TransfersTab({ onTeam }) {
               ? React.createElement("div", { style: { fontSize: 12, color: "#94a3b8", padding: "8px 0" } }, "Aucune donnée")
               : coachesData.filter(e => e.isCurrent).map((entry, i) =>
                   React.createElement("div", { key: "cur-"+i, style: { background: "#fff", borderRadius: 12, padding: "12px 14px", display: "flex", alignItems: "center", gap: 12, boxShadow: "0 1px 4px rgba(15,23,42,.06)", borderLeft: "3px solid #00c170" } },
-                    React.createElement("div", { style: { width: 56, height: 56, borderRadius: "50%", overflow: "hidden", flexShrink: 0, background: "linear-gradient(135deg,#00c170,#009e5c)", display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0 } },
-                      React.createElement("img", {
-                        src: entry.coach.photo || `https://media.api-sports.io/football/coachs/${entry.coach.id}.png`,
-                        style: { width: "100%", height: "100%", objectFit: "cover" },
-                        onLoad: e => {
-                          // Si image trop petite (icône par défaut) → masquer
-                          if (e.target.naturalWidth < 50 || e.target.naturalHeight < 50) {
-                            e.target.style.display = "none";
-                            e.target.parentNode.innerHTML = `<span style="font-size:20px;font-weight:800;color:#fff">${getCoachInitials(entry.coach.name)}</span>`;
-                          }
-                        },
-                        onError: e => {
-                          e.target.style.display = "none";
-                          e.target.parentNode.innerHTML = `<span style="font-size:20px;font-weight:800;color:#fff">${getCoachInitials(entry.coach.name)}</span>`;
-                        }
-                      })
-                    ),
+                    React.createElement(CoachPhoto, { coach: entry.coach, size: 56, bgColor: "linear-gradient(135deg,#00c170,#009e5c)" }),
                     React.createElement("div", { style: { flex: 1, minWidth: 0 } },
                       React.createElement("div", { style: { fontSize: 14, fontWeight: 700, color: "#0f172a" } }, entry.coach.name),
                       React.createElement("div", { style: { fontSize: 11, color: "#64748b", marginTop: 2 } }, `${entry.coach.nationality||""}${entry.coach.age?` · ${entry.coach.age} ans`:""}`),
@@ -7205,22 +7189,7 @@ function TransfersTab({ onTeam }) {
               React.createElement("div", { style: { fontSize: 11, fontWeight: 800, color: "#64748b", textTransform: "uppercase", letterSpacing: 1, padding: "8px 0 2px" } }, "📋 Anciens entraîneurs"),
               coachesData.filter(e => !e.isCurrent).map((entry, i) =>
                 React.createElement("div", { key: "old-"+i, style: { background: "#fff", borderRadius: 12, padding: "12px 14px", display: "flex", alignItems: "center", gap: 12, boxShadow: "0 1px 4px rgba(15,23,42,.04)", borderLeft: "3px solid #e2e8f0", opacity: 0.85 } },
-                  React.createElement("div", { style: { width: 46, height: 46, borderRadius: "50%", overflow: "hidden", flexShrink: 0, background: "linear-gradient(135deg,#94a3b8,#64748b)", display: "flex", alignItems: "center", justifyContent: "center" } },
-                    React.createElement("img", {
-                      src: entry.coach.photo || `https://media.api-sports.io/football/coachs/${entry.coach.id}.png`,
-                      style: { width: "100%", height: "100%", objectFit: "cover" },
-                      onLoad: e => {
-                        if (e.target.naturalWidth < 50 || e.target.naturalHeight < 50) {
-                          e.target.style.display = "none";
-                          e.target.parentNode.innerHTML = `<span style="font-size:16px;font-weight:800;color:#fff">${getCoachInitials(entry.coach.name)}</span>`;
-                        }
-                      },
-                      onError: e => {
-                        e.target.style.display = "none";
-                        e.target.parentNode.innerHTML = `<span style="font-size:16px;font-weight:800;color:#fff">${getCoachInitials(entry.coach.name)}</span>`;
-                      }
-                    })
-                  ),
+                  React.createElement(CoachPhoto, { coach: entry.coach, size: 46, bgColor: "linear-gradient(135deg,#94a3b8,#64748b)" }),
                   React.createElement("div", { style: { flex: 1, minWidth: 0 } },
                     React.createElement("div", { style: { fontSize: 14, fontWeight: 700, color: "#0f172a" } }, entry.coach.name),
                     React.createElement("div", { style: { fontSize: 11, color: "#64748b", marginTop: 2 } }, `${entry.coach.nationality||""}${entry.coach.age?` · ${entry.coach.age} ans`:""}`),
@@ -8265,11 +8234,12 @@ function App() {
         React.createElement("div", { style: { display: "flex", alignItems: "center", gap: 11 } },
           React.createElement("div", { style: {
             width: 38, height: 38, borderRadius: 12,
-            background: "linear-gradient(145deg, #059669, #047857)",
+            background: "linear-gradient(145deg, #68a832, #5a9228)",
             display: "flex", alignItems: "center", justifyContent: "center",
-            fontSize: 18,
-            boxShadow: "0 4px 14px rgba(5,150,105,0.30), 0 1px 0 rgba(255,255,255,0.20) inset"
-          } }, "⚡"),
+            fontSize: 14, fontWeight: 900, color: "#fff", fontFamily: "monospace",
+            boxShadow: "0 4px 14px rgba(104,168,50,0.35), 0 1px 0 rgba(255,255,255,0.20) inset",
+            letterSpacing: -1
+          } }, "[o]"),
           React.createElement("div", { style: { display: "flex", flexDirection: "column", gap: 1 } },
             React.createElement("span", { style: {
               fontFamily: "'Instrument Serif', Georgia, serif",
