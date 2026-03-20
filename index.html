@@ -48,7 +48,7 @@
     <script>
         if ("serviceWorker" in navigator) {
             const sw = `
-    const C='wf-pro-v92';
+    const C='wf-pro-v94';
     const API_KEY='3a14b1347c177458e2f23bea7899e9cf';
     const BASE='https://v3.football.api-sports.io';
     let prevScores = {};
@@ -6847,15 +6847,27 @@ function TransfersTab({ onTeam }) {
       results.forEach(r => {
         if (r.status !== "fulfilled") return;
         const { clubId, clubName, clubLogo, coaches } = r.value;
+        // Prendre tous les coachs, pas seulement le current
         coaches.forEach(coach => {
           if (!coach.career) return;
-          const current = coach.career.find(c => c.team?.id === clubId && !c.end);
-          if (current) {
-            entries.push({ coach, clubId, clubName, clubLogo, start: current.start });
-          }
+          const stint = coach.career.find(c => c.team?.id === clubId);
+          if (!stint) return;
+          const isCurrent = !stint.end;
+          entries.push({
+            coach,
+            clubId, clubName, clubLogo,
+            start: stint.start,
+            end: stint.end,
+            isCurrent
+          });
         });
       });
-      entries.sort((a, b) => new Date(b.start) - new Date(a.start));
+      // Trier : actuels en premier, puis par date de départ décroissante
+      entries.sort((a, b) => {
+        if (a.isCurrent && !b.isCurrent) return -1;
+        if (!a.isCurrent && b.isCurrent) return 1;
+        return new Date(b.start||0) - new Date(a.start||0);
+      });
       setCoachesData(entries);
       setCoachesStatus(entries.length ? "ok" : "empty");
     });
@@ -7069,32 +7081,57 @@ function TransfersTab({ onTeam }) {
         : coachesStatus === "empty"
         ? React.createElement("div", { style: { textAlign: "center", padding: 40, color: "#94a3b8" } }, "Aucun entraîneur disponible")
         : React.createElement("div", { style: { padding: "8px 12px", display: "flex", flexDirection: "column", gap: 8 } },
-            coachesData.map((entry, i) =>
-              React.createElement("div", { key: i, style: { background: "#fff", borderRadius: 12, padding: "12px 14px", display: "flex", alignItems: "center", gap: 12, boxShadow: "0 1px 4px rgba(15,23,42,.06)" } },
-                // Photo coach
-                React.createElement("div", { style: { width: 48, height: 48, borderRadius: "50%", overflow: "hidden", flexShrink: 0, background: "#f1f5f9", display: "flex", alignItems: "center", justifyContent: "center" } },
-                  entry.coach.photo
-                    ? React.createElement("img", { src: entry.coach.photo, style: { width: "100%", height: "100%", objectFit: "cover" }, onError: e => { e.target.style.display = "none"; } })
-                    : React.createElement("span", { style: { fontSize: 22 } }, "🧑‍💼")
-                ),
-                // Infos coach
-                React.createElement("div", { style: { flex: 1, minWidth: 0 } },
-                  React.createElement("div", { style: { fontSize: 14, fontWeight: 700, color: "#0f172a" } }, entry.coach.name),
-                  React.createElement("div", { style: { fontSize: 11, color: "#64748b", marginTop: 2 } },
-                    entry.coach.nationality || "",
-                    entry.coach.age ? ` · ${entry.coach.age} ans` : ""
-                  ),
-                  entry.start && React.createElement("div", { style: { fontSize: 11, color: "#00c170", fontWeight: 600, marginTop: 3 } },
-                    `En poste depuis ${new Date(entry.start).toLocaleDateString("fr-FR", { month: "long", year: "numeric" })}`
+
+            // Section EN POSTE
+            React.createElement("div", { style: { fontSize: 11, fontWeight: 800, color: "#64748b", textTransform: "uppercase", letterSpacing: 1, padding: "4px 0 2px" } }, "✅ En poste"),
+            coachesData.filter(e => e.isCurrent).length === 0
+              ? React.createElement("div", { style: { fontSize: 12, color: "#94a3b8", padding: "8px 0" } }, "Aucune donnée")
+              : coachesData.filter(e => e.isCurrent).map((entry, i) =>
+                  React.createElement("div", { key: "cur-"+i, style: { background: "#fff", borderRadius: 12, padding: "12px 14px", display: "flex", alignItems: "center", gap: 12, boxShadow: "0 1px 4px rgba(15,23,42,.06)", borderLeft: "3px solid #00c170" } },
+                    React.createElement("div", { style: { width: 46, height: 46, borderRadius: "50%", overflow: "hidden", flexShrink: 0, background: "#f1f5f9", display: "flex", alignItems: "center", justifyContent: "center" } },
+                      entry.coach.photo
+                        ? React.createElement("img", { src: entry.coach.photo, style: { width: "100%", height: "100%", objectFit: "cover" } })
+                        : React.createElement("span", { style: { fontSize: 22 } }, "🧑‍💼")
+                    ),
+                    React.createElement("div", { style: { flex: 1, minWidth: 0 } },
+                      React.createElement("div", { style: { fontSize: 14, fontWeight: 700, color: "#0f172a" } }, entry.coach.name),
+                      React.createElement("div", { style: { fontSize: 11, color: "#64748b", marginTop: 2 } }, `${entry.coach.nationality||""}${entry.coach.age?` · ${entry.coach.age} ans`:""}`),
+                      entry.start && React.createElement("div", { style: { fontSize: 11, color: "#00c170", fontWeight: 600, marginTop: 3 } },
+                        `Depuis ${new Date(entry.start).toLocaleDateString("fr-FR", { month: "long", year: "numeric" })}`
+                      )
+                    ),
+                    React.createElement("div", { style: { display: "flex", flexDirection: "column", alignItems: "center", gap: 3, flexShrink: 0 } },
+                      React.createElement(Logo, { src: entry.clubLogo, size: 30 }),
+                      React.createElement("span", { style: { fontSize: 9, color: "#94a3b8", fontWeight: 600, textAlign: "center", maxWidth: 56, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" } }, entry.clubName)
+                    )
                   )
                 ),
-                // Logo club
-                React.createElement("div", { style: { display: "flex", flexDirection: "column", alignItems: "center", gap: 4, flexShrink: 0 } },
-                  React.createElement(Logo, { src: entry.clubLogo, size: 32 }),
-                  React.createElement("span", { style: { fontSize: 10, color: "#94a3b8", fontWeight: 600, textAlign: "center", maxWidth: 60, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" } }, entry.clubName)
+
+            // Section ANCIENS
+            coachesData.filter(e => !e.isCurrent).length > 0 && React.createElement(React.Fragment, null,
+              React.createElement("div", { style: { fontSize: 11, fontWeight: 800, color: "#64748b", textTransform: "uppercase", letterSpacing: 1, padding: "8px 0 2px" } }, "📋 Anciens entraîneurs"),
+              coachesData.filter(e => !e.isCurrent).map((entry, i) =>
+                React.createElement("div", { key: "old-"+i, style: { background: "#fff", borderRadius: 12, padding: "12px 14px", display: "flex", alignItems: "center", gap: 12, boxShadow: "0 1px 4px rgba(15,23,42,.04)", borderLeft: "3px solid #e2e8f0", opacity: 0.85 } },
+                  React.createElement("div", { style: { width: 46, height: 46, borderRadius: "50%", overflow: "hidden", flexShrink: 0, background: "#f1f5f9", display: "flex", alignItems: "center", justifyContent: "center" } },
+                    entry.coach.photo
+                      ? React.createElement("img", { src: entry.coach.photo, style: { width: "100%", height: "100%", objectFit: "cover" } })
+                      : React.createElement("span", { style: { fontSize: 22 } }, "🧑‍💼")
+                  ),
+                  React.createElement("div", { style: { flex: 1, minWidth: 0 } },
+                    React.createElement("div", { style: { fontSize: 14, fontWeight: 700, color: "#0f172a" } }, entry.coach.name),
+                    React.createElement("div", { style: { fontSize: 11, color: "#64748b", marginTop: 2 } }, `${entry.coach.nationality||""}${entry.coach.age?` · ${entry.coach.age} ans`:""}`),
+                    React.createElement("div", { style: { fontSize: 11, color: "#ef4444", fontWeight: 600, marginTop: 3 } },
+                      `Parti ${entry.end ? new Date(entry.end).toLocaleDateString("fr-FR", { month: "long", year: "numeric" }) : ""}`
+                    )
+                  ),
+                  React.createElement("div", { style: { display: "flex", flexDirection: "column", alignItems: "center", gap: 3, flexShrink: 0 } },
+                    React.createElement(Logo, { src: entry.clubLogo, size: 30 }),
+                    React.createElement("span", { style: { fontSize: 9, color: "#94a3b8", fontWeight: 600, textAlign: "center", maxWidth: 56, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" } }, entry.clubName)
+                  )
                 )
               )
             ),
+
             React.createElement("div", { style: { height: 20 } })
           )
     )
