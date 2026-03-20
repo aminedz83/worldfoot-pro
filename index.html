@@ -48,7 +48,7 @@
     <script>
         if ("serviceWorker" in navigator) {
             const sw = `
-    const C='wf-pro-v108';
+    const C='wf-pro-v109';
     const API_KEY='3a14b1347c177458e2f23bea7899e9cf';
     const BASE='https://v3.football.api-sports.io';
     let prevScores = {};
@@ -2829,10 +2829,11 @@ function MatchDetail({state,onClose,onTeam}){
   const[period,setPeriod]=React.useState("all");
   const[playerSheet,setPlayerSheet]=React.useState(null);
   const[standings,setStandings]=React.useState([]);
-  const[roundStandings,setRoundStandings]=React.useState(null); // Classement de la journée
+  const[roundStandings,setRoundStandings]=React.useState(null);
   const[venueInfo,setVenueInfo]=React.useState(null);
   const[teamStats,setTeamStats]=React.useState({h:null,a:null});
   const[refStats,setRefStats]=React.useState(null);
+  const[firstLegScore,setFirstLegScore]=React.useState(null);
   const contentRef=React.useRef(null);
 
   const [refereeStats, setRefereeStats] = useState(null);
@@ -3091,6 +3092,32 @@ function MatchDetail({state,onClose,onTeam}){
       .catch(()=>{});
     return()=>{cancelled=true;};
   },[fix?.fixture?.venue?.id]);
+
+  // Charger le score du match aller pour les matchs aller/retour
+  React.useEffect(()=>{
+    const round = (fix?.league?.round||"").toLowerCase();
+    const isLeg2 = round.includes("leg 2")||round.includes("2nd leg")||round.includes("2ème manche");
+    if(!isLeg2||!fix?.teams?.home?.id||!fix?.teams?.away?.id)return;
+    let cancelled=false;
+    api(`/fixtures?team=${fix.teams.home.id}&last=20`,86400000)
+      .then(fixtures=>{
+        if(cancelled)return;
+        const leg1 = (fixtures||[]).find(f=>{
+          const r=(f.league?.round||"").toLowerCase();
+          const isL1=r.includes("leg 1")||r.includes("1st leg")||r.includes("1ère manche");
+          const sameTeams=(f.teams?.home?.id===fix.teams.home.id&&f.teams?.away?.id===fix.teams.away.id)||(f.teams?.home?.id===fix.teams.away.id&&f.teams?.away?.id===fix.teams.home.id);
+          return isL1&&sameTeams&&f.league?.id===fix.league?.id;
+        });
+        if(leg1&&!cancelled){
+          const homeIsHome=leg1.teams?.home?.id===fix.teams.home.id;
+          setFirstLegScore({
+            h: homeIsHome ? leg1.goals?.home : leg1.goals?.away,
+            a: homeIsHome ? leg1.goals?.away : leg1.goals?.home
+          });
+        }
+      }).catch(()=>{});
+    return()=>{cancelled=true;};
+  },[fix?.fixture?.id]);
 
   React.useEffect(()=>{
     const hid=fix?.teams?.home?.id,aid=fix?.teams?.away?.id;
@@ -4613,6 +4640,32 @@ function MatchDetail({state,onClose,onTeam}){
             if(isLive && sh === "ET" && displayMin > 105)
               return React.createElement("span", {style:{fontSize:13,fontWeight:700,color:"#e53535"}}, `⏱️ +${displayMin-105}`);
             return null;
+          })(),
+
+          // Info manche (1er/2ème leg)
+          (() => {
+            const round = (fix.league?.round || "").toLowerCase();
+            const isSecondLeg = round.includes("2nd") || round.includes("second leg") || round.includes("leg 2");
+            const isFirstLeg = round.includes("1st") || round.includes("first leg") || round.includes("leg 1");
+            if (!isSecondLeg && !isFirstLeg) return null;
+            const label = isFirstLeg ? "1ère manche" : "2ème manche";
+            const scoreH = fix.goals?.home ?? 0;
+            const scoreA = fix.goals?.away ?? 0;
+            const leg1H = firstLegScore?.h ?? null;
+            const leg1A = firstLegScore?.a ?? null;
+            const hasFirstLeg = leg1H !== null && leg1A !== null;
+            const cumH = hasFirstLeg ? scoreH + leg1H : null;
+            const cumA = hasFirstLeg ? scoreA + leg1A : null;
+            return React.createElement("div", { style:{
+              marginTop: 4, background: "rgba(0,0,0,.04)", borderRadius: 8,
+              padding: "4px 12px", textAlign: "center"
+            } },
+              React.createElement("span", { style:{ fontSize: 11, color: "#64748b", fontWeight: 500 } },
+                isSecondLeg && hasFirstLeg
+                  ? `${label}. Score du match aller : ${leg1H}-${leg1A}. Score cumulé: ${cumH}-${cumA}.`
+                  : label
+              )
+            );
           })()
         ),
 
@@ -4649,7 +4702,43 @@ function MatchDetail({state,onClose,onTeam}){
         React.createElement("div",{style:{flex:1,fontSize:11,color:"#94a3b8",textAlign:"center",lineHeight:1.4}},
           goals.filter(e=>e.team?.id===aid).map(e=>`${(e.player?.name||"").split(" ").pop()} ${e.time?.elapsed}'`).join(", ")
         )
-      ) : null
+      ) : null,
+
+      // Contexte aller/retour (2 manches)
+      (() => {
+        const round = (fix.league?.round || "").toLowerCase();
+        const isLeg2 = round.includes("leg 2") || round.includes("2nd leg") || round.includes("2ème manche") || round.includes("deuxième manche") || round.includes("return");
+        const isLeg1 = round.includes("leg 1") || round.includes("1st leg") || round.includes("1ère manche") || round.includes("première manche");
+        const isKnockout = round.includes("round of") || round.includes("quarter") || round.includes("semi") || round.includes("final") || round.includes("knockout") || isLeg1 || isLeg2;
+
+        if (!isKnockout) return null;
+        if (!isDone && !isLive) return null;
+
+        const hGoals = fix.goals?.home ?? 0;
+        const aGoals = fix.goals?.away ?? 0;
+        const legLabel = isLeg2 ? "2ème manche" : isLeg1 ? "1ère manche" : null;
+
+        // Score cumulé depuis l'API si disponible
+        const scoreNote = fix.fixture?.score_aggregate || fix.scoreAggregate || null;
+
+        if (!legLabel) return null;
+
+        return React.createElement("div", { style: {
+          margin: "8px 16px 0",
+          background: "rgba(15,23,42,.04)",
+          borderRadius: 10,
+          padding: "8px 14px",
+          fontSize: 12,
+          color: "#64748b",
+          textAlign: "center",
+          lineHeight: 1.5,
+          border: "1px solid rgba(15,23,42,.06)"
+        } },
+          isLeg2
+            ? `${legLabel}. Score cumulé : ${hGoals} - ${aGoals}`
+            : legLabel
+        );
+      })()
 
     ),
 
