@@ -48,7 +48,7 @@
     <script>
         if ("serviceWorker" in navigator) {
             const sw = `
-    const C='wf-pro-v81';
+    const C='wf-pro-v82';
     const API_KEY='3a14b1347c177458e2f23bea7899e9cf';
     const BASE='https://v3.football.api-sports.io';
     let prevScores = {};
@@ -2468,6 +2468,8 @@ function Row({match:m, onOpen, isFav, onFav, onTeam}){
   const min=useMinute(s.elapsed,s.short);
   const flash=useFlash(m.goals.home,m.goals.away);
   const hg=m.goals.home,ag=m.goals.away,has=hg!==null&&ag!==null,hw=has&&hg>ag,aw=has&&ag>hg;
+  const homeW = has && hg > ag;
+  const awayW = has && ag > hg;
   const redCards=_redCardsCache.get(m.fixture.id);
   const homeRed=redCards?.home||0, awayRed=redCards?.away||0;
   const stLabel=sh==="HT"?"MT":sh==="BT"?"Pause":sh==="P"?"Tab":sh==="SUSP"?"Susp.":sh==="INT"?"Inter.":sh==="ABD"?"Arr.":sh==="CANC"?"Ann.":sh==="PST"?"Rep.":sh==="TBD"?"TBD":sh==="AET"?"Ap.Pr.":sh==="PEN"?"Tab":"FT";
