@@ -48,7 +48,7 @@
     <script>
         if ("serviceWorker" in navigator) {
             const sw = `
-    const C='wf-pro-v80';
+    const C='wf-pro-v81';
     const API_KEY='3a14b1347c177458e2f23bea7899e9cf';
     const BASE='https://v3.football.api-sports.io';
     let prevScores = {};
@@ -2521,11 +2521,6 @@ function Row({match:m, onOpen, isFav, onFav, onTeam}){
     return () => { if (timerRef.current) clearTimeout(timerRef.current); };
   }, [m.goals.home, m.goals.away]);
 
-  // Couleur score style Flashscore
-  const scoreColor = live ? "#e53535" : done ? "#333" : "#aaa";
-  const homeW = has && hg > ag;
-  const awayW = has && ag > hg;
-
   return React.createElement("div", {
     onClick: onOpen,
     style: {
@@ -2539,11 +2534,11 @@ function Row({match:m, onOpen, isFav, onFav, onTeam}){
     // Étoile favori à GAUCHE
     React.createElement("button", {
       onClick: e => { e.stopPropagation(); onFav(); },
-      style: { background: "none", border: "none", color: isFav ? "#f59e0b" : "#d0d0d0", fontSize: 16, padding: "0 8px 0 10px", flexShrink: 0, cursor: "pointer", lineHeight: 1 }
+      style: { background: "none", border: "none", color: isFav ? "#f59e0b" : "#d0d0d0", fontSize: 16, padding: "0 6px 0 8px", flexShrink: 0, cursor: "pointer", lineHeight: 1 }
     }, isFav ? "★" : "☆"),
 
-    // Colonne temps/statut
-    React.createElement("div", { style: { width: 44, flexShrink: 0, textAlign: "center" } },
+    // Colonne temps/statut — réduite
+    React.createElement("div", { style: { width: 36, flexShrink: 0, textAlign: "center" } },
       live
         ? React.createElement("div", { style: { display:"flex", flexDirection:"column", alignItems:"center", gap: 1 } },
             (sh === "2H" && min > 90)
@@ -2566,16 +2561,16 @@ function Row({match:m, onOpen, isFav, onFav, onTeam}){
         : React.createElement("span", { style: { fontSize: 11, fontWeight: 600, color: "#888" } }, stLabel)
     ),
 
-    // Colonne équipes
-    React.createElement("div", { style: { flex: 1, minWidth: 0, padding: "7px 0 7px 4px", display: "flex", flexDirection: "column", gap: 5 } },
+    // Colonne équipes — flex:1 prend tout l'espace dispo
+    React.createElement("div", { style: { flex: 1, minWidth: 0, padding: "7px 0 7px 2px", display: "flex", flexDirection: "column", gap: 5 } },
       // Domicile
-      React.createElement("div", { style: { display: "flex", alignItems: "center", gap: 7, position: "relative" } },
+      React.createElement("div", { style: { display: "flex", alignItems: "center", gap: 6, position: "relative" } },
         React.createElement("div", {
           onClick: (e) => { e.stopPropagation(); onTeam && onTeam(m.teams.home.id, m.teams.home.name, m.teams.home.logo, m.league?.id, m.league?.season); },
-          style: { display:"flex", alignItems:"center", gap:7, flex:1, minWidth:0, cursor: onTeam?"pointer":"default" }
+          style: { display:"flex", alignItems:"center", gap:6, flex:1, minWidth:0, cursor: onTeam?"pointer":"default" }
         },
           React.createElement(Logo, { src: m.teams.home.logo, size: 18 }),
-          React.createElement("span", { style: { fontSize: 13, fontWeight: homeW ? 700 : 400, color: homeW ? "#111" : (has && awayW) ? "#aaa" : "#222", flex: 1, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap", display: "flex", alignItems: "center", gap: 4 } },
+          React.createElement("span", { style: { fontSize: 13, fontWeight: homeW ? 700 : 400, color: homeW ? "#111" : (has && awayW) ? "#aaa" : "#222", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap", display: "flex", alignItems: "center", gap: 4 } },
             hn,
             homeRed > 0 ? React.createElement("span", { style: { fontSize: 9, fontWeight: 800, color: "#fff", background: "#e53535", borderRadius: 3, padding: "1px 4px", flexShrink: 0 } }, homeRed) : null
           )
@@ -2583,13 +2578,13 @@ function Row({match:m, onOpen, isFav, onFav, onTeam}){
         showBigChance && actionTeam === m.teams.home.id && React.createElement("span", { style: { position:"absolute", right:0, color:"#e53935", fontSize:9, fontWeight:800, textTransform:"uppercase", zIndex:5, whiteSpace:"nowrap", animation:"blink-3 1.5s ease-in-out", background:"linear-gradient(90deg,transparent,#fff 30%)", paddingLeft:12 } }, "GROSSE OCCASION!")
       ),
       // Extérieur
-      React.createElement("div", { style: { display: "flex", alignItems: "center", gap: 7, position: "relative" } },
+      React.createElement("div", { style: { display: "flex", alignItems: "center", gap: 6, position: "relative" } },
         React.createElement("div", {
           onClick: (e) => { e.stopPropagation(); onTeam && onTeam(m.teams.away.id, m.teams.away.name, m.teams.away.logo, m.league?.id, m.league?.season); },
-          style: { display:"flex", alignItems:"center", gap:7, flex:1, minWidth:0, cursor: onTeam?"pointer":"default" }
+          style: { display:"flex", alignItems:"center", gap:6, flex:1, minWidth:0, cursor: onTeam?"pointer":"default" }
         },
           React.createElement(Logo, { src: m.teams.away.logo, size: 18 }),
-          React.createElement("span", { style: { fontSize: 13, fontWeight: awayW ? 700 : 400, color: awayW ? "#111" : (has && homeW) ? "#aaa" : "#222", flex: 1, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap", display: "flex", alignItems: "center", gap: 4 } },
+          React.createElement("span", { style: { fontSize: 13, fontWeight: awayW ? 700 : 400, color: awayW ? "#111" : (has && homeW) ? "#aaa" : "#222", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap", display: "flex", alignItems: "center", gap: 4 } },
             an,
             awayRed > 0 ? React.createElement("span", { style: { fontSize: 9, fontWeight: 800, color: "#fff", background: "#e53535", borderRadius: 3, padding: "1px 4px", flexShrink: 0 } }, awayRed) : null
           )
@@ -2598,8 +2593,8 @@ function Row({match:m, onOpen, isFav, onFav, onTeam}){
       )
     ),
 
-    // Colonne scores — à DROITE, couleur rouge si live
-    React.createElement("div", { style: { width: 28, display: "flex", flexDirection: "column", alignItems: "flex-end", justifyContent: "center", gap: 5, flexShrink: 0, paddingRight: 12 } },
+    // Scores — collés aux noms, pas tout à droite
+    React.createElement("div", { style: { width: 24, display: "flex", flexDirection: "column", alignItems: "flex-end", justifyContent: "center", gap: 5, flexShrink: 0, paddingRight: 10 } },
       has
         ? React.createElement(React.Fragment, null,
             React.createElement("span", { style: { fontSize: 14, fontWeight: homeW ? 800 : 500, color: live ? "#e53535" : homeW ? "#111" : "#888", lineHeight: 1, fontVariantNumeric: "tabular-nums" } }, displayHomeGoals),
