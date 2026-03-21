@@ -48,7 +48,7 @@
     <script>
         if ("serviceWorker" in navigator) {
             const sw = `
-    const C='wf-pro-v135';
+    const C='wf-pro-v136';
     const API_KEY='3a14b1347c177458e2f23bea7899e9cf';
     const BASE='https://v3.football.api-sports.io';
     let prevScores = {};
@@ -2977,14 +2977,15 @@ function LeagueSheet({fix, leagueInfo, onClose}) {
             // Monde
             1:   { start: `${season+1}-06-01`, end: `${season+1}-07-15` }, // Coupe du Monde
             // Amérique du Sud
-            13:  { start: `${season}-01-01`,   end: `${season}-07-15`   }, // Copa América
-            11:  { start: `${season}-04-01`,   end: `${season}-11-30`   }, // Copa Libertadores
-            12:  { start: `${season}-03-01`,   end: `${season}-11-15`   }, // Copa Sudamericana
+            9:   { start: `${season+1}-06-01`, end: `${season+1}-07-20` }, // Copa América
+            13:  { start: `${season}-04-01`,   end: `${season}-11-30`   }, // Copa Libertadores
+            11:  { start: `${season}-03-01`,   end: `${season}-11-15`   }, // Copa Sudamericana
             // CONCACAF
             30:  { start: `${season+1}-02-01`, end: `${season+1}-07-31` }, // Gold Cup
             // Afrique
             6:   { start: `${season+1}-01-01`, end: `${season+1}-02-15` }, // CAN
-            20:  { start: `${season}-03-01`,   end: `${season}-05-31`   }, // Ligue des Champions CAF
+            12:  { start: `${season}-03-01`,   end: `${season}-05-31`   }, // CAF Champions League
+            20:  { start: `${season}-03-01`,   end: `${season}-05-31`   }, // CAF Confédération
             // Asie
             17:  { start: `${season}-04-01`,   end: `${season+1}-05-15` }, // AFC Champions League
             // Championnats
@@ -3192,10 +3193,12 @@ function LeagueSheet({fix, leagueInfo, onClose}) {
               848: { name: "Chelsea/West Ham",titles: 2  }, // Conference
               1:   { name: "Brésil",         titles: 5  }, // Mondial
               4:   { name: "Espagne",        titles: 4  }, // Euro
-              13:  { name: "Argentine",      titles: 16 }, // Copa América
-              11:  { name: "Independiente",  titles: 7  }, // Copa Libertadores
+              9:   { name: "Argentine",      titles: 16 }, // Copa América
+              13:  { name: "Independiente",  titles: 7  }, // Copa Libertadores
+              11:  { name: "Indep./Boca",    titles: 2  }, // Copa Sudamericana
               6:   { name: "Égypte",         titles: 7  }, // CAN
-              20:  { name: "Al Ahly",        titles: 12 }, // CAF Champions
+              12:  { name: "Al Ahly",        titles: 12 }, // CAF Champions
+              20:  { name: "Zamalek",        titles: 2  }, // CAF Confédération
               30:  { name: "Mexique",        titles: 8  }, // Gold Cup
               39:  { name: "Man United",     titles: 13 }, // Premier League
               140: { name: "Real Madrid",    titles: 36 }, // La Liga
@@ -3285,8 +3288,8 @@ function LeagueSheet({fix, leagueInfo, onClose}) {
               {name:"Angleterre",     logo:"https://media.api-sports.io/football/teams/10.png",  titles:1},
               {name:"Espagne",        logo:"https://media.api-sports.io/football/teams/9.png",   titles:1},
             ],
-            // Amérique du Sud — Nationales
-            13: [
+            // Amérique du Sud — Nationales (Copa América id=9)
+            9: [
               {name:"Argentine",      logo:"https://media.api-sports.io/football/teams/26.png",  titles:16},
               {name:"Uruguay",        logo:"https://media.api-sports.io/football/teams/16.png",  titles:15},
               {name:"Brésil",         logo:"https://media.api-sports.io/football/teams/6.png",   titles:9},
@@ -3297,17 +3300,17 @@ function LeagueSheet({fix, leagueInfo, onClose}) {
               {name:"Colombie",       logo:"https://media.api-sports.io/football/teams/18.png",  titles:1},
             ],
             // Amérique du Sud — Clubs
-            11: [
+            13: [ // Copa Libertadores
               {name:"Independiente",  logo:"https://media.api-sports.io/football/teams/436.png", titles:7},
               {name:"Boca Juniors",   logo:"https://media.api-sports.io/football/teams/405.png", titles:6},
-              {name:"Nacional",       logo:"https://media.api-sports.io/football/teams/1001.png",titles:3},
-              {name:"Estudiantes",    logo:"https://media.api-sports.io/football/teams/441.png", titles:4},
-              {name:"Olimpia",        logo:"https://media.api-sports.io/football/teams/1006.png",titles:3},
               {name:"Peñarol",        logo:"https://media.api-sports.io/football/teams/1004.png",titles:5},
+              {name:"Estudiantes",    logo:"https://media.api-sports.io/football/teams/441.png", titles:4},
               {name:"River Plate",    logo:"https://media.api-sports.io/football/teams/400.png", titles:4},
+              {name:"Nacional",       logo:"https://media.api-sports.io/football/teams/1001.png",titles:3},
+              {name:"Olimpia",        logo:"https://media.api-sports.io/football/teams/1006.png",titles:3},
               {name:"Flamengo",       logo:"https://media.api-sports.io/football/teams/127.png", titles:3},
             ],
-            12: [
+            11: [ // Copa Sudamericana
               {name:"Independiente",  logo:"https://media.api-sports.io/football/teams/436.png", titles:2},
               {name:"Boca Juniors",   logo:"https://media.api-sports.io/football/teams/405.png", titles:2},
               {name:"San Lorenzo",    logo:"https://media.api-sports.io/football/teams/432.png", titles:1},
@@ -3338,15 +3341,20 @@ function LeagueSheet({fix, leagueInfo, onClose}) {
               {name:"Afrique du Sud", logo:"https://media.api-sports.io/football/teams/46.png",  titles:1},
             ],
             // Afrique — Clubs
-            20: [
+            12: [ // CAF Champions League
               {name:"Al Ahly",        logo:"https://media.api-sports.io/football/teams/1536.png",titles:12},
               {name:"Zamalek",        logo:"https://media.api-sports.io/football/teams/1537.png",titles:5},
-              {name:"ES Tunis",       logo:"https://media.api-sports.io/football/teams/1600.png",titles:4},
               {name:"TP Mazembe",     logo:"https://media.api-sports.io/football/teams/1612.png",titles:5},
-              {name:"Wydad AC",       logo:"https://media.api-sports.io/football/teams/1546.png",titles:3},
+              {name:"ES Tunis",       logo:"https://media.api-sports.io/football/teams/1600.png",titles:4},
               {name:"Hafia FC",       logo:"https://media.api-sports.io/football/teams/10268.png",titles:3},
               {name:"Canon Yaoundé",  logo:"https://media.api-sports.io/football/teams/10269.png",titles:3},
               {name:"Raja Casablanca",logo:"https://media.api-sports.io/football/teams/1547.png",titles:3},
+              {name:"Wydad AC",       logo:"https://media.api-sports.io/football/teams/1546.png",titles:3},
+            ],
+            20: [ // CAF Confédération Cup
+              {name:"Zamalek",        logo:"https://media.api-sports.io/football/teams/1537.png",titles:2},
+              {name:"ES Tunis",       logo:"https://media.api-sports.io/football/teams/1600.png",titles:2},
+              {name:"Hearts of Oak", logo:"https://media.api-sports.io/football/teams/10270.png",titles:1},
             ],
             // Championnats
             39: [
