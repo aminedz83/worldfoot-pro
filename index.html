@@ -48,7 +48,7 @@
     <script>
         if ("serviceWorker" in navigator) {
             const sw = `
-    const C='wf-pro-v120';
+    const C='wf-pro-v121';
     const API_KEY='3a14b1347c177458e2f23bea7899e9cf';
     const BASE='https://v3.football.api-sports.io';
     let prevScores = {};
@@ -2905,12 +2905,14 @@ function LeagueSheet({fix, leagueInfo, onClose}) {
   // Charger les vainqueurs quand on ouvre le sheet
   useEffect(() => {
     if(!showWinners||!leagueInfo?.seasons||!lid) return;
-    const pastSeasons = leagueInfo.seasons.filter(s => !s.current).slice(-8);
-    pastSeasons.forEach(s => {
-      if(winnersData[s.year]) return;
+    const pastSeasons = leagueInfo.seasons.filter(s => !s.current);
+    // Charger par batch de 5 pour ne pas surcharger l'API
+    const toLoad = pastSeasons.filter(s => !winnersData[s.year]).slice(0, 20);
+    toLoad.forEach(s => {
       api(`/fixtures?league=${lid}&season=${s.year}&round=Final`, 86400000)
         .then(d => {
-          const final = (d||[]).find(f => DONE_ST.has(f.fixture?.status?.short));
+          const finals = (d||[]).filter(f => DONE_ST.has(f.fixture?.status?.short));
+          const final = finals.sort((a,b) => new Date(b.fixture.date)-new Date(a.fixture.date))[0];
           if(final) {
             const hg = final.goals?.home ?? 0;
             const ag = final.goals?.away ?? 0;
