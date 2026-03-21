@@ -48,7 +48,7 @@
     <script>
         if ("serviceWorker" in navigator) {
             const sw = `
-    const C='wf-pro-v121';
+    const C='wf-pro-v122';
     const API_KEY='3a14b1347c177458e2f23bea7899e9cf';
     const BASE='https://v3.football.api-sports.io';
     let prevScores = {};
@@ -2964,24 +2964,47 @@ function LeagueSheet({fix, leagueInfo, onClose}) {
           )
         ),
 
-        // Barre de progression
-        React.createElement("div", {style:{padding:"8px 0 16px",position:"relative"}},
-          React.createElement("div", {style:{height:4,background:"#e2e8f0",borderRadius:2,margin:"0 0 6px",position:"relative"}},
-            React.createElement("div", {style:{height:"100%",background:"#0f172a",borderRadius:2,width:"65%"}}),
-            // Points
-            [0, 30, 65, 100].map((pct,i) =>
-              React.createElement("div", {key:i,style:{position:"absolute",top:-4,left:`${pct}%`,width:12,height:12,borderRadius:"50%",background:pct<=65?"#0f172a":"#e2e8f0",border:"2px solid #fff",transform:"translateX(-50%)"}})
-            )
-          ),
-          React.createElement("div", {style:{display:"flex",justifyContent:"space-between"}},
-            React.createElement("span", {style:{fontSize:10,color:"#94a3b8"}}, "08.07"),
-            React.createElement("div", {style:{display:"flex",gap:4,alignItems:"center"}},
-              React.createElement("span", {style:{fontSize:14,color:"#94a3b8"}}, "🏆"),
-              React.createElement("span", {style:{fontSize:10,color:"#94a3b8"}}, "ⓘ")
+        // Barre de progression dynamique
+        (() => {
+          // Dates de la saison depuis leagueInfo
+          const currentSeason = leagueInfo?.seasons?.find(s => s.current || s.year === season);
+          const startStr = currentSeason?.start || `${season}-07-01`;
+          const endStr = currentSeason?.end || `${season+1}-06-01`;
+          const startDate = new Date(startStr);
+          const endDate = new Date(endStr);
+          const now = new Date();
+          const total = endDate - startDate;
+          const elapsed = Math.max(0, Math.min(now - startDate, total));
+          const pct = Math.round((elapsed / total) * 100);
+
+          // Points de repère : Groupes ~25%, 1/8 ~50%, QF ~65%, SF ~80%, Finale ~95%
+          const milestones = [0, 25, 50, 65, 80, 100];
+          const activeMilestones = milestones.filter(m => m <= pct);
+
+          const fmtDate = d => `${String(d.getDate()).padStart(2,'0')}.${String(d.getMonth()+1).padStart(2,'0')}`;
+
+          return React.createElement("div", {style:{padding:"8px 0 16px",position:"relative"}},
+            React.createElement("div", {style:{height:4,background:"#e2e8f0",borderRadius:2,margin:"0 0 6px",position:"relative"}},
+              React.createElement("div", {style:{height:"100%",background:"#0f172a",borderRadius:2,width:`${pct}%`,transition:"width 0.5s ease"}}),
+              milestones.map((m,i) =>
+                React.createElement("div", {key:i,style:{
+                  position:"absolute",top:-4,left:`${m}%`,
+                  width:12,height:12,borderRadius:"50%",
+                  background:m<=pct?"#0f172a":"#e2e8f0",
+                  border:"2px solid #fff",transform:"translateX(-50%)"
+                }})
+              )
             ),
-            React.createElement("span", {style:{fontSize:10,color:"#94a3b8"}}, "30.05")
-          )
-        ),
+            React.createElement("div", {style:{display:"flex",justifyContent:"space-between",alignItems:"center"}},
+              React.createElement("span", {style:{fontSize:10,color:"#94a3b8"}}, fmtDate(startDate)+"."),
+              React.createElement("div", {style:{display:"flex",gap:4,alignItems:"center"}},
+                React.createElement("span", {style:{fontSize:14}}, "🏆"),
+                React.createElement("span", {style:{fontSize:10,color:"#94a3b8"}}, "ⓘ")
+              ),
+              React.createElement("span", {style:{fontSize:10,color:"#94a3b8"}}, fmtDate(endDate)+".")
+            )
+          );
+        })(),
 
         // Bouton TABLEAU
         React.createElement("div", {style:{paddingBottom:12}},
