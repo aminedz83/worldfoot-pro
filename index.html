@@ -48,7 +48,7 @@
     <script>
         if ("serviceWorker" in navigator) {
             const sw = `
-    const C='wf-pro-v111';
+    const C='wf-pro-v113';
     const API_KEY='3a14b1347c177458e2f23bea7899e9cf';
     const BASE='https://v3.football.api-sports.io';
     let prevScores = {};
@@ -3098,23 +3098,32 @@ function MatchDetail({state,onClose,onTeam}){
     const round = (fix?.league?.round||"").toLowerCase();
     const isKnockout = round.includes("round of")||round.includes("quarter")||round.includes("semi")||
       round.includes("final")||round.includes("knockout")||round.includes("leg")||round.includes("manche");
-    if(!isKnockout||!fix?.teams?.home?.id||!fix?.teams?.away?.id)return;
+    if(!isKnockout||!fix?.teams?.home?.id||!fix?.teams?.away?.id||!fix?.league?.id)return;
     let cancelled=false;
-    api(`/fixtures?team=${fix.teams.home.id}&last=20`,86400000)
+    // Chercher tous les matchs entre ces deux équipes cette saison dans cette compétition
+    const season = fix.league?.season || new Date().getFullYear();
+    api(`/fixtures?league=${fix.league.id}&season=${season}&team=${fix.teams.home.id}`,86400000)
       .then(fixtures=>{
         if(cancelled)return;
+        // Trouver le match aller (même équipes, même compétition, date antérieure)
+        const fixDate = new Date(fix.fixture.date);
         const leg1 = (fixtures||[]).find(f=>{
-          const r=(f.league?.round||"").toLowerCase();
-          const isL1=r.includes("leg 1")||r.includes("1st leg")||r.includes("1ère manche")||
-            !!r.match(/[-–]\s*1$/)||r.includes("aller");
-          const sameTeams=(f.teams?.home?.id===fix.teams.home.id&&f.teams?.away?.id===fix.teams.away.id)||(f.teams?.home?.id===fix.teams.away.id&&f.teams?.away?.id===fix.teams.home.id);
-          return isL1&&sameTeams&&f.league?.id===fix.league?.id;
+          if(f.fixture?.id === fix.fixture?.id) return false;
+          const fDate = new Date(f.fixture?.date);
+          if(fDate >= fixDate) return false; // doit être avant
+          const sameTeams=(
+            (f.teams?.home?.id===fix.teams.home.id && f.teams?.away?.id===fix.teams.away.id) ||
+            (f.teams?.home?.id===fix.teams.away.id && f.teams?.away?.id===fix.teams.home.id)
+          );
+          const sameRoundType = (f.league?.round||"").toLowerCase().replace(/\d+/g,'').trim() ===
+            round.replace(/\d+/g,'').trim();
+          return sameTeams && (sameRoundType || f.league?.round?.toLowerCase().includes(round.split(" ")[0]));
         });
         if(leg1&&!cancelled){
           const homeIsHome=leg1.teams?.home?.id===fix.teams.home.id;
           setFirstLegScore({
-            h: homeIsHome ? leg1.goals?.home : leg1.goals?.away,
-            a: homeIsHome ? leg1.goals?.away : leg1.goals?.home
+            h: homeIsHome ? (leg1.goals?.home??0) : (leg1.goals?.away??0),
+            a: homeIsHome ? (leg1.goals?.away??0) : (leg1.goals?.home??0)
           });
         }
       }).catch(()=>{});
@@ -4779,7 +4788,20 @@ function MatchDetail({state,onClose,onTeam}){
             React.createElement("span", {className:"separator"}, "•"),
             React.createElement("span", null, fix.league.name),
             React.createElement("span", {className:"separator"}, "•"),
-            React.createElement("span", {className:"current"}, fix.league.round || `J${fix.league.round?.match(/\d+/)?.[0] || ""}`)
+            React.createElement("span", {className:"current"}, (() => {
+              const r = fix.league.round || "";
+              return r
+                .replace("Regular Season - ", "J")
+                .replace("League Phase - ", "J")
+                .replace("Round of 16", "1/8 de Finale")
+                .replace("Round of 32", "1/16 de Finale")
+                .replace("Round of 8", "1/4 de Finale")
+                .replace("Quarter-finals", "Quarts de Finale")
+                .replace("Quarter-final", "Quart de Finale")
+                .replace("Semi-finals", "Demi-Finales")
+                .replace("Semi-final", "Demi-Finale")
+                .replace(/^Final$/i, "Finale");
+            })())
           ),
 
           React.createElement("div", {className:"datetime-row"},
