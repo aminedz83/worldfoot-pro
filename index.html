@@ -48,7 +48,7 @@
     <script>
         if ("serviceWorker" in navigator) {
             const sw = `
-    const C='wf-pro-v115';
+    const C='wf-pro-v116';
     const API_KEY='3a14b1347c177458e2f23bea7899e9cf';
     const BASE='https://v3.football.api-sports.io';
     let prevScores = {};
@@ -2831,6 +2831,8 @@ function LeagueSheet({fix, leagueInfo, onClose}) {
   const [fixtures, setFixtures] = useState([]);
   const [loading, setLoading] = useState(false);
   const [showTableau, setShowTableau] = useState(true);
+  const [selectedPair, setSelectedPair] = useState(null);
+  const [standings, setStandings] = useState([]);
 
   const phases = [
     {key:"Round of 32", label:"1/16 DE FINALE"},
@@ -2839,6 +2841,21 @@ function LeagueSheet({fix, leagueInfo, onClose}) {
     {key:"Semi-finals", label:"DEMI-FINALES"},
     {key:"Final", label:"FINALE"}
   ];
+
+  // Charger le classement pour les rangs
+  useEffect(() => {
+    if(!lid||!season) return;
+    api(`/standings?league=${lid}&season=${season}`, 86400000)
+      .then(d => {
+        const rows = (d||[]).flatMap(g => Array.isArray(g) ? g : (g?.league?.standings||[]).flat());
+        setStandings(rows);
+      }).catch(()=>{});
+  }, [lid, season]);
+
+  const getRank = (teamId) => {
+    const row = standings.find(r => r.team?.id === teamId);
+    return row?.rank || null;
+  };
 
   // Charger les matchs de la phase active
   useEffect(() => {
@@ -2971,62 +2988,107 @@ function LeagueSheet({fix, leagueInfo, onClose}) {
           : pairs.map((pair,i) => {
               const f1 = pair.leg1;
               const f2 = pair.leg2;
-              // Identifier quel match est aller (leg1) et retour (leg2)
               const leg1 = f1;
               const leg2 = f2;
-              // Score cumulé
               const h1 = leg1.goals?.home ?? null;
               const a1 = leg1.goals?.away ?? null;
               const h2 = leg2?.goals?.home ?? null;
               const a2 = leg2?.goals?.away ?? null;
-              // Total par équipe (domicile du leg1 = home)
               const homeTotal = (h1??0) + (h2??0);
               const awayTotal = (a1??0) + (a2??0);
               const homeName = leg1.teams.home.name;
               const awayName = leg1.teams.away.name;
               const homeLogo = leg1.teams.home.logo;
               const awayLogo = leg1.teams.away.logo;
+              const homeId = leg1.teams.home.id;
+              const awayId = leg1.teams.away.id;
               const homeWins = homeTotal > awayTotal;
               const awayWins = awayTotal > homeTotal;
               const done1 = DONE_ST.has(leg1.fixture?.status?.short);
               const done2 = leg2 ? DONE_ST.has(leg2.fixture?.status?.short) : false;
+              const homeRank = getRank(homeId);
+              const awayRank = getRank(awayId);
 
-              return React.createElement("div", {key:i, style:{background:"#fff",borderRadius:14,marginBottom:10,overflow:"hidden",boxShadow:"0 1px 4px rgba(0,0,0,.06)"}},
+              return React.createElement("div", {key:i, style:{background:"#fff",borderRadius:14,marginBottom:10,overflow:"hidden",boxShadow:"0 1px 4px rgba(0,0,0,.06)",cursor:"pointer"},
+                onClick: () => setSelectedPair(pair)
+              },
                 React.createElement("div", {style:{display:"flex",alignItems:"center",padding:"14px 12px",gap:8}},
-                  // Flèche gauche
                   React.createElement("div", {style:{width:28,height:28,borderRadius:"50%",background:"#f5f5f5",display:"flex",alignItems:"center",justifyContent:"center",flexShrink:0,fontSize:12,color:"#aaa"}}, "‹"),
-
-                  // Équipes + scores
                   React.createElement("div", {style:{flex:1,minWidth:0}},
-                    // Équipe 1
                     React.createElement("div", {style:{display:"flex",alignItems:"center",gap:8,marginBottom:6}},
                       React.createElement("img", {src:homeLogo,style:{width:22,height:22,objectFit:"contain",flexShrink:0},onError:e=>e.target.style.display="none"}),
                       React.createElement("span", {style:{fontSize:13,fontWeight:homeWins?700:400,color:homeWins?"#0f172a":"#64748b",flex:1,overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap"}},
                         homeName,
-                        React.createElement("span", {style:{fontSize:11,color:"#94a3b8",fontWeight:400}}, ` (${leg1.teams.home.id})`)
+                        homeRank ? React.createElement("span", {style:{fontSize:11,color:"#94a3b8",fontWeight:400}}, ` (${homeRank})`) : null
                       ),
-                      // Score aller + retour
                       done1 ? React.createElement("span", {style:{fontSize:13,fontWeight:homeWins?700:400,color:homeWins?"#0f172a":"#94a3b8",minWidth:16,textAlign:"right"}}, h1??"-") : null,
                       done2 ? React.createElement("span", {style:{fontSize:13,fontWeight:homeWins?700:400,color:homeWins?"#0f172a":"#94a3b8",minWidth:16,textAlign:"right"}}, h2??"-") : null
                     ),
-                    // Équipe 2
                     React.createElement("div", {style:{display:"flex",alignItems:"center",gap:8}},
                       React.createElement("img", {src:awayLogo,style:{width:22,height:22,objectFit:"contain",flexShrink:0},onError:e=>e.target.style.display="none"}),
                       React.createElement("span", {style:{fontSize:13,fontWeight:awayWins?700:400,color:awayWins?"#0f172a":"#64748b",flex:1,overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap"}},
                         awayName,
-                        React.createElement("span", {style:{fontSize:11,color:"#94a3b8",fontWeight:400}}, ` (${leg1.teams.away.id})`)
+                        awayRank ? React.createElement("span", {style:{fontSize:11,color:"#94a3b8",fontWeight:400}}, ` (${awayRank})`) : null
                       ),
                       done1 ? React.createElement("span", {style:{fontSize:13,fontWeight:awayWins?700:400,color:awayWins?"#0f172a":"#94a3b8",minWidth:16,textAlign:"right"}}, a1??"-") : null,
                       done2 ? React.createElement("span", {style:{fontSize:13,fontWeight:awayWins?700:400,color:awayWins?"#0f172a":"#94a3b8",minWidth:16,textAlign:"right"}}, a2??"-") : null
                     )
                   ),
-
-                  // Flèche droite
                   React.createElement("div", {style:{width:28,height:28,borderRadius:"50%",background:"#f5f5f5",display:"flex",alignItems:"center",justifyContent:"center",flexShrink:0,fontSize:12,color:"#aaa"}}, "›")
                 )
               );
             })
-      )
+      ),
+
+      // Mini-sheet quand on clique sur une paire
+      selectedPair ? React.createElement("div", {
+        style:{position:"absolute",inset:0,background:"rgba(0,0,0,.4)",zIndex:10,display:"flex",flexDirection:"column",justifyContent:"flex-end"},
+        onClick: e => { if(e.target===e.currentTarget) setSelectedPair(null); }
+      },
+        React.createElement("div", {style:{background:"#fff",borderRadius:"20px 20px 0 0",padding:"16px 0 32px"}},
+          React.createElement("div", {style:{width:36,height:4,borderRadius:2,background:"#e2e8f0",margin:"0 auto 16px"}}),
+          // Header logos
+          React.createElement("div", {style:{display:"flex",alignItems:"center",justifyContent:"space-around",padding:"0 24px 16px",borderBottom:"1px solid #f5f5f5"}},
+            React.createElement("div", {style:{display:"flex",flexDirection:"column",alignItems:"center",gap:8}},
+              React.createElement("div", {style:{width:56,height:56,borderRadius:12,background:"#f8fafc",border:"1px solid #e8e8e8",display:"flex",alignItems:"center",justifyContent:"center"}},
+                React.createElement("img", {src:selectedPair.leg1.teams.home.logo,style:{width:40,height:40,objectFit:"contain"},onError:e=>e.target.style.display="none"})
+              ),
+              React.createElement("span", {style:{fontSize:13,fontWeight:600,color:"#0f172a"}}, selectedPair.leg1.teams.home.name)
+            ),
+            React.createElement("span", {style:{fontSize:20,color:"#94a3b8",fontWeight:300}}, "-"),
+            React.createElement("div", {style:{display:"flex",flexDirection:"column",alignItems:"center",gap:8}},
+              React.createElement("div", {style:{width:56,height:56,borderRadius:12,background:"#f8fafc",border:"1px solid #e8e8e8",display:"flex",alignItems:"center",justifyContent:"center"}},
+                React.createElement("img", {src:selectedPair.leg1.teams.away.logo,style:{width:40,height:40,objectFit:"contain"},onError:e=>e.target.style.display="none"})
+              ),
+              React.createElement("span", {style:{fontSize:13,fontWeight:600,color:"#0f172a"}}, selectedPair.leg1.teams.away.name)
+            )
+          ),
+          // Matchs aller + retour
+          [selectedPair.leg1, selectedPair.leg2].filter(Boolean).map((m,i) =>
+            React.createElement("div", {key:i,style:{display:"flex",alignItems:"center",gap:12,padding:"12px 20px",borderBottom:"1px solid #f5f5f5"}},
+              React.createElement("span", {style:{fontSize:12,color:"#94a3b8",minWidth:40,fontWeight:600}},
+                new Date(m.fixture.date).toLocaleDateString("fr-FR",{day:"2-digit",month:"2-digit"}).replace("/",".")+"."
+              ),
+              React.createElement("div", {style:{flex:1,display:"flex",flexDirection:"column",gap:4}},
+                React.createElement("div", {style:{display:"flex",alignItems:"center",gap:6}},
+                  React.createElement("img", {src:m.teams.home.logo,style:{width:18,height:18,objectFit:"contain"},onError:e=>e.target.style.display="none"}),
+                  React.createElement("span", {style:{fontSize:13,fontWeight:600,color:"#0f172a"}}, m.teams.home.name)
+                ),
+                React.createElement("div", {style:{display:"flex",alignItems:"center",gap:6}},
+                  React.createElement("img", {src:m.teams.away.logo,style:{width:18,height:18,objectFit:"contain"},onError:e=>e.target.style.display="none"}),
+                  React.createElement("span", {style:{fontSize:13,fontWeight:600,color:"#0f172a"}}, m.teams.away.name)
+                )
+              ),
+              DONE_ST.has(m.fixture?.status?.short) ? React.createElement("div", {style:{textAlign:"right"}},
+                React.createElement("div", {style:{fontSize:13,fontWeight:700,color:"#0f172a"}}), m.goals?.home ?? "-",
+                React.createElement("div", {style:{fontSize:13,fontWeight:700,color:"#0f172a"}}), m.goals?.away ?? "-"
+              ) : React.createElement("span", {style:{fontSize:12,color:"#94a3b8"}},
+                new Date(m.fixture.date).toLocaleTimeString("fr-FR",{hour:"2-digit",minute:"2-digit"})
+              )
+            )
+          )
+        )
+      ) : null
     )
   );
 }
