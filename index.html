@@ -48,7 +48,7 @@
     <script>
         if ("serviceWorker" in navigator) {
             const sw = `
-    const C='wf-pro-v134';
+    const C='wf-pro-v135';
     const API_KEY='3a14b1347c177458e2f23bea7899e9cf';
     const BASE='https://v3.football.api-sports.io';
     let prevScores = {};
@@ -2965,12 +2965,37 @@ function LeagueSheet({fix, leagueInfo, onClose}) {
 
         // Barre de progression dynamique
         (() => {
-          // Dates fixes pour les grandes compétitions (plus fiables que l'API)
+          // Dates précises des finales par compétition
           const knownDates = {
-            2:  { start: `${season}-07-01`, end: `${season+1}-05-31` }, // LDC
-            3:  { start: `${season}-07-01`, end: `${season+1}-05-21` }, // Europa League
-            848:{ start: `${season}-07-01`, end: `${season+1}-05-28` }, // Conference League
-            1:  { start: `${season+1}-06-01`, end: `${season+1}-07-15` }, // Mondial
+            // Europe clubs
+            2:   { start: `${season}-07-01`,   end: `${season+1}-05-31` }, // LDC
+            3:   { start: `${season}-07-01`,   end: `${season+1}-05-21` }, // Europa League
+            848: { start: `${season}-07-01`,   end: `${season+1}-05-28` }, // Conference League
+            // Équipes nationales Europe
+            4:   { start: `${season+1}-06-01`, end: `${season+1}-07-14` }, // Euro
+            5:   { start: `${season}-09-01`,   end: `${season+1}-06-15` }, // Nations League
+            // Monde
+            1:   { start: `${season+1}-06-01`, end: `${season+1}-07-15` }, // Coupe du Monde
+            // Amérique du Sud
+            13:  { start: `${season}-01-01`,   end: `${season}-07-15`   }, // Copa América
+            11:  { start: `${season}-04-01`,   end: `${season}-11-30`   }, // Copa Libertadores
+            12:  { start: `${season}-03-01`,   end: `${season}-11-15`   }, // Copa Sudamericana
+            // CONCACAF
+            30:  { start: `${season+1}-02-01`, end: `${season+1}-07-31` }, // Gold Cup
+            // Afrique
+            6:   { start: `${season+1}-01-01`, end: `${season+1}-02-15` }, // CAN
+            20:  { start: `${season}-03-01`,   end: `${season}-05-31`   }, // Ligue des Champions CAF
+            // Asie
+            17:  { start: `${season}-04-01`,   end: `${season+1}-05-15` }, // AFC Champions League
+            // Championnats
+            39:  { start: `${season}-08-01`,   end: `${season+1}-05-31` }, // Premier League
+            140: { start: `${season}-08-01`,   end: `${season+1}-05-31` }, // La Liga
+            78:  { start: `${season}-08-01`,   end: `${season+1}-05-31` }, // Bundesliga
+            61:  { start: `${season}-08-01`,   end: `${season+1}-05-31` }, // Ligue 1
+            135: { start: `${season}-08-01`,   end: `${season+1}-05-31` }, // Serie A
+            94:  { start: `${season}-08-01`,   end: `${season+1}-05-31` }, // Primeira Liga
+            88:  { start: `${season}-08-01`,   end: `${season+1}-05-31` }, // Eredivisie
+            186: { start: `${season}-09-01`,   end: `${season+1}-05-31` }, // Algérie
           };
           const known = knownDates[lid];
           const currentSeason = leagueInfo?.seasons?.find(s => s.current || s.year === season);
@@ -3162,17 +3187,22 @@ function LeagueSheet({fix, leagueInfo, onClose}) {
           (() => {
             // Vrais records historiques par compétition
             const knownRecords = {
-              2:   { name: "Real Madrid",        titles: 15 }, // LDC
-              3:   { name: "Séville",            titles: 7  }, // Europa League
-              848: { name: "Chelsea / West Ham",  titles: 2  }, // Conference (récente)
-              1:   { name: "Brésil",             titles: 5  }, // Coupe du Monde
-              4:   { name: "Allemagne",           titles: 4  }, // Euro
-              9:   { name: "Juventus",            titles: 9  }, // Serie A
-              61:  { name: "PSG",                titles: 14 }, // Ligue 1
-              39:  { name: "Man United",          titles: 20 }, // Premier League
-              140: { name: "Real Madrid",        titles: 36 }, // Liga
-              78:  { name: "Bayern Munich",      titles: 33 }, // Bundesliga
-              186: { name: "CR Belouizdad",      titles: 20 }, // Algérie
+              2:   { name: "Real Madrid",    titles: 15 }, // LDC
+              3:   { name: "Séville",        titles: 7  }, // Europa League
+              848: { name: "Chelsea/West Ham",titles: 2  }, // Conference
+              1:   { name: "Brésil",         titles: 5  }, // Mondial
+              4:   { name: "Espagne",        titles: 4  }, // Euro
+              13:  { name: "Argentine",      titles: 16 }, // Copa América
+              11:  { name: "Independiente",  titles: 7  }, // Copa Libertadores
+              6:   { name: "Égypte",         titles: 7  }, // CAN
+              20:  { name: "Al Ahly",        titles: 12 }, // CAF Champions
+              30:  { name: "Mexique",        titles: 8  }, // Gold Cup
+              39:  { name: "Man United",     titles: 13 }, // Premier League
+              140: { name: "Real Madrid",    titles: 36 }, // La Liga
+              78:  { name: "Bayern Munich",  titles: 33 }, // Bundesliga
+              61:  { name: "PSG",            titles: 12 }, // Ligue 1
+              135: { name: "Juventus",       titles: 36 }, // Serie A
+              186: { name: "CR Belouizdad", titles: 20 }, // Algérie
             };
             const record = knownRecords[lid];
             if(record) {
@@ -3203,76 +3233,165 @@ function LeagueSheet({fix, leagueInfo, onClose}) {
 
           // Palmarès historique complet par compétition (chiffres exacts)
           const knownPalmares = {
+            // Europe — Clubs
             2: [
-              {name:"Real Madrid",   logo:"https://media.api-sports.io/football/teams/541.png", titles:15},
-              {name:"AC Milan",      logo:"https://media.api-sports.io/football/teams/489.png", titles:7},
-              {name:"Liverpool",     logo:"https://media.api-sports.io/football/teams/40.png",  titles:6},
-              {name:"Bayern Munich", logo:"https://media.api-sports.io/football/teams/157.png", titles:6},
-              {name:"Barcelona",     logo:"https://media.api-sports.io/football/teams/529.png", titles:5},
-              {name:"Ajax",          logo:"https://media.api-sports.io/football/teams/194.png", titles:4},
-              {name:"Inter Milan",   logo:"https://media.api-sports.io/football/teams/505.png", titles:3},
-              {name:"Man United",    logo:"https://media.api-sports.io/football/teams/33.png",  titles:3},
-              {name:"Chelsea",       logo:"https://media.api-sports.io/football/teams/49.png",  titles:2},
-              {name:"Juventus",      logo:"https://media.api-sports.io/football/teams/496.png", titles:2},
-              {name:"Man City",      logo:"https://media.api-sports.io/football/teams/50.png",  titles:1},
-              {name:"PSG",           logo:"https://media.api-sports.io/football/teams/85.png",  titles:1},
+              {name:"Real Madrid",    logo:"https://media.api-sports.io/football/teams/541.png", titles:15},
+              {name:"AC Milan",       logo:"https://media.api-sports.io/football/teams/489.png", titles:7},
+              {name:"Liverpool",      logo:"https://media.api-sports.io/football/teams/40.png",  titles:6},
+              {name:"Bayern Munich",  logo:"https://media.api-sports.io/football/teams/157.png", titles:6},
+              {name:"Barcelona",      logo:"https://media.api-sports.io/football/teams/529.png", titles:5},
+              {name:"Ajax",           logo:"https://media.api-sports.io/football/teams/194.png", titles:4},
+              {name:"Inter Milan",    logo:"https://media.api-sports.io/football/teams/505.png", titles:3},
+              {name:"Man United",     logo:"https://media.api-sports.io/football/teams/33.png",  titles:3},
+              {name:"Chelsea",        logo:"https://media.api-sports.io/football/teams/49.png",  titles:2},
+              {name:"Juventus",       logo:"https://media.api-sports.io/football/teams/496.png", titles:2},
+              {name:"Man City",       logo:"https://media.api-sports.io/football/teams/50.png",  titles:1},
+              {name:"PSG",            logo:"https://media.api-sports.io/football/teams/85.png",  titles:1},
             ],
             3: [
-              {name:"Séville",       logo:"https://media.api-sports.io/football/teams/536.png", titles:7},
-              {name:"Juventus",      logo:"https://media.api-sports.io/football/teams/496.png", titles:3},
-              {name:"Inter Milan",   logo:"https://media.api-sports.io/football/teams/505.png", titles:3},
-              {name:"Liverpool",     logo:"https://media.api-sports.io/football/teams/40.png",  titles:3},
-              {name:"Atlético",      logo:"https://media.api-sports.io/football/teams/530.png", titles:3},
-              {name:"Chelsea",       logo:"https://media.api-sports.io/football/teams/49.png",  titles:2},
-              {name:"Ajax",          logo:"https://media.api-sports.io/football/teams/194.png", titles:2},
+              {name:"Séville",        logo:"https://media.api-sports.io/football/teams/536.png", titles:7},
+              {name:"Juventus",       logo:"https://media.api-sports.io/football/teams/496.png", titles:3},
+              {name:"Inter Milan",    logo:"https://media.api-sports.io/football/teams/505.png", titles:3},
+              {name:"Liverpool",      logo:"https://media.api-sports.io/football/teams/40.png",  titles:3},
+              {name:"Atlético",       logo:"https://media.api-sports.io/football/teams/530.png", titles:3},
+              {name:"Chelsea",        logo:"https://media.api-sports.io/football/teams/49.png",  titles:2},
+              {name:"Ajax",           logo:"https://media.api-sports.io/football/teams/194.png", titles:2},
             ],
             848: [
-              {name:"Chelsea",       logo:"https://media.api-sports.io/football/teams/49.png",  titles:1},
-              {name:"West Ham",      logo:"https://media.api-sports.io/football/teams/48.png",  titles:1},
-              {name:"Olympiakos",    logo:"https://media.api-sports.io/football/teams/164.png", titles:1},
+              {name:"Chelsea",        logo:"https://media.api-sports.io/football/teams/49.png",  titles:1},
+              {name:"West Ham",       logo:"https://media.api-sports.io/football/teams/48.png",  titles:1},
+              {name:"Olympiakos",     logo:"https://media.api-sports.io/football/teams/164.png", titles:1},
             ],
+            // Europe — Nationales
+            4: [
+              {name:"Allemagne",      logo:"https://media.api-sports.io/football/teams/25.png",  titles:3},
+              {name:"Espagne",        logo:"https://media.api-sports.io/football/teams/9.png",   titles:4},
+              {name:"France",         logo:"https://media.api-sports.io/football/teams/2.png",   titles:2},
+              {name:"Italie",         logo:"https://media.api-sports.io/football/teams/768.png", titles:2},
+              {name:"Portugal",       logo:"https://media.api-sports.io/football/teams/27.png",  titles:1},
+              {name:"Danemark",       logo:"https://media.api-sports.io/football/teams/21.png",  titles:1},
+              {name:"Grèce",          logo:"https://media.api-sports.io/football/teams/6.png",   titles:1},
+              {name:"Pays-Bas",       logo:"https://media.api-sports.io/football/teams/1118.png",titles:1},
+              {name:"Tchéquie",       logo:"https://media.api-sports.io/football/teams/7.png",   titles:1},
+            ],
+            // Monde — Nationales
+            1: [
+              {name:"Brésil",         logo:"https://media.api-sports.io/football/teams/6.png",   titles:5},
+              {name:"Allemagne",      logo:"https://media.api-sports.io/football/teams/25.png",  titles:4},
+              {name:"Italie",         logo:"https://media.api-sports.io/football/teams/768.png", titles:4},
+              {name:"Argentine",      logo:"https://media.api-sports.io/football/teams/26.png",  titles:3},
+              {name:"France",         logo:"https://media.api-sports.io/football/teams/2.png",   titles:2},
+              {name:"Uruguay",        logo:"https://media.api-sports.io/football/teams/16.png",  titles:2},
+              {name:"Angleterre",     logo:"https://media.api-sports.io/football/teams/10.png",  titles:1},
+              {name:"Espagne",        logo:"https://media.api-sports.io/football/teams/9.png",   titles:1},
+            ],
+            // Amérique du Sud — Nationales
+            13: [
+              {name:"Argentine",      logo:"https://media.api-sports.io/football/teams/26.png",  titles:16},
+              {name:"Uruguay",        logo:"https://media.api-sports.io/football/teams/16.png",  titles:15},
+              {name:"Brésil",         logo:"https://media.api-sports.io/football/teams/6.png",   titles:9},
+              {name:"Paraguay",       logo:"https://media.api-sports.io/football/teams/14.png",  titles:2},
+              {name:"Pérou",          logo:"https://media.api-sports.io/football/teams/17.png",  titles:2},
+              {name:"Chili",          logo:"https://media.api-sports.io/football/teams/13.png",  titles:2},
+              {name:"Bolivie",        logo:"https://media.api-sports.io/football/teams/12.png",  titles:1},
+              {name:"Colombie",       logo:"https://media.api-sports.io/football/teams/18.png",  titles:1},
+            ],
+            // Amérique du Sud — Clubs
+            11: [
+              {name:"Independiente",  logo:"https://media.api-sports.io/football/teams/436.png", titles:7},
+              {name:"Boca Juniors",   logo:"https://media.api-sports.io/football/teams/405.png", titles:6},
+              {name:"Nacional",       logo:"https://media.api-sports.io/football/teams/1001.png",titles:3},
+              {name:"Estudiantes",    logo:"https://media.api-sports.io/football/teams/441.png", titles:4},
+              {name:"Olimpia",        logo:"https://media.api-sports.io/football/teams/1006.png",titles:3},
+              {name:"Peñarol",        logo:"https://media.api-sports.io/football/teams/1004.png",titles:5},
+              {name:"River Plate",    logo:"https://media.api-sports.io/football/teams/400.png", titles:4},
+              {name:"Flamengo",       logo:"https://media.api-sports.io/football/teams/127.png", titles:3},
+            ],
+            12: [
+              {name:"Independiente",  logo:"https://media.api-sports.io/football/teams/436.png", titles:2},
+              {name:"Boca Juniors",   logo:"https://media.api-sports.io/football/teams/405.png", titles:2},
+              {name:"San Lorenzo",    logo:"https://media.api-sports.io/football/teams/432.png", titles:1},
+              {name:"River Plate",    logo:"https://media.api-sports.io/football/teams/400.png", titles:1},
+              {name:"Cienciano",      logo:"https://media.api-sports.io/football/teams/1220.png",titles:1},
+            ],
+            // CONCACAF — Nationales
+            30: [
+              {name:"Mexique",        logo:"https://media.api-sports.io/football/teams/16.png",  titles:8},
+              {name:"États-Unis",     logo:"https://media.api-sports.io/football/teams/17.png",  titles:7},
+              {name:"Canada",         logo:"https://media.api-sports.io/football/teams/19.png",  titles:1},
+              {name:"Costa Rica",     logo:"https://media.api-sports.io/football/teams/20.png",  titles:3},
+            ],
+            // Afrique — Nationales
+            6: [
+              {name:"Égypte",         logo:"https://media.api-sports.io/football/teams/26.png",  titles:7},
+              {name:"Ghana",          logo:"https://media.api-sports.io/football/teams/22.png",  titles:4},
+              {name:"Nigeria",        logo:"https://media.api-sports.io/football/teams/31.png",  titles:3},
+              {name:"Côte d'Ivoire",  logo:"https://media.api-sports.io/football/teams/41.png",  titles:3},
+              {name:"Cameroun",       logo:"https://media.api-sports.io/football/teams/30.png",  titles:5},
+              {name:"Congo RD",       logo:"https://media.api-sports.io/football/teams/1548.png",titles:2},
+              {name:"Ethiopie",       logo:"https://media.api-sports.io/football/teams/37.png",  titles:1},
+              {name:"Zambie",         logo:"https://media.api-sports.io/football/teams/44.png",  titles:1},
+              {name:"Tunisie",        logo:"https://media.api-sports.io/football/teams/28.png",  titles:1},
+              {name:"Maroc",          logo:"https://media.api-sports.io/football/teams/32.png",  titles:1},
+              {name:"Algérie",        logo:"https://media.api-sports.io/football/teams/3.png",   titles:2},
+              {name:"Sénégal",        logo:"https://media.api-sports.io/football/teams/29.png",  titles:1},
+              {name:"Afrique du Sud", logo:"https://media.api-sports.io/football/teams/46.png",  titles:1},
+            ],
+            // Afrique — Clubs
+            20: [
+              {name:"Al Ahly",        logo:"https://media.api-sports.io/football/teams/1536.png",titles:12},
+              {name:"Zamalek",        logo:"https://media.api-sports.io/football/teams/1537.png",titles:5},
+              {name:"ES Tunis",       logo:"https://media.api-sports.io/football/teams/1600.png",titles:4},
+              {name:"TP Mazembe",     logo:"https://media.api-sports.io/football/teams/1612.png",titles:5},
+              {name:"Wydad AC",       logo:"https://media.api-sports.io/football/teams/1546.png",titles:3},
+              {name:"Hafia FC",       logo:"https://media.api-sports.io/football/teams/10268.png",titles:3},
+              {name:"Canon Yaoundé",  logo:"https://media.api-sports.io/football/teams/10269.png",titles:3},
+              {name:"Raja Casablanca",logo:"https://media.api-sports.io/football/teams/1547.png",titles:3},
+            ],
+            // Championnats
             39: [
-              {name:"Man United",    logo:"https://media.api-sports.io/football/teams/33.png",  titles:13},
-              {name:"Man City",      logo:"https://media.api-sports.io/football/teams/50.png",  titles:9},
-              {name:"Chelsea",       logo:"https://media.api-sports.io/football/teams/49.png",  titles:5},
-              {name:"Arsenal",       logo:"https://media.api-sports.io/football/teams/42.png",  titles:3},
-              {name:"Blackburn",     logo:"https://media.api-sports.io/football/teams/65.png",  titles:1},
-              {name:"Leicester",     logo:"https://media.api-sports.io/football/teams/46.png",  titles:1},
-              {name:"Liverpool",     logo:"https://media.api-sports.io/football/teams/40.png",  titles:1},
+              {name:"Man United",     logo:"https://media.api-sports.io/football/teams/33.png",  titles:13},
+              {name:"Man City",       logo:"https://media.api-sports.io/football/teams/50.png",  titles:9},
+              {name:"Chelsea",        logo:"https://media.api-sports.io/football/teams/49.png",  titles:5},
+              {name:"Arsenal",        logo:"https://media.api-sports.io/football/teams/42.png",  titles:3},
+              {name:"Liverpool",      logo:"https://media.api-sports.io/football/teams/40.png",  titles:1},
+              {name:"Leicester",      logo:"https://media.api-sports.io/football/teams/46.png",  titles:1},
+              {name:"Blackburn",      logo:"https://media.api-sports.io/football/teams/65.png",  titles:1},
             ],
             140: [
-              {name:"Real Madrid",   logo:"https://media.api-sports.io/football/teams/541.png", titles:36},
-              {name:"Barcelona",     logo:"https://media.api-sports.io/football/teams/529.png", titles:27},
-              {name:"Atlético",      logo:"https://media.api-sports.io/football/teams/530.png", titles:11},
-              {name:"Athletic Club", logo:"https://media.api-sports.io/football/teams/531.png", titles:8},
-              {name:"Valencia",      logo:"https://media.api-sports.io/football/teams/532.png", titles:6},
+              {name:"Real Madrid",    logo:"https://media.api-sports.io/football/teams/541.png", titles:36},
+              {name:"Barcelona",      logo:"https://media.api-sports.io/football/teams/529.png", titles:27},
+              {name:"Atlético",       logo:"https://media.api-sports.io/football/teams/530.png", titles:11},
+              {name:"Athletic Club",  logo:"https://media.api-sports.io/football/teams/531.png", titles:8},
+              {name:"Valencia",       logo:"https://media.api-sports.io/football/teams/532.png", titles:6},
             ],
             78: [
-              {name:"Bayern Munich", logo:"https://media.api-sports.io/football/teams/157.png", titles:33},
-              {name:"Dortmund",      logo:"https://media.api-sports.io/football/teams/165.png", titles:8},
-              {name:"Mönchengladbach",logo:"https://media.api-sports.io/football/teams/163.png",titles:5},
+              {name:"Bayern Munich",  logo:"https://media.api-sports.io/football/teams/157.png", titles:33},
+              {name:"Dortmund",       logo:"https://media.api-sports.io/football/teams/165.png", titles:8},
+              {name:"Mönchengladbach",logo:"https://media.api-sports.io/football/teams/163.png", titles:5},
             ],
             61: [
-              {name:"Saint-Étienne", logo:"https://media.api-sports.io/football/teams/97.png",  titles:10},
-              {name:"Marseille",     logo:"https://media.api-sports.io/football/teams/81.png",  titles:9},
-              {name:"PSG",           logo:"https://media.api-sports.io/football/teams/85.png",  titles:12},
-              {name:"Lyon",          logo:"https://media.api-sports.io/football/teams/80.png",  titles:7},
-              {name:"Nantes",        logo:"https://media.api-sports.io/football/teams/83.png",  titles:8},
+              {name:"PSG",            logo:"https://media.api-sports.io/football/teams/85.png",  titles:12},
+              {name:"Saint-Étienne",  logo:"https://media.api-sports.io/football/teams/97.png",  titles:10},
+              {name:"Marseille",      logo:"https://media.api-sports.io/football/teams/81.png",  titles:9},
+              {name:"Nantes",         logo:"https://media.api-sports.io/football/teams/83.png",  titles:8},
+              {name:"Lyon",           logo:"https://media.api-sports.io/football/teams/80.png",  titles:7},
             ],
             135: [
-              {name:"Juventus",      logo:"https://media.api-sports.io/football/teams/496.png", titles:36},
-              {name:"Inter Milan",   logo:"https://media.api-sports.io/football/teams/505.png", titles:20},
-              {name:"AC Milan",      logo:"https://media.api-sports.io/football/teams/489.png", titles:19},
-              {name:"Torino",        logo:"https://media.api-sports.io/football/teams/503.png", titles:7},
-              {name:"Roma",          logo:"https://media.api-sports.io/football/teams/497.png", titles:3},
+              {name:"Juventus",       logo:"https://media.api-sports.io/football/teams/496.png", titles:36},
+              {name:"Inter Milan",    logo:"https://media.api-sports.io/football/teams/505.png", titles:20},
+              {name:"AC Milan",       logo:"https://media.api-sports.io/football/teams/489.png", titles:19},
+              {name:"Torino",         logo:"https://media.api-sports.io/football/teams/503.png", titles:7},
+              {name:"Roma",           logo:"https://media.api-sports.io/football/teams/497.png", titles:3},
             ],
             186: [
-              {name:"CR Belouizdad",logo:"https://media.api-sports.io/football/teams/904.png",  titles:20},
-              {name:"JS Kabylie",   logo:"https://media.api-sports.io/football/teams/918.png",  titles:14},
-              {name:"MC Alger",     logo:"https://media.api-sports.io/football/teams/906.png",  titles:18},
-              {name:"USM Alger",    logo:"https://media.api-sports.io/football/teams/910.png",  titles:10},
-              {name:"ES Sétif",     logo:"https://media.api-sports.io/football/teams/905.png",  titles:8},
-              {name:"NA Hussein Dey",logo:"https://media.api-sports.io/football/teams/927.png", titles:6},
+              {name:"CR Belouizdad", logo:"https://media.api-sports.io/football/teams/904.png",  titles:20},
+              {name:"MC Alger",      logo:"https://media.api-sports.io/football/teams/906.png",  titles:18},
+              {name:"JS Kabylie",    logo:"https://media.api-sports.io/football/teams/918.png",  titles:14},
+              {name:"USM Alger",     logo:"https://media.api-sports.io/football/teams/910.png",  titles:10},
+              {name:"ES Sétif",      logo:"https://media.api-sports.io/football/teams/905.png",  titles:8},
+              {name:"NA Hussein Dey",logo:"https://media.api-sports.io/football/teams/927.png",  titles:6},
+              {name:"ASO Chlef",     logo:"https://media.api-sports.io/football/teams/925.png",  titles:2},
             ],
           };
 
