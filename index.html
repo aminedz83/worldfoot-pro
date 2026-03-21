@@ -2969,30 +2969,60 @@ function LeagueSheet({fix, leagueInfo, onClose}) {
           : pairs.length === 0
           ? React.createElement("div", {style:{textAlign:"center",padding:40,color:"#94a3b8",fontSize:13}}, "Aucun match disponible")
           : pairs.map((pair,i) => {
-              const f = pair.leg1;
-              const hg = f.goals?.home;
-              const ag = f.goals?.away;
-              const done = DONE_ST.has(f.fixture?.status?.short);
-              const hWin = done && hg > ag;
-              const aWin = done && ag > hg;
-              return React.createElement("div", {key:i,style:{background:"#fff",borderRadius:12,marginBottom:10,overflow:"hidden",boxShadow:"0 1px 4px rgba(0,0,0,.06)"}},
-                React.createElement("div", {style:{display:"flex",alignItems:"center",padding:"14px 14px",gap:10}},
-                  // Équipe domicile
-                  React.createElement("div", {style:{display:"flex",alignItems:"center",gap:8,flex:1,minWidth:0}},
-                    React.createElement("img", {src:f.teams.home.logo,style:{width:28,height:28,objectFit:"contain",flexShrink:0},onError:e=>e.target.style.display="none"}),
-                    React.createElement("span", {style:{fontSize:13,fontWeight:hWin?700:400,color:hWin?"#0f172a":"#64748b",overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap"}}, f.teams.home.name)
+              const f1 = pair.leg1;
+              const f2 = pair.leg2;
+              // Identifier quel match est aller (leg1) et retour (leg2)
+              const leg1 = f1;
+              const leg2 = f2;
+              // Score cumulé
+              const h1 = leg1.goals?.home ?? null;
+              const a1 = leg1.goals?.away ?? null;
+              const h2 = leg2?.goals?.home ?? null;
+              const a2 = leg2?.goals?.away ?? null;
+              // Total par équipe (domicile du leg1 = home)
+              const homeTotal = (h1??0) + (h2??0);
+              const awayTotal = (a1??0) + (a2??0);
+              const homeName = leg1.teams.home.name;
+              const awayName = leg1.teams.away.name;
+              const homeLogo = leg1.teams.home.logo;
+              const awayLogo = leg1.teams.away.logo;
+              const homeWins = homeTotal > awayTotal;
+              const awayWins = awayTotal > homeTotal;
+              const done1 = DONE_ST.has(leg1.fixture?.status?.short);
+              const done2 = leg2 ? DONE_ST.has(leg2.fixture?.status?.short) : false;
+
+              return React.createElement("div", {key:i, style:{background:"#fff",borderRadius:14,marginBottom:10,overflow:"hidden",boxShadow:"0 1px 4px rgba(0,0,0,.06)"}},
+                React.createElement("div", {style:{display:"flex",alignItems:"center",padding:"14px 12px",gap:8}},
+                  // Flèche gauche
+                  React.createElement("div", {style:{width:28,height:28,borderRadius:"50%",background:"#f5f5f5",display:"flex",alignItems:"center",justifyContent:"center",flexShrink:0,fontSize:12,color:"#aaa"}}, "‹"),
+
+                  // Équipes + scores
+                  React.createElement("div", {style:{flex:1,minWidth:0}},
+                    // Équipe 1
+                    React.createElement("div", {style:{display:"flex",alignItems:"center",gap:8,marginBottom:6}},
+                      React.createElement("img", {src:homeLogo,style:{width:22,height:22,objectFit:"contain",flexShrink:0},onError:e=>e.target.style.display="none"}),
+                      React.createElement("span", {style:{fontSize:13,fontWeight:homeWins?700:400,color:homeWins?"#0f172a":"#64748b",flex:1,overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap"}},
+                        homeName,
+                        React.createElement("span", {style:{fontSize:11,color:"#94a3b8",fontWeight:400}}, ` (${leg1.teams.home.id})`)
+                      ),
+                      // Score aller + retour
+                      done1 ? React.createElement("span", {style:{fontSize:13,fontWeight:homeWins?700:400,color:homeWins?"#0f172a":"#94a3b8",minWidth:16,textAlign:"right"}}, h1??"-") : null,
+                      done2 ? React.createElement("span", {style:{fontSize:13,fontWeight:homeWins?700:400,color:homeWins?"#0f172a":"#94a3b8",minWidth:16,textAlign:"right"}}, h2??"-") : null
+                    ),
+                    // Équipe 2
+                    React.createElement("div", {style:{display:"flex",alignItems:"center",gap:8}},
+                      React.createElement("img", {src:awayLogo,style:{width:22,height:22,objectFit:"contain",flexShrink:0},onError:e=>e.target.style.display="none"}),
+                      React.createElement("span", {style:{fontSize:13,fontWeight:awayWins?700:400,color:awayWins?"#0f172a":"#64748b",flex:1,overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap"}},
+                        awayName,
+                        React.createElement("span", {style:{fontSize:11,color:"#94a3b8",fontWeight:400}}, ` (${leg1.teams.away.id})`)
+                      ),
+                      done1 ? React.createElement("span", {style:{fontSize:13,fontWeight:awayWins?700:400,color:awayWins?"#0f172a":"#94a3b8",minWidth:16,textAlign:"right"}}, a1??"-") : null,
+                      done2 ? React.createElement("span", {style:{fontSize:13,fontWeight:awayWins?700:400,color:awayWins?"#0f172a":"#94a3b8",minWidth:16,textAlign:"right"}}, a2??"-") : null
+                    )
                   ),
-                  // Score
-                  React.createElement("div", {style:{textAlign:"center",flexShrink:0,minWidth:60}},
-                    done
-                      ? React.createElement("span", {style:{fontSize:16,fontWeight:800,color:"#0f172a",fontVariantNumeric:"tabular-nums"}}, `${hg} - ${ag}`)
-                      : React.createElement("span", {style:{fontSize:12,color:"#94a3b8"}}, hhmm(f.fixture.date))
-                  ),
-                  // Équipe extérieure
-                  React.createElement("div", {style:{display:"flex",alignItems:"center",gap:8,flex:1,minWidth:0,justifyContent:"flex-end"}},
-                    React.createElement("span", {style:{fontSize:13,fontWeight:aWin?700:400,color:aWin?"#0f172a":"#64748b",overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap",textAlign:"right"}}, f.teams.away.name),
-                    React.createElement("img", {src:f.teams.away.logo,style:{width:28,height:28,objectFit:"contain",flexShrink:0},onError:e=>e.target.style.display="none"})
-                  )
+
+                  // Flèche droite
+                  React.createElement("div", {style:{width:28,height:28,borderRadius:"50%",background:"#f5f5f5",display:"flex",alignItems:"center",justifyContent:"center",flexShrink:0,fontSize:12,color:"#aaa"}}, "›")
                 )
               );
             })
