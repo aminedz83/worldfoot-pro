@@ -48,7 +48,7 @@
     <script>
         if ("serviceWorker" in navigator) {
             const sw = `
-    const C='wf-pro-v137';
+    const C='wf-pro-v138';
     const API_KEY='3a14b1347c177458e2f23bea7899e9cf';
     const BASE='https://v3.football.api-sports.io';
     let prevScores = {};
@@ -3408,7 +3408,13 @@ function LeagueSheet({fix, leagueInfo, onClose}) {
           };
 
           const palmares = knownPalmares[lid]
-            ? [...knownPalmares[lid]].sort((a,b)=>b.titles-a.titles)
+            ? [...knownPalmares[lid]]
+                .sort((a,b)=>b.titles-a.titles)
+                .map(entry => {
+                  // Chercher le vrai logo depuis l'historique chargé
+                  const found = Object.values(winnersData).find(w => w?.name === entry.name);
+                  return { ...entry, logo: found?.logo || entry.logo };
+                })
             : Object.values(
                 Object.values(winnersData).reduce((acc,w) => {
                   if(w?.name) acc[w.name] = {name:w.name, logo:w.logo, titles:(acc[w.name]?.titles||0)+1};
