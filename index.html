@@ -48,7 +48,7 @@
     <script>
         if ("serviceWorker" in navigator) {
             const sw = `
-    const C='wf-pro-v127';
+    const C='wf-pro-v128';
     const API_KEY='3a14b1347c177458e2f23bea7899e9cf';
     const BASE='https://v3.football.api-sports.io';
     let prevScores = {};
@@ -7356,11 +7356,26 @@ function AfricaTransferCard({ t, onOpen }) {
 }
 
 const MERCATO_CLUBS = [
-  { id: 918, name: "JS Kabylie",    algerian: true,  logo: "https://media.api-sports.io/football/teams/918.png" },
-  { id: 906, name: "MC Alger",      algerian: true,  logo: "https://media.api-sports.io/football/teams/906.png" },
-  { id: 910, name: "USM Alger",     algerian: true,  logo: "https://media.api-sports.io/football/teams/910.png" },
-  { id: 904, name: "CR Belouizdad", algerian: true,  logo: "https://media.api-sports.io/football/teams/904.png" },
-  { id: 905, name: "ES Sétif",      algerian: true,  logo: "https://media.api-sports.io/football/teams/905.png" },
+  // Algérie — tous les clubs
+  { id: 904, name: "CR Belouizdad",   algerian: true,  logo: "https://media.api-sports.io/football/teams/904.png" },
+  { id: 905, name: "ES Sétif",        algerian: true,  logo: "https://media.api-sports.io/football/teams/905.png" },
+  { id: 906, name: "MC Alger",        algerian: true,  logo: "https://media.api-sports.io/football/teams/906.png" },
+  { id: 907, name: "MC Oran",         algerian: true,  logo: "https://media.api-sports.io/football/teams/907.png" },
+  { id: 908, name: "Olympique Médéa", algerian: true,  logo: "https://media.api-sports.io/football/teams/908.png" },
+  { id: 909, name: "US Biskra",       algerian: true,  logo: "https://media.api-sports.io/football/teams/909.png" },
+  { id: 910, name: "USM Alger",       algerian: true,  logo: "https://media.api-sports.io/football/teams/910.png" },
+  { id: 911, name: "CS Constantine",  algerian: true,  logo: "https://media.api-sports.io/football/teams/911.png" },
+  { id: 914, name: "JS Saoura",       algerian: true,  logo: "https://media.api-sports.io/football/teams/914.png" },
+  { id: 915, name: "Paradou AC",      algerian: true,  logo: "https://media.api-sports.io/football/teams/915.png" },
+  { id: 918, name: "JS Kabylie",      algerian: true,  logo: "https://media.api-sports.io/football/teams/918.png" },
+  { id: 919, name: "USM El Harrach",  algerian: true,  logo: "https://media.api-sports.io/football/teams/919.png" },
+  { id: 921, name: "RC Relizane",     algerian: true,  logo: "https://media.api-sports.io/football/teams/921.png" },
+  { id: 925, name: "ASO Chlef",       algerian: true,  logo: "https://media.api-sports.io/football/teams/925.png" },
+  { id: 927, name: "NA Hussein Dey",  algerian: true,  logo: "https://media.api-sports.io/football/teams/927.png" },
+  { id: 939, name: "CA Bordj B.A",    algerian: true,  logo: "https://media.api-sports.io/football/teams/939.png" },
+  { id: 944, name: "JSM Béjaïa",      algerian: true,  logo: "https://media.api-sports.io/football/teams/944.png" },
+  { id: 945, name: "MC El Eulma",     algerian: true,  logo: "https://media.api-sports.io/football/teams/945.png" },
+  // Europe
   { id: 85,  name: "PSG",           algerian: false, logo: "https://media.api-sports.io/football/teams/85.png" },
   { id: 80,  name: "Lyon",          algerian: false, logo: "https://media.api-sports.io/football/teams/80.png" },
   { id: 81,  name: "Marseille",     algerian: false, logo: "https://media.api-sports.io/football/teams/81.png" },
@@ -7373,6 +7388,10 @@ const MERCATO_CLUBS = [
   { id: 496, name: "Juventus",      algerian: false, logo: "https://media.api-sports.io/football/teams/496.png" },
   { id: 157, name: "Bayern",        algerian: false, logo: "https://media.api-sports.io/football/teams/157.png" },
   { id: 165, name: "Dortmund",      algerian: false, logo: "https://media.api-sports.io/football/teams/165.png" },
+  { id: 49,  name: "Chelsea",       algerian: false, logo: "https://media.api-sports.io/football/teams/49.png" },
+  { id: 42,  name: "Arsenal",       algerian: false, logo: "https://media.api-sports.io/football/teams/42.png" },
+  { id: 505, name: "Inter Milan",   algerian: false, logo: "https://media.api-sports.io/football/teams/505.png" },
+  { id: 530, name: "Atlético",      algerian: false, logo: "https://media.api-sports.io/football/teams/530.png" },
 ];
 const ALGERIAN_IDS = new Set(MERCATO_CLUBS.filter(c => c.algerian).map(c => c.id));
 
@@ -7465,63 +7484,70 @@ function TransfersTab({ onTeam }) {
     const now = new Date();
     const seasonStart = new Date(now.getMonth() >= 6 ? `${now.getFullYear()}-07-01` : `${now.getFullYear()-1}-07-01`);
 
-    Promise.allSettled(
-      clubs.map(c =>
-        api(`/coachs?team=${c.id}`, 3600000) // cache 1h pour données fraîches
-          .then(res => ({ club: c, coaches: res || [] }))
-          .catch(() => ({ club: c, coaches: [] }))
-      )
-    ).then(results => {
+    // Chargement séquentiel avec pause (comme le script fourni) pour ne pas surcharger l'API
+    const loadSequentially = async () => {
       const arrivals = [];
       const departures = [];
 
-      results.forEach(r => {
-        if(r.status !== "fulfilled") return;
-        const { club, coaches } = r.value;
+      for(const c of clubs) {
+        try {
+          const coaches = await api(`/coachs?team=${c.id}`, 3600000);
+          if(!coaches || !coaches.length) continue;
 
-        coaches.forEach(coach => {
-          if(!coach.career) return;
-          coach.career.forEach(stint => {
-            if(stint.team?.id !== club.id) return;
-            const startDate = stint.start ? new Date(stint.start) : null;
-            const endDate   = stint.end   ? new Date(stint.end)   : null;
+          // Prendre le premier coach = entraîneur actuel
+          const currentCoach = coaches[0];
 
-            // ARRIVÉE : commencé cette saison ET date valide (pas 1er jan, pas 31 jan générique)
-            if(startDate && startDate >= seasonStart) {
-              // Filtrer les dates suspectes (1er janvier = souvent date par défaut)
-              const isDefaultDate = startDate.getDate() === 1 && startDate.getMonth() === 0;
-              arrivals.push({
-                coachName: coach.name,
-                coachPhoto: coach.photo || null,
-                coachNationality: coach.nationality,
-                coachAge: coach.age,
-                date: stint.start,
-                dateReliable: !isDefaultDate,
-                club
-              });
-            }
+          coaches.forEach(coach => {
+            if(!coach.career) return;
+            coach.career.forEach(stint => {
+              if(stint.team?.id !== c.id) return;
+              const startDate = stint.start ? new Date(stint.start) : null;
+              const endDate   = stint.end   ? new Date(stint.end)   : null;
 
-            // DÉPART : terminé cette saison
-            if(endDate && endDate >= seasonStart) {
-              departures.push({
-                coachName: coach.name,
-                coachPhoto: coach.photo || null,
-                coachNationality: coach.nationality,
-                coachAge: coach.age,
-                date: stint.end,
-                dateReliable: true,
-                club
-              });
-            }
+              // ARRIVÉE : commence cette saison
+              if(startDate && startDate >= seasonStart && startDate <= now) {
+                const d = startDate.getDate();
+                const m = startDate.getMonth();
+                // Éviter dates génériques (1er juillet = début de saison par défaut)
+                const isSuspect = (d === 1 && m === 6) || (d === 1 && m === 0);
+                arrivals.push({
+                  coachName: coach.name,
+                  coachPhoto: coach.photo || null,
+                  coachNationality: coach.nationality,
+                  coachAge: coach.age,
+                  date: stint.start,
+                  dateReliable: !isSuspect,
+                  isCurrent: !stint.end,
+                  club: c
+                });
+              }
+
+              // DÉPART : termine cette saison
+              if(endDate && endDate >= seasonStart && endDate <= now) {
+                departures.push({
+                  coachName: coach.name,
+                  coachPhoto: coach.photo || null,
+                  coachNationality: coach.nationality,
+                  coachAge: coach.age,
+                  date: stint.end,
+                  dateReliable: true,
+                  club: c
+                });
+              }
+            });
           });
-        });
-      });
+        } catch(e) {}
+        // Petite pause pour ne pas surcharger
+        await new Promise(r => setTimeout(r, 100));
+      }
 
       arrivals.sort((a,b) => new Date(b.date)-new Date(a.date));
       departures.sort((a,b) => new Date(b.date)-new Date(a.date));
       setCoachTransfers({ arrivals, departures });
       setCoachTransfersStatus("ok");
-    });
+    };
+
+    loadSequentially();
   }, [mainTab, coachSubTab, coachFilter]);
 
   useEffect(() => {
