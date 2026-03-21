@@ -48,7 +48,7 @@
     <script>
         if ("serviceWorker" in navigator) {
             const sw = `
-    const C='wf-pro-v126';
+    const C='wf-pro-v127';
     const API_KEY='3a14b1347c177458e2f23bea7899e9cf';
     const BASE='https://v3.football.api-sports.io';
     let prevScores = {};
@@ -7462,12 +7462,12 @@ function TransfersTab({ onTeam }) {
     if(coachTransfersStatus !== "idle") return;
     setCoachTransfersStatus("load");
     const clubs = MERCATO_CLUBS.filter(c => coachFilter === "algerie" ? c.algerian : !c.algerian);
-    const currentYear = new Date().getFullYear();
-    const seasonStart = new Date(`${currentYear-1}-07-01`); // début saison actuelle
+    const now = new Date();
+    const seasonStart = new Date(now.getMonth() >= 6 ? `${now.getFullYear()}-07-01` : `${now.getFullYear()-1}-07-01`);
 
     Promise.allSettled(
       clubs.map(c =>
-        api(`/coachs?team=${c.id}`, 86400000)
+        api(`/coachs?team=${c.id}`, 3600000) // cache 1h pour données fraîches
           .then(res => ({ club: c, coaches: res || [] }))
           .catch(() => ({ club: c, coaches: [] }))
       )
@@ -7486,20 +7486,22 @@ function TransfersTab({ onTeam }) {
             const startDate = stint.start ? new Date(stint.start) : null;
             const endDate   = stint.end   ? new Date(stint.end)   : null;
 
-            // ARRIVÉE : a commencé après le début de la saison actuelle
+            // ARRIVÉE : commencé cette saison ET date valide (pas 1er jan, pas 31 jan générique)
             if(startDate && startDate >= seasonStart) {
+              // Filtrer les dates suspectes (1er janvier = souvent date par défaut)
+              const isDefaultDate = startDate.getDate() === 1 && startDate.getMonth() === 0;
               arrivals.push({
                 coachName: coach.name,
                 coachPhoto: coach.photo || null,
                 coachNationality: coach.nationality,
                 coachAge: coach.age,
                 date: stint.start,
-                club,
-                fromTeam: null // API ne donne pas le club précédent directement
+                dateReliable: !isDefaultDate,
+                club
               });
             }
 
-            // DÉPART : a terminé après le début de la saison actuelle
+            // DÉPART : terminé cette saison
             if(endDate && endDate >= seasonStart) {
               departures.push({
                 coachName: coach.name,
@@ -7507,8 +7509,8 @@ function TransfersTab({ onTeam }) {
                 coachNationality: coach.nationality,
                 coachAge: coach.age,
                 date: stint.end,
-                club,
-                toTeam: null
+                dateReliable: true,
+                club
               });
             }
           });
@@ -7818,7 +7820,9 @@ function TransfersTab({ onTeam }) {
                       `${t.coachNationality||""}${t.coachAge ? ` · ${t.coachAge} ans` : ""}`
                     ),
                     React.createElement("div", { style: { fontSize: 11, color: "#00c170", fontWeight: 600, marginTop: 3 } },
-                      `Arrivé le ${new Date(t.date).toLocaleDateString("fr-FR", { day: "numeric", month: "long", year: "numeric" })}`
+                      t.dateReliable
+                        ? `Arrivé le ${new Date(t.date).toLocaleDateString("fr-FR", { day: "numeric", month: "long", year: "numeric" })}`
+                        : `Arrivé en ${new Date(t.date).toLocaleDateString("fr-FR", { month: "long", year: "numeric" })}`
                     )
                   ),
                   // Logo club
