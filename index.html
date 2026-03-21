@@ -48,7 +48,7 @@
     <script>
         if ("serviceWorker" in navigator) {
             const sw = `
-    const C='wf-pro-v117';
+    const C='wf-pro-v119';
     const API_KEY='3a14b1347c177458e2f23bea7899e9cf';
     const BASE='https://v3.football.api-sports.io';
     let prevScores = {};
@@ -4837,13 +4837,22 @@ function MatchDetail({state,onClose,onTeam}){
     },
 
       // Barre ligue : drapeau + pays + compétition + journée
-      React.createElement("div", {style:{
-        display: "flex", alignItems: "center", gap: 8,
-        padding: "10px 16px",
-        borderBottom: "1px solid #f1f5f9",
-        marginBottom: "16px",
-        cursor: "pointer"
-      }, onClick: () => setShowLeagueSheet(true)},
+      (() => {
+        const r = fix.league?.round || "";
+        const lid = fix.league?.id;
+        // Compétitions majeures connues avec phases à élimination
+        const majorLeagues = new Set([2,3,4,5,6,7,8,9,10,11,12,13,14,15,16,17,18,19,20,21,848]);
+        // Détection par le round — seulement phases finales
+        const isKnockoutRound = r.includes("Round of") || r.includes("Quarter") ||
+          r.includes("Semi") || r.match(/^Final$/i) || r.includes("Leg ");
+        const showArrow = isKnockoutRound && majorLeagues.has(lid);
+        return React.createElement("div", {style:{
+          display: "flex", alignItems: "center", gap: 8,
+          padding: "10px 16px",
+          borderBottom: "1px solid #f1f5f9",
+          marginBottom: "16px",
+          cursor: showArrow ? "pointer" : "default"
+        }, onClick: showArrow ? () => setShowLeagueSheet(true) : undefined},
         fix.league.flag
           ? React.createElement("img", {src:fix.league.flag, style:{width:20,height:14,objectFit:"cover",borderRadius:3,flexShrink:0}})
           : null,
@@ -4853,8 +4862,9 @@ function MatchDetail({state,onClose,onTeam}){
         React.createElement("span", {style:{color:"#0f172a",fontSize:12,fontWeight:700,overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap",flex:1}},
           `${fix.league.name.toUpperCase()}${round?" · "+round.replace("Regular Season - ","JOURNÉE "):""}`
         ),
-        React.createElement("span", {style:{color:"#94a3b8",fontSize:14,flexShrink:0}}, "›")
-      ),
+        showArrow ? React.createElement("span", {style:{color:"#94a3b8",fontSize:14,flexShrink:0}}, "›") : null
+      );
+      })(),
 
       // Date centré
       React.createElement("div", {style:{ height: 8 }}),
