@@ -48,7 +48,7 @@
     <script>
         if ("serviceWorker" in navigator) {
             const sw = `
-    const C='wf-pro-v119';
+    const C='wf-pro-v120';
     const API_KEY='3a14b1347c177458e2f23bea7899e9cf';
     const BASE='https://v3.football.api-sports.io';
     let prevScores = {};
@@ -2899,6 +2899,28 @@ function LeagueSheet({fix, leagueInfo, onClose}) {
     return r;
   };
 
+  const [showWinners, setShowWinners] = useState(false);
+  const [winnersData, setWinnersData] = useState({});
+
+  // Charger les vainqueurs quand on ouvre le sheet
+  useEffect(() => {
+    if(!showWinners||!leagueInfo?.seasons||!lid) return;
+    const pastSeasons = leagueInfo.seasons.filter(s => !s.current).slice(-8);
+    pastSeasons.forEach(s => {
+      if(winnersData[s.year]) return;
+      api(`/fixtures?league=${lid}&season=${s.year}&round=Final`, 86400000)
+        .then(d => {
+          const final = (d||[]).find(f => DONE_ST.has(f.fixture?.status?.short));
+          if(final) {
+            const hg = final.goals?.home ?? 0;
+            const ag = final.goals?.away ?? 0;
+            const winner = hg >= ag ? final.teams.home : final.teams.away;
+            setWinnersData(prev => ({...prev, [s.year]: winner}));
+          }
+        }).catch(()=>{});
+    });
+  }, [showWinners, leagueInfo]);
+
   return React.createElement("div", {
     style:{position:"absolute",inset:0,background:"rgba(0,0,0,.5)",zIndex:20,display:"flex",flexDirection:"column"},
     onClick: e => { if(e.target===e.currentTarget) onClose(); }
@@ -2925,7 +2947,14 @@ function LeagueSheet({fix, leagueInfo, onClose}) {
           ),
           React.createElement("div", null,
             React.createElement("div", {style:{fontSize:20,fontWeight:900,color:"#0f172a"}}, fix.league.name),
-            React.createElement("div", {style:{fontSize:13,color:"#64748b",marginTop:2}}, `${season}/${season+1}`),
+            // Saison cliquable → historique vainqueurs
+            React.createElement("div", {
+              onClick: () => setShowWinners(true),
+              style:{fontSize:13,color:"#64748b",marginTop:2,display:"flex",alignItems:"center",gap:4,cursor:"pointer"}
+            },
+              `${season}/${season+1}`,
+              React.createElement("span", {style:{fontSize:10}}, "▼")
+            ),
             React.createElement("div", {style:{fontSize:12,color:"#64748b",marginTop:2,display:"flex",alignItems:"center",gap:6}},
               "Phase Finale",
               React.createElement("span", {style:{fontSize:10}}, "▼")
@@ -3087,7 +3116,43 @@ function LeagueSheet({fix, leagueInfo, onClose}) {
           )
         )
       ) : null
-    )
+    ),
+
+    // Sheet historique vainqueurs
+    showWinners ? React.createElement("div", {
+      style:{position:"absolute",inset:0,background:"#fff",zIndex:30,display:"flex",flexDirection:"column"},
+    },
+      // Header
+      React.createElement("div", {style:{display:"flex",alignItems:"center",justifyContent:"space-between",padding:"20px 20px 16px",borderBottom:"1px solid #f1f5f9"}},
+        React.createElement("div", {style:{fontSize:18,fontWeight:800,color:"#0f172a"}}, fix.league.name),
+        React.createElement("button", {onClick:()=>setShowWinners(false),style:{background:"none",border:"none",fontSize:22,color:"#94a3b8",cursor:"pointer"}}, "✕")
+      ),
+      // Liste des saisons
+      React.createElement("div", {style:{flex:1,overflowY:"auto"}},
+        leagueInfo?.seasons ? [...leagueInfo.seasons].reverse().map((s, i) => {
+          const isCurrent = s.current;
+          return React.createElement("div", {key:i,style:{
+            display:"flex",alignItems:"center",justifyContent:"space-between",
+            padding:"14px 20px",
+            borderBottom:"1px solid #f8fafc",
+            background:isCurrent?"rgba(37,99,235,.04)":"#fff",
+            borderLeft:isCurrent?"3px solid #2563eb":"3px solid transparent"
+          }},
+            React.createElement("span", {style:{fontSize:14,fontWeight:isCurrent?700:500,color:"#0f172a"}},
+              `${s.year}/${s.year+1}`
+            ),
+            isCurrent
+              ? React.createElement("span", {style:{fontSize:11,color:"#2563eb",fontWeight:700}}, "En cours")
+              : winnersData[s.year]
+              ? React.createElement("div", {style:{display:"flex",alignItems:"center",gap:8}},
+                  React.createElement("span", {style:{fontSize:13,fontWeight:600,color:"#0f172a"}}, winnersData[s.year].name),
+                  React.createElement("img", {src:winnersData[s.year].logo,style:{width:24,height:24,objectFit:"contain"},onError:e=>e.target.style.display="none"})
+                )
+              : null
+          );
+        }) : React.createElement("div", {style:{textAlign:"center",padding:40,color:"#94a3b8"}}, "Chargement...")
+      )
+    ) : null
   );
 }
 
