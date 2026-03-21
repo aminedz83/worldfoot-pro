@@ -48,7 +48,7 @@
     <script>
         if ("serviceWorker" in navigator) {
             const sw = `
-    const C='wf-pro-v122';
+    const C='wf-pro-v123';
     const API_KEY='3a14b1347c177458e2f23bea7899e9cf';
     const BASE='https://v3.football.api-sports.io';
     let prevScores = {};
@@ -2966,21 +2966,24 @@ function LeagueSheet({fix, leagueInfo, onClose}) {
 
         // Barre de progression dynamique
         (() => {
-          // Dates de la saison depuis leagueInfo
+          // Dates fixes pour les grandes compétitions (plus fiables que l'API)
+          const knownDates = {
+            2:  { start: `${season}-07-01`, end: `${season+1}-05-31` }, // LDC
+            3:  { start: `${season}-07-01`, end: `${season+1}-05-21` }, // Europa League
+            848:{ start: `${season}-07-01`, end: `${season+1}-05-28` }, // Conference League
+            1:  { start: `${season+1}-06-01`, end: `${season+1}-07-15` }, // Mondial
+          };
+          const known = knownDates[lid];
           const currentSeason = leagueInfo?.seasons?.find(s => s.current || s.year === season);
-          const startStr = currentSeason?.start || `${season}-07-01`;
-          const endStr = currentSeason?.end || `${season+1}-06-01`;
+          const startStr = known?.start || currentSeason?.start || `${season}-07-01`;
+          const endStr   = known?.end   || currentSeason?.end   || `${season+1}-06-01`;
           const startDate = new Date(startStr);
-          const endDate = new Date(endStr);
-          const now = new Date();
-          const total = endDate - startDate;
+          const endDate   = new Date(endStr);
+          const now   = new Date();
+          const total   = endDate - startDate;
           const elapsed = Math.max(0, Math.min(now - startDate, total));
           const pct = Math.round((elapsed / total) * 100);
-
-          // Points de repère : Groupes ~25%, 1/8 ~50%, QF ~65%, SF ~80%, Finale ~95%
           const milestones = [0, 25, 50, 65, 80, 100];
-          const activeMilestones = milestones.filter(m => m <= pct);
-
           const fmtDate = d => `${String(d.getDate()).padStart(2,'0')}.${String(d.getMonth()+1).padStart(2,'0')}`;
 
           return React.createElement("div", {style:{padding:"8px 0 16px",position:"relative"}},
