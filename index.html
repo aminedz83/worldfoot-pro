@@ -4651,47 +4651,6 @@ function MatchDetail({state,onClose,onTeam}){
             if(isLive && sh === "ET" && displayMin > 105)
               return React.createElement("span", {style:{fontSize:13,fontWeight:700,color:"#e53535"}}, `⏱️ +${displayMin-105}`);
             return null;
-          })(),
-
-          // Info manche (1er/2ème leg)
-          (() => {
-            const round = (fix.league?.round || "").toLowerCase();
-            const isKnockout = round.includes("round of") || round.includes("quarter") ||
-              round.includes("semi") || round.includes("final") ||
-              round.includes("knockout") || round.includes("elimination") ||
-              round.includes("leg") || round.includes("manche") ||
-              round.includes("aller") || round.includes("retour");
-            if (!isKnockout) return null;
-
-            const isSecondLeg = round.includes("2nd") || round.includes("second") ||
-              round.includes("leg 2") || round.includes("2ème") || round.includes("retour") ||
-              round.includes("return") || !!round.match(/[-–]\s*2$/);
-            const isFirstLeg = round.includes("1st") || round.includes("first") ||
-              round.includes("leg 1") || round.includes("1ère") || round.includes("aller") ||
-              !!round.match(/[-–]\s*1$/);
-
-            const leg1H = firstLegScore?.h ?? null;
-            const leg1A = firstLegScore?.a ?? null;
-            const hasFirstLeg = leg1H !== null && leg1A !== null;
-            const scoreH = fix.goals?.home ?? 0;
-            const scoreA = fix.goals?.away ?? 0;
-            const cumH = hasFirstLeg ? scoreH + leg1H : null;
-            const cumA = hasFirstLeg ? scoreA + leg1A : null;
-
-            // Si on a trouvé un match aller → forcément 2ème manche
-            const label = hasFirstLeg ? "2ème manche" : isSecondLeg ? "2ème manche" : isFirstLeg ? "1ère manche" : null;
-            if (!label) return null;
-
-            return React.createElement("div", { style:{
-              marginTop: 4, background: "rgba(0,0,0,.04)", borderRadius: 8,
-              padding: "4px 12px", textAlign: "center"
-            } },
-              React.createElement("span", { style:{ fontSize: 11, color: "#64748b", fontWeight: 500 } },
-                hasFirstLeg
-                  ? `${label}. Score du match aller : ${leg1H}-${leg1A}. Score cumulé: ${cumH}-${cumA}.`
-                  : label
-              )
-            );
           })()
         ),
 
@@ -4730,24 +4689,23 @@ function MatchDetail({state,onClose,onTeam}){
         )
       ) : null,
 
-      // Contexte aller/retour (2 manches)
+      // Contexte aller/retour (2 manches) — sous les buteurs
       (() => {
         const round = (fix.league?.round || "").toLowerCase();
-        const isLeg2 = round.includes("leg 2") || round.includes("2nd leg") || round.includes("2ème manche") || round.includes("deuxième manche") || round.includes("return");
-        const isLeg1 = round.includes("leg 1") || round.includes("1st leg") || round.includes("1ère manche") || round.includes("première manche");
-        const isKnockout = round.includes("round of") || round.includes("quarter") || round.includes("semi") || round.includes("final") || round.includes("knockout") || isLeg1 || isLeg2;
-
+        const isKnockout = round.includes("round of") || round.includes("quarter") ||
+          round.includes("semi") || round.includes("final") ||
+          round.includes("knockout") || round.includes("leg") || round.includes("manche");
         if (!isKnockout) return null;
-        if (!isDone && !isLive) return null;
 
-        const hGoals = fix.goals?.home ?? 0;
-        const aGoals = fix.goals?.away ?? 0;
-        const legLabel = isLeg2 ? "2ème manche" : isLeg1 ? "1ère manche" : null;
+        const leg1H = firstLegScore?.h ?? null;
+        const leg1A = firstLegScore?.a ?? null;
+        const hasFirstLeg = leg1H !== null && leg1A !== null;
+        const scoreH = fix.goals?.home ?? 0;
+        const scoreA = fix.goals?.away ?? 0;
+        const cumH = hasFirstLeg ? scoreH + leg1H : null;
+        const cumA = hasFirstLeg ? scoreA + leg1A : null;
 
-        // Score cumulé depuis l'API si disponible
-        const scoreNote = fix.fixture?.score_aggregate || fix.scoreAggregate || null;
-
-        if (!legLabel) return null;
+        if (!hasFirstLeg) return null;
 
         return React.createElement("div", { style: {
           margin: "8px 16px 0",
@@ -4760,9 +4718,7 @@ function MatchDetail({state,onClose,onTeam}){
           lineHeight: 1.5,
           border: "1px solid rgba(15,23,42,.06)"
         } },
-          isLeg2
-            ? `${legLabel}. Score cumulé : ${hGoals} - ${aGoals}`
-            : legLabel
+          `2ème manche. Score du match aller : ${leg1H}-${leg1A}. Score cumulé: ${cumH}-${cumA}.`
         );
       })()
 
