@@ -48,7 +48,7 @@
     <script>
         if ("serviceWorker" in navigator) {
             const sw = `
-    const C='wf-pro-v129';
+    const C='wf-pro-v131';
     const API_KEY='3a14b1347c177458e2f23bea7899e9cf';
     const BASE='https://v3.football.api-sports.io';
     let prevScores = {};
@@ -2620,7 +2620,8 @@ function Row({match:m, onOpen, isFav, onFav, onTeam}){
           React.createElement(Logo, { src: m.teams.home.logo, size: 18 }),
           React.createElement("span", { style: { fontSize: 13, fontWeight: homeW ? 700 : 400, color: homeW ? "#111" : (has && awayW) ? "#aaa" : "#222", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap", display: "flex", alignItems: "center", gap: 4 } },
             hn,
-            homeRed > 0 ? React.createElement("span", { style: { fontSize: 9, fontWeight: 800, color: "#fff", background: "#e53535", borderRadius: 3, padding: "1px 4px", flexShrink: 0 } }, homeRed) : null
+            homeRed > 0 ? React.createElement("span", { style: { fontSize: 9, fontWeight: 800, color: "#fff", background: "#e53535", borderRadius: 3, padding: "1px 4px", flexShrink: 0 } }, homeRed) : null,
+            showBigChance && actionTeam === m.teams.home.id ? React.createElement("span", { style: { fontSize: 9, fontWeight: 900, color: "#e53935", animation: "blink-3 1.5s ease-in-out", flexShrink: 0 } }, "⚡") : null
           )
         )
       ),
@@ -2632,24 +2633,12 @@ function Row({match:m, onOpen, isFav, onFav, onTeam}){
           React.createElement(Logo, { src: m.teams.away.logo, size: 18 }),
           React.createElement("span", { style: { fontSize: 13, fontWeight: awayW ? 700 : 400, color: awayW ? "#111" : (has && homeW) ? "#aaa" : "#222", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap", display: "flex", alignItems: "center", gap: 4 } },
             an,
-            awayRed > 0 ? React.createElement("span", { style: { fontSize: 9, fontWeight: 800, color: "#fff", background: "#e53535", borderRadius: 3, padding: "1px 4px", flexShrink: 0 } }, awayRed) : null
+            awayRed > 0 ? React.createElement("span", { style: { fontSize: 9, fontWeight: 800, color: "#fff", background: "#e53535", borderRadius: 3, padding: "1px 4px", flexShrink: 0 } }, awayRed) : null,
+            showBigChance && actionTeam === m.teams.away.id ? React.createElement("span", { style: { fontSize: 9, fontWeight: 900, color: "#e53935", animation: "blink-3 1.5s ease-in-out", flexShrink: 0 } }, "⚡") : null
           )
         )
       )
     ),
-
-    // GROSSE OCCASION — entre noms et scores
-    showBigChance ? React.createElement("div", { style: {
-      display: "flex", alignItems: "center", justifyContent: "center",
-      flexShrink: 0, paddingRight: 6
-    } },
-      React.createElement("span", { style: {
-        fontSize: 9, fontWeight: 900, color: "#e53935",
-        textTransform: "uppercase", whiteSpace: "nowrap",
-        animation: "blink-3 1.5s ease-in-out",
-        letterSpacing: 0.5
-      } }, "⚡ Grosse occasion !")
-    ) : null,
 
     // Scores — collés aux noms, pas tout à droite
     React.createElement("div", { style: { width: 24, display: "flex", flexDirection: "column", alignItems: "flex-end", justifyContent: "center", gap: 5, flexShrink: 0, paddingRight: 14 } },
@@ -3161,12 +3150,33 @@ function LeagueSheet({fix, leagueInfo, onClose}) {
         React.createElement("div", null,
           React.createElement("div", {style:{fontSize:18,fontWeight:800,color:"#0f172a"}}, fix.league.name),
           (() => {
+            // Vrais records historiques par compétition
+            const knownRecords = {
+              2:   { name: "Real Madrid",        titles: 15 }, // LDC
+              3:   { name: "Séville",            titles: 7  }, // Europa League
+              848: { name: "Chelsea / West Ham",  titles: 2  }, // Conference (récente)
+              1:   { name: "Brésil",             titles: 5  }, // Coupe du Monde
+              4:   { name: "Allemagne",           titles: 4  }, // Euro
+              9:   { name: "Juventus",            titles: 9  }, // Serie A
+              61:  { name: "PSG",                titles: 14 }, // Ligue 1
+              39:  { name: "Man United",          titles: 20 }, // Premier League
+              140: { name: "Real Madrid",        titles: 36 }, // Liga
+              78:  { name: "Bayern Munich",      titles: 33 }, // Bundesliga
+              186: { name: "CR Belouizdad",      titles: 20 }, // Algérie
+            };
+            const record = knownRecords[lid];
+            if(record) {
+              return React.createElement("div", {style:{fontSize:11,color:"#94a3b8",marginTop:3}},
+                `🏆 Record : ${record.name} (${record.titles} titres)`
+              );
+            }
+            // Fallback : compter depuis les données chargées
             const counts = {};
             Object.values(winnersData).forEach(w => { if(w?.name) counts[w.name] = (counts[w.name]||0)+1; });
             const top = Object.entries(counts).sort((a,b)=>b[1]-a[1])[0];
             if(!top) return null;
             return React.createElement("div", {style:{fontSize:11,color:"#94a3b8",marginTop:3}},
-              `🏆 Record : ${top[0]} (${top[1]} titres)`
+              `🏆 Record : ${top[0]} (${top[1]}+ titres)`
             );
           })()
         ),
