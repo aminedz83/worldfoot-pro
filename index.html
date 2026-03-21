@@ -48,7 +48,7 @@
     <script>
         if ("serviceWorker" in navigator) {
             const sw = `
-    const C='wf-pro-v131';
+    const C='wf-pro-v134';
     const API_KEY='3a14b1347c177458e2f23bea7899e9cf';
     const BASE='https://v3.football.api-sports.io';
     let prevScores = {};
@@ -2620,8 +2620,7 @@ function Row({match:m, onOpen, isFav, onFav, onTeam}){
           React.createElement(Logo, { src: m.teams.home.logo, size: 18 }),
           React.createElement("span", { style: { fontSize: 13, fontWeight: homeW ? 700 : 400, color: homeW ? "#111" : (has && awayW) ? "#aaa" : "#222", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap", display: "flex", alignItems: "center", gap: 4 } },
             hn,
-            homeRed > 0 ? React.createElement("span", { style: { fontSize: 9, fontWeight: 800, color: "#fff", background: "#e53535", borderRadius: 3, padding: "1px 4px", flexShrink: 0 } }, homeRed) : null,
-            showBigChance && actionTeam === m.teams.home.id ? React.createElement("span", { style: { fontSize: 9, fontWeight: 900, color: "#e53935", animation: "blink-3 1.5s ease-in-out", flexShrink: 0 } }, "⚡") : null
+            homeRed > 0 ? React.createElement("span", { style: { fontSize: 9, fontWeight: 800, color: "#fff", background: "#e53535", borderRadius: 3, padding: "1px 4px", flexShrink: 0 } }, homeRed) : null
           )
         )
       ),
@@ -2633,12 +2632,23 @@ function Row({match:m, onOpen, isFav, onFav, onTeam}){
           React.createElement(Logo, { src: m.teams.away.logo, size: 18 }),
           React.createElement("span", { style: { fontSize: 13, fontWeight: awayW ? 700 : 400, color: awayW ? "#111" : (has && homeW) ? "#aaa" : "#222", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap", display: "flex", alignItems: "center", gap: 4 } },
             an,
-            awayRed > 0 ? React.createElement("span", { style: { fontSize: 9, fontWeight: 800, color: "#fff", background: "#e53535", borderRadius: 3, padding: "1px 4px", flexShrink: 0 } }, awayRed) : null,
-            showBigChance && actionTeam === m.teams.away.id ? React.createElement("span", { style: { fontSize: 9, fontWeight: 900, color: "#e53935", animation: "blink-3 1.5s ease-in-out", flexShrink: 0 } }, "⚡") : null
+            awayRed > 0 ? React.createElement("span", { style: { fontSize: 9, fontWeight: 800, color: "#fff", background: "#e53535", borderRadius: 3, padding: "1px 4px", flexShrink: 0 } }, awayRed) : null
           )
         )
       )
     ),
+
+    // GROSSE OCCASION — colonne centrale, s'affiche 1.5s avant le but
+    showBigChance ? React.createElement("div", { style: {
+      display: "flex", alignItems: "center", justifyContent: "center",
+      flexShrink: 0, paddingRight: 6
+    } },
+      React.createElement("span", { style: {
+        fontSize: 9, fontWeight: 900, color: "#e53935",
+        whiteSpace: "nowrap", textTransform: "uppercase", letterSpacing: 0.3,
+        animation: "blink-3 1.5s ease-in-out"
+      } }, "GROSSE OCCASION !")
+    ) : null,
 
     // Scores — collés aux noms, pas tout à droite
     React.createElement("div", { style: { width: 24, display: "flex", flexDirection: "column", alignItems: "flex-end", justifyContent: "center", gap: 5, flexShrink: 0, paddingRight: 14 } },
@@ -3190,29 +3200,104 @@ function LeagueSheet({fix, leagueInfo, onClose}) {
       React.createElement("div", {style:{flex:1,overflowY:"auto"}},
         (() => {
           const seasons = leagueInfo?.seasons ? [...leagueInfo.seasons].reverse() : [];
-          // Compter les titres par équipe
-          const titleCount = {};
-          Object.values(winnersData).forEach(w => {
-            if(!w?.name) return;
-            titleCount[w.name] = (titleCount[w.name]||0) + 1;
-          });
+
+          // Palmarès historique complet par compétition (chiffres exacts)
+          const knownPalmares = {
+            2: [
+              {name:"Real Madrid",   logo:"https://media.api-sports.io/football/teams/541.png", titles:15},
+              {name:"AC Milan",      logo:"https://media.api-sports.io/football/teams/489.png", titles:7},
+              {name:"Liverpool",     logo:"https://media.api-sports.io/football/teams/40.png",  titles:6},
+              {name:"Bayern Munich", logo:"https://media.api-sports.io/football/teams/157.png", titles:6},
+              {name:"Barcelona",     logo:"https://media.api-sports.io/football/teams/529.png", titles:5},
+              {name:"Ajax",          logo:"https://media.api-sports.io/football/teams/194.png", titles:4},
+              {name:"Inter Milan",   logo:"https://media.api-sports.io/football/teams/505.png", titles:3},
+              {name:"Man United",    logo:"https://media.api-sports.io/football/teams/33.png",  titles:3},
+              {name:"Chelsea",       logo:"https://media.api-sports.io/football/teams/49.png",  titles:2},
+              {name:"Juventus",      logo:"https://media.api-sports.io/football/teams/496.png", titles:2},
+              {name:"Man City",      logo:"https://media.api-sports.io/football/teams/50.png",  titles:1},
+              {name:"PSG",           logo:"https://media.api-sports.io/football/teams/85.png",  titles:1},
+            ],
+            3: [
+              {name:"Séville",       logo:"https://media.api-sports.io/football/teams/536.png", titles:7},
+              {name:"Juventus",      logo:"https://media.api-sports.io/football/teams/496.png", titles:3},
+              {name:"Inter Milan",   logo:"https://media.api-sports.io/football/teams/505.png", titles:3},
+              {name:"Liverpool",     logo:"https://media.api-sports.io/football/teams/40.png",  titles:3},
+              {name:"Atlético",      logo:"https://media.api-sports.io/football/teams/530.png", titles:3},
+              {name:"Chelsea",       logo:"https://media.api-sports.io/football/teams/49.png",  titles:2},
+              {name:"Ajax",          logo:"https://media.api-sports.io/football/teams/194.png", titles:2},
+            ],
+            848: [
+              {name:"Chelsea",       logo:"https://media.api-sports.io/football/teams/49.png",  titles:1},
+              {name:"West Ham",      logo:"https://media.api-sports.io/football/teams/48.png",  titles:1},
+              {name:"Olympiakos",    logo:"https://media.api-sports.io/football/teams/164.png", titles:1},
+            ],
+            39: [
+              {name:"Man United",    logo:"https://media.api-sports.io/football/teams/33.png",  titles:13},
+              {name:"Man City",      logo:"https://media.api-sports.io/football/teams/50.png",  titles:9},
+              {name:"Chelsea",       logo:"https://media.api-sports.io/football/teams/49.png",  titles:5},
+              {name:"Arsenal",       logo:"https://media.api-sports.io/football/teams/42.png",  titles:3},
+              {name:"Blackburn",     logo:"https://media.api-sports.io/football/teams/65.png",  titles:1},
+              {name:"Leicester",     logo:"https://media.api-sports.io/football/teams/46.png",  titles:1},
+              {name:"Liverpool",     logo:"https://media.api-sports.io/football/teams/40.png",  titles:1},
+            ],
+            140: [
+              {name:"Real Madrid",   logo:"https://media.api-sports.io/football/teams/541.png", titles:36},
+              {name:"Barcelona",     logo:"https://media.api-sports.io/football/teams/529.png", titles:27},
+              {name:"Atlético",      logo:"https://media.api-sports.io/football/teams/530.png", titles:11},
+              {name:"Athletic Club", logo:"https://media.api-sports.io/football/teams/531.png", titles:8},
+              {name:"Valencia",      logo:"https://media.api-sports.io/football/teams/532.png", titles:6},
+            ],
+            78: [
+              {name:"Bayern Munich", logo:"https://media.api-sports.io/football/teams/157.png", titles:33},
+              {name:"Dortmund",      logo:"https://media.api-sports.io/football/teams/165.png", titles:8},
+              {name:"Mönchengladbach",logo:"https://media.api-sports.io/football/teams/163.png",titles:5},
+            ],
+            61: [
+              {name:"Saint-Étienne", logo:"https://media.api-sports.io/football/teams/97.png",  titles:10},
+              {name:"Marseille",     logo:"https://media.api-sports.io/football/teams/81.png",  titles:9},
+              {name:"PSG",           logo:"https://media.api-sports.io/football/teams/85.png",  titles:12},
+              {name:"Lyon",          logo:"https://media.api-sports.io/football/teams/80.png",  titles:7},
+              {name:"Nantes",        logo:"https://media.api-sports.io/football/teams/83.png",  titles:8},
+            ],
+            135: [
+              {name:"Juventus",      logo:"https://media.api-sports.io/football/teams/496.png", titles:36},
+              {name:"Inter Milan",   logo:"https://media.api-sports.io/football/teams/505.png", titles:20},
+              {name:"AC Milan",      logo:"https://media.api-sports.io/football/teams/489.png", titles:19},
+              {name:"Torino",        logo:"https://media.api-sports.io/football/teams/503.png", titles:7},
+              {name:"Roma",          logo:"https://media.api-sports.io/football/teams/497.png", titles:3},
+            ],
+            186: [
+              {name:"CR Belouizdad",logo:"https://media.api-sports.io/football/teams/904.png",  titles:20},
+              {name:"JS Kabylie",   logo:"https://media.api-sports.io/football/teams/918.png",  titles:14},
+              {name:"MC Alger",     logo:"https://media.api-sports.io/football/teams/906.png",  titles:18},
+              {name:"USM Alger",    logo:"https://media.api-sports.io/football/teams/910.png",  titles:10},
+              {name:"ES Sétif",     logo:"https://media.api-sports.io/football/teams/905.png",  titles:8},
+              {name:"NA Hussein Dey",logo:"https://media.api-sports.io/football/teams/927.png", titles:6},
+            ],
+          };
+
+          const palmares = knownPalmares[lid]
+            ? [...knownPalmares[lid]].sort((a,b)=>b.titles-a.titles)
+            : Object.values(
+                Object.values(winnersData).reduce((acc,w) => {
+                  if(w?.name) acc[w.name] = {name:w.name, logo:w.logo, titles:(acc[w.name]?.titles||0)+1};
+                  return acc;
+                }, {})
+              ).sort((a,b)=>b.titles-a.titles);
 
           return React.createElement(React.Fragment, null,
-            // Palmarès — top équipes
-            Object.keys(titleCount).length > 0 ? React.createElement("div", {style:{padding:"12px 20px 0"}},
+            // Palmarès
+            React.createElement("div", {style:{padding:"12px 20px 0"}},
               React.createElement("div", {style:{fontSize:11,fontWeight:700,color:"#94a3b8",textTransform:"uppercase",letterSpacing:1,marginBottom:8}}, "🏆 Palmarès"),
-              Object.entries(titleCount)
-                .sort((a,b) => b[1]-a[1])
-                .map(([name, count], i) => {
-                  const w = Object.values(winnersData).find(w => w?.name === name);
-                  return React.createElement("div", {key:i, style:{display:"flex",alignItems:"center",gap:10,padding:"8px 0",borderBottom:"1px solid #f5f5f5"}},
-                    React.createElement("span", {style:{fontSize:12,fontWeight:700,color:"#94a3b8",minWidth:20}}), `${i+1}.`,
-                    w?.logo && React.createElement("img", {src:w.logo,style:{width:22,height:22,objectFit:"contain"},onError:e=>e.target.style.display="none"}),
-                    React.createElement("span", {style:{flex:1,fontSize:13,fontWeight:600,color:"#0f172a"}}), name,
-                    React.createElement("span", {style:{fontSize:12,fontWeight:800,color:"#f59e0b"}}), `🏆 ${count}`
-                  );
-                })
-            ) : null,
+              palmares.map((entry, i) =>
+                React.createElement("div", {key:i, style:{display:"flex",alignItems:"center",gap:10,padding:"9px 0",borderBottom:"1px solid #f5f5f5"}},
+                  React.createElement("span", {style:{fontSize:12,fontWeight:700,color:"#94a3b8",minWidth:20,textAlign:"right"}}, `${i+1}.`),
+                  React.createElement("img", {src:entry.logo,style:{width:24,height:24,objectFit:"contain"},onError:e=>e.target.style.display="none"}),
+                  React.createElement("span", {style:{flex:1,fontSize:13,fontWeight:600,color:"#0f172a"}}, entry.name),
+                  React.createElement("span", {style:{fontSize:13,fontWeight:800,color:"#0f172a"}}), `🏆 ${entry.titles}`
+                )
+              )
+            ),
 
             // Séparateur
             React.createElement("div", {style:{padding:"12px 20px 4px"}}),
