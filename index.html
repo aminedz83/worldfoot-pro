@@ -48,7 +48,7 @@
     <script>
         if ("serviceWorker" in navigator) {
             const sw = `
-    const C='wf-pro-v147';
+    const C='wf-pro-v152';
     const API_KEY='3a14b1347c177458e2f23bea7899e9cf';
     const BASE='https://v3.football.api-sports.io';
     let prevScores = {};
@@ -7757,7 +7757,7 @@ function TransfersTab({ onTeam }) {
     const clubs = MERCATO_CLUBS.filter(c => coachFilter === "algerie" ? c.algerian : !c.algerian);
     Promise.allSettled(
       clubs.map(c =>
-        api(`/coachs?team=${c.id}`, 86400000)
+        api(`/coachs?team=${c.id}`, 1800000)
           .then(async res => {
             const coachesData = res || [];
             const coachesWithPhotos = await Promise.all(
@@ -7777,13 +7777,18 @@ function TransfersTab({ onTeam }) {
       results.forEach(r => {
         if (r.status !== "fulfilled") return;
         const { clubId, clubName, clubLogo, coaches } = r.value;
-        coaches.forEach(coach => {
-          if (!coach.career) return;
-          const stint = coach.career.find(c => c.team?.id === clubId);
-          if (!stint) return;
-          const isCurrent = !stint.end;
-          entries.push({ coach, clubId, clubName, clubLogo, start: stint.start, end: stint.end, isCurrent });
-        });
+        if (!coaches.length) return;
+
+        // Le premier coach retourné par l'API = entraîneur actuel
+        const currentCoach = coaches[0];
+        if (!currentCoach.career) return;
+        const stint = currentCoach.career.find(c => c.team?.id === clubId);
+        if (!stint) {
+          // Pas de stint trouvé mais c'est quand même l'entraîneur actuel
+          entries.push({ coach: currentCoach, clubId, clubName, clubLogo, start: null, end: null, isCurrent: true });
+          return;
+        }
+        entries.push({ coach: currentCoach, clubId, clubName, clubLogo, start: stint.start, end: stint.end, isCurrent: true });
       });
 
       // Dédupliquer par club — garder l'entrée avec photo ET date la plus récente
@@ -7813,7 +7818,7 @@ function TransfersTab({ onTeam }) {
     });
   }, [mainTab, coachFilter]);
 
-  // Détecter arrivées/départs entraîneurs depuis les données de carrière
+  // Algorithme sophistiqué de détection des mouvements d'entraîneurs
   useEffect(() => {
     if(mainTab !== "coaches" || coachSubTab === "current") return;
     if(coachTransfersStatus !== "idle") return;
@@ -7821,94 +7826,129 @@ function TransfersTab({ onTeam }) {
     const clubs = MERCATO_CLUBS.filter(c => coachFilter === "algerie" ? c.algerian : !c.algerian);
     const now = new Date();
     const seasonStart = new Date(now.getMonth() >= 6 ? `${now.getFullYear()}-07-01` : `${now.getFullYear()-1}-07-01`);
+    const twoYearsAgo = new Date(now.getFullYear()-2, now.getMonth(), now.getDate());
 
-    // Chargement séquentiel avec pause (comme le script fourni) pour ne pas surcharger l'API
-    const loadSequentially = async () => {
+    const run = async () => {
+      // ─── SOURCE 1 : /coachs?team=X ───
+      // Retourne tous les coaches ayant entraîné ce club + leur carrière
+      const source1 = {};
+      for(const c of clubs) {
+        try {
+          const data = await api(`/coachs?team=${c.id}`, 1800000);
+          source1[c.id] = { club: c, coaches: data || [] };
+        } catch(e) { source1[c.id] = { club: c, coaches: [] }; }
+        await new Promise(r => setTimeout(r, 80));
+      }
+
+      // ─── SOURCE 2 : Comparer entraîneur actuel vs historique ───
+      // Si le coach[0] actuel a un stint.start récent → arrivée confirmée
+      // Si un ancien coach a un stint.end récent → départ confirmé
       const arrivals = [];
       const departures = [];
 
-      for(const c of clubs) {
-        try {
-          const coaches = await api(`/coachs?team=${c.id}`, 3600000);
-          if(!coaches || !coaches.length) continue;
+      Object.values(source1).forEach(({ club, coaches }) => {
+        if(!coaches.length) return;
 
-          // Prendre le premier coach = entraîneur actuel
-          const currentCoach = coaches[0];
+        coaches.forEach((coach, idx) => {
+          if(!coach.career) return;
+          const stint = coach.career.find(s => s.team?.id === club.id);
+          if(!stint) return;
 
-          coaches.forEach(coach => {
-            if(!coach.career) return;
-            coach.career.forEach(stint => {
-              if(stint.team?.id !== c.id) return;
-              const startDate = stint.start ? new Date(stint.start) : null;
-              const endDate   = stint.end   ? new Date(stint.end)   : null;
+          const startDate = stint.start ? new Date(stint.start) : null;
+          const endDate   = stint.end   ? new Date(stint.end)   : null;
+          const isCurrent = idx === 0 && !stint.end; // Premier = actuel
 
-              // ARRIVÉE : commence cette saison
-              if(startDate && startDate >= seasonStart && startDate <= now) {
-                const d = startDate.getDate();
-                const m = startDate.getMonth();
-                // Éviter dates génériques (1er juillet = début de saison par défaut)
-                const isSuspect = (d === 1 && m === 6) || (d === 1 && m === 0);
-                arrivals.push({
-                  coachName: coach.name,
-                  coachPhoto: coach.photo || null,
-                  coachNationality: coach.nationality,
-                  coachAge: coach.age,
-                  date: stint.start,
-                  dateReliable: !isSuspect,
-                  isCurrent: !stint.end,
-                  club: c
-                });
-              }
+          // ── Détection ARRIVÉE ──
+          // Critères : startDate dans la saison ET (est actuel OU a une date précise)
+          if(startDate && startDate >= seasonStart && startDate <= now) {
+            const day = startDate.getDate();
+            const month = startDate.getMonth();
+            // Filtrer dates génériques : 1er juillet, 1er janvier, 1er août
+            const isGeneric = (day === 1 && (month === 6 || month === 0 || month === 7));
+            // Score de fiabilité : plus c'est précis, plus c'est fiable
+            const reliability = isGeneric ? 0.3 : isCurrent ? 1.0 : 0.7;
+            if(reliability >= 0.3) {
+              arrivals.push({
+                coachName: coach.name,
+                coachPhoto: coach.photo || null,
+                coachId: coach.id,
+                coachNationality: coach.nationality,
+                coachAge: coach.age,
+                date: stint.start,
+                dateReliable: !isGeneric,
+                isCurrent,
+                reliability,
+                club
+              });
+            }
+          }
 
-              // DÉPART : termine cette saison
-              if(endDate && endDate >= seasonStart && endDate <= now) {
-                departures.push({
-                  coachName: coach.name,
-                  coachPhoto: coach.photo || null,
-                  coachNationality: coach.nationality,
-                  coachAge: coach.age,
-                  date: stint.end,
-                  dateReliable: true,
-                  club: c
-                });
-              }
+          // ── Détection DÉPART ──
+          // Critères : endDate dans la saison ou l'année précédente ET n'est plus actuel
+          if(endDate && endDate >= twoYearsAgo && endDate <= now && !isCurrent) {
+            departures.push({
+              coachName: coach.name,
+              coachPhoto: coach.photo || null,
+              coachId: coach.id,
+              coachNationality: coach.nationality,
+              coachAge: coach.age,
+              date: stint.end,
+              dateReliable: true,
+              reliability: 1.0,
+              club
             });
-          });
-        } catch(e) {}
-        // Petite pause pour ne pas surcharger
-        await new Promise(r => setTimeout(r, 100));
-      }
+          }
+        });
+      });
 
-      // Dédupliquer par nom de coach — toujours garder celui avec photo
-      const dedupList = (list) => {
+      // ─── SOURCE 3 : Enrichissement photos ───
+      // Pour chaque entrée sans photo → tenter getCoachPhoto
+      const enrich = async (list) => {
+        return Promise.all(list.map(async entry => {
+          if(!entry.coachPhoto && entry.coachId) {
+            const photo = await getCoachPhoto(entry.coachName, entry.coachId);
+            return { ...entry, coachPhoto: photo };
+          }
+          return entry;
+        }));
+      };
+
+      // ─── DÉDUPLICATION INTELLIGENTE ───
+      // Clé = 6 premiers chars du nom normalisé + clubId
+      // Garde : photo > reliability > date ancienne
+      const dedupSmart = (list) => {
         const seen = {};
         list.forEach(t => {
-          const key = t.coachName.toLowerCase().replace(/[\s\.]/g,'').slice(0,6);
-          if (!seen[key]) {
+          const nameKey = t.coachName.toLowerCase().normalize("NFD").replace(/[\u0300-\u036f\s\.]/g,'').slice(0,7);
+          const key = `${nameKey}_${t.club.id}`;
+          if(!seen[key]) {
             seen[key] = t;
           } else {
-            // Photo prime sur tout — si le nouveau a photo et l'ancien non → remplacer
-            const existingHasPhoto = !!seen[key].coachPhoto;
-            const newHasPhoto = !!t.coachPhoto;
-            if (!existingHasPhoto && newHasPhoto) {
-              seen[key] = t; // nouveau a photo → prendre le nouveau
-            }
-            // Les deux ont photo ou les deux sans → garder le plus ancien (date vraie)
-            else if (existingHasPhoto === newHasPhoto) {
-              if (new Date(t.date||0) < new Date(seen[key].date||0)) seen[key] = t;
-            }
+            const e = seen[key];
+            const eScore = (e.coachPhoto?4:0) + (e.dateReliable?2:0) + (e.isCurrent?1:0);
+            const tScore = (t.coachPhoto?4:0) + (t.dateReliable?2:0) + (t.isCurrent?1:0);
+            if(tScore > eScore) seen[key] = t;
+            else if(tScore === eScore && new Date(t.date||0) < new Date(e.date||0)) seen[key] = t;
           }
         });
         return Object.values(seen);
       };
 
-      const dedupedArrivals = dedupList(arrivals).sort((a,b) => new Date(b.date)-new Date(a.date));
-      const dedupedDepartures = dedupList(departures).sort((a,b) => new Date(b.date)-new Date(a.date));
-      setCoachTransfers({ arrivals: dedupedArrivals, departures: dedupedDepartures });
+      const [enrichedArrivals, enrichedDepartures] = await Promise.all([
+        enrich(dedupSmart(arrivals)),
+        enrich(dedupSmart(departures))
+      ]);
+
+      // Trier : fiabilité décroissante, puis date décroissante
+      const sortFn = (a,b) => (b.reliability-a.reliability) || (new Date(b.date)-new Date(a.date));
+      setCoachTransfers({
+        arrivals: enrichedArrivals.sort(sortFn),
+        departures: enrichedDepartures.sort(sortFn)
+      });
       setCoachTransfersStatus("ok");
     };
 
-    loadSequentially();
+    run();
   }, [mainTab, coachSubTab, coachFilter]);
 
   useEffect(() => {
@@ -8142,7 +8182,7 @@ function TransfersTab({ onTeam }) {
         : React.createElement("div", { style: { padding: "8px 12px", display: "flex", flexDirection: "column", gap: 8 } },
 
             // Section EN POSTE
-            React.createElement("div", { style: { fontSize: 11, fontWeight: 800, color: "#64748b", textTransform: "uppercase", letterSpacing: 1, padding: "4px 0 2px" } }, "✅ En poste"),
+            
             coachesData.filter(e => e.isCurrent).length === 0
               ? React.createElement("div", { style: { fontSize: 12, color: "#94a3b8", padding: "8px 0" } }, "Aucune donnée")
               : coachesData.filter(e => e.isCurrent).map((entry, i) =>
@@ -8161,27 +8201,6 @@ function TransfersTab({ onTeam }) {
                     )
                   )
                 ),
-
-            // Section ANCIENS
-            coachesData.filter(e => !e.isCurrent).length > 0 && React.createElement(React.Fragment, null,
-              React.createElement("div", { style: { fontSize: 11, fontWeight: 800, color: "#64748b", textTransform: "uppercase", letterSpacing: 1, padding: "8px 0 2px" } }, "📋 Anciens entraîneurs"),
-              coachesData.filter(e => !e.isCurrent).map((entry, i) =>
-                React.createElement("div", { key: "old-"+i, style: { background: "#fff", borderRadius: 12, padding: "12px 14px", display: "flex", alignItems: "center", gap: 12, boxShadow: "0 1px 4px rgba(15,23,42,.04)", borderLeft: "3px solid #e2e8f0", opacity: 0.85 } },
-                  React.createElement(CoachPhoto, { coach: entry.coach, size: 46, bgColor: "linear-gradient(135deg,#94a3b8,#64748b)" }),
-                  React.createElement("div", { style: { flex: 1, minWidth: 0 } },
-                    React.createElement("div", { style: { fontSize: 14, fontWeight: 700, color: "#0f172a" } }, entry.coach.name),
-                    React.createElement("div", { style: { fontSize: 11, color: "#64748b", marginTop: 2 } }, `${entry.coach.nationality||""}${entry.coach.age?` · ${entry.coach.age} ans`:""}`),
-                    React.createElement("div", { style: { fontSize: 11, color: "#ef4444", fontWeight: 600, marginTop: 3 } },
-                      `Parti ${entry.end ? new Date(entry.end).toLocaleDateString("fr-FR", { month: "long", year: "numeric" }) : ""}`
-                    )
-                  ),
-                  React.createElement("div", { style: { display: "flex", flexDirection: "column", alignItems: "center", gap: 3, flexShrink: 0 } },
-                    React.createElement(Logo, { src: entry.clubLogo, size: 30 }),
-                    React.createElement("span", { style: { fontSize: 9, color: "#94a3b8", fontWeight: 600, textAlign: "center", maxWidth: 56, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" } }, entry.clubName)
-                  )
-                )
-              )
-            ),
 
             React.createElement("div", { style: { height: 20 } })
           )
