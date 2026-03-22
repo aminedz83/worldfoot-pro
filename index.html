@@ -7755,40 +7755,38 @@ function TransfersTab({ onTeam }) {
     if (mainTab !== "coaches" || coachesStatus !== "idle") return;
     setCoachesStatus("load");
     const clubs = MERCATO_CLUBS.filter(c => coachFilter === "algerie" ? c.algerian : !c.algerian);
+    const seasonCutoff = new Date("2025-01-01"); // Seulement entraîneurs arrivés en 2025+
+
     Promise.allSettled(
       clubs.map(c =>
         api(`/coachs?team=${c.id}`, 1800000)
           .then(async res => {
-            const coachesData = res || [];
-            const coachesWithPhotos = await Promise.all(
-              coachesData.map(async coach => {
-                // Toujours essayer l'URL directe par ID d'abord (même source que S. Ramović)
-                let photo = await getCoachPhoto(coach.name, coach.id);
-                if (!photo) photo = coach.photo || null;
-                return { ...coach, photo };
-              })
-            );
-            return { clubId: c.id, clubName: c.name, clubLogo: c.logo, coaches: coachesWithPhotos };
+            const coachesList = res || [];
+            if (!coachesList.length) return { clubId: c.id, clubName: c.name, clubLogo: c.logo, coach: null };
+            // Prendre le premier = entraîneur actuel
+            const current = coachesList[0];
+            // Photo rapide — URL directe par ID sans vérification
+            const photo = current.photo || `https://media.api-sports.io/football/coachs/${current.id}.png`;
+            const stint = (current.career||[]).find(s => s.team?.id === c.id);
+            return { clubId: c.id, clubName: c.name, clubLogo: c.logo, coach: { ...current, photo }, stint };
           })
-          .catch(() => ({ clubId: c.id, clubName: c.name, clubLogo: c.logo, coaches: [] }))
+          .catch(() => ({ clubId: c.id, clubName: c.name, clubLogo: c.logo, coach: null }))
       )
     ).then(results => {
       const entries = [];
       results.forEach(r => {
-        if (r.status !== "fulfilled") return;
-        const { clubId, clubName, clubLogo, coaches } = r.value;
-        if (!coaches.length) return;
+        if (r.status !== "fulfilled" || !r.value.coach) return;
+        const { clubId, clubName, clubLogo, coach, stint } = r.value;
+        const startDate = stint?.start ? new Date(stint.start) : null;
+        const endDate = stint?.end ? new Date(stint.end) : null;
 
-        // Le premier coach retourné par l'API = entraîneur actuel
-        const currentCoach = coaches[0];
-        if (!currentCoach.career) return;
-        const stint = currentCoach.career.find(c => c.team?.id === clubId);
-        if (!stint) {
-          // Pas de stint trouvé mais c'est quand même l'entraîneur actuel
-          entries.push({ coach: currentCoach, clubId, clubName, clubLogo, start: null, end: null, isCurrent: true });
-          return;
-        }
-        entries.push({ coach: currentCoach, clubId, clubName, clubLogo, start: stint.start, end: stint.end, isCurrent: true });
+        // Ignorer si l'entraîneur est parti (end renseigné et récent)
+        if (endDate && endDate < new Date()) return;
+
+        // Garder seulement ceux arrivés en 2025 ou sans date (= actuel)
+        if (startDate && startDate < seasonCutoff) return;
+
+        entries.push({ coach, clubId, clubName, clubLogo, start: stint?.start || null, end: null, isCurrent: true });
       });
 
       // Dédupliquer par club — garder l'entrée avec photo ET date la plus récente
@@ -7825,7 +7823,7 @@ function TransfersTab({ onTeam }) {
     setCoachTransfersStatus("load");
     const clubs = MERCATO_CLUBS.filter(c => coachFilter === "algerie" ? c.algerian : !c.algerian);
     const now = new Date();
-    const seasonStart = new Date(now.getMonth() >= 6 ? `${now.getFullYear()}-07-01` : `${now.getFullYear()-1}-07-01`);
+    const seasonStart = new Date("2025-01-01"); // Seulement 2025+
     const twoYearsAgo = new Date(now.getFullYear()-2, now.getMonth(), now.getDate());
 
     const run = async () => {
@@ -7837,7 +7835,7 @@ function TransfersTab({ onTeam }) {
           const data = await api(`/coachs?team=${c.id}`, 1800000);
           source1[c.id] = { club: c, coaches: data || [] };
         } catch(e) { source1[c.id] = { club: c, coaches: [] }; }
-        await new Promise(r => setTimeout(r, 80));
+        await new Promise(r => setTimeout(r, 30));
       }
 
       // ─── SOURCE 2 : Comparer entraîneur actuel vs historique ───
@@ -7973,7 +7971,7 @@ function TransfersTab({ onTeam }) {
         data.forEach(entry => {
           (entry.transfers || []).forEach(t => {
             const year = parseInt((t.date || "").slice(0, 4));
-            if (year < 2023) return;
+            if (year < 2025) return;
             newEntries.push({ player: entry.player, date: t.date, type: t.type, teams: t.teams, _clubId: clubId });
           });
         });
@@ -7997,8 +7995,20 @@ function TransfersTab({ onTeam }) {
   }, [mainTab]);
 
   const filteredMercato = mercatoData.filter(t => {
-    if (clubFilter === "algerie" && !ALGERIAN_IDS.has(t._clubId)) return false;
-    if (clubFilter === "europe"  &&  ALGERIAN_IDS.has(t._clubId)) return false;
+    // Filtre date — 2025+
+    const year = parseInt((t.date || "").slice(0, 4));
+    if (year < 2025) return false;
+
+    const inId  = t.teams?.in?.id;
+    const outId = t.teams?.out?.id;
+
+    if (clubFilter === "algerie") {
+      // Au moins un des deux clubs doit être algérien
+      const inAlgerian  = ALGERIAN_IDS.has(inId);
+      const outAlgerian = ALGERIAN_IDS.has(outId);
+      if (!inAlgerian && !outAlgerian) return false;
+    }
+    if (clubFilter === "europe" && ALGERIAN_IDS.has(t._clubId)) return false;
     if (typeFilter === "Loan" && t.type !== "Loan") return false;
     if (typeFilter === "Free" && t.type !== "Free") return false;
     if (typeFilter === "paid" && (t.type === "Loan" || t.type === "Free" || t.type === "N/A" || !t.type)) return false;
