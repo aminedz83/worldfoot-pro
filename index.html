@@ -48,7 +48,7 @@
     <script>
         if ("serviceWorker" in navigator) {
             const sw = `
-    const C='wf-pro-v154';
+    const C='wf-pro-v155';
     const API_KEY='3a14b1347c177458e2f23bea7899e9cf';
     const BASE='https://v3.football.api-sports.io';
     let prevScores = {};
@@ -2644,45 +2644,41 @@ function Row({match:m, onOpen, isFav, onFav, onTeam}){
         : React.createElement("span", { style: { fontSize: 11, fontWeight: 600, color: "#888" } }, stLabel)
     ),
 
-    // Colonne équipes — flex:1 prend tout l'espace dispo
+    // Colonne équipes
     React.createElement("div", { style: { flex: 1, minWidth: 0, padding: "7px 0 7px 2px", display: "flex", flexDirection: "column", gap: 5 } },
       // Domicile
       React.createElement("div", { style: { display: "flex", alignItems: "center", gap: 6 } },
-        React.createElement("div", {
-          style: { display:"flex", alignItems:"center", gap:6, flex:1, minWidth:0 }
-        },
+        React.createElement("div", { style: { display:"flex", alignItems:"center", gap:6, flex:1, minWidth:0 } },
           React.createElement(Logo, { src: m.teams.home.logo, size: 18 }),
           React.createElement("span", { style: { fontSize: 13, fontWeight: homeW ? 700 : 400, color: homeW ? "#111" : (has && awayW) ? "#aaa" : "#222", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap", display: "flex", alignItems: "center", gap: 4 } },
             hn,
             homeRed > 0 ? React.createElement("span", { style: { fontSize: 9, fontWeight: 800, color: "#fff", background: "#e53535", borderRadius: 3, padding: "1px 4px", flexShrink: 0 } }, homeRed) : null
           )
-        )
+        ),
+        // GROSSE OCCASION sur la ligne domicile
+        showBigChance && actionTeam === m.teams.home.id ? React.createElement("span", { style: {
+          fontSize: 9, fontWeight: 900, color: "#e53935",
+          whiteSpace: "nowrap", textTransform: "uppercase", letterSpacing: 0.3,
+          animation: "blink-3 1.5s ease-in-out", flexShrink: 0, paddingRight: 4
+        } }, "GROSSE OCCASION !") : null
       ),
       // Extérieur
       React.createElement("div", { style: { display: "flex", alignItems: "center", gap: 6 } },
-        React.createElement("div", {
-          style: { display:"flex", alignItems:"center", gap:6, flex:1, minWidth:0 }
-        },
+        React.createElement("div", { style: { display:"flex", alignItems:"center", gap:6, flex:1, minWidth:0 } },
           React.createElement(Logo, { src: m.teams.away.logo, size: 18 }),
           React.createElement("span", { style: { fontSize: 13, fontWeight: awayW ? 700 : 400, color: awayW ? "#111" : (has && homeW) ? "#aaa" : "#222", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap", display: "flex", alignItems: "center", gap: 4 } },
             an,
             awayRed > 0 ? React.createElement("span", { style: { fontSize: 9, fontWeight: 800, color: "#fff", background: "#e53535", borderRadius: 3, padding: "1px 4px", flexShrink: 0 } }, awayRed) : null
           )
-        )
+        ),
+        // GROSSE OCCASION sur la ligne extérieur
+        showBigChance && actionTeam === m.teams.away.id ? React.createElement("span", { style: {
+          fontSize: 9, fontWeight: 900, color: "#e53935",
+          whiteSpace: "nowrap", textTransform: "uppercase", letterSpacing: 0.3,
+          animation: "blink-3 1.5s ease-in-out", flexShrink: 0, paddingRight: 4
+        } }, "GROSSE OCCASION !") : null
       )
     ),
-
-    // GROSSE OCCASION — colonne centrale, s'affiche 1.5s avant le but
-    showBigChance ? React.createElement("div", { style: {
-      display: "flex", alignItems: "center", justifyContent: "center",
-      flexShrink: 0, paddingRight: 6
-    } },
-      React.createElement("span", { style: {
-        fontSize: 9, fontWeight: 900, color: "#e53935",
-        whiteSpace: "nowrap", textTransform: "uppercase", letterSpacing: 0.3,
-        animation: "blink-3 1.5s ease-in-out"
-      } }, "GROSSE OCCASION !")
-    ) : null,
 
     // Scores — collés aux noms, pas tout à droite
     React.createElement("div", { style: { width: 24, display: "flex", flexDirection: "column", alignItems: "flex-end", justifyContent: "center", gap: 5, flexShrink: 0, paddingRight: 14 } },
