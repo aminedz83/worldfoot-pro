@@ -48,7 +48,7 @@
     <script>
         if ("serviceWorker" in navigator) {
             const sw = `
-    const C='wf-pro-v142';
+    const C='wf-pro-v144';
     const API_KEY='3a14b1347c177458e2f23bea7899e9cf';
     const BASE='https://v3.football.api-sports.io';
     let prevScores = {};
@@ -7767,13 +7767,30 @@ function TransfersTab({ onTeam }) {
           entries.push({ coach, clubId, clubName, clubLogo, start: stint.start, end: stint.end, isCurrent });
         });
       });
-      entries.sort((a, b) => {
+
+      // Dédupliquer par club — garder l'entrée avec photo ET date la plus récente
+      const deduped = [];
+      const seenByClub = {};
+      entries.forEach(entry => {
+        const key = entry.clubId;
+        if (!seenByClub[key]) {
+          seenByClub[key] = entry;
+        } else {
+          const existing = seenByClub[key];
+          const existingScore = (existing.isCurrent ? 100 : 0) + (existing.coach.photo ? 10 : 0);
+          const entryScore = (entry.isCurrent ? 100 : 0) + (entry.coach.photo ? 10 : 0);
+          if (entryScore > existingScore) seenByClub[key] = entry;
+          else if (entryScore === existingScore && new Date(entry.start||0) > new Date(existing.start||0)) seenByClub[key] = entry;
+        }
+      });
+      const dedupedEntries = Object.values(seenByClub);
+      dedupedEntries.sort((a, b) => {
         if (a.isCurrent && !b.isCurrent) return -1;
         if (!a.isCurrent && b.isCurrent) return 1;
         return new Date(b.start||0) - new Date(a.start||0);
       });
-      setCoachesData(entries);
-      setCoachesStatus(entries.length ? "ok" : "empty");
+      setCoachesData(dedupedEntries);
+      setCoachesStatus(dedupedEntries.length ? "ok" : "empty");
     });
   }, [mainTab, coachFilter]);
 
@@ -7843,9 +7860,25 @@ function TransfersTab({ onTeam }) {
         await new Promise(r => setTimeout(r, 100));
       }
 
-      arrivals.sort((a,b) => new Date(b.date)-new Date(a.date));
-      departures.sort((a,b) => new Date(b.date)-new Date(a.date));
-      setCoachTransfers({ arrivals, departures });
+      // Dédupliquer par nom de coach — garder celui avec photo
+      const dedupList = (list) => {
+        const seen = {};
+        list.forEach(t => {
+          const key = t.coachName.toLowerCase().replace(/\s/g,'');
+          if (!seen[key]) {
+            seen[key] = t;
+          } else {
+            const s1 = (seen[key].coachPhoto ? 10 : 0) + (seen[key].dateReliable ? 1 : 0);
+            const s2 = (t.coachPhoto ? 10 : 0) + (t.dateReliable ? 1 : 0);
+            if (s2 > s1) seen[key] = t;
+          }
+        });
+        return Object.values(seen);
+      };
+
+      const dedupedArrivals = dedupList(arrivals).sort((a,b) => new Date(b.date)-new Date(a.date));
+      const dedupedDepartures = dedupList(departures).sort((a,b) => new Date(b.date)-new Date(a.date));
+      setCoachTransfers({ arrivals: dedupedArrivals, departures: dedupedDepartures });
       setCoachTransfersStatus("ok");
     };
 
