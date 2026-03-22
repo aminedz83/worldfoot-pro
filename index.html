@@ -48,7 +48,7 @@
     <script>
         if ("serviceWorker" in navigator) {
             const sw = `
-    const C='wf-pro-v144';
+    const C='wf-pro-v145';
     const API_KEY='3a14b1347c177458e2f23bea7899e9cf';
     const BASE='https://v3.football.api-sports.io';
     let prevScores = {};
@@ -7780,7 +7780,8 @@ function TransfersTab({ onTeam }) {
           const existingScore = (existing.isCurrent ? 100 : 0) + (existing.coach.photo ? 10 : 0);
           const entryScore = (entry.isCurrent ? 100 : 0) + (entry.coach.photo ? 10 : 0);
           if (entryScore > existingScore) seenByClub[key] = entry;
-          else if (entryScore === existingScore && new Date(entry.start||0) > new Date(existing.start||0)) seenByClub[key] = entry;
+          // Si même score → garder la date la plus ancienne (vraie prise de poste)
+          else if (entryScore === existingScore && new Date(entry.start||0) < new Date(existing.start||0)) seenByClub[key] = entry;
         }
       });
       const dedupedEntries = Object.values(seenByClub);
@@ -7860,17 +7861,24 @@ function TransfersTab({ onTeam }) {
         await new Promise(r => setTimeout(r, 100));
       }
 
-      // Dédupliquer par nom de coach — garder celui avec photo
+      // Dédupliquer par nom de coach — toujours garder celui avec photo
       const dedupList = (list) => {
         const seen = {};
         list.forEach(t => {
-          const key = t.coachName.toLowerCase().replace(/\s/g,'');
+          const key = t.coachName.toLowerCase().replace(/[\s\.]/g,'').slice(0,6);
           if (!seen[key]) {
             seen[key] = t;
           } else {
-            const s1 = (seen[key].coachPhoto ? 10 : 0) + (seen[key].dateReliable ? 1 : 0);
-            const s2 = (t.coachPhoto ? 10 : 0) + (t.dateReliable ? 1 : 0);
-            if (s2 > s1) seen[key] = t;
+            // Photo prime sur tout — si le nouveau a photo et l'ancien non → remplacer
+            const existingHasPhoto = !!seen[key].coachPhoto;
+            const newHasPhoto = !!t.coachPhoto;
+            if (!existingHasPhoto && newHasPhoto) {
+              seen[key] = t; // nouveau a photo → prendre le nouveau
+            }
+            // Les deux ont photo ou les deux sans → garder le plus ancien (date vraie)
+            else if (existingHasPhoto === newHasPhoto) {
+              if (new Date(t.date||0) < new Date(seen[key].date||0)) seen[key] = t;
+            }
           }
         });
         return Object.values(seen);
