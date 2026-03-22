@@ -48,7 +48,7 @@
     <script>
         if ("serviceWorker" in navigator) {
             const sw = `
-    const C='wf-pro-v152';
+    const C='wf-pro-v153';
     const API_KEY='3a14b1347c177458e2f23bea7899e9cf';
     const BASE='https://v3.football.api-sports.io';
     let prevScores = {};
@@ -7971,7 +7971,7 @@ function TransfersTab({ onTeam }) {
         data.forEach(entry => {
           (entry.transfers || []).forEach(t => {
             const year = parseInt((t.date || "").slice(0, 4));
-            if (year < 2025) return;
+            if (year < 2023) return;
             newEntries.push({ player: entry.player, date: t.date, type: t.type, teams: t.teams, _clubId: clubId });
           });
         });
@@ -7995,20 +7995,8 @@ function TransfersTab({ onTeam }) {
   }, [mainTab]);
 
   const filteredMercato = mercatoData.filter(t => {
-    // Filtre date — 2025+
-    const year = parseInt((t.date || "").slice(0, 4));
-    if (year < 2025) return false;
-
-    const inId  = t.teams?.in?.id;
-    const outId = t.teams?.out?.id;
-
-    if (clubFilter === "algerie") {
-      // Au moins un des deux clubs doit être algérien
-      const inAlgerian  = ALGERIAN_IDS.has(inId);
-      const outAlgerian = ALGERIAN_IDS.has(outId);
-      if (!inAlgerian && !outAlgerian) return false;
-    }
-    if (clubFilter === "europe" && ALGERIAN_IDS.has(t._clubId)) return false;
+    if (clubFilter === "algerie" && !ALGERIAN_IDS.has(t._clubId)) return false;
+    if (clubFilter === "europe"  &&  ALGERIAN_IDS.has(t._clubId)) return false;
     if (typeFilter === "Loan" && t.type !== "Loan") return false;
     if (typeFilter === "Free" && t.type !== "Free") return false;
     if (typeFilter === "paid" && (t.type === "Loan" || t.type === "Free" || t.type === "N/A" || !t.type)) return false;
