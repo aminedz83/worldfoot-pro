@@ -53,44 +53,29 @@
         ═══════════════════════════════════════════════════════ */
 
         :root {
-            /* Surfaces */
             --c-base:        #F5F6F8;
             --c-surface:     #FFFFFF;
             --c-elevated:    #FFFFFF;
             --c-card:        #FFFFFF;
             --c-input:       #F8F9FB;
-
-            /* Borders */
             --c-border:      rgba(15,23,42,0.07);
             --c-border-md:   rgba(15,23,42,0.11);
             --c-border-str:  rgba(15,23,42,0.16);
-
-            /* Textes */
             --c-ink:         #0F1629;
             --c-ink-2:       rgba(15,22,41,0.60);
             --c-ink-3:       rgba(15,22,41,0.38);
             --c-ink-4:       rgba(15,22,41,0.22);
-
-            /* Accent jade */
             --c-jade:        #059669;
             --c-jade-light:  #10B981;
             --c-jade-dim:    rgba(5,150,105,0.10);
             --c-jade-glow:   rgba(5,150,105,0.20);
-
-            /* Live rouge */
             --c-live:        #E53E3E;
             --c-live-dim:    rgba(229,62,62,0.09);
-
-            /* Or accent */
             --c-gold:        #B7791F;
             --c-gold-dim:    rgba(183,121,31,0.10);
-
-            /* Typographies */
             --f-sans:  'Plus Jakarta Sans', -apple-system, sans-serif;
             --f-serif: 'Instrument Serif', Georgia, serif;
             --f-mono:  'JetBrains Mono', monospace;
-
-            /* Ombres */
             --s-card:    0 1px 3px rgba(15,23,42,0.06), 0 4px 16px rgba(15,23,42,0.06);
             --s-card-md: 0 2px 8px rgba(15,23,42,0.08), 0 8px 24px rgba(15,23,42,0.06);
             --s-header:  0 1px 0 rgba(15,23,42,0.08), 0 4px 20px rgba(15,23,42,0.05);
@@ -129,7 +114,6 @@
             padding-bottom: max(80px, calc(70px + env(safe-area-inset-bottom))) !important;
         }
 
-        /* ── KEYFRAMES ── */
         @keyframes spin { to { transform: rotate(360deg); } }
         @keyframes pulse {
             0%,100% { opacity: 1; } 50% { opacity: 0.15; }
@@ -211,7 +195,6 @@
             100% { background-position: 300% 0; }
         }
 
-        /* ── UTILITAIRES ── */
         .bc { font-family: var(--f-mono); }
 
         .live-dot {
@@ -225,7 +208,6 @@
         .score-pop { animation: sPop   0.5s  cubic-bezier(0.36,0.07,0.19,0.97) forwards; }
         .pop-in    { animation: popIn  0.28s cubic-bezier(0.22,1,0.36,1) forwards; }
 
-        /* ── CARTES ── */
         .card {
             background: var(--c-card);
             border: 1px solid var(--c-border);
@@ -285,7 +267,6 @@
             border-radius: 8px;
         }
 
-        /* ── MATCH DETAIL OVERLAY ── */
         .md-overlay {
             position: fixed; inset: 0; z-index: 950;
             background: var(--c-base);
@@ -319,7 +300,6 @@
             color: var(--c-ink-4);
         }
 
-        /* ── MATCH DETAIL HEADER (sombre conservé pour contraste score) ── */
         .md-header {
             flex-shrink: 0;
             background: linear-gradient(170deg, #111827 0%, #0C1220 100%);
@@ -368,7 +348,6 @@
         .md-goal-scorer { font-family: var(--f-mono); font-size: 10px; color: rgba(255,255,255,0.30); line-height: 1.8; flex: 1; }
         .md-goal-scorer.away { text-align: right; }
 
-        /* ── MD TABS ── */
         .md-tabs {
             display: flex;
             border-bottom: 1px solid var(--c-border);
@@ -437,7 +416,6 @@
         .md-empty { text-align: center; padding: 48px 20px; color: var(--c-ink-4); font-size: 13px; }
         .md-empty-small { text-align: center; padding: 12px; color: var(--c-ink-3); font-size: 12px; background: rgba(15,23,42,0.02); }
 
-        /* ── HALF TIME / STATS ── */
         .half-time-badge { background: var(--c-base); border-radius: 100px; padding: 8px 20px; margin: 16px 12px 8px; border: 1px solid var(--c-border); display: flex; align-items: center; justify-content: space-between; }
         .half-label { font-family: var(--f-mono); font-size: 9px; font-weight: 500; letter-spacing: 2px; color: var(--c-ink-3); text-transform: uppercase; }
         .half-score { font-family: var(--f-serif); font-size: 20px; font-style: italic; color: var(--c-jade); background: var(--c-jade-dim); padding: 2px 12px; border-radius: 30px; }
@@ -710,7 +688,6 @@ const SUSP_ST  = new Set(["SUSP","INT","ABD"]);
 const CANCEL_ST = new Set(["CANC"]);
 
 const _cache = new Map();
-// Cache cartons rouges par fixture id : { home: N, away: N }
 const _redCardsCache = new Map();
 let _apiCallsToday = parseInt(localStorage.getItem('wf_api_calls_'+new Date().toDateString())||'0');
 let _apiCallsDate = new Date().toDateString();
@@ -771,7 +748,6 @@ const T = {
   shadowLg:"0 8px 40px rgba(0,0,0,.1),0 2px 8px rgba(0,0,0,.06)",
 };
 
-// ==================== NOUVEAU TIMER FLASHSCORE ====================
 function useMatchTimer(elapsed, status) {
   const [currentTime, setCurrentTime] = useState(elapsed || 0);
   
@@ -788,7 +764,6 @@ function useMatchTimer(elapsed, status) {
       const secondsElapsed = Math.floor((Date.now() - startTime) / 1000);
       let newTime = startElapsed + Math.floor(secondsElapsed / 60);
       
-      // Limites max selon la période (comme FlashScore)
       if (status === "1H" && newTime > 60) newTime = 60;
       if (status === "2H" && newTime > 105) newTime = 105;
       if (status === "ET" && newTime > 135) newTime = 135;
@@ -806,7 +781,6 @@ function useMatchTimer(elapsed, status) {
 function formatMatchTime(currentTime, status) {
   if (!LIVE_ST.has(status)) return null;
   
-  // 1ère mi-temps
   if (status === "1H") {
     if (currentTime >= 45) {
       const extra = currentTime - 45;
@@ -815,7 +789,6 @@ function formatMatchTime(currentTime, status) {
     return `${currentTime}'`;
   }
   
-  // 2ème mi-temps
   if (status === "2H") {
     if (currentTime >= 90) {
       const extra = currentTime - 90;
@@ -824,7 +797,6 @@ function formatMatchTime(currentTime, status) {
     return `${currentTime}'`;
   }
   
-  // Prolongations
   if (status === "ET") {
     if (currentTime >= 90 && currentTime < 105) {
       const extra = currentTime - 90;
@@ -844,14 +816,12 @@ function formatMatchTime(currentTime, status) {
     return `${currentTime}' (P)`;
   }
   
-  // Tirs au but
   if (status === "P") {
     return "T.a.b";
   }
   
   return `${currentTime}'`;
 }
-// ==================== FIN TIMER FLASHSCORE ====================
 
 function useFlash(hg,ag){
   const prev=useRef({h:null,a:null}), [on,setOn]=useState(false);
@@ -941,7 +911,6 @@ async function resolvePlayerPhoto(playerId,playerName){
   return null;
 }
 
-// Cache pour les photos d'entraîneurs
 const _coachPhotoCache = new Map();
 
 async function getCoachPhoto(coachName, coachId = null) {
@@ -950,14 +919,12 @@ async function getCoachPhoto(coachName, coachId = null) {
   if (_coachPhotoCache.has(cacheKey)) return _coachPhotoCache.get(cacheKey);
   const cleanName = coachName.split(',')[0].trim();
 
-  // 1. URL directe API-Sports par ID (source principale — S. Ramović)
   if (coachId) {
     const url = `https://media.api-sports.io/football/coachs/${coachId}.png`;
     const ok = await checkImg(url);
     if (ok) { _coachPhotoCache.set(cacheKey, url); return url; }
   }
 
-  // 2. TheSportsDB — bonne couverture mondiale
   try {
     const r = await fetch(`https://www.thesportsdb.com/api/v1/json/3/searchplayers.php?p=${encodeURIComponent(cleanName)}`);
     const d = await r.json();
@@ -967,7 +934,6 @@ async function getCoachPhoto(coachName, coachId = null) {
     }
   } catch(e) {}
 
-  // 3. FotMob — bonne couverture entraîneurs
   try {
     const slug = cleanName.toLowerCase().replace(/\s+/g, '-').replace(/[^a-z0-9-]/g, '');
     const fotmobUrls = [
@@ -981,7 +947,6 @@ async function getCoachPhoto(coachName, coachId = null) {
     }
   } catch(e) {}
 
-  // 4. Transfermarkt — bonne couverture coaches africains/arabes
   try {
     const slug = cleanName.toLowerCase().replace(/\s+/g, '-').replace(/[^a-z0-9-]/g, '');
     const tmUrls = [
@@ -1005,7 +970,6 @@ function getCoachInitials(name) {
   return name.substring(0, 2).toUpperCase();
 }
 
-// Composant photo entraîneur — valide l'image avant affichage
 function CoachPhoto({ coach, size = 56, bgColor = "linear-gradient(135deg,#00c170,#009e5c)" }) {
   const [photoUrl, setPhotoUrl] = useState(null);
   const [loaded, setLoaded] = useState(false);
@@ -1025,17 +989,14 @@ function CoachPhoto({ coach, size = 56, bgColor = "linear-gradient(135deg,#00c17
     };
 
     (async () => {
-      // Source 1 : photo de l'API déjà récupérée
       if (coach.photo && !coach.photo.includes("noimage") && !coach.photo.includes("default")) {
         if (!cancelled) { setPhotoUrl(coach.photo); return; }
       }
 
-      // Source 2 : URL directe API-Sports validée
       const apiUrl = `https://media.api-sports.io/football/coachs/${coach.id}.png`;
       const valid = await tryUrl(apiUrl);
       if (!cancelled && valid) { setPhotoUrl(valid); return; }
 
-      // Pas de photo valide
       if (!cancelled) setPhotoUrl(null);
     })();
 
@@ -1351,46 +1312,30 @@ const renderTerrainFlash = (fix, hLu, aLu, players, events, hid, aid, has, hg, a
       marginBottom: 16
     }
   },
-    // SVG terrain exact Flashscore
     React.createElement("svg", {
       style: { position: "absolute", inset: 0, width: "100%", height: "100%", pointerEvents: "none" },
       viewBox: "0 0 320 640",
       preserveAspectRatio: "none"
     },
-      // Bandes alternées verticales
       React.createElement("rect", { x: 0, y: 0, width: 320, height: 640, fill: "#4a8c3f" }),
       React.createElement("rect", { x: 0, y: 0, width: 320, height: 80, fill: "rgba(0,0,0,0.06)" }),
       React.createElement("rect", { x: 0, y: 160, width: 320, height: 80, fill: "rgba(0,0,0,0.06)" }),
       React.createElement("rect", { x: 0, y: 320, width: 320, height: 80, fill: "rgba(0,0,0,0.06)" }),
       React.createElement("rect", { x: 0, y: 480, width: 320, height: 80, fill: "rgba(0,0,0,0.06)" }),
-      // Bordure terrain
       React.createElement("rect", { x: 12, y: 10, width: 296, height: 620, fill: "none", stroke: "rgba(255,255,255,0.9)", strokeWidth: 1.8 }),
-      // Ligne médiane
       React.createElement("line", { x1: 12, y1: 320, x2: 308, y2: 320, stroke: "rgba(255,255,255,0.9)", strokeWidth: 1.8 }),
-      // Rond central
       React.createElement("circle", { cx: 160, cy: 320, r: 46, fill: "none", stroke: "rgba(255,255,255,0.9)", strokeWidth: 1.8 }),
       React.createElement("circle", { cx: 160, cy: 320, r: 2.5, fill: "rgba(255,255,255,0.9)" }),
-      // Grande surface haut
       React.createElement("rect", { x: 68, y: 10, width: 184, height: 72, fill: "none", stroke: "rgba(255,255,255,0.9)", strokeWidth: 1.8 }),
-      // Petite surface haut
       React.createElement("rect", { x: 108, y: 10, width: 104, height: 34, fill: "none", stroke: "rgba(255,255,255,0.9)", strokeWidth: 1.8 }),
-      // But haut
       React.createElement("rect", { x: 130, y: 4, width: 60, height: 10, fill: "none", stroke: "rgba(255,255,255,0.7)", strokeWidth: 1.5 }),
-      // Arc de cercle haut
       React.createElement("path", { d: "M 108 82 A 46 46 0 0 0 212 82", fill: "none", stroke: "rgba(255,255,255,0.9)", strokeWidth: 1.8 }),
-      // Point penalty haut
       React.createElement("circle", { cx: 160, cy: 76, r: 2.5, fill: "rgba(255,255,255,0.9)" }),
-      // Grande surface bas
       React.createElement("rect", { x: 68, y: 558, width: 184, height: 72, fill: "none", stroke: "rgba(255,255,255,0.9)", strokeWidth: 1.8 }),
-      // Petite surface bas
       React.createElement("rect", { x: 108, y: 586, width: 104, height: 34, fill: "none", stroke: "rgba(255,255,255,0.9)", strokeWidth: 1.8 }),
-      // But bas
       React.createElement("rect", { x: 130, y: 626, width: 60, height: 10, fill: "none", stroke: "rgba(255,255,255,0.7)", strokeWidth: 1.5 }),
-      // Arc de cercle bas
       React.createElement("path", { d: "M 108 558 A 46 46 0 0 1 212 558", fill: "none", stroke: "rgba(255,255,255,0.9)", strokeWidth: 1.8 }),
-      // Point penalty bas
       React.createElement("circle", { cx: 160, cy: 564, r: 2.5, fill: "rgba(255,255,255,0.9)" }),
-      // Coins arrondis
       React.createElement("path", { d: "M 12 22 A 12 12 0 0 1 24 10", fill: "none", stroke: "rgba(255,255,255,0.9)", strokeWidth: 1.8 }),
       React.createElement("path", { d: "M 296 10 A 12 12 0 0 1 308 22", fill: "none", stroke: "rgba(255,255,255,0.9)", strokeWidth: 1.8 }),
       React.createElement("path", { d: "M 308 618 A 12 12 0 0 1 296 630", fill: "none", stroke: "rgba(255,255,255,0.9)", strokeWidth: 1.8 }),
@@ -1407,7 +1352,6 @@ const renderTerrainFlash = (fix, hLu, aLu, players, events, hid, aid, has, hg, a
         flexDirection: "column"
       }
     },
-      // Formation domicile en haut à gauche
       React.createElement("div", { style: { position: "absolute", top: 12, left: 14, background: "rgba(0,0,0,0.55)", borderRadius: 6, padding: "3px 8px", zIndex: 10 } },
         React.createElement("span", { style: { color: "#fff", fontSize: 11, fontWeight: 800 } }, homeFormation)
       ),
@@ -1427,17 +1371,13 @@ const renderTerrainFlash = (fix, hLu, aLu, players, events, hid, aid, has, hg, a
               const hasSub = playerEvents.some(e => e.type === "subst");
               return React.createElement("div", { key: player.id, style: { position: "relative" } },
                 React.createElement(PlayerFlash, { player: player, rating: player.rating, isHome: true }),
-                // But — en haut à gauche de la photo (top:18 pour aligner avec la photo)
                 hasGoal && React.createElement("div", { style: { position:"absolute", top:18, left:2, display:"flex", flexDirection:"column", gap:1 } },
                   ...Array(goalCount).fill(null).map((_,i) =>
                     React.createElement("span", { key:i, style:{ fontSize:10, lineHeight:1 } }, "⚽")
                   )
                 ),
-                // Carton jaune — en haut à droite de la photo
                 hasYellow && !hasRed && React.createElement("div", { style:{ position:"absolute", top:14, right:2, width:8, height:12, borderRadius:2, background:"#f59e0b", boxShadow:"0 1px 3px rgba(0,0,0,.3)" } }),
-                // Carton rouge — en haut à droite de la photo
                 hasRed && React.createElement("div", { style:{ position:"absolute", top:14, right:2, width:8, height:12, borderRadius:2, background:"#e53935", boxShadow:"0 1px 3px rgba(0,0,0,.3)" } }),
-                // Changement — en bas à gauche de la photo
                 hasSub && React.createElement("div", { style:{ position:"absolute", bottom:18, left:2, fontSize:9, lineHeight:1 } }, "🔄")
               );
             })
@@ -1445,7 +1385,6 @@ const renderTerrainFlash = (fix, hLu, aLu, players, events, hid, aid, has, hg, a
         )
       ),
 
-      // Séparateur mi-terrain
       React.createElement("div", { style: { height: 32 } }),
 
       React.createElement("div", { style: { flex: 1, display: "flex", flexDirection: "column", justifyContent: "space-around" } },
@@ -1463,17 +1402,13 @@ const renderTerrainFlash = (fix, hLu, aLu, players, events, hid, aid, has, hg, a
               const hasSub = playerEvents.some(e => e.type === "subst");
               return React.createElement("div", { key: player.id, style: { position: "relative" } },
                 React.createElement(PlayerFlash, { player: player, rating: player.rating, isHome: false }),
-                // But — en haut à gauche de la photo
                 hasGoal && React.createElement("div", { style: { position:"absolute", top:18, left:2, display:"flex", flexDirection:"column", gap:1 } },
                   ...Array(goalCount).fill(null).map((_,i) =>
                     React.createElement("span", { key:i, style:{ fontSize:10, lineHeight:1 } }, "⚽")
                   )
                 ),
-                // Carton jaune — en haut à droite de la photo
                 hasYellow && !hasRed && React.createElement("div", { style:{ position:"absolute", top:14, right:2, width:8, height:12, borderRadius:2, background:"#f59e0b", boxShadow:"0 1px 3px rgba(0,0,0,.3)" } }),
-                // Carton rouge — en haut à droite de la photo
                 hasRed && React.createElement("div", { style:{ position:"absolute", top:14, right:2, width:8, height:12, borderRadius:2, background:"#e53935", boxShadow:"0 1px 3px rgba(0,0,0,.3)" } }),
-                // Changement — en bas à gauche de la photo
                 hasSub && React.createElement("div", { style:{ position:"absolute", bottom:18, left:2, fontSize:9, lineHeight:1 } }, "🔄")
               );
             })
@@ -1481,7 +1416,6 @@ const renderTerrainFlash = (fix, hLu, aLu, players, events, hid, aid, has, hg, a
         )
       ),
 
-      // Formation extérieur en bas à gauche
       React.createElement("div", { style: { position: "absolute", bottom: 12, left: 14, background: "rgba(0,0,0,0.55)", borderRadius: 6, padding: "3px 8px", zIndex: 10 } },
         React.createElement("span", { style: { color: "#fff", fontSize: 11, fontWeight: 800 } }, awayFormation)
       )
@@ -1489,7 +1423,6 @@ const renderTerrainFlash = (fix, hLu, aLu, players, events, hid, aid, has, hg, a
   );
 };
 
-// VERSION ULTRA PREMIUM - AFFICHE LES DEUX ÉQUIPES CÔTE À CÔTE
 const renderListeFlash = (fix, hLu, aLu, players, events, injuries, hid, aid) => {
   if (!hLu && !aLu && !players.length) {
     return React.createElement("div", { className: "md-empty" },
@@ -1563,7 +1496,6 @@ const renderListeFlash = (fix, hLu, aLu, players, events, injuries, hid, aid) =>
     }
   },
 
-    // EN-TÊTE DOUBLE AVEC LOGOS - VERSION AMÉLIORÉE
     React.createElement("div", {
       style: {
         display: "flex",
@@ -1578,7 +1510,6 @@ const renderListeFlash = (fix, hLu, aLu, players, events, injuries, hid, aid) =>
         boxShadow: "0 2px 8px rgba(0,0,0,0.05)"
       }
     },
-      // Équipe domicile
       React.createElement("div", {
         style: {
           flex: 1,
@@ -1619,7 +1550,6 @@ const renderListeFlash = (fix, hLu, aLu, players, events, injuries, hid, aid) =>
         )
       ),
 
-      // Séparateur VS
       React.createElement("div", {
         style: {
           background: "#00c170",
@@ -1634,7 +1564,6 @@ const renderListeFlash = (fix, hLu, aLu, players, events, injuries, hid, aid) =>
         }
       }, "VS"),
 
-      // Équipe extérieure
       React.createElement("div", {
         style: {
           flex: 1,
@@ -1677,7 +1606,6 @@ const renderListeFlash = (fix, hLu, aLu, players, events, injuries, hid, aid) =>
       )
     ),
 
-    // SECTION TITULAIRES
     React.createElement("div", {
       style: {
         display: "flex",
@@ -1698,7 +1626,6 @@ const renderListeFlash = (fix, hLu, aLu, players, events, injuries, hid, aid) =>
       React.createElement("span", { style: { width: 40, textAlign: "center" } }, "")
     ),
 
-    // TITULAIRES DES DEUX ÉQUIPES
     Array.from({ length: Math.max(homeTeamData.starters.length, awayTeamData.starters.length) }).map((_, index) => {
       const homePlayer = homeTeamData.starters[index];
       const awayPlayer = awayTeamData.starters[index];
@@ -1713,7 +1640,6 @@ const renderListeFlash = (fix, hLu, aLu, players, events, injuries, hid, aid) =>
           width: "100%"
         }
       },
-        // Joueur domicile
         React.createElement("div", {
           style: {
             flex: 1,
@@ -1819,7 +1745,6 @@ const renderListeFlash = (fix, hLu, aLu, players, events, injuries, hid, aid) =>
           ) : React.createElement("div", { style: { height: 40 } })
         ),
 
-        // Joueur extérieur
         React.createElement("div", {
           style: {
             flex: 1,
@@ -1931,7 +1856,6 @@ const renderListeFlash = (fix, hLu, aLu, players, events, injuries, hid, aid) =>
       );
     }),
 
-    // SECTION REMPLAÇANTS
     React.createElement("div", {
       style: {
         display: "flex",
@@ -1952,7 +1876,6 @@ const renderListeFlash = (fix, hLu, aLu, players, events, injuries, hid, aid) =>
       React.createElement("span", { style: { width: 40, textAlign: "center" } }, "")
     ),
 
-    // REMPLAÇANTS DES DEUX ÉQUIPES
     Array.from({ length: Math.max(homeTeamData.subs.length, awayTeamData.subs.length) }).map((_, index) => {
       const homeSub = homeTeamData.subs[index];
       const awaySub = awayTeamData.subs[index];
@@ -1967,7 +1890,6 @@ const renderListeFlash = (fix, hLu, aLu, players, events, injuries, hid, aid) =>
           width: "100%"
         }
       },
-        // Remplaçant domicile
         React.createElement("div", {
           style: {
             flex: 1,
@@ -2041,7 +1963,6 @@ const renderListeFlash = (fix, hLu, aLu, players, events, injuries, hid, aid) =>
           ) : React.createElement("div", { style: { height: 38 } })
         ),
 
-        // Remplaçant extérieur
         React.createElement("div", {
           style: {
             flex: 1,
@@ -2119,7 +2040,6 @@ const renderListeFlash = (fix, hLu, aLu, players, events, injuries, hid, aid) =>
       );
     }),
 
-    // SECTION BLESSURES
     (homeAbsent.length > 0 || awayAbsent.length > 0) && React.createElement("div", {
       style: {
         display: "flex",
@@ -2140,7 +2060,6 @@ const renderListeFlash = (fix, hLu, aLu, players, events, injuries, hid, aid) =>
       React.createElement("span", { style: { width: 40, textAlign: "center" } }, "")
     ),
 
-    // BLESSURES DES DEUX ÉQUIPES
     Array.from({ length: Math.max(homeAbsent.length, awayAbsent.length) }).map((_, index) => {
       const homeAbs = homeAbsent[index];
       const awayAbs = awayAbsent[index];
@@ -2155,7 +2074,6 @@ const renderListeFlash = (fix, hLu, aLu, players, events, injuries, hid, aid) =>
           width: "100%"
         }
       },
-        // Blessure domicile
         React.createElement("div", {
           style: {
             flex: 1,
@@ -2210,7 +2128,6 @@ const renderListeFlash = (fix, hLu, aLu, players, events, injuries, hid, aid) =>
           ) : React.createElement("div", { style: { height: 42 } })
         ),
 
-        // Blessure extérieur
         React.createElement("div", {
           style: {
             flex: 1,
@@ -2268,7 +2185,6 @@ const renderListeFlash = (fix, hLu, aLu, players, events, injuries, hid, aid) =>
       );
     }),
 
-    // SECTION ENTRAÎNEURS
     (hLu?.coach || aLu?.coach) && React.createElement("div", {
       style: {
         display: "flex",
@@ -2289,7 +2205,6 @@ const renderListeFlash = (fix, hLu, aLu, players, events, injuries, hid, aid) =>
       React.createElement("span", { style: { width: 40, textAlign: "center" } }, "")
     ),
 
-    // ENTRAÎNEURS DES DEUX ÉQUIPES
     React.createElement("div", {
       style: {
         display: "flex",
@@ -2483,7 +2398,6 @@ function ComposPanel({lineups, players, homeTeam, awayTeam, isPartial, fix, even
   );
 }
 
-// ==================== ROW COMPONENT AVEC NOUVEAU TIMER ====================
 function Row({match:m, onOpen, isFav, onFav, onTeam}){
   const s=m.fixture.status;
   const sh=s.short;
@@ -2491,7 +2405,6 @@ function Row({match:m, onOpen, isFav, onFav, onTeam}){
   const done=DONE_ST.has(sh);
   const canc=sh==="CANC";
   
-  // Utiliser le nouveau timer FlashScore
   const liveTime = useMatchTimer(s.elapsed, sh);
   const timeDisplay = live ? formatMatchTime(liveTime, sh) : null;
   
@@ -2562,13 +2475,11 @@ function Row({match:m, onOpen, isFav, onFav, onTeam}){
       opacity: canc ? 0.5 : 1
     }
   },
-    // Étoile favori à GAUCHE
     React.createElement("button", {
       onClick: e => { e.stopPropagation(); onFav(); },
       style: { background: "none", border: "none", color: isFav ? "#f59e0b" : "#d0d0d0", fontSize: 16, padding: "0 6px 0 8px", flexShrink: 0, cursor: "pointer", lineHeight: 1 }
     }, isFav ? "★" : "☆"),
 
-    // Colonne temps/statut avec nouveau timer
     React.createElement("div", { style: { width: 36, flexShrink: 0, textAlign: "center" } },
       live
         ? React.createElement("div", { style: { display:"flex", flexDirection:"column", alignItems:"center", gap: 1 } },
@@ -2582,9 +2493,7 @@ function Row({match:m, onOpen, isFav, onFav, onTeam}){
         : React.createElement("span", { style: { fontSize: 11, fontWeight: 600, color: "#888" } }, stLabel)
     ),
 
-    // Colonne équipes (inchangée)
     React.createElement("div", { style: { flex: 1, minWidth: 0, padding: "7px 0 7px 2px", display: "flex", flexDirection: "column", gap: 5 } },
-      // Domicile
       React.createElement("div", { style: { display: "flex", alignItems: "center", gap: 6 } },
         React.createElement("div", { style: { display:"flex", alignItems:"center", gap:6, flex:1, minWidth:0 } },
           React.createElement(Logo, { src: m.teams.home.logo, size: 18 }),
@@ -2593,14 +2502,12 @@ function Row({match:m, onOpen, isFav, onFav, onTeam}){
             homeRed > 0 ? React.createElement("span", { style: { fontSize: 9, fontWeight: 800, color: "#fff", background: "#e53535", borderRadius: 3, padding: "1px 4px", flexShrink: 0 } }, homeRed) : null
           )
         ),
-        // GROSSE OCCASION - inchangé
         showBigChance && actionTeam === m.teams.home.id ? React.createElement("span", { style: {
           fontSize: 9, fontWeight: 900, color: "#e53935",
           whiteSpace: "nowrap", textTransform: "uppercase", letterSpacing: 0.3,
           animation: "blink-3 1.5s ease-in-out", flexShrink: 0, paddingRight: 4
         } }, "GROSSE OCCASION !") : null
       ),
-      // Extérieur
       React.createElement("div", { style: { display: "flex", alignItems: "center", gap: 6 } },
         React.createElement("div", { style: { display:"flex", alignItems:"center", gap:6, flex:1, minWidth:0 } },
           React.createElement(Logo, { src: m.teams.away.logo, size: 18 }),
@@ -2609,7 +2516,6 @@ function Row({match:m, onOpen, isFav, onFav, onTeam}){
             awayRed > 0 ? React.createElement("span", { style: { fontSize: 9, fontWeight: 800, color: "#fff", background: "#e53535", borderRadius: 3, padding: "1px 4px", flexShrink: 0 } }, awayRed) : null
           )
         ),
-        // GROSSE OCCASION - inchangé
         showBigChance && actionTeam === m.teams.away.id ? React.createElement("span", { style: {
           fontSize: 9, fontWeight: 900, color: "#e53935",
           whiteSpace: "nowrap", textTransform: "uppercase", letterSpacing: 0.3,
@@ -2618,7 +2524,6 @@ function Row({match:m, onOpen, isFav, onFav, onTeam}){
       )
     ),
 
-    // Scores (inchangé)
     React.createElement("div", { style: { width: 24, display: "flex", flexDirection: "column", alignItems: "flex-end", justifyContent: "center", gap: 5, flexShrink: 0, paddingRight: 14 } },
       has
         ? React.createElement(React.Fragment, null,
@@ -2630,12 +2535,10 @@ function Row({match:m, onOpen, isFav, onFav, onTeam}){
   );
 }
 
-// ==================== LEAGUE BLOCK ====================
 function LeagueBlock({group, onOpen, favs, onFav, onTeam}){
   const[open,setOpen]=useState(true);
   const lv=group.matches.filter(m=>LIVE_ST.has(m.fixture.status.short)).length;
   return React.createElement("div", { style: { background: "transparent" } },
-    // Header ligue — style Flashscore exact
     React.createElement("div", {
       onClick: () => setOpen(v => !v),
       style: {
@@ -2646,7 +2549,6 @@ function LeagueBlock({group, onOpen, favs, onFav, onTeam}){
         cursor: "pointer", userSelect: "none"
       }
     },
-      // Logo ligue dans carré blanc arrondi
       React.createElement("div", { style: {
         width: 40, height: 40, borderRadius: 10,
         background: "#fff", border: "1px solid #e8e8e8",
@@ -2655,7 +2557,6 @@ function LeagueBlock({group, onOpen, favs, onFav, onTeam}){
       } },
         React.createElement(Logo, { src: group.lg.logo || group.lg.flag, size: 28 })
       ),
-      // Nom + pays
       React.createElement("div", { style: { flex: 1, minWidth: 0 } },
         React.createElement("div", { style: {
           fontSize: 14, fontWeight: 700, color: "#111",
@@ -2668,7 +2569,6 @@ function LeagueBlock({group, onOpen, favs, onFav, onTeam}){
           React.createElement("span", { style: { fontSize: 10, fontWeight: 600, color: "#999", textTransform: "uppercase", letterSpacing: 0.5 } }, group.lg.country)
         )
       ),
-      // Badge LIVE
       lv > 0
         ? React.createElement("span", { style: {
             fontSize: 9, fontWeight: 700, letterSpacing: 0.5,
@@ -2683,7 +2583,6 @@ function LeagueBlock({group, onOpen, favs, onFav, onTeam}){
   );
 }
 
-// ==================== REFEREE STATS ====================
 const refereeStatsCache = new Map();
 
 const getRefereeStats = async (refereeName) => {
@@ -2789,7 +2688,6 @@ function MatchDetailWrapper({state,onClose,onTeam}){
   return React.createElement(MatchDetail,{state,onClose,onTeam});
 }
 
-// ==================== LEAGUE SHEET ====================
 function LeagueSheet({fix, leagueInfo, onClose}) {
   const lid = fix.league.id;
   const season = fix.league.season;
@@ -2808,7 +2706,6 @@ function LeagueSheet({fix, leagueInfo, onClose}) {
     {key:"Final", label:"FINALE"}
   ];
 
-  // Charger le classement pour les rangs
   useEffect(() => {
     if(!lid||!season) return;
     api(`/standings?league=${lid}&season=${season}`, 86400000)
@@ -2823,7 +2720,6 @@ function LeagueSheet({fix, leagueInfo, onClose}) {
     return row?.rank || null;
   };
 
-  // Charger les matchs de la phase active
   useEffect(() => {
     if(!lid||!season) return;
     setLoading(true);
@@ -2832,7 +2728,6 @@ function LeagueSheet({fix, leagueInfo, onClose}) {
       .catch(() => setLoading(false));
   }, [activePhase, lid, season]);
 
-  // Détecter la phase actuelle
   useEffect(() => {
     const r = fix.league.round || "";
     if(r.includes("Round of 32")) setActivePhase("Round of 32");
@@ -2842,7 +2737,6 @@ function LeagueSheet({fix, leagueInfo, onClose}) {
     else if(r.match(/^Final$/i)) setActivePhase("Final");
   }, []);
 
-  // Grouper les matchs par paires (aller/retour)
   const pairs = [];
   const seen = new Set();
   fixtures.forEach(f => {
@@ -2870,7 +2764,6 @@ function LeagueSheet({fix, leagueInfo, onClose}) {
   const [showWinners, setShowWinners] = useState(false);
   const [winnersData, setWinnersData] = useState({});
 
-  // Charger les vainqueurs quand on ouvre le sheet
   useEffect(() => {
     if(!showWinners||!leagueInfo?.seasons||!lid) return;
     const pastSeasons = leagueInfo.seasons.filter(s => !s.current);
@@ -2894,14 +2787,10 @@ function LeagueSheet({fix, leagueInfo, onClose}) {
     style:{position:"absolute",inset:0,background:"rgba(0,0,0,.5)",zIndex:20,display:"flex",flexDirection:"column"},
     onClick: e => { if(e.target===e.currentTarget) onClose(); }
   },
-    // Full screen sheet
     React.createElement("div", {style:{background:"#f5f6f8",flex:1,marginTop:48,borderRadius:"20px 20px 0 0",display:"flex",flexDirection:"column",overflow:"hidden"}},
 
-      // Header
       React.createElement("div", {style:{background:"#fff",borderRadius:"20px 20px 0 0",padding:"12px 16px 0",flexShrink:0}},
-        // Handle
         React.createElement("div", {style:{width:36,height:4,borderRadius:2,background:"#e2e8f0",margin:"0 auto 12px"}}),
-        // Fermer
         React.createElement("div", {style:{display:"flex",alignItems:"center",justifyContent:"space-between",marginBottom:12}},
           React.createElement("div", {style:{display:"flex",alignItems:"center",gap:6}},
             fix.league.flag ? React.createElement("img", {src:fix.league.flag,style:{width:16,height:11,borderRadius:2,objectFit:"cover"}}) : null,
@@ -2909,14 +2798,12 @@ function LeagueSheet({fix, leagueInfo, onClose}) {
           ),
           React.createElement("button", {onClick:onClose,style:{background:"none",border:"none",fontSize:20,color:"#94a3b8",cursor:"pointer"}}, "✕")
         ),
-        // Logo + nom
         React.createElement("div", {style:{display:"flex",alignItems:"center",gap:14,marginBottom:12}},
           React.createElement("div", {style:{width:72,height:72,borderRadius:14,background:"#f8fafc",border:"1px solid #e8e8e8",display:"flex",alignItems:"center",justifyContent:"center",flexShrink:0}},
             React.createElement("img", {src:fix.league.logo,style:{width:52,height:52,objectFit:"contain"},onError:e=>e.target.style.display="none"})
           ),
           React.createElement("div", null,
             React.createElement("div", {style:{fontSize:20,fontWeight:900,color:"#0f172a"}}, fix.league.name),
-            // Saison cliquable → historique vainqueurs
             React.createElement("div", {
               onClick: () => setShowWinners(true),
               style:{fontSize:13,color:"#64748b",marginTop:2,display:"flex",alignItems:"center",gap:4,cursor:"pointer"}
@@ -2931,7 +2818,6 @@ function LeagueSheet({fix, leagueInfo, onClose}) {
           )
         ),
 
-        // Barre de progression dynamique
         (() => {
           const knownDates = {
             2:   { start: `${season}-07-01`,   end: `${season+1}-05-31` },
@@ -2993,7 +2879,6 @@ function LeagueSheet({fix, leagueInfo, onClose}) {
           );
         })(),
 
-        // Bouton TABLEAU
         React.createElement("div", {style:{paddingBottom:12}},
           React.createElement("button", {
             onClick:()=>setShowTableau(true),
@@ -3001,7 +2886,6 @@ function LeagueSheet({fix, leagueInfo, onClose}) {
           }, "TABLEAU")
         ),
 
-        // Onglets phases
         React.createElement("div", {style:{display:"flex",overflowX:"auto",scrollbarWidth:"none",gap:0,borderBottom:"1px solid #f0f0f0",marginLeft:-16,marginRight:-16,paddingLeft:16}},
           phases.map(p =>
             React.createElement("button", {
@@ -3018,7 +2902,6 @@ function LeagueSheet({fix, leagueInfo, onClose}) {
         )
       ),
 
-      // Contenu — matchs de la phase
       React.createElement("div", {style:{flex:1,overflowY:"auto",padding:"12px 12px 32px"}},
         loading
           ? React.createElement("div", {style:{textAlign:"center",padding:40}}, React.createElement(Spin, {s:24,c:"#00c170"}))
@@ -3079,14 +2962,12 @@ function LeagueSheet({fix, leagueInfo, onClose}) {
             })
       ),
 
-      // Mini-sheet quand on clique sur une paire
       selectedPair ? React.createElement("div", {
         style:{position:"absolute",inset:0,background:"rgba(0,0,0,.4)",zIndex:10,display:"flex",flexDirection:"column",justifyContent:"flex-end"},
         onClick: e => { if(e.target===e.currentTarget) setSelectedPair(null); }
       },
         React.createElement("div", {style:{background:"#fff",borderRadius:"20px 20px 0 0",padding:"16px 0 32px"}},
           React.createElement("div", {style:{width:36,height:4,borderRadius:2,background:"#e2e8f0",margin:"0 auto 16px"}}),
-          // Header logos
           React.createElement("div", {style:{display:"flex",alignItems:"center",justifyContent:"space-around",padding:"0 24px 16px",borderBottom:"1px solid #f5f5f5"}},
             React.createElement("div", {style:{display:"flex",flexDirection:"column",alignItems:"center",gap:8}},
               React.createElement("div", {style:{width:56,height:56,borderRadius:12,background:"#f8fafc",border:"1px solid #e8e8e8",display:"flex",alignItems:"center",justifyContent:"center"}},
@@ -3102,7 +2983,6 @@ function LeagueSheet({fix, leagueInfo, onClose}) {
               React.createElement("span", {style:{fontSize:13,fontWeight:600,color:"#0f172a"}}, selectedPair.leg1.teams.away.name)
             )
           ),
-          // Matchs aller + retour
           [selectedPair.leg1, selectedPair.leg2].filter(Boolean).map((m,i) =>
             React.createElement("div", {key:i,style:{display:"flex",alignItems:"center",gap:12,padding:"12px 20px",borderBottom:"1px solid #f5f5f5"}},
               React.createElement("span", {style:{fontSize:12,color:"#94a3b8",minWidth:40,fontWeight:600}},
@@ -3130,11 +3010,9 @@ function LeagueSheet({fix, leagueInfo, onClose}) {
       ) : null
     ),
 
-    // Sheet historique vainqueurs
     showWinners ? React.createElement("div", {
       style:{position:"fixed",inset:0,background:"#fff",zIndex:100,display:"flex",flexDirection:"column"},
     },
-      // Header avec padding safe area iOS
       React.createElement("div", {style:{
         display:"flex",alignItems:"center",justifyContent:"space-between",
         padding:"16px 20px 16px",
@@ -3186,7 +3064,6 @@ function LeagueSheet({fix, leagueInfo, onClose}) {
           display:"flex",alignItems:"center",justifyContent:"center",flexShrink:0
         }}, "✕")
       ),
-      // Liste des saisons
       React.createElement("div", {style:{flex:1,overflowY:"auto"}},
         (() => {
           const seasons = leagueInfo?.seasons ? [...leagueInfo.seasons].reverse() : [];
@@ -3368,7 +3245,6 @@ function LeagueSheet({fix, leagueInfo, onClose}) {
               ).sort((a,b)=>b.titles-a.titles);
 
           return React.createElement(React.Fragment, null,
-            // Palmarès
             React.createElement("div", {style:{padding:"12px 20px 0"}},
               React.createElement("div", {style:{fontSize:11,fontWeight:700,color:"#94a3b8",textTransform:"uppercase",letterSpacing:1,marginBottom:8}}, "🏆 Palmarès"),
               palmares.map((entry, i) => {
@@ -3382,11 +3258,9 @@ function LeagueSheet({fix, leagueInfo, onClose}) {
               })
             ),
 
-            // Séparateur
             React.createElement("div", {style:{padding:"12px 20px 4px"}}),
             React.createElement("div", {style:{fontSize:11,fontWeight:700,color:"#94a3b8",textTransform:"uppercase",letterSpacing:1,padding:"0 20px 8px"}},"Historique"),
 
-            // Liste saisons
             seasons.map((s, i) => {
               const isCurrent = s.current;
               return React.createElement("div", {key:i,style:{
@@ -3416,7 +3290,6 @@ function LeagueSheet({fix, leagueInfo, onClose}) {
   );
 }
 
-// ==================== MATCH DETAIL COMPONENT ====================
 function MatchDetail({state,onClose,onTeam}){
   const[tab,setTab]=React.useState("resume");
   const[period,setPeriod]=React.useState("all");
@@ -3453,11 +3326,9 @@ function MatchDetail({state,onClose,onTeam}){
   const isDone = ["FT","AET","PEN"].includes(sh);
   const isNS = ["NS","TBD","PST","CANC"].includes(sh);
 
-  // Utiliser le nouveau timer FlashScore
   const liveTime = useMatchTimer(s.elapsed, sh);
   const timeDisplay = isLive ? formatMatchTime(liveTime, sh) : null;
 
-  // Classement général
   React.useEffect(()=>{
     if(!fix)return;
     const lid=fix.league?.id,season=fix.league?.season;
@@ -3472,7 +3343,6 @@ function MatchDetail({state,onClose,onTeam}){
     return()=>{stCancelled=true;if(stIv)clearInterval(stIv);};
   },[fix?.fixture?.id,isLive]);
 
-  // CLASSEMENT APRÈS CETTE JOURNÉE SPÉCIFIQUE
   React.useEffect(() => {
     if (!fix || !fix.league?.round) return;
     
@@ -3612,7 +3482,6 @@ function MatchDetail({state,onClose,onTeam}){
     return()=>{cancelled=true;};
   },[fix?.fixture?.venue?.id]);
 
-  // Charger le score du match aller pour les matchs aller/retour
   React.useEffect(()=>{
     const round = (fix?.league?.round||"").toLowerCase();
     const isKnockout = round.includes("round of")||round.includes("quarter")||round.includes("semi")||
@@ -3826,7 +3695,6 @@ function MatchDetail({state,onClose,onTeam}){
       const isRed = isCard && (e.detail?.includes("Red") || e.detail?.includes("Second Yellow"));
       const isBigChance = e.type === "Big Chance" || e.detail?.includes("Big chance") || e.detail?.includes("Hit woodwork") || e.type === "Big Chance Created" || e.type === "Big Chance Missed" || e.type === "Hit Woodwork";
 
-      // But refusé par VAR
       if (isGoalCancelled) {
         const d = (e.detail||"").toLowerCase();
         const reason = d.includes("handball")||d.includes("main") ? "main" : d.includes("offside")||d.includes("hors") ? "hors-jeu" : d.includes("foul")||d.includes("faute") ? "faute" : d.includes("handball") ? "main" : "VAR";
@@ -3964,19 +3832,14 @@ function MatchDetail({state,onClose,onTeam}){
   };
 
   const renderStats = () => {
-    // Fonction existante - gardée inchangée pour la lisibilité
-    // Dans l'original, cette fonction est très longue, on garde la version existante
-    // Elle est incluse dans le code final mais tronquée ici pour la lisibilité
     return React.createElement("div", null, "Stats");
   };
 
   const renderH2H = () => {
-    // Fonction existante - gardée inchangée
     return React.createElement("div", null, "H2H");
   };
 
   const renderStandings = () => {
-    // Fonction existante - gardée inchangée
     return React.createElement("div", null, "Classement");
   };
 
@@ -3999,7 +3862,6 @@ function MatchDetail({state,onClose,onTeam}){
       }
     },
 
-      // Barre ligue
       (() => {
         const r = fix.league?.round || "";
         const lid = fix.league?.id;
@@ -4013,13 +3875,10 @@ function MatchDetail({state,onClose,onTeam}){
         showArrow ? React.createElement("span", {style:{color:"#94a3b8",fontSize:14,flexShrink:0}}, "›") : null);
       })(),
 
-      // Date centré
       React.createElement("div", {style:{ height: 8 }}),
 
-      // Logos + Score + Noms
       React.createElement("div", {style:{ display: "flex", alignItems: "flex-start", justifyContent: "space-between", gap: 8, padding: "0 12px" }},
 
-        // Équipe domicile
         React.createElement("div", { onClick: () => onTeam && onTeam(fix.teams.home.id, fix.teams.home.name, fix.teams.home.logo, fix.league.id, fix.league.season), style: { flex:1, display:"flex", flexDirection:"column", alignItems:"center", gap:10, cursor: onTeam?"pointer":"default" } },
           React.createElement("div", {style:{ width:80, height:80, background:"#fff", borderRadius:18, display:"flex", alignItems:"center", justifyContent:"center", flexShrink:0 }},
             React.createElement("img", {src:fix.teams.home.logo, style:{width:60,height:60,objectFit:"contain"}, alt:""})
@@ -4027,7 +3886,6 @@ function MatchDetail({state,onClose,onTeam}){
           React.createElement("span", {style:{ fontSize:14, fontWeight:600, color:"#0f172a", textAlign:"center", lineHeight:1.3, overflow:"hidden", textOverflow:"ellipsis", display:"-webkit-box", WebkitLineClamp:2, WebkitBoxOrient:"vertical" }}, fix.teams.home.name)
         ),
 
-        // Score + statut centré avec NOUVEAU TIMER
         React.createElement("div", {style:{ display:"flex", flexDirection:"column", alignItems:"center", gap:6, paddingTop:8, flexShrink:0 }},
           React.createElement("span", {style:{ fontSize:12, color:"#94a3b8", letterSpacing:0.3, marginBottom:4 }}, `${ddmm2(fix.fixture.date)} ${hhmm2(fix.fixture.date)}`),
           React.createElement("div", {style:{ display:"flex", alignItems:"center", gap:10 }},
@@ -4035,9 +3893,7 @@ function MatchDetail({state,onClose,onTeam}){
             React.createElement("span", {style:{fontSize:28,color:"#cbd5e1",lineHeight:1}}, "-"),
             React.createElement("span", {style:{ fontSize:58, fontWeight:900, lineHeight:1, color: isLive ? "#e53535" : isDone ? "#0f172a" : "#94a3b8", fontVariantNumeric:"tabular-nums" }}, has ? ag : "–")
           ),
-          // Statut centré avec NOUVEAU TIMER
           React.createElement("span", {style:{ fontSize:13, fontWeight:600, textAlign:"center", color: isLive ? "#e53535" : isDone ? "#64748b" : "#94a3b8" }}, isLive ? `${getStatusLabel(sh)} · ${timeDisplay}` : isDone ? getStatusLabel(sh) : isNS ? hhmm2(fix.fixture.date) : getStatusLabel(sh)),
-          // Temps additionnel avec NOUVEAU TIMER
           (() => {
             if(!isLive) return null;
             if(sh === "2H" && liveTime > 90) return React.createElement("span", {style:{fontSize:13,fontWeight:700,color:"#e53535",marginTop:4}}, `⏱️ +${liveTime-90}`);
@@ -4049,7 +3905,6 @@ function MatchDetail({state,onClose,onTeam}){
           })()
         ),
 
-        // Équipe extérieure
         React.createElement("div", { onClick: () => onTeam && onTeam(fix.teams.away.id, fix.teams.away.name, fix.teams.away.logo, fix.league.id, fix.league.season), style: { flex:1, display:"flex", flexDirection:"column", alignItems:"center", gap:10, cursor: onTeam?"pointer":"default" } },
           React.createElement("div", {style:{ width:80, height:80, background:"#fff", borderRadius:18, display:"flex", alignItems:"center", justifyContent:"center", flexShrink:0 }},
             React.createElement("img", {src:fix.teams.away.logo, style:{width:60,height:60,objectFit:"contain"}, alt:""})
@@ -4058,14 +3913,12 @@ function MatchDetail({state,onClose,onTeam}){
         )
       ),
 
-      // Buteurs sous les logos
       goals.length>0 ? React.createElement("div",{style:{ display:"flex", justifyContent:"space-between", padding:"10px 16px 0", gap:8 }},
         React.createElement("div",{style:{flex:1,fontSize:11,color:"#94a3b8",textAlign:"center",lineHeight:1.4}}, goals.filter(e=>e.team?.id===hid).map(e=>`${(e.player?.name||"").split(" ").pop()} ${e.time?.elapsed}'`).join(", ")),
         React.createElement("div",{style:{width:80,flexShrink:0}}),
         React.createElement("div",{style:{flex:1,fontSize:11,color:"#94a3b8",textAlign:"center",lineHeight:1.4}}, goals.filter(e=>e.team?.id===aid).map(e=>`${(e.player?.name||"").split(" ").pop()} ${e.time?.elapsed}'`).join(", "))
       ) : null,
 
-      // Contexte aller/retour
       (() => {
         const round = (fix.league?.round || "").toLowerCase();
         const isKnockout = round.includes("round of") || round.includes("quarter") || round.includes("semi") || round.includes("final") || round.includes("knockout") || round.includes("leg") || round.includes("manche");
@@ -4131,7 +3984,6 @@ function MatchDetail({state,onClose,onTeam}){
   );
 }
 
-// ==================== SCORES TAB ====================
 function ScoresTab({favs,onFav,onTeam}){
   const[date,setDate]=useState(today()),[data,setData]=useState([]),[st,setSt]=useState("load"),[err,setErr]=useState("");
   const[detail,setDet]=useState(null),[q,setQ]=useState(""),[lg,setLg]=useState(null),[favOnly,setFO]=useState(false);
@@ -4376,7 +4228,6 @@ function ScoresTab({favs,onFav,onTeam}){
       lg ? React.createElement("button", { onClick: () => setLg(null), style: { border: "1px solid " + T.line, color: T.t3, borderRadius: 10, padding: "8px 10px", fontSize: 12, cursor: "pointer", background: "none", flexShrink: 0 } }, "✕") : null
     ),
 
-    // Dropdown résultats de recherche
     q.length >= 2 && React.createElement("div", { style: { background: "#fff", borderBottom: "1px solid #e8e8e8", flexShrink: 0 } },
       teamSearching ? React.createElement("div", { style: { padding: "12px 14px", textAlign: "center", fontSize: 12, color: "#94a3b8" } }, "Recherche...")
         : teamResults.length === 0 ? React.createElement("div", { style: { padding: "12px 14px", textAlign: "center", fontSize: 12, color: "#94a3b8" } }, "Aucune équipe trouvée")
@@ -4911,7 +4762,6 @@ function ScorersTab() {
   );
 }
 
-// ==================== CALENDAR TAB ====================
 function CalendarTab({ favs, onFav, onTeam }) {
   const [lid, setLid] = useState(39);
   const [season, setSeason] = useState(CUR_SEASON);
@@ -5464,7 +5314,6 @@ function TransfersTab({ onTeam }) {
   );
 }
 
-// ==================== ACTU TAB ====================
 function ActuTab() {
   const [data, setData] = useState([]);
   const [status, setStatus] = useState("load");
@@ -5511,7 +5360,6 @@ function ActuTab() {
   );
 }
 
-// ==================== JSK TAB ====================
 const JSK_GREEN = "#006B3C";
 const JSK_YELLOW = "#FFD700";
 const JSK_LOGO = "https://i.imgur.com/TkG4iVH_d.webp?maxwidth=760&fidelity=grand";
@@ -5554,7 +5402,6 @@ function JSKTab() {
   );
 }
 
-// ==================== TEAM PAGE ====================
 function TeamPage({ teamId, teamName, teamLogo, leagueId, season, onClose }) {
   const [info, setInfo] = useState(null);
   const [results, setResults] = useState([]);
@@ -5682,7 +5529,6 @@ function TeamPage({ teamId, teamName, teamLogo, leagueId, season, onClose }) {
   );
 }
 
-// ==================== APP COMPONENT ====================
 function App() {
   const [currentTab, setCurrentTab] = useState(() => { try { return sessionStorage.getItem("wf_last_tab") || "scores"; } catch { return "scores"; } });
   const [apiCallsToday, setApiCallsToday] = useState(0);
