@@ -3029,6 +3029,10 @@ function LeagueSheet({fix, leagueInfo, onClose}) {
 
   const [showWinners, setShowWinners] = useState(false);
   const [winnersData, setWinnersData] = useState({});
+  const [showPhaseSelector, setShowPhaseSelector] = useState(false);
+  // Pour naviguer vers une autre phase de la même compétition
+  const [activeLid, setActiveLid] = useState(lid);
+  const [activeSeason, setActiveSeason] = useState(season);
 
   // Vainqueurs hardcodés CAN (données historiques complètes)
   const CAN_WINNERS = {
@@ -3127,10 +3131,23 @@ function LeagueSheet({fix, leagueInfo, onClose}) {
               `${season}/${season+1}`,
               React.createElement("span", {style:{fontSize:10}}, "▼")
             ),
-            React.createElement("div", {style:{fontSize:12,color:"#64748b",marginTop:2,display:"flex",alignItems:"center",gap:6}},
-              "Phase Finale",
-              React.createElement("span", {style:{fontSize:10}}, "▼")
-            )
+            (() => {
+              const lgN = (fix.league?.name || "").toLowerCase();
+              const isCanFamily = lgN.includes("africa cup") || lgN.includes("cup of nations");
+              if(!isCanFamily) return null;
+              // Détecter la phase actuelle
+              const isPreliminaire = lgN.includes("prelim") || lgN.includes("préliminaire");
+              const isPrincipal = !isPreliminaire && (lgN.includes("qualif") || lid === 36);
+              const isFinal = lid === 29;
+              const phaseName = isFinal ? "Tournoi final" : isPrincipal ? "Qualification · Principal" : "Qualification · Préliminaire";
+              return React.createElement("div", {
+                onClick: () => setShowPhaseSelector(true),
+                style:{fontSize:12,color:"#64748b",marginTop:2,display:"flex",alignItems:"center",gap:4,cursor:"pointer"}
+              },
+                React.createElement("span", {style:{fontWeight:500}}, phaseName),
+                React.createElement("span", {style:{fontSize:10}}, "▼")
+              );
+            })()
           )
         ),
 
@@ -3643,6 +3660,88 @@ function LeagueSheet({fix, leagueInfo, onClose}) {
     ),
 
     // Sheet historique vainqueurs
+    // ── Sélecteur de phases (CAN) ─────────────────────────────────────
+    showPhaseSelector ? React.createElement("div", {
+      style:{position:"fixed",inset:0,background:"rgba(0,0,0,.5)",zIndex:50,display:"flex",flexDirection:"column",justifyContent:"flex-end"},
+      onClick: e => { if(e.target===e.currentTarget) setShowPhaseSelector(false); }
+    },
+      React.createElement("div", {style:{background:"#fff",borderRadius:"20px 20px 0 0",paddingBottom:40,maxHeight:"80vh",overflowY:"auto"}},
+        React.createElement("div", {style:{width:36,height:4,borderRadius:2,background:"#e2e8f0",margin:"14px auto 0"}}),
+        // Header
+        React.createElement("div", {style:{display:"flex",alignItems:"center",justifyContent:"space-between",padding:"16px 20px 12px"}},
+          React.createElement("span", {style:{fontSize:16,fontWeight:700,color:"#0f172a"}},
+            `${fix.league.name.includes("Africa") ? "CAN" : fix.league.name} - ${season}`
+          ),
+          React.createElement("button", {
+            onClick: () => setShowPhaseSelector(false),
+            style:{background:"#f1f5f9",border:"none",width:30,height:30,borderRadius:"50%",fontSize:16,color:"#64748b",cursor:"pointer",display:"flex",alignItems:"center",justifyContent:"center"}
+          }, "✕")
+        ),
+        // Sections de phases
+        (() => {
+          const phases = [
+            {
+              section: "Qualification",
+              items: [
+                { label: "Préliminaire", lid: null, isCurrent: (fix.league?.name||"").toLowerCase().includes("prelim") },
+                { label: "Principal",    lid: 36,   isCurrent: lid === 36 },
+              ]
+            },
+            {
+              section: "Tournoi final",
+              items: [
+                { label: "Principal",    lid: 29,   isCurrent: lid === 29 },
+                { label: "Phase Finale", lid: 29,   isCurrent: lid === 29 },
+              ]
+            }
+          ];
+          return phases.map((section, si) =>
+            React.createElement("div", {key:si},
+              // Header section
+              React.createElement("div", {
+                style:{
+                  display:"flex",alignItems:"center",justifyContent:"space-between",
+                  padding:"12px 20px 8px",
+                  borderTop: si>0 ? "1px solid #f0f2f5" : "none"
+                }
+              },
+                React.createElement("span", {style:{fontSize:14,fontWeight:600,color:"#0f172a"}}, section.section),
+                React.createElement("span", {style:{fontSize:14,color:"#94a3b8"}}, "∧")
+              ),
+              // Items
+              section.items.map((item, ii) =>
+                React.createElement("div", {
+                  key:ii,
+                  onClick: () => {
+                    setShowPhaseSelector(false);
+                    if(item.lid && item.lid !== lid) {
+                      // Ouvrir une nouvelle fiche pour cette phase
+                      // On passe par onClose + réouvre avec le nouvel ID
+                      // Pour simplifier : reload la page avec le nouvel ID de ligue
+                      window._pendingLeagueSwitch = {lid: item.lid, season};
+                    }
+                  },
+                  style:{
+                    display:"flex",alignItems:"center",justifyContent:"space-between",
+                    padding:"13px 20px 13px 32px",
+                    background: item.isCurrent ? "rgba(37,99,235,.06)" : "#fff",
+                    borderLeft: item.isCurrent ? "3px solid #2563eb" : "3px solid transparent",
+                    cursor: item.lid && item.lid !== lid ? "pointer" : "default"
+                  }
+                },
+                  React.createElement("span", {style:{
+                    fontSize:14,
+                    fontWeight: item.isCurrent ? 700 : 400,
+                    color: item.isCurrent ? "#2563eb" : "#0f172a"
+                  }}, item.label)
+                )
+              )
+            )
+          );
+        })()
+      )
+    ) : null,
+
     showWinners ? React.createElement("div", {
       style:{position:"fixed",inset:0,background:"#fff",zIndex:100,display:"flex",flexDirection:"column"},
     },
