@@ -3342,8 +3342,14 @@ function LeagueSheet({fix, leagueInfo, onClose, onPhaseChange, initialSubMode}) 
           loading
             ? React.createElement("div", {style:{textAlign:"center",padding:40}}, React.createElement(Spin, {s:24,c:"#00c170"}))
             : standings.length === 0
-            // Pas de classement → afficher les confrontations (préliminaires / aller-retour)
+            // Pas de classement
             ? (() => {
+                // Pour ID 36 (Qualif Principal) : les groupes ne sont pas encore formés
+                if(lid === 36) return React.createElement("div", {style:{textAlign:"center",padding:60,color:"#94a3b8",fontSize:13}},
+                  React.createElement("div", {style:{fontSize:32,marginBottom:12}}, "⏳"),
+                  React.createElement("div", {style:{fontWeight:600,marginBottom:6,color:"#64748b"}}, "Groupes pas encore disponibles"),
+                  React.createElement("div", {style:{fontSize:12}}, "Les groupes de qualification seront disponibles une fois le tirage au sort effectué.")
+                );
                 if(!fixtures.length) return React.createElement("div", {style:{textAlign:"center",padding:40,color:"#94a3b8",fontSize:13}}, "Classement non disponible");
                 // Grouper par paires aller/retour
                 const pairs = [];
