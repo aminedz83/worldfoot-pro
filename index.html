@@ -3085,12 +3085,17 @@ function LeagueSheet({fix, leagueInfo, onClose, onPhaseChange}) {
     const seasonsToTry = isCanFamily ? [yr, yr-1] : [yr-1];
 
     trySeasons(seasonsToTry).then(async ({season: s, rounds: r}) => {
-      // Charger classement avec ID 36 (groupes qualif)
-      api(`/standings?league=${targetLidStandings}&season=${s}`, 86400000)
-        .then(d => {
-          const rows = (d||[]).flatMap(g => Array.isArray(g) ? g : (g?.league?.standings||[]).flat());
-          setHistoryStandings(rows);
-        }).catch(()=>{});
+      // Charger classement — essayer la saison trouvée, puis l'autre
+      const tryStandings = async () => {
+        for(const ts of [s, s===yr ? yr-1 : yr]) {
+          try {
+            const d = await api(`/standings?league=${targetLidStandings}&season=${ts}`, 86400000);
+            const rows = (d||[]).flatMap(g => Array.isArray(g) ? g : (g?.league?.standings||[]).flat());
+            if(rows.length > 0) { setHistoryStandings(rows); return; }
+          } catch(e) {}
+        }
+      };
+      tryStandings();
 
       if(r.length) {
         setHistoryRounds(r);
@@ -3807,7 +3812,8 @@ function LeagueSheet({fix, leagueInfo, onClose, onPhaseChange}) {
           ? React.createElement("div",{style:{textAlign:"center",padding:40}}, React.createElement(Spin,{s:24,c:"#00c170"}))
           : historyTab === "tableau"
           ? (() => {
-              if(!historyStandings.length) return React.createElement("div",{style:{textAlign:"center",padding:40,color:"#94a3b8",fontSize:13}},"Chargement...");
+              if(historyLoading) return React.createElement("div",{style:{textAlign:"center",padding:40}}, React.createElement(Spin,{s:24,c:"#00c170"}));
+              if(!historyStandings.length) return React.createElement("div",{style:{textAlign:"center",padding:40,color:"#94a3b8",fontSize:13}},"Classement non disponible");
               const grouped = {};
               historyStandings.forEach(r => {
                 const grp = r.group || "Classement";
