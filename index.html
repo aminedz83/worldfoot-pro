@@ -6017,66 +6017,81 @@ function ScoresTab({favs,onFav,onTeam}){
       )
     ),
     React.createElement("div", { style: {
-      display: "flex", gap: 7, padding: "10px 14px",
-      background: "#fff", borderBottom: "1px solid #ebebeb",
+      display: "flex", gap: 8, padding: "10px 14px",
+      background: "#f4f5f7", borderBottom: "1px solid #e8e9ec",
       flexShrink: 0, overflowX: "auto", scrollbarWidth: "none",
       WebkitOverflowScrolling: "touch"
     } },
-      [
-        { key: "all",      label: "Tous",       cnt: null },
-        { key: "live",     label: "En direct",  cnt: data.filter(x=>LIVE_ST.has(x.fixture.status.short)).length },
-        { key: "upcoming", label: "À venir",    cnt: data.filter(x=>NS_ST.has(x.fixture.status.short)).length },
-        { key: "finished", label: "Terminés",   cnt: data.filter(x=>DONE_ST.has(x.fixture.status.short)).length }
-      ].map(f => {
-        const active = statusFilter === f.key;
-        return React.createElement("button", {
-          key: f.key,
-          onClick: () => { setStatusFilter(f.key); setVisibleLimit(30); },
-          style: {
-            flexShrink: 0,
-            display: "flex", alignItems: "center", gap: 6,
-            padding: "7px 13px",
-            borderRadius: 50,
-            border: "none",
-            background: active ? "#1a1f2e" : "#f0f1f4",
-            color: active ? "#fff" : "#555",
-            fontSize: 13, fontWeight: 600,
-            fontFamily: "'Plus Jakarta Sans', sans-serif",
-            cursor: "pointer",
-            transition: "all 0.15s"
-          }
-        },
-          f.key === "all"
-            ? React.createElement("svg", { width: 14, height: 14, viewBox: "0 0 24 24", fill: "none" },
-                React.createElement("circle", { cx: 12, cy: 12, r: 10, stroke: active ? "#fff" : "#555", strokeWidth: 2, fill: "none" }),
-                React.createElement("path", { d: "M12 2C6 7 6 17 12 22M12 2c6 5 6 15 0 20M2 12h20", stroke: active ? "#fff" : "#555", strokeWidth: 1.5, fill: "none" })
-              )
-            : f.key === "live"
-            ? React.createElement("div", { style: {
-                width: 10, height: 10, borderRadius: "50%",
-                background: active ? "#fff" : "#e53535", flexShrink: 0
-              } })
-            : f.key === "upcoming"
-            ? React.createElement("svg", { width: 13, height: 13, viewBox: "0 0 24 24", fill: "none",
-                stroke: active ? "#fff" : "#888", strokeWidth: 2, strokeLinecap: "round" },
-                React.createElement("circle", { cx: 12, cy: 12, r: 10 }),
-                React.createElement("polyline", { points: "12 6 12 12 16 14" })
-              )
-            : React.createElement("svg", { width: 13, height: 13, viewBox: "0 0 24 24", fill: "none",
-                stroke: active ? "#fff" : "#22c55e", strokeWidth: 2.5, strokeLinecap: "round", strokeLinejoin: "round" },
-                React.createElement("polyline", { points: "20 6 9 17 4 12" })
-              ),
-          React.createElement("span", null, f.label),
-          f.cnt !== null && React.createElement("span", { style: {
-            background: active ? "rgba(255,255,255,0.22)" : "#dde0e7",
-            color: active ? "#fff" : "#555",
-            fontSize: 11, fontWeight: 700,
-            borderRadius: 50, padding: "1px 7px",
-            fontFamily: "'JetBrains Mono', monospace",
-            minWidth: 20, textAlign: "center", display: "inline-block"
-          } }, f.cnt)
-        );
-      })
+      (() => {
+        const cntLive     = data.filter(x=>LIVE_ST.has(x.fixture.status.short)).length;
+        const cntUpcoming = data.filter(x=>NS_ST.has(x.fixture.status.short)).length;
+        const cntFinished = data.filter(x=>DONE_ST.has(x.fixture.status.short)).length;
+        return [
+          { key: "all",      label: "Tous",      cnt: null,        icon: "ball" },
+          { key: "live",     label: "En direct", cnt: cntLive,     icon: "live" },
+          { key: "upcoming", label: "À venir",   cnt: cntUpcoming, icon: "clock" },
+          { key: "finished", label: "Terminés",  cnt: cntFinished, icon: "check" }
+        ].map(f => {
+          const active = statusFilter === f.key;
+          return React.createElement("button", {
+            key: f.key,
+            onClick: () => { setStatusFilter(f.key); setVisibleLimit(30); },
+            style: {
+              flexShrink: 0,
+              display: "flex", alignItems: "center", gap: 7,
+              padding: "8px 14px",
+              borderRadius: 50,
+              border: "none",
+              background: active ? "#1a1f2e" : "#eaebee",
+              color: active ? "#fff" : "#4a4f5e",
+              fontSize: 13, fontWeight: 700,
+              fontFamily: "'Plus Jakarta Sans', sans-serif",
+              cursor: "pointer",
+              transition: "all 0.15s",
+              whiteSpace: "nowrap"
+            }
+          },
+            // Icône
+            f.icon === "ball"
+              ? React.createElement("svg", { width: 15, height: 15, viewBox: "0 0 32 32", fill: "none" },
+                  React.createElement("circle", { cx: 16, cy: 16, r: 14, fill: active ? "#fff" : "#4a4f5e", opacity: 0.15 }),
+                  React.createElement("circle", { cx: 16, cy: 16, r: 14, stroke: active ? "#fff" : "#4a4f5e", strokeWidth: 2, fill: "none" }),
+                  React.createElement("path", { d: "M16 2 L20 10 L28 10 L22 16 L24 24 L16 20 L8 24 L10 16 L4 10 L12 10 Z", fill: active ? "#fff" : "#4a4f5e", opacity: 0.5 }),
+                  React.createElement("circle", { cx: 16, cy: 16, r: 5, fill: active ? "#fff" : "#4a4f5e" })
+                )
+              : f.icon === "live"
+              ? React.createElement("div", { style: {
+                  width: 10, height: 10, borderRadius: "50%",
+                  background: active ? "#ff4444" : "#e53535",
+                  flexShrink: 0,
+                  boxShadow: active ? "0 0 0 3px rgba(255,68,68,0.3)" : "none"
+                } })
+              : f.icon === "clock"
+              ? React.createElement("svg", { width: 14, height: 14, viewBox: "0 0 24 24", fill: "none",
+                  stroke: active ? "#fff" : "#4a4f5e", strokeWidth: 2.2, strokeLinecap: "round" },
+                  React.createElement("circle", { cx: 12, cy: 12, r: 10 }),
+                  React.createElement("polyline", { points: "12 6 12 12 16.5 14.5" })
+                )
+              : React.createElement("svg", { width: 14, height: 14, viewBox: "0 0 24 24", fill: "none",
+                  stroke: active ? "#fff" : "#22c55e", strokeWidth: 2.5, strokeLinecap: "round", strokeLinejoin: "round" },
+                  React.createElement("polyline", { points: "20 6 9 17 4 12" })
+                ),
+            // Label
+            React.createElement("span", null, f.label),
+            // Badge count
+            f.cnt !== null && f.cnt > 0 && React.createElement("span", { style: {
+              background: active ? "rgba(255,255,255,0.20)" : "#d0d2d9",
+              color: active ? "#fff" : "#4a4f5e",
+              fontSize: 11, fontWeight: 700,
+              borderRadius: 50,
+              padding: "1px 7px",
+              minWidth: 22, textAlign: "center",
+              display: "inline-block",
+              fontFamily: "'JetBrains Mono', monospace"
+            } }, f.cnt)
+          );
+        });
+      })()
     ),
     React.createElement("div", { style: { flex: 1, overflowY: "auto", background: "transparent" } },
       st === "load" ? React.createElement(SkRows, null)
