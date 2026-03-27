@@ -3927,7 +3927,7 @@ function LeagueSheet({fix, leagueInfo, onClose, onPhaseChange, initialSubMode}) 
             {
               section: "Qualification",
               items: [
-                { label: "Préliminaire", lid: null, isCurrent: (fix.league?.name||"").toLowerCase().includes("prelim") },
+                { label: "Préliminaire", lid: fix.league.id, isCurrent: (fix.league?.name||"").toLowerCase().includes("prelim") },
                 { label: "Principal",    lid: 36,   isCurrent: lid === 36 },
               ]
             },
@@ -6541,7 +6541,7 @@ function MatchDetail({state,onClose,onTeam}){
       leagueInfo: overrideLid ? null : leagueInfo,
       initialSubMode: overrideLid ? (overrideLid === 29 ? "groups" : null) : null,
       onClose: () => { setShowLeagueSheet(false); setOverrideLid(null); },
-      onPhaseChange: (newLid, newSub) => { setOverrideLid(newLid); setLeagueInfo(null); }
+      onPhaseChange: (newLid, newSub) => { setOverrideLid(newLid === fix?.league?.id ? null : newLid); setLeagueInfo(null); }
     }) : null
   );
 }
