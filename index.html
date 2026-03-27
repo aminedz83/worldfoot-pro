@@ -5452,11 +5452,20 @@ function MatchDetail({state,onClose,onTeam}){
         const r = fix.league?.round || "";
         const lid = fix.league?.id;
         // Flèche uniquement sur les coupes
-        // Exactement les isCup:true de LEAGUES
+        // Coupes : IDs connus + détection par le nom de la ligue
         const CUP_IDS = new Set([
           1,2,3,4,9,11,12,13,16,17,20,29,34,48,65,66,81,137,143,556,667,848
         ]);
-        const showArrow = CUP_IDS.has(lid);
+        const lgName = (fix.league?.name || "").toLowerCase();
+        const isCupByName = lgName.includes("cup") || lgName.includes("coupe") ||
+          lgName.includes("champions") || lgName.includes("europa") ||
+          lgName.includes("can") || lgName.includes("qualif") ||
+          lgName.includes("copa") || lgName.includes("league cup") ||
+          lgName.includes("nation") || lgName.includes("world") ||
+          lgName.includes("africa") || lgName.includes("confederation") ||
+          lgName.includes("confed") || lgName.includes("preliminary") ||
+          lgName.includes("préliminaire") || lgName.includes("elimination");
+        const showArrow = CUP_IDS.has(lid) || isCupByName;
         return React.createElement("div", {style:{
           display: "flex", alignItems: "center", gap: 8,
           padding: "10px 16px",
