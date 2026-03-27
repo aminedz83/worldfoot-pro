@@ -2949,29 +2949,32 @@ function LeagueSheet({fix, leagueInfo, onClose, onPhaseChange, initialSubMode}) 
     {key:"Final", label:"FINALE"}
   ];
 
-  // Chargement unifié : rounds puis fixtures en cascade
+  // Chargement unifié quand lid/season/mode change
   useEffect(() => {
     if(!lid || !season || mode === "knockout") return;
+    let cancelled = false;
+    setStandings([]);
+    setFixtures([]);
+    setRounds([]);
+    setActiveRound("");
     setLoading(true);
-    // 1. Charger les rounds
     api(`/fixtures/rounds?league=${lid}&season=${season}`, 86400000)
       .then(d => {
+        if(cancelled) return;
         if(d && d.length) {
           setRounds(d);
-          const cur = d.find(r => r === round) || d[d.length - 1] || d[0];
+          const cur = d.find(r => r === round) || d[d.length-1] || d[0];
           setActiveRound(cur);
-          // 2. Charger immédiatement les fixtures du round courant
           return api(`/fixtures?league=${lid}&season=${season}&round=${encodeURIComponent(cur)}`, 3600000);
-        } else {
-          // Pas de rounds → charger tous les matchs de la saison
-          return api(`/fixtures?league=${lid}&season=${season}`, 86400000);
         }
+        return api(`/fixtures?league=${lid}&season=${season}`, 86400000);
       })
-      .then(d => { setFixtures(d||[]); setLoading(false); })
-      .catch(() => setLoading(false));
+      .then(d => { if(!cancelled){ setFixtures(d||[]); setLoading(false); } })
+      .catch(() => { if(!cancelled) setLoading(false); });
+    return () => { cancelled = true; };
   }, [lid, season, mode]);
 
-  // Recharger fixtures quand activeRound change manuellement (clic sur un round)
+  // Recharger fixtures quand activeRound change manuellement
   useEffect(() => {
     if(!lid || !season || !activeRound || mode === "knockout") return;
     setLoading(true);
@@ -2979,15 +2982,6 @@ function LeagueSheet({fix, leagueInfo, onClose, onPhaseChange, initialSubMode}) 
       .then(d => { setFixtures(d||[]); setLoading(false); })
       .catch(() => setLoading(false));
   }, [activeRound]);
-
-  // Reset données quand lid ou subMode change (navigation entre phases)
-  useEffect(() => {
-    setStandings([]);
-    setFixtures([]);
-    setRounds([]);
-    setActiveRound("");
-    setLoading(false);
-  }, [lid, subMode]);
 
   // Charger le classement pour les rangs
   useEffect(() => {
