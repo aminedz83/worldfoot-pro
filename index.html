@@ -3064,27 +3064,19 @@ function LeagueSheet({fix, leagueInfo, onClose, onPhaseChange, initialSubMode}) 
   const [historyRounds, setHistoryRounds] = useState([]);
   const [historyActiveRound, setHistoryActiveRound] = useState("");
 
-  // Recharger quand historySubMode change
+  // Charger données quand année, onglet ou subMode change
   useEffect(() => {
     if(!historyYear) return;
-    setHistoryStandings([]);
-    setHistoryFixtures([]);
-    setHistoryRounds([]);
-    setHistoryActiveRound("");
-  }, [historySubMode]);
-
-  // Charger données quand une année historique est sélectionnée
-  useEffect(() => {
-    if(!historyYear) return;
+    // Ignorer le tab knockout (il a son propre useEffect)
+    if(historyTab === "knockout") return;
     const lgN = (fix.league?.name || "").toLowerCase();
     const isCanFamily = lgN.includes("africa cup") || lgN.includes("cup of nations");
-    // Selon le subMode : groupes=36, tournoi groupes=29, knockout=29
-    const isKnockoutMode = historySubMode === "knockout";
+    // Selon l'onglet actif :
+    // - tableau (Qualif.Principal) → standings ID 36, fixtures ID 36
+    // - tournament (Tournoi·Groupes) → standings ID 29, fixtures ID 29
     const isTournamentGroups = historyTab === "tournament";
-    const targetLidStandings = isCanFamily
-      ? (isTournamentGroups || isKnockoutMode ? 29 : 36)
-      : lid;
-    const targetLidFixtures = isCanFamily ? 29 : lid;
+    const targetLidStandings = isCanFamily ? (isTournamentGroups ? 29 : 36) : lid;
+    const targetLidFixtures  = isCanFamily ? (isTournamentGroups ? 29 : 36) : lid;
     const targetLid = targetLidStandings;
     const yr = historyYear.year;
     setHistoryLoading(true);
@@ -3136,7 +3128,7 @@ function LeagueSheet({fix, leagueInfo, onClose, onPhaseChange, initialSubMode}) 
       }
       setHistoryLoading(false);
     });
-  }, [historyYear]);
+  }, [historyYear, historyTab]);
 
   // Charger fixtures knockout quand historyTab="knockout"
   useEffect(() => {
