@@ -6075,7 +6075,7 @@ function ScoresTab({favs,onFav,onTeam}){
             const allRows = data
               .filter(f => !seen.has(f.league.id) && seen.add(f.league.id))
               .map(f => f.league)
-              .sort((a, b) => a.name.localeCompare(b.name, "fr", { sensitivity: "base" }));
+              .sort((a, b) => a.country.localeCompare(b.country, "fr", { sensitivity: "base" }) || a.name.localeCompare(b.name, "fr", { sensitivity: "base" }));
             if (!allRows.length) return React.createElement("div", { style: { textAlign: "center", padding: "64px 24px", color: "#aaa" } }, "Aucun match ce jour");
             return React.createElement("div", null,
               React.createElement("div", { style: {
