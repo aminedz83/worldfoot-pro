@@ -3987,9 +3987,8 @@ function LeagueSheet({fix, leagueInfo, onClose, onPhaseChange, initialSubMode, p
                   key:ii,
                   onClick: () => {
                     setShowPhaseSelector(false);
-                    setShowPhaseSelector(false);
                     setSubMode(item.sub || null);
-                    if(item.lid !== lid && onPhaseChange) onPhaseChange(item.lid, item.sub || null);
+                    if(onPhaseChange) onPhaseChange(item.lid, item.sub || null);
                   },
                   style:{
                     display:"flex",alignItems:"center",justifyContent:"space-between",
@@ -6159,7 +6158,7 @@ function MatchDetail({state,onClose,onTeam}){
           borderBottom: "1px solid #f1f5f9",
           marginBottom: "16px",
           cursor: showArrow ? "pointer" : "default"
-        }, onClick: showArrow ? () => setShowLeagueSheet(true) : undefined},
+        }, onClick: showArrow ? () => { setOriginalLid(fix?.league?.id||null); setOverrideLid(null); setShowLeagueSheet(true); } : undefined},
         fix.league.flag
           ? React.createElement("img", {src:fix.league.flag, style:{width:20,height:14,objectFit:"cover",borderRadius:3,flexShrink:0}})
           : null,
