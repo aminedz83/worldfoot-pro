@@ -3060,18 +3060,32 @@ function LeagueSheet({fix, leagueInfo, onClose, onPhaseChange, initialSubMode}) 
   const [historyFixtures, setHistoryFixtures] = useState([]);
   const [historyLoading, setHistoryLoading] = useState(false);
   const [historyTab, setHistoryTab] = useState("tableau");
+  const [historySubMode, setHistorySubMode] = useState("groups"); // "groups" | "knockout"
   const [historyRounds, setHistoryRounds] = useState([]);
   const [historyActiveRound, setHistoryActiveRound] = useState("");
+
+  // Recharger quand historySubMode change
+  useEffect(() => {
+    if(!historyYear) return;
+    setHistoryStandings([]);
+    setHistoryFixtures([]);
+    setHistoryRounds([]);
+    setHistoryActiveRound("");
+  }, [historySubMode]);
 
   // Charger données quand une année historique est sélectionnée
   useEffect(() => {
     if(!historyYear) return;
     const lgN = (fix.league?.name || "").toLowerCase();
     const isCanFamily = lgN.includes("africa cup") || lgN.includes("cup of nations");
-    // Pour CAN : ID 36 pour standings/groupes, ID 29 pour fixtures/résultats
-    const targetLidStandings = isCanFamily ? 36 : lid;
-    const targetLidFixtures  = isCanFamily ? 29 : lid;
-    const targetLid = targetLidStandings; // utilisé pour rounds
+    // Selon le subMode : groupes=36, tournoi groupes=29, knockout=29
+    const isKnockoutMode = historySubMode === "knockout";
+    const isTournamentGroups = historyTab === "tournament";
+    const targetLidStandings = isCanFamily
+      ? (isTournamentGroups || isKnockoutMode ? 29 : 36)
+      : lid;
+    const targetLidFixtures = isCanFamily ? 29 : lid;
+    const targetLid = targetLidStandings;
     const yr = historyYear.year;
     setHistoryLoading(true);
     setHistoryStandings([]);
@@ -3123,6 +3137,25 @@ function LeagueSheet({fix, leagueInfo, onClose, onPhaseChange, initialSubMode}) 
       setHistoryLoading(false);
     });
   }, [historyYear]);
+
+  // Charger fixtures knockout quand historyTab="knockout"
+  useEffect(() => {
+    if(!historyYear || historyTab !== "knockout") return;
+    const lgN2 = (fix.league?.name || "").toLowerCase();
+    const isCanFamily2 = lgN2.includes("africa cup") || lgN2.includes("cup of nations");
+    const targetLid2 = isCanFamily2 ? 29 : lid;
+    const yr2 = historyYear.year;
+    setHistoryLoading(true);
+    // Charger tous les rounds knockout
+    const knockoutRounds = ["Round of 16","Quarter-finals","Semi-finals","3rd Place Final","Final"];
+    Promise.all(knockoutRounds.map(r =>
+      api(`/fixtures?league=${targetLid2}&season=${yr2}&round=${encodeURIComponent(r)}`, 86400000).catch(()=>[])
+    )).then(results => {
+      const all = results.flat().filter(Boolean);
+      setHistoryFixtures(all);
+      setHistoryLoading(false);
+    });
+  }, [historyYear, historyTab]);
 
   // Recharger fixtures quand round change dans historique
   useEffect(() => {
@@ -3800,20 +3833,49 @@ function LeagueSheet({fix, leagueInfo, onClose, onPhaseChange, initialSubMode}) 
             })()
           )
         ),
-        // Onglets
-        React.createElement("div", {style:{display:"flex",gap:0}},
-          ["tableau","resultats"].map(t =>
-            React.createElement("button", {
-              key:t,
-              onClick:()=>setHistoryTab(t),
-              style:{
-                flex:1,padding:"10px 0",background:"none",border:"none",
-                fontSize:12,fontWeight:700,cursor:"pointer",
-                color:historyTab===t?"#0f172a":"#94a3b8",
-                borderBottom:historyTab===t?"2px solid #0f172a":"2px solid transparent",
-                textTransform:"uppercase",letterSpacing:0.5
-              }
-            }, t === "tableau" ? "CLASSEMENTS" : "RÉSULTATS")
+        // Onglets avec sélecteur de phase
+        React.createElement("div", {style:{borderBottom:"1px solid #f0f2f5"}},
+          // Sélecteur de phase pour CAN
+          (() => {
+            const lgN = (fix.league?.name||"").toLowerCase();
+            const isCanF = lgN.includes("africa cup") || lgN.includes("cup of nations");
+            if(!isCanF) return null;
+            return React.createElement("div", {style:{display:"flex",gap:6,padding:"8px 16px 0",overflowX:"auto",scrollbarWidth:"none"}},
+              [
+                {label:"Qualif. Principal", sub:"groups",   tab:"tableau"},
+                {label:"Tournoi · Groupes",  sub:"groups",   tab:"tournament"},
+                {label:"Phase Finale",       sub:"knockout", tab:"knockout"},
+              ].map((p,i) => React.createElement("button", {
+                key:i,
+                onClick: () => { setHistorySubMode(p.sub); setHistoryTab(p.tab); setHistoryStandings([]); setHistoryFixtures([]); },
+                style:{
+                  flexShrink:0, padding:"5px 11px", borderRadius:20,
+                  border:"none", cursor:"pointer", fontSize:11, fontWeight:600,
+                  background: (historyTab === p.tab && historySubMode === p.sub) ? "#0f172a" : "#f0f1f4",
+                  color: (historyTab === p.tab && historySubMode === p.sub) ? "#fff" : "#555",
+                  whiteSpace:"nowrap", marginBottom:8
+                }
+              }, p.label))
+            );
+          })(),
+          // Onglets CLASSEMENTS / RÉSULTATS
+          React.createElement("div", {style:{display:"flex"}},
+            [
+              {key:"tableau",     label:"CLASSEMENTS"},
+              {key:"resultats",   label:"RÉSULTATS"},
+            ].map(t =>
+              React.createElement("button", {
+                key:t.key,
+                onClick:()=>setHistoryTab(t.key),
+                style:{
+                  flex:1,padding:"10px 0",background:"none",border:"none",
+                  fontSize:12,fontWeight:700,cursor:"pointer",
+                  color:historyTab===t.key?"#0f172a":"#94a3b8",
+                  borderBottom:historyTab===t.key?"2px solid #0f172a":"2px solid transparent",
+                  textTransform:"uppercase",letterSpacing:0.5
+                }
+              }, t.label)
+            )
           )
         )
       ),
@@ -3821,7 +3883,7 @@ function LeagueSheet({fix, leagueInfo, onClose, onPhaseChange, initialSubMode}) 
       React.createElement("div", {style:{flex:1,overflowY:"auto",padding:"12px"}},
         historyLoading
           ? React.createElement("div",{style:{textAlign:"center",padding:40}}, React.createElement(Spin,{s:24,c:"#00c170"}))
-          : historyTab === "tableau"
+          : (historyTab === "tableau" || historyTab === "tournament")
           ? (() => {
               if(historyLoading) return React.createElement("div",{style:{textAlign:"center",padding:40}}, React.createElement(Spin,{s:24,c:"#00c170"}));
               if(!historyStandings.length) return React.createElement("div",{style:{textAlign:"center",padding:40,color:"#94a3b8",fontSize:13}},"Classement non disponible");
@@ -3868,6 +3930,62 @@ function LeagueSheet({fix, leagueInfo, onClose, onPhaseChange, initialSubMode}) 
                           React.createElement("span",{style:{width:30,fontSize:12,color:"#64748b",textAlign:"center"}},r.all?.played),
                           React.createElement("span",{style:{width:44,fontSize:12,color:"#64748b",textAlign:"center"}},`${r.all?.goals?.for||0}:${r.all?.goals?.against||0}`),
                           React.createElement("span",{style:{width:32,fontSize:13,fontWeight:800,color:"#0f172a",textAlign:"center"}},r.points)
+                        );
+                      })
+                    )
+                  )
+                )
+              );
+            })()
+          : historyTab === "knockout"
+          ? (() => {
+              if(historyLoading) return React.createElement("div",{style:{textAlign:"center",padding:40}}, React.createElement(Spin,{s:24,c:"#00c170"}));
+              if(!historyFixtures.length) return React.createElement("div",{style:{textAlign:"center",padding:40,color:"#94a3b8",fontSize:13}},"Aucun match trouvé");
+              // Knockout : grouper par round
+              const byRound = {};
+              historyFixtures.forEach(m => { const r = m.league?.round||""; if(!byRound[r]) byRound[r]=[]; byRound[r].push(m); });
+              const roundOrder = ["Round of 16","Quarter-finals","Semi-finals","3rd Place Final","Final"];
+              const sortedRounds = Object.keys(byRound).sort((a,b) => {
+                const ai = roundOrder.findIndex(r => a.includes(r.split(" ")[0]));
+                const bi = roundOrder.findIndex(r => b.includes(r.split(" ")[0]));
+                return (ai===-1?99:ai) - (bi===-1?99:bi);
+              });
+              const getRoundFr = r => {
+                if(r.includes("Round of 16")) return "Huitièmes de Finale";
+                if(r.includes("Quarter")) return "Quarts de Finale";
+                if(r.includes("Semi")) return "Demi-Finales";
+                if(r.includes("3rd")) return "Match pour la 3e place";
+                if(r.match(/^Final$/i) || r.includes("Final")) return "Finale";
+                return r;
+              };
+              return React.createElement("div", null,
+                sortedRounds.map((r, ri) =>
+                  React.createElement("div", {key:ri, style:{marginBottom:12}},
+                    React.createElement("div",{style:{fontSize:12,fontWeight:700,color:"#64748b",padding:"10px 4px 6px",textTransform:"uppercase",letterSpacing:0.5}}, getRoundFr(r)),
+                    React.createElement("div",{style:{background:"#fff",borderRadius:12,overflow:"hidden",boxShadow:"0 1px 4px rgba(0,0,0,.06)"}},
+                      byRound[r].map((m,mi) => {
+                        const hg=m.goals?.home, ag=m.goals?.away;
+                        const done=DONE_ST.has(m.fixture?.status?.short);
+                        const hw=done&&hg!=null&&ag!=null&&hg>ag;
+                        const aw=done&&hg!=null&&ag!=null&&ag>hg;
+                        return React.createElement("div",{key:m.fixture.id,style:{
+                          display:"flex",alignItems:"center",gap:10,padding:"11px 14px",
+                          borderBottom:mi<byRound[r].length-1?"1px solid #f5f7fa":"none"
+                        }},
+                          React.createElement("div",{style:{flex:1,minWidth:0}},
+                            React.createElement("div",{style:{display:"flex",alignItems:"center",gap:7,marginBottom:4}},
+                              React.createElement("img",{src:m.teams.home.logo,style:{width:20,height:20,objectFit:"contain"},onError:e=>e.target.style.display="none"}),
+                              React.createElement("span",{style:{fontSize:13,fontWeight:hw?700:400,color:hw?"#0f172a":"#64748b",flex:1,overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap"}},m.teams.home.name)
+                            ),
+                            React.createElement("div",{style:{display:"flex",alignItems:"center",gap:7}},
+                              React.createElement("img",{src:m.teams.away.logo,style:{width:20,height:20,objectFit:"contain"},onError:e=>e.target.style.display="none"}),
+                              React.createElement("span",{style:{fontSize:13,fontWeight:aw?700:400,color:aw?"#0f172a":"#64748b",flex:1,overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap"}},m.teams.away.name)
+                            )
+                          ),
+                          done ? React.createElement("div",{style:{textAlign:"right",minWidth:24}},
+                            React.createElement("div",{style:{fontSize:14,fontWeight:hw?800:400,color:hw?"#0f172a":"#94a3b8",lineHeight:1.4}},hg),
+                            React.createElement("div",{style:{fontSize:14,fontWeight:aw?800:400,color:aw?"#0f172a":"#94a3b8",lineHeight:1.4}},ag)
+                          ) : null
                         );
                       })
                     )
