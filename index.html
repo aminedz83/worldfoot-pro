@@ -882,8 +882,8 @@ function useMatchTimer(elapsed, status) {
       const secondsElapsed = Math.floor((Date.now() - startTime) / 1000);
       let newTime = startElapsed + Math.floor(secondsElapsed / 60);
       if (status === "1H" && newTime > 60) newTime = 60;
-      if (status === "2H" && newTime > 105) newTime = 105;
-      if (status === "ET" && newTime > 125) newTime = 125;
+      if (status === "2H" && newTime > 120) newTime = 120;
+      if (status === "ET" && newTime > 135) newTime = 135;
       setCurrentTime(newTime);
     };
     updateTime();
@@ -5826,7 +5826,9 @@ function ScoresTab({favs,onFav,onTeam}){
               if(!prev?.data?.fixture)return prev;
               return {...prev,data:{...prev.data,fixture:{...prev.data.fixture,
                 goals:goals??prev.data.fixture.goals,
-                fixture:{...prev.data.fixture.fixture,status:status??prev.data.fixture.fixture.status}
+                fixture:{...prev.data.fixture.fixture,
+                  status:{...(status??prev.data.fixture.fixture.status), elapsed:elapsed}
+                }
               }}};
             });
           }catch(e){}
