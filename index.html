@@ -3061,46 +3061,51 @@ function LeagueSheet({fix, leagueInfo, onClose, onPhaseChange}) {
     const lgN = (fix.league?.name || "").toLowerCase();
     const isCanFamily = lgN.includes("africa cup") || lgN.includes("cup of nations");
     const targetLid = isCanFamily ? 36 : lid;
-    // Map précise année CAN → saison API
-    // La CAN se joue en janvier-février, donc saison = année - 1
-    // Ex: CAN 2023 → saison 2022, CAN 2021 → saison 2020
-    const CAN_SEASON_MAP = {
-      2023: 2022, 2021: 2020, 2019: 2018, 2017: 2016,
-      2015: 2014, 2013: 2012, 2012: 2011, 2010: 2009,
-      2008: 2007, 2006: 2005, 2004: 2003, 2002: 2001,
-      2000: 1999, 1998: 1997, 1996: 1995, 1994: 1993,
-      1992: 1991, 1990: 1989, 1988: 1987, 1986: 1985,
-      1984: 1983, 1982: 1981, 1980: 1979, 1978: 1977,
-      1976: 1975, 1974: 1973, 1972: 1971, 1970: 1969,
-      1968: 1967, 1965: 1964, 1963: 1962, 1962: 1961,
-      1959: 1958, 1957: 1956
-    };
-    const targetSeason = isCanFamily
-      ? (CAN_SEASON_MAP[historyYear.year] || historyYear.year - 1)
-      : historyYear.year - 1;
+    const yr = historyYear.year;
     setHistoryLoading(true);
     setHistoryStandings([]);
     setHistoryFixtures([]);
     setHistoryRounds([]);
-    // Charger classement
-    api(`/standings?league=${targetLid}&season=${targetSeason}`, 86400000)
-      .then(d => {
-        const rows = (d||[]).flatMap(g => Array.isArray(g) ? g : (g?.league?.standings||[]).flat());
-        setHistoryStandings(rows);
-      }).catch(()=>{});
-    // Charger rounds puis fixtures
-    api(`/fixtures/rounds?league=${targetLid}&season=${targetSeason}`, 86400000)
-      .then(d => {
-        if(d && d.length) {
-          setHistoryRounds(d);
-          const lastRound = d[d.length-1];
-          setHistoryActiveRound(lastRound);
-          return api(`/fixtures?league=${targetLid}&season=${targetSeason}&round=${encodeURIComponent(lastRound)}`, 86400000);
-        }
-        return api(`/fixtures?league=${targetLid}&season=${targetSeason}`, 86400000);
-      })
-      .then(d => { setHistoryFixtures(d||[]); setHistoryLoading(false); })
-      .catch(() => setHistoryLoading(false));
+
+    // Fonction qui essaie une saison, puis l'autre si vide
+    const trySeasons = async (seasons) => {
+      for(const s of seasons) {
+        try {
+          const d = await api(`/fixtures/rounds?league=${targetLid}&season=${s}`, 86400000);
+          if(d && d.length > 0) return {season: s, rounds: d};
+        } catch(e) {}
+      }
+      return {season: seasons[0], rounds: []};
+    };
+
+    // Pour la CAN, essayer yr-1 en premier (c'est la convention API), puis yr
+    const seasonsToTry = isCanFamily ? [yr-1, yr] : [yr-1];
+
+    trySeasons(seasonsToTry).then(async ({season: s, rounds: r}) => {
+      // Charger classement avec la bonne saison
+      api(`/standings?league=${targetLid}&season=${s}`, 86400000)
+        .then(d => {
+          const rows = (d||[]).flatMap(g => Array.isArray(g) ? g : (g?.league?.standings||[]).flat());
+          setHistoryStandings(rows);
+        }).catch(()=>{});
+
+      if(r.length) {
+        setHistoryRounds(r);
+        // Trouver le round le plus pertinent (Group Stage ou dernier)
+        const groupRound = r.find(x => x.toLowerCase().includes("group")) || r[r.length-1];
+        setHistoryActiveRound(groupRound);
+        try {
+          const fx = await api(`/fixtures?league=${targetLid}&season=${s}&round=${encodeURIComponent(groupRound)}`, 86400000);
+          setHistoryFixtures(fx||[]);
+        } catch(e) {}
+      } else {
+        try {
+          const fx = await api(`/fixtures?league=${targetLid}&season=${s}`, 86400000);
+          setHistoryFixtures(fx||[]);
+        } catch(e) {}
+      }
+      setHistoryLoading(false);
+    });
   }, [historyYear]);
 
   // Recharger fixtures quand round change dans historique
@@ -3109,8 +3114,9 @@ function LeagueSheet({fix, leagueInfo, onClose, onPhaseChange}) {
     const lgN2 = (fix.league?.name || "").toLowerCase();
     const isCanFamily2 = lgN2.includes("africa cup") || lgN2.includes("cup of nations");
     const targetLid = isCanFamily2 ? 36 : lid;
-    const CAN_SM = {2023:2022,2021:2020,2019:2018,2017:2016,2015:2014,2013:2012,2012:2011,2010:2009,2008:2007,2006:2005};
-    const tSeason = isCanFamily2 ? (CAN_SM[historyYear.year] || historyYear.year - 1) : historyYear.year - 1;
+    const yr2 = historyYear.year;
+    // Utiliser la saison déjà trouvée (yr-1 pour CAN)
+    const tSeason = isCanFamily2 ? yr2-1 : yr2-1;
     setHistoryLoading(true);
     api(`/fixtures?league=${targetLid}&season=${tSeason}&round=${encodeURIComponent(historyActiveRound)}`, 86400000)
       .then(d => { setHistoryFixtures(d||[]); setHistoryLoading(false); })
@@ -3760,9 +3766,19 @@ function LeagueSheet({fix, leagueInfo, onClose, onPhaseChange}) {
           }, "←"),
           React.createElement("div", {style:{flex:1}},
             React.createElement("div", {style:{fontSize:16,fontWeight:800,color:"#0f172a"}},
-              (fix.league?.name||"").includes("Africa") ? "CAN" : fix.league?.name
+              ((fix.league?.name||"").includes("Africa") ? "CAN" : fix.league?.name) + " " + historyYear.year
             ),
-            React.createElement("div", {style:{fontSize:13,color:"#64748b"}}, `${historyYear.year}`)
+            (() => {
+              const lgN = (fix.league?.name||"").toLowerCase();
+              const isCanF = lgN.includes("africa cup") || lgN.includes("cup of nations");
+              const winner = isCanF && CAN_WINNERS[historyYear.year];
+              return winner
+                ? React.createElement("div", {style:{display:"flex",alignItems:"center",gap:6,marginTop:2}},
+                    React.createElement("img",{src:winner.logo,style:{width:16,height:16,objectFit:"contain"},onError:e=>e.target.style.display="none"}),
+                    React.createElement("span",{style:{fontSize:12,color:"#64748b",fontWeight:600}}, winner.name)
+                  )
+                : null;
+            })()
           )
         ),
         // Onglets
