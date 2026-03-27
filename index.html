@@ -980,6 +980,25 @@ function SkRows(){
   ))}</div>;
 }
 
+// Retourne le bon logo pour une ligue (corrige les logos obsolètes de l'API)
+function getLeagueLogo(leagueId, leagueName, originalLogo) {
+  const name = (leagueName || "").toLowerCase();
+  // CAN Qualification → logo de la CAN officielle
+  if(name.includes("africa cup of nations") || name.includes("afcon") ||
+     name.includes("can - qualif") || name.includes("cup of nations - qualif")) {
+    return "https://media.api-sports.io/football/leagues/29.png";
+  }
+  // Coupe du Monde Qualification → logo FIFA
+  if(name.includes("world cup") && name.includes("qualif")) {
+    return "https://media.api-sports.io/football/leagues/1.png";
+  }
+  // Euro Qualification
+  if((name.includes("euro") || name.includes("european")) && name.includes("qualif")) {
+    return "https://media.api-sports.io/football/leagues/4.png";
+  }
+  return originalLogo;
+}
+
 function Logo({src,size=16}){
   const[e,setE]=useState(false);
   const wrapper={width:size,height:size,flexShrink:0,display:"flex",alignItems:"center",justifyContent:"center"};
@@ -2749,7 +2768,7 @@ function LeagueBlock({group, onOpen, favs, onFav, onTeam}){
         display: "flex", alignItems: "center", justifyContent: "center",
         flexShrink: 0, overflow: "hidden"
       } },
-        React.createElement(Logo, { src: group.lg.logo || group.lg.flag, size: 28 })
+        React.createElement(Logo, { src: getLeagueLogo(group.lg.id, group.lg.name, group.lg.logo) || group.lg.flag, size: 28 })
       ),
       // Nom + pays
       React.createElement("div", { style: { flex: 1, minWidth: 0 } },
@@ -3055,7 +3074,7 @@ function LeagueSheet({fix, leagueInfo, onClose}) {
         // Logo + nom
         React.createElement("div", {style:{display:"flex",alignItems:"center",gap:14,marginBottom:12}},
           React.createElement("div", {style:{width:72,height:72,borderRadius:14,background:"#f8fafc",border:"1px solid #e8e8e8",display:"flex",alignItems:"center",justifyContent:"center",flexShrink:0}},
-            React.createElement("img", {src:fix.league.logo,style:{width:52,height:52,objectFit:"contain"},onError:e=>e.target.style.display="none"})
+            React.createElement("img", {src:getLeagueLogo(fix.league.id, fix.league.name, fix.league.logo),style:{width:52,height:52,objectFit:"contain"},onError:e=>e.target.style.display="none"})
           ),
           React.createElement("div", null,
             React.createElement("div", {style:{fontSize:20,fontWeight:900,color:"#0f172a"}}, fix.league.name),
@@ -3544,7 +3563,19 @@ function LeagueSheet({fix, leagueInfo, onClose}) {
               135: { name: "Juventus",       titles: 36 }, // Serie A
               186: { name: "CR Belouizdad", titles: 20 }, // Algérie
             };
-            const record = knownRecords[lid];
+            // Résolution par nom
+            const lgN = (fix.league?.name || "").toLowerCase();
+            let rLid = lid;
+            if(!knownRecords[lid]) {
+              if(lgN.includes("africa cup")||lgN.includes("cup of nations")) rLid=6;
+              else if(lgN.includes("champions league")&&lgN.includes("caf")) rLid=12;
+              else if(lgN.includes("champions league")) rLid=2;
+              else if(lgN.includes("europa league")) rLid=3;
+              else if(lgN.includes("world cup")||lgN.includes("coupe du monde")) rLid=1;
+              else if(lgN.includes("euro ")) rLid=4;
+              else if(lgN.includes("copa america")) rLid=9;
+            }
+            const record = knownRecords[rLid];
             if(record) {
               return React.createElement("div", {style:{fontSize:11,color:"#94a3b8",marginTop:3}},
                 `🏆 Record : ${record.name} (${record.titles} titres)`
@@ -3743,11 +3774,34 @@ function LeagueSheet({fix, leagueInfo, onClose}) {
             ],
           };
 
-          const palmares = knownPalmares[lid]
-            ? [...knownPalmares[lid]]
+          // Résolution par nom de ligue si l'ID exact n'est pas dans knownPalmares
+          const lgNameLow = (fix.league?.name || "").toLowerCase();
+          let resolvedLid = lid;
+          if(!knownPalmares[lid]) {
+            if(lgNameLow.includes("africa cup") || lgNameLow.includes("can") || lgNameLow.includes("afcon") || lgNameLow.includes("cup of nations"))
+              resolvedLid = 6;  // CAN
+            else if(lgNameLow.includes("champions league") && lgNameLow.includes("caf"))
+              resolvedLid = 12;
+            else if(lgNameLow.includes("champions league"))
+              resolvedLid = 2;
+            else if(lgNameLow.includes("europa league"))
+              resolvedLid = 3;
+            else if(lgNameLow.includes("world cup") || lgNameLow.includes("coupe du monde"))
+              resolvedLid = 1;
+            else if(lgNameLow.includes("euro ") || lgNameLow.includes("european championship"))
+              resolvedLid = 4;
+            else if(lgNameLow.includes("copa america"))
+              resolvedLid = 9;
+            else if(lgNameLow.includes("copa libertadores"))
+              resolvedLid = 13;
+            else if(lgNameLow.includes("caf confederation"))
+              resolvedLid = 20;
+          }
+
+          const palmares = knownPalmares[resolvedLid]
+            ? [...knownPalmares[resolvedLid]]
                 .sort((a,b)=>b.titles-a.titles)
                 .map(entry => {
-                  // Chercher le vrai logo depuis l'historique chargé
                   const found = Object.values(winnersData).find(w => w?.name === entry.name);
                   return { ...entry, logo: found?.logo || entry.logo };
                 })
@@ -6391,7 +6445,7 @@ function ScoresTab({favs,onFav,onTeam}){
                     display: "flex", alignItems: "center", justifyContent: "center", overflow: "hidden"
                   } },
                     React.createElement("img", {
-                      src: league.logo, alt: league.name,
+                      src: getLeagueLogo(league.id, league.name, league.logo), alt: league.name,
                       style: { width: 30, height: 30, objectFit: "contain" },
                       onError: e => { e.target.style.display = "none"; }
                     })
