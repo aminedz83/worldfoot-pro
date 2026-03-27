@@ -3307,43 +3307,56 @@ function LeagueSheet({fix, leagueInfo, onClose, onPhaseChange, initialSubMode, p
           );
         })(),
 
-        // Onglets universels : TABLEAU / RÉSULTATS / CALENDRIER
+        // Onglets contextuels selon le mode
         React.createElement("div", {style:{display:"flex",overflowX:"auto",scrollbarWidth:"none",gap:0,borderBottom:"1px solid #f0f0f0",marginLeft:-16,marginRight:-16,paddingLeft:16}},
-          [
-            {key:"tableau",    label:"TABLEAU"},
-            {key:"resultats",  label:"RÉSULTATS"},
-            {key:"calendrier", label:"CALENDRIER"}
-          ].map(t =>
-            React.createElement("button", {
-              key:t.key,
-              onClick:()=>setActiveTab(t.key),
-              style:{
-                flexShrink:0,padding:"10px 14px",background:"none",border:"none",
-                fontSize:11,fontWeight:800,cursor:"pointer",whiteSpace:"nowrap",
-                color:activeTab===t.key?"#0f172a":"#94a3b8",
-                borderBottom:activeTab===t.key?"2px solid #0f172a":"2px solid transparent",
-              }
-            }, t.label)
-          )
+          (() => {
+            // Préliminaire → TABLEAU + RÉSULTATS
+            // Principal (qualif/tournoi) → CLASSEMENT + RÉSULTATS
+            // Phase Finale → TABLEAU + RÉSULTATS
+            const isKnockoutMode = mode === "knockout";
+            const isQualifMode   = mode === "qualif";
+            const tabs = isQualifMode || isKnockoutMode
+              ? [{key:"tableau", label: isKnockoutMode ? "TABLEAU" : "TABLEAU"}, {key:"resultats", label:"RÉSULTATS"}]
+              : [{key:"tableau", label:"CLASSEMENT"}, {key:"resultats", label:"RÉSULTATS"}];
+            return tabs.map(t =>
+              React.createElement("button", {
+                key:t.key,
+                onClick:()=>setActiveTab(t.key),
+                style:{
+                  flexShrink:0,padding:"10px 14px",background:"none",border:"none",
+                  fontSize:11,fontWeight:800,cursor:"pointer",whiteSpace:"nowrap",
+                  color:activeTab===t.key?"#0f172a":"#94a3b8",
+                  borderBottom:activeTab===t.key?"2px solid #0f172a":"2px solid transparent",
+                }
+              }, t.label)
+            );
+          })()
         )
       ),
 
       // Contenu principal selon onglet + mode
       React.createElement("div", {style:{flex:1,overflowY:"auto",padding:"12px 12px 32px"}},
 
-        // ── CLASSEMENT (TABLEAU) ────────────────────────────────────────
+        // ── CONTENU TABLEAU ────────────────────────────────────────────
         activeTab === "tableau" ? React.createElement("div", null,
           loading
             ? React.createElement("div", {style:{textAlign:"center",padding:40}}, React.createElement(Spin, {s:24,c:"#00c170"}))
-            : standings.length === 0
-            // Pas de classement
+            // Mode knockout → sous-onglets 1/8 Quarts Demis Finale (géré plus bas)
+            // Mode qualif → paires aller/retour directement
+            // Mode groups → classement par groupes
+            : mode === "groups" && standings.length === 0
             ? (() => {
-                // Pour ID 36 (Qualif Principal) : les groupes ne sont pas encore formés
-                if(lid === 36) return React.createElement("div", {style:{textAlign:"center",padding:60,color:"#94a3b8",fontSize:13}},
+                if(lid === 36 || lid === 29) return React.createElement("div", {style:{textAlign:"center",padding:60,color:"#94a3b8",fontSize:13}},
                   React.createElement("div", {style:{fontSize:32,marginBottom:12}}, "⏳"),
                   React.createElement("div", {style:{fontWeight:600,marginBottom:6,color:"#64748b"}}, "Groupes pas encore disponibles"),
-                  React.createElement("div", {style:{fontSize:12}}, "Les groupes de qualification seront disponibles une fois le tirage au sort effectué.")
+                  React.createElement("div", {style:{fontSize:12}}, "Les groupes seront disponibles une fois le tirage au sort effectué.")
                 );
+                return React.createElement("div", {style:{textAlign:"center",padding:40,color:"#94a3b8",fontSize:13}}, "Classement non disponible");
+              })()
+            : mode === "groups" && standings.length > 0
+            ? null // rendu plus bas
+            : standings.length === 0
+            ? (() => {
                 if(!fixtures.length) return React.createElement("div", {style:{textAlign:"center",padding:40,color:"#94a3b8",fontSize:13}}, "Classement non disponible");
                 // Grouper par paires aller/retour
                 const pairs = [];
@@ -3601,8 +3614,23 @@ function LeagueSheet({fix, leagueInfo, onClose, onPhaseChange, initialSubMode, p
                 })()
           )
 
-        // ── KNOCKOUT (mode original) ──────────────────────────────────────
-        : React.createElement("div", null,
+        // ── KNOCKOUT ──────────────────────────────────────────────────────
+        : activeTab === "tableau" && mode === "knockout" ? React.createElement("div", null,
+          // Sous-onglets phases
+          React.createElement("div", {style:{display:"flex",overflowX:"auto",scrollbarWidth:"none",gap:0,marginLeft:-12,marginRight:-12,paddingLeft:12,marginBottom:12,borderBottom:"1px solid #f0f0f0"}},
+            phases.map(p =>
+              React.createElement("button", {
+                key:p.key,
+                onClick:()=>setActivePhase(p.key),
+                style:{
+                  flexShrink:0,padding:"9px 12px",background:"none",border:"none",
+                  fontSize:11,fontWeight:700,cursor:"pointer",whiteSpace:"nowrap",
+                  color:activePhase===p.key?"#0f172a":"#94a3b8",
+                  borderBottom:activePhase===p.key?"2px solid #0f172a":"2px solid transparent"
+                }
+              }, p.label)
+            )
+          ),
           loading
             ? React.createElement("div", {style:{textAlign:"center",padding:40}}, React.createElement(Spin, {s:24,c:"#00c170"}))
             : pairs.length === 0
@@ -3661,6 +3689,7 @@ function LeagueSheet({fix, leagueInfo, onClose, onPhaseChange, initialSubMode, p
               );
             })
         )  // fin knockout
+        : null
       ),
 
       // Mini-sheet quand on clique sur une paire — style image Flashscore
