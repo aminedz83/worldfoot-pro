@@ -3060,8 +3060,11 @@ function LeagueSheet({fix, leagueInfo, onClose, onPhaseChange}) {
     if(!historyYear) return;
     const lgN = (fix.league?.name || "").toLowerCase();
     const isCanFamily = lgN.includes("africa cup") || lgN.includes("cup of nations");
-    const targetLid = isCanFamily ? 36 : lid;
+    // Pour CAN : utiliser ID 29 (tournoi final) avec la saison = année de la CAN
+    // CAN 2023 → lid=29, season=2023
+    const targetLid = isCanFamily ? 29 : lid;
     const yr = historyYear.year;
+    const canSeason = yr; // API stocke la CAN 2023 en saison 2023
     setHistoryLoading(true);
     setHistoryStandings([]);
     setHistoryFixtures([]);
@@ -3078,8 +3081,8 @@ function LeagueSheet({fix, leagueInfo, onClose, onPhaseChange}) {
       return {season: seasons[0], rounds: []};
     };
 
-    // Pour la CAN, essayer yr-1 en premier (c'est la convention API), puis yr
-    const seasonsToTry = isCanFamily ? [yr-1, yr] : [yr-1];
+    // Pour la CAN, essayer yr en premier (CAN 2023 = saison 2023), puis yr-1
+    const seasonsToTry = isCanFamily ? [yr, yr-1] : [yr-1];
 
     trySeasons(seasonsToTry).then(async ({season: s, rounds: r}) => {
       // Charger classement avec la bonne saison
@@ -3116,7 +3119,7 @@ function LeagueSheet({fix, leagueInfo, onClose, onPhaseChange}) {
     const targetLid = isCanFamily2 ? 36 : lid;
     const yr2 = historyYear.year;
     // Utiliser la saison déjà trouvée (yr-1 pour CAN)
-    const tSeason = isCanFamily2 ? yr2-1 : yr2-1;
+    const tSeason = isCanFamily2 ? historyYear.year : yr2-1;
     setHistoryLoading(true);
     api(`/fixtures?league=${targetLid}&season=${tSeason}&round=${encodeURIComponent(historyActiveRound)}`, 86400000)
       .then(d => { setHistoryFixtures(d||[]); setHistoryLoading(false); })
