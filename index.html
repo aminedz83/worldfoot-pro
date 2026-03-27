@@ -873,15 +873,17 @@ const T = {
 };
 
 // ========== NOUVEAU TIMER UNIFIÉ COMME FLASHSCORE ==========
-function useMatchTimer(elapsed, status) {
+function useMatchTimer(elapsed, status, fixtureDate) {
   const [currentTime, setCurrentTime] = useState(elapsed || 0);
   useEffect(() => {
     if (!LIVE_ST.has(status)) { setCurrentTime(elapsed || 0); return; }
-    const startTime = Date.now();
-    const startElapsed = elapsed || 0;
+    // Compenser le lag API (~45s) pour afficher le vrai temps
+    const API_LAG = 45;
+    const baseSeconds = (elapsed || 0) * 60 + API_LAG;
+    const startWall = Date.now();
     const updateTime = () => {
-      const secondsElapsed = Math.floor((Date.now() - startTime) / 1000);
-      let newTime = startElapsed + Math.floor(secondsElapsed / 60);
+      const wallElapsed = Math.floor((Date.now() - startWall) / 1000);
+      let newTime = Math.floor((baseSeconds + wallElapsed) / 60);
       if (status === "1H" && newTime > 60) newTime = 60;
       if (status === "2H" && newTime > 105) newTime = 105;
       if (status === "ET" && newTime > 135) newTime = 135;
@@ -2553,7 +2555,7 @@ function Row({match:m, onOpen, isFav, onFav, onTeam}){
   const live=["1H","2H","ET","P"].includes(sh);
   const done=DONE_ST.has(sh);
   const canc=sh==="CANC";
-  const liveTime=useMatchTimer(s.elapsed,s.short);
+  const liveTime=useMatchTimer(s.elapsed,s.short,m.fixture.date);
   const timeDisplay=live?formatMatchTime(liveTime,sh):null;
   const flash=useFlash(m.goals.home,m.goals.away);
   const hg=m.goals.home,ag=m.goals.away,has=hg!==null&&ag!==null,hw=has&&hg>ag,aw=has&&ag>hg;
@@ -3537,7 +3539,7 @@ function MatchDetail({state,onClose,onTeam}){
   const isDone = ["FT","AET","PEN"].includes(sh);
   const isNS = ["NS","TBD","PST","CANC"].includes(sh);
 
-  const liveTime = useMatchTimer(s.elapsed, sh);
+  const liveTime = useMatchTimer(s.elapsed, sh, fix?.fixture?.date);
   const timeDisplay = isLive ? formatMatchTime(liveTime, sh) : null;
 
   // Classement général
