@@ -872,6 +872,7 @@ const T = {
   shadowLg:"0 8px 40px rgba(0,0,0,.1),0 2px 8px rgba(0,0,0,.06)",
 };
 
+// ========== NOUVEAU TIMER UNIFIÉ COMME FLASHSCORE ==========
 function useMatchTimer(elapsed, status) {
   const [currentTime, setCurrentTime] = useState(elapsed || 0);
   useEffect(() => {
@@ -882,7 +883,7 @@ function useMatchTimer(elapsed, status) {
       const secondsElapsed = Math.floor((Date.now() - startTime) / 1000);
       let newTime = startElapsed + Math.floor(secondsElapsed / 60);
       if (status === "1H" && newTime > 60) newTime = 60;
-      if (status === "2H" && newTime > 120) newTime = 120;
+      if (status === "2H" && newTime > 105) newTime = 105;
       if (status === "ET" && newTime > 135) newTime = 135;
       setCurrentTime(newTime);
     };
@@ -893,50 +894,27 @@ function useMatchTimer(elapsed, status) {
   return currentTime;
 }
 
-function useMinute(elapsed, status) { return useMatchTimer(elapsed, status); }
-
-function getMatchTimeDisplay(currentTime, status) {
+function formatMatchTime(currentTime, status) {
   if (!LIVE_ST.has(status)) return null;
   if (status === "1H") {
-    if (currentTime >= 45) return `45+${currentTime - 45}'`;
+    if (currentTime >= 45) { const extra = currentTime - 45; return `45+${extra}'`; }
     return `${currentTime}'`;
   }
   if (status === "2H") {
-    if (currentTime >= 90) return `90+${currentTime - 90}'`;
+    if (currentTime >= 90) { const extra = currentTime - 90; return `90+${extra}'`; }
     return `${currentTime}'`;
   }
   if (status === "ET") {
-    if (currentTime >= 120) return `120+${currentTime - 120}'`;
-    return `${currentTime}'`;
+    if (currentTime >= 90 && currentTime < 105) { const extra = currentTime - 90; return `90+${extra}' (P)`; }
+    if (currentTime === 105) return `105' (Pause)`;
+    if (currentTime >= 106 && currentTime < 120) { const extra = currentTime - 105; return `105+${extra}'`; }
+    if (currentTime >= 120) { const extra = currentTime - 120; return `120+${extra}'`; }
+    return `${currentTime}' (P)`;
   }
+  if (status === "P") return "T.a.b";
   return `${currentTime}'`;
 }
-
-// Hook pour afficher minutes:secondes en temps réel (comme Flashscore)
-function useLiveTime(elapsed, status, fixtureDate) {
-  const [display, setDisplay] = useState("");
-  useEffect(() => {
-    if (!LIVE_ST.has(status) || elapsed == null) {
-      setDisplay("");
-      return;
-    }
-    // Calculer le décalage : on sait que à l'instant t0, elapsed = N minutes
-    const t0 = Date.now();
-    const baseSeconds = elapsed * 60 + 30; // +30s pour compenser le délai API
-    const maxSeconds = (status === "2H" || status === "ET") ? 96 * 60 : 47 * 60;
-
-    const tick = () => {
-      const nowSeconds = Math.min(baseSeconds + Math.floor((Date.now() - t0) / 1000), maxSeconds);
-      const m = Math.floor(nowSeconds / 60);
-      const s = nowSeconds % 60;
-      setDisplay(`${m}:${String(s).padStart(2, "0")}`);
-    };
-    tick();
-    const id = setInterval(tick, 1000);
-    return () => clearInterval(id);
-  }, [elapsed, status]);
-  return display;
-}
+// ========== FIN NOUVEAU TIMER ==========
 
 function useFlash(hg,ag){
   const prev=useRef({h:null,a:null}), [on,setOn]=useState(false);
@@ -2575,7 +2553,8 @@ function Row({match:m, onOpen, isFav, onFav, onTeam}){
   const live=["1H","2H","ET","P"].includes(sh);
   const done=DONE_ST.has(sh);
   const canc=sh==="CANC";
-  const min=useMatchTimer(s.elapsed,s.short);
+  const liveTime=useMatchTimer(s.elapsed,s.short);
+  const timeDisplay=live?formatMatchTime(liveTime,sh):null;
   const flash=useFlash(m.goals.home,m.goals.away);
   const hg=m.goals.home,ag=m.goals.away,has=hg!==null&&ag!==null,hw=has&&hg>ag,aw=has&&ag>hg;
   const homeW = has && hg > ag;
@@ -2654,7 +2633,7 @@ function Row({match:m, onOpen, isFav, onFav, onTeam}){
       live
         ? React.createElement("div", { style: { display:"flex", flexDirection:"column", alignItems:"center", gap: 1 } },
             React.createElement("div", { style: { fontSize: 12, fontWeight: 800, color: "#e53535", lineHeight: 1 } },
-              getMatchTimeDisplay(min, sh) || (min + "'")
+              timeDisplay || (liveTime + "'")
             ),
             React.createElement("div", { style: { width: 5, height: 5, borderRadius: "50%", background: "#e53535", margin: "2px auto 0", animation: "pulse 1.2s infinite" } })
           )
@@ -3558,8 +3537,8 @@ function MatchDetail({state,onClose,onTeam}){
   const isDone = ["FT","AET","PEN"].includes(sh);
   const isNS = ["NS","TBD","PST","CANC"].includes(sh);
 
-  const min = useMatchTimer(s.elapsed, sh);
-  const liveTime = min;
+  const liveTime = useMatchTimer(s.elapsed, sh);
+  const timeDisplay = isLive ? formatMatchTime(liveTime, sh) : null;
 
   // Classement général
   React.useEffect(()=>{
@@ -5356,21 +5335,13 @@ function MatchDetail({state,onClose,onTeam}){
             fontSize:13, fontWeight:600, textAlign:"center",
             color: isLive ? "#e53535" : isDone ? "#64748b" : "#94a3b8"
           }}, isLive
-            ? getMatchTimeDisplay(liveTime, sh) || (liveTime + "'")
+            ? timeDisplay || (liveTime + "'")
             : isDone ? getStatusLabel(sh)
             : isNS ? hhmm2(fix.fixture.date) : getStatusLabel(sh)
           ),
-          // Label statut séparé (ex: "1ère mi-temps")
           isLive ? React.createElement("span", {style:{
             fontSize:11, fontWeight:500, color:"#94a3b8", textAlign:"center"
-          }}, getStatusLabel(sh)) : null,
-          // ⏱️ uniquement si temps additionnel
-          (() => {
-            const isExtra = (sh==="1H"&&liveTime>=45)||(sh==="2H"&&liveTime>=90)||(sh==="ET"&&liveTime>=120);
-            const extra = sh==="1H" ? liveTime-45 : sh==="2H" ? liveTime-90 : liveTime-120;
-            if (!isLive || !isExtra) return null;
-            return React.createElement("span", {style:{fontSize:11,fontWeight:700,color:"#e53535"}}, `⏱️ +${extra}`);
-          })()
+          }}, getStatusLabel(sh)) : null
         ),
 
         // Équipe extérieure
