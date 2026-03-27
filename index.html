@@ -2904,7 +2904,7 @@ function MatchDetailWrapper({state,onClose,onTeam}){
   return React.createElement(MatchDetail,{state,onClose,onTeam});
 }
 
-function LeagueSheet({fix, leagueInfo, onClose, onPhaseChange}) {
+function LeagueSheet({fix, leagueInfo, onClose, onPhaseChange, initialSubMode}) {
   const lid = fix.league.id;
   const season = fix.league.season;
   const round = fix.league?.round || "";
@@ -2915,13 +2915,20 @@ function LeagueSheet({fix, leagueInfo, onClose, onPhaseChange}) {
   const isGroup = round.toLowerCase().includes("group") || round.toLowerCase().includes("groupe");
   const isQualif = !isKnockout && !isGroup;
 
-  // Forcer "groups" pour les ligues de qualification principale connues (ID 36 = CAN Qualif Principal)
-  // car leur round est hérité du match original (Preliminary Round) mais la ligue a des groupes
-  const GROUP_LID = new Set([36, 29]); // IDs qui ont des groupes
-  const forceGroups = GROUP_LID.has(lid) && !isKnockout;
+  // subMode : "groups" | "knockout" | null (auto)
+  const [subMode, setSubMode] = useState(initialSubMode || null);
+
+  // Pour ID 29 (CAN tournoi) : subMode détermine groups vs knockout
+  // Pour ID 36 (qualif principal) : toujours groups
+  const GROUP_LID = new Set([36]);
+  const forceGroups = GROUP_LID.has(lid) || (lid === 29 && subMode === "groups");
+  const forceKnockout = lid === 29 && subMode === "knockout";
 
   // Mode : "knockout" | "groups" | "qualif"
-  const mode = isKnockout ? "knockout" : (isGroup || forceGroups ? "groups" : "qualif");
+  const mode = forceKnockout ? "knockout"
+    : isKnockout && !forceGroups ? "knockout"
+    : (isGroup || forceGroups) ? "groups"
+    : "qualif";
 
   const [activeTab, setActiveTab] = useState("tableau"); // "tableau" | "resultats" | "calendrier"
   const [activePhase, setActivePhase] = useState("Round of 16");
@@ -2973,14 +2980,14 @@ function LeagueSheet({fix, leagueInfo, onClose, onPhaseChange}) {
       .catch(() => setLoading(false));
   }, [activeRound]);
 
-  // Reset données quand lid change (navigation entre phases)
+  // Reset données quand lid ou subMode change (navigation entre phases)
   useEffect(() => {
     setStandings([]);
     setFixtures([]);
     setRounds([]);
     setActiveRound("");
     setLoading(false);
-  }, [lid]);
+  }, [lid, subMode]);
 
   // Charger le classement pour les rangs
   useEffect(() => {
@@ -3044,6 +3051,7 @@ function LeagueSheet({fix, leagueInfo, onClose, onPhaseChange}) {
   const [showWinners, setShowWinners] = useState(false);
   const [winnersData, setWinnersData] = useState({});
   const [showPhaseSelector, setShowPhaseSelector] = useState(false);
+  // subMode déjà déclaré plus haut dans LeagueSheet
   const [activeLid, setActiveLid] = useState(lid);
   const [activeSeason, setActiveSeason] = useState(season);
   // Fiche historique d'une année
@@ -3236,7 +3244,10 @@ function LeagueSheet({fix, leagueInfo, onClose, onPhaseChange}) {
               const isPreliminaire = lgN.includes("prelim") || lgN.includes("préliminaire");
               const isPrincipal = !isPreliminaire && (lgN.includes("qualif") || lid === 36);
               const isFinal = lid === 29;
-              const phaseName = isFinal ? "Tournoi final" : isPrincipal ? "Qualification · Principal" : "Qualification · Préliminaire";
+              const phaseName = isFinal
+                ? (subMode === "knockout" ? "Tournoi final · Phase Finale" : "Tournoi final · Principal")
+                : isPrincipal ? "Qualification · Principal"
+                : "Qualification · Préliminaire";
               return React.createElement("div", {
                 onClick: () => setShowPhaseSelector(true),
                 style:{fontSize:12,color:"#64748b",marginTop:2,display:"flex",alignItems:"center",gap:4,cursor:"pointer"}
@@ -3943,8 +3954,8 @@ function LeagueSheet({fix, leagueInfo, onClose, onPhaseChange}) {
             {
               section: "Tournoi final",
               items: [
-                { label: "Principal",    lid: 29,   isCurrent: lid === 29 },
-                { label: "Phase Finale", lid: 29,   isCurrent: lid === 29 },
+                { label: "Principal",    lid: 29, sub: "groups",   isCurrent: lid === 29 && subMode !== "knockout" },
+                { label: "Phase Finale", lid: 29, sub: "knockout", isCurrent: lid === 29 && subMode === "knockout" },
               ]
             }
           ];
@@ -3967,12 +3978,9 @@ function LeagueSheet({fix, leagueInfo, onClose, onPhaseChange}) {
                   key:ii,
                   onClick: () => {
                     setShowPhaseSelector(false);
-                    if(item.lid && item.lid !== lid) {
-                      // Ouvrir une nouvelle fiche pour cette phase
-                      // On passe par onClose + réouvre avec le nouvel ID
-                      // Pour simplifier : reload la page avec le nouvel ID de ligue
-                      if(onPhaseChange) onPhaseChange(item.lid);
-                    }
+                    setShowPhaseSelector(false);
+                    setSubMode(item.sub || null);
+                    if(item.lid !== lid && onPhaseChange) onPhaseChange(item.lid, item.sub || null);
                   },
                   style:{
                     display:"flex",alignItems:"center",justifyContent:"space-between",
@@ -6551,8 +6559,9 @@ function MatchDetail({state,onClose,onTeam}){
     showLeagueSheet ? React.createElement(LeagueSheet, {
       fix: overrideLid ? {...fix, league: {...fix.league, id: overrideLid}} : fix,
       leagueInfo: overrideLid ? null : leagueInfo,
+      initialSubMode: overrideLid ? (overrideLid === 29 ? "groups" : null) : null,
       onClose: () => { setShowLeagueSheet(false); setOverrideLid(null); },
-      onPhaseChange: (newLid) => { setOverrideLid(newLid); setLeagueInfo(null); }
+      onPhaseChange: (newLid, newSub) => { setOverrideLid(newLid); setLeagueInfo(null); }
     }) : null
   );
 }
