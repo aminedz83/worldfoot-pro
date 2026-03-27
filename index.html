@@ -873,26 +873,58 @@ const T = {
 };
 
 // ========== NOUVEAU TIMER UNIFIÉ COMME FLASHSCORE ==========
-function useMatchTimer(elapsed, status, fixtureDate) {
-  const [currentTime, setCurrentTime] = useState(elapsed || 0);
+// Cache global par fixtureId : { wallTime, baseSeconds, maxSeen }
+// Garantit que le temps ne recule JAMAIS, même entre mounts
+const _timerCache = new Map();
+
+function useMatchTimer(elapsed, status, fixtureDate, fixtureId) {
+  const API_LAG = 45;
+  const key = fixtureId || (status + "-" + (fixtureDate || ""));
+
+  // Calculer le baseSeconds depuis elapsed API + compensation lag
+  const rawBase = (elapsed || 0) * 60 + API_LAG;
+
+  // Mettre à jour le cache seulement si on avance
+  const existing = _timerCache.get(key);
+  if (!existing) {
+    _timerCache.set(key, { wallTime: Date.now(), baseSeconds: rawBase, maxSeen: elapsed || 0 });
+  } else if ((elapsed || 0) > existing.maxSeen) {
+    // L'API nous donne un elapsed plus grand → on avance l'ancre
+    _timerCache.set(key, { wallTime: Date.now(), baseSeconds: rawBase, maxSeen: elapsed || 0 });
+  }
+
+  const anchor = _timerCache.get(key);
+
+  // Temps initial = depuis l'ancre (jamais en arrière)
+  const secondsSinceAnchor = Math.floor((Date.now() - anchor.wallTime) / 1000);
+  let initTime = Math.floor((anchor.baseSeconds + secondsSinceAnchor) / 60);
+  if (status === "1H" && initTime > 60) initTime = 60;
+  if (status === "2H" && initTime > 105) initTime = 105;
+  if (status === "ET" && initTime > 135) initTime = 135;
+
+  const [currentTime, setCurrentTime] = useState(initTime);
+
   useEffect(() => {
     if (!LIVE_ST.has(status)) { setCurrentTime(elapsed || 0); return; }
-    // Compenser le lag API (~45s) pour afficher le vrai temps
-    const API_LAG = 45;
-    const baseSeconds = (elapsed || 0) * 60 + API_LAG;
-    const startWall = Date.now();
+
+    const anchorSnap = _timerCache.get(key);
+
     const updateTime = () => {
-      const wallElapsed = Math.floor((Date.now() - startWall) / 1000);
-      let newTime = Math.floor((baseSeconds + wallElapsed) / 60);
+      const wallElapsed = Math.floor((Date.now() - anchorSnap.wallTime) / 1000);
+      let newTime = Math.floor((anchorSnap.baseSeconds + wallElapsed) / 60);
       if (status === "1H" && newTime > 60) newTime = 60;
       if (status === "2H" && newTime > 105) newTime = 105;
       if (status === "ET" && newTime > 135) newTime = 135;
-      setCurrentTime(newTime);
+      // Mettre à jour le maxSeen global
+      const cur = _timerCache.get(key);
+      if (cur && newTime > cur.maxSeen) _timerCache.set(key, { ...cur, maxSeen: newTime });
+      setCurrentTime(prev => Math.max(prev, newTime));
     };
     updateTime();
     const interval = setInterval(updateTime, 1000);
     return () => clearInterval(interval);
   }, [elapsed, status]);
+
   return currentTime;
 }
 
@@ -2555,7 +2587,7 @@ function Row({match:m, onOpen, isFav, onFav, onTeam}){
   const live=["1H","2H","ET","P"].includes(sh);
   const done=DONE_ST.has(sh);
   const canc=sh==="CANC";
-  const liveTime=useMatchTimer(s.elapsed,s.short,m.fixture.date);
+  const liveTime=useMatchTimer(s.elapsed,s.short,m.fixture.date,m.fixture.id);
   const timeDisplay=live?formatMatchTime(liveTime,sh):null;
   const flash=useFlash(m.goals.home,m.goals.away);
   const hg=m.goals.home,ag=m.goals.away,has=hg!==null&&ag!==null,hw=has&&hg>ag,aw=has&&ag>hg;
@@ -3539,7 +3571,7 @@ function MatchDetail({state,onClose,onTeam}){
   const isDone = ["FT","AET","PEN"].includes(sh);
   const isNS = ["NS","TBD","PST","CANC"].includes(sh);
 
-  const liveTime = useMatchTimer(s.elapsed, sh, fix?.fixture?.date);
+  const liveTime = useMatchTimer(s.elapsed, sh, fix?.fixture?.date, fix?.fixture?.id);
   const timeDisplay = isLive ? formatMatchTime(liveTime, sh) : null;
 
   // Classement général
