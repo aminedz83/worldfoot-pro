@@ -2904,7 +2904,7 @@ function MatchDetailWrapper({state,onClose,onTeam}){
   return React.createElement(MatchDetail,{state,onClose,onTeam});
 }
 
-function LeagueSheet({fix, leagueInfo, onClose}) {
+function LeagueSheet({fix, leagueInfo, onClose, onPhaseChange}) {
   const lid = fix.league.id;
   const season = fix.league.season;
   const round = fix.league?.round || "";
@@ -3718,7 +3718,7 @@ function LeagueSheet({fix, leagueInfo, onClose}) {
                       // Ouvrir une nouvelle fiche pour cette phase
                       // On passe par onClose + réouvre avec le nouvel ID
                       // Pour simplifier : reload la page avec le nouvel ID de ligue
-                      window._pendingLeagueSwitch = {lid: item.lid, season};
+                      if(onPhaseChange) onPhaseChange(item.lid);
                     }
                   },
                   style:{
@@ -4119,6 +4119,7 @@ function MatchDetail({state,onClose,onTeam}){
   const[firstLegScore,setFirstLegScore]=React.useState(null);
   const[showLeagueSheet,setShowLeagueSheet]=React.useState(false);
   const[leagueInfo,setLeagueInfo]=React.useState(null);
+  const[overrideLid,setOverrideLid]=React.useState(null);
   const contentRef=React.useRef(null);
 
   const [refereeStats, setRefereeStats] = useState(null);
@@ -4370,11 +4371,13 @@ function MatchDetail({state,onClose,onTeam}){
   }, [fix?.fixture?.id]);
 
   React.useEffect(()=>{
-    if(!showLeagueSheet||!fix?.league?.id||leagueInfo)return;
-    api(`/leagues?id=${fix.league.id}`,86400000)
+    if(!showLeagueSheet) return;
+    const targetId = overrideLid || fix?.league?.id;
+    if(!targetId || leagueInfo) return;
+    api(`/leagues?id=${targetId}`,86400000)
       .then(d=>{if(d&&d[0])setLeagueInfo(d[0]);})
       .catch(()=>{});
-  },[showLeagueSheet]);
+  },[showLeagueSheet, overrideLid]);
 
   React.useEffect(()=>{
     if(!fix?.fixture?.venue?.id)return;
@@ -6285,7 +6288,10 @@ function MatchDetail({state,onClose,onTeam}){
 
     // Fiche compétition (bottom sheet)
     showLeagueSheet ? React.createElement(LeagueSheet, {
-      fix, leagueInfo, onClose: () => setShowLeagueSheet(false)
+      fix: overrideLid ? {...fix, league: {...fix.league, id: overrideLid}} : fix,
+      leagueInfo: overrideLid ? null : leagueInfo,
+      onClose: () => { setShowLeagueSheet(false); setOverrideLid(null); },
+      onPhaseChange: (newLid) => { setOverrideLid(newLid); setLeagueInfo(null); }
     }) : null
   );
 }
