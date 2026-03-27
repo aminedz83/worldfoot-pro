@@ -2937,37 +2937,36 @@ function LeagueSheet({fix, leagueInfo, onClose}) {
     {key:"Final", label:"FINALE"}
   ];
 
-  // Charger tous les rounds disponibles (pour qualifs/groupes)
+  // Chargement unifié : rounds puis fixtures en cascade
   useEffect(() => {
     if(!lid || !season || mode === "knockout") return;
+    setLoading(true);
+    // 1. Charger les rounds
     api(`/fixtures/rounds?league=${lid}&season=${season}`, 86400000)
       .then(d => {
         if(d && d.length) {
           setRounds(d);
-          // Trouver le round actuel
-          const cur = d.find(r => r === round) || d[d.length - 1];
-          setActiveRound(cur || d[0]);
+          const cur = d.find(r => r === round) || d[d.length - 1] || d[0];
+          setActiveRound(cur);
+          // 2. Charger immédiatement les fixtures du round courant
+          return api(`/fixtures?league=${lid}&season=${season}&round=${encodeURIComponent(cur)}`, 3600000);
+        } else {
+          // Pas de rounds → charger tous les matchs de la saison
+          return api(`/fixtures?league=${lid}&season=${season}`, 86400000);
         }
-      }).catch(()=>{});
+      })
+      .then(d => { setFixtures(d||[]); setLoading(false); })
+      .catch(() => setLoading(false));
   }, [lid, season, mode]);
 
-  // Charger les matchs du round actif (qualifs/groupes) — pour tous les onglets
+  // Recharger fixtures quand activeRound change manuellement (clic sur un round)
   useEffect(() => {
     if(!lid || !season || !activeRound || mode === "knockout") return;
     setLoading(true);
     api(`/fixtures?league=${lid}&season=${season}&round=${encodeURIComponent(activeRound)}`, 3600000)
       .then(d => { setFixtures(d||[]); setLoading(false); })
       .catch(() => setLoading(false));
-  }, [activeRound, lid, season, mode]);
-
-  // Pour le TABLEAU en mode qualif : charger tous les matchs de la saison si round vide
-  useEffect(() => {
-    if(!lid || !season || mode !== "qualif" || activeRound || fixtures.length) return;
-    setLoading(true);
-    api(`/fixtures?league=${lid}&season=${season}`, 86400000)
-      .then(d => { setFixtures(d||[]); setLoading(false); })
-      .catch(() => setLoading(false));
-  }, [lid, season, mode, activeRound, fixtures.length]);
+  }, [activeRound]);
 
   // Charger le classement pour les rangs
   useEffect(() => {
