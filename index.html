@@ -3075,19 +3075,22 @@ function LeagueSheet({fix, leagueInfo, onClose, onPhaseChange, initialSubMode}) 
       for(const s of [yr, yr-1, yr+1]) {
         try {
           // Charger TOUS les matchs de la saison une seule fois
-          const all = await api(`/fixtures?league=29&season=${s}`, 86400000);
+          // Cache court (1min) pour forcer rechargement des données historiques
+          const all = await api(`/fixtures?league=29&season=${s}`, 60000);
           if(!all || !all.length) continue;
+          // Logger TOUS les rounds disponibles dans la console
+          const availableRounds = [...new Set(all.map(f => f.league?.round||""))].filter(Boolean).sort();
+          console.log(`CAN ${yr} saison API ${s} - ${all.length} matchs - rounds:`, availableRounds);
           const key = historyActiveRound.toLowerCase();
           const filtered = all.filter(f => {
-            const r = (f.league?.round || f.round || "").toLowerCase().trim();
-            if(key.includes("16"))      return r.includes("16") || r.includes("last 16") || r.includes("round of 16");
+            const r = (f.league?.round||"").toLowerCase().trim();
+            if(key.includes("16"))      return r.includes("16");
             if(key.includes("quarter")) return r.includes("quarter");
-            if(key.includes("semi"))    return r.includes("semi");
-            if(key === "final")         return r === "final" || r === "the final" || r === "grand final" || r === "final round" || r.match(/^final$/);
+            if(key.includes("semi"))    return r.includes("semi") && !r.includes("final");
+            if(key === "final")         return r.includes("final") && !r.includes("semi") && !r.includes("quarter") && !r.includes("3rd") && !r.includes("place") && !r.includes("16");
             return false;
           });
-          // Debug: log rounds trouvés
-          if(filtered.length === 0) console.log("Rounds disponibles:", [...new Set(all.map(f => f.league?.round||f.round))]);
+          console.log(`Filtre "${historyActiveRound}" → ${filtered.length} matchs trouvés`);
           if(filtered.length > 0) { setHistoryFixtures(filtered); setHistoryLoading(false); return; }
         } catch(e) {}
       }
