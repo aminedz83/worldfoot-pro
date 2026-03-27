@@ -3417,43 +3417,79 @@ function LeagueSheet({fix, leagueInfo, onClose}) {
                     ? fixtures.filter(f => DONE_ST.has(f.fixture?.status?.short))
                     : fixtures.filter(f => !DONE_ST.has(f.fixture?.status?.short));
                   const list = toShow.length > 0 ? toShow : fixtures;
-                  return React.createElement("div", {style:{background:"#fff",borderRadius:12,overflow:"hidden",boxShadow:"0 1px 4px rgba(0,0,0,.06)"}},
-                    list.map((m,i) => {
-                      const hg = m.goals?.home;
-                      const ag = m.goals?.away;
-                      const done = DONE_ST.has(m.fixture?.status?.short);
-                      const live = LIVE_ST.has(m.fixture?.status?.short);
-                      const hw = hg!=null && ag!=null && hg>ag;
-                      const aw = hg!=null && ag!=null && ag>hg;
-                      return React.createElement("div", {key:m.fixture.id, style:{
-                        display:"flex",alignItems:"center",gap:10,
-                        padding:"11px 14px",
-                        borderBottom:i<list.length-1?"1px solid #f5f7fa":"none"
-                      }},
-                        // Date/heure
-                        React.createElement("span", {style:{fontSize:11,color:"#94a3b8",minWidth:38,fontWeight:600}},
-                          done||live
-                            ? (live ? React.createElement("span",{style:{color:"#e53535",fontWeight:700}},"LIVE") : "FT")
-                            : new Date(m.fixture.date).toLocaleTimeString("fr-FR",{hour:"2-digit",minute:"2-digit"})
-                        ),
-                        // Équipes
-                        React.createElement("div", {style:{flex:1,minWidth:0}},
-                          React.createElement("div", {style:{display:"flex",alignItems:"center",gap:7,marginBottom:4}},
-                            React.createElement("img",{src:m.teams.home.logo,style:{width:18,height:18,objectFit:"contain",flexShrink:0},onError:e=>e.target.style.display="none"}),
-                            React.createElement("span",{style:{fontSize:13,fontWeight:hw?700:400,color:hw?"#0f172a":"#64748b",flex:1,overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap"}},m.teams.home.name)
-                          ),
-                          React.createElement("div", {style:{display:"flex",alignItems:"center",gap:7}},
-                            React.createElement("img",{src:m.teams.away.logo,style:{width:18,height:18,objectFit:"contain",flexShrink:0},onError:e=>e.target.style.display="none"}),
-                            React.createElement("span",{style:{fontSize:13,fontWeight:aw?700:400,color:aw?"#0f172a":"#64748b",flex:1,overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap"}},m.teams.away.name)
-                          )
-                        ),
-                        // Score
-                        done||live ? React.createElement("div",{style:{textAlign:"right",minWidth:20}},
-                          React.createElement("div",{style:{fontSize:13,fontWeight:hw?700:400,color:live?"#e53535":hw?"#0f172a":"#94a3b8",lineHeight:1.4}},hg??"–"),
-                          React.createElement("div",{style:{fontSize:13,fontWeight:aw?700:400,color:live?"#e53535":aw?"#0f172a":"#94a3b8",lineHeight:1.4}},ag??"–")
-                        ) : null
-                      );
-                    })
+                  // Grouper par date pour afficher les séparateurs de date
+                  const grouped = {};
+                  list.forEach(m => {
+                    const d = new Date(m.fixture.date).toLocaleDateString("fr-FR",{day:"2-digit",month:"2-digit"}).replace("/",".");
+                    if(!grouped[d]) grouped[d] = [];
+                    grouped[d].push(m);
+                  });
+
+                  return React.createElement("div", null,
+                    Object.entries(grouped).map(([dateKey, matches]) =>
+                      React.createElement("div", {key:dateKey, style:{marginBottom:10}},
+                        // Séparateur date
+                        React.createElement("div", {style:{
+                          fontSize:11,fontWeight:700,color:"#64748b",
+                          padding:"8px 14px 6px",
+                          background:"#f8fafc",
+                          letterSpacing:0.5
+                        }}, dateKey+"."),
+                        React.createElement("div", {style:{background:"#fff",borderRadius:12,overflow:"hidden",boxShadow:"0 1px 4px rgba(0,0,0,.06)"}},
+                          matches.map((m,i) => {
+                            const hg = m.goals?.home;
+                            const ag = m.goals?.away;
+                            const done = DONE_ST.has(m.fixture?.status?.short);
+                            const live = LIVE_ST.has(m.fixture?.status?.short);
+                            const hw = hg!=null && ag!=null && hg>ag;
+                            const aw = hg!=null && ag!=null && ag>hg;
+                            const timeStr = new Date(m.fixture.date).toLocaleTimeString("fr-FR",{hour:"2-digit",minute:"2-digit"});
+                            // Trouver la paire pour ce match (pour ouvrir le mini-sheet)
+                            const pair = (() => {
+                              const partner = fixtures.find(g =>
+                                g.fixture.id !== m.fixture.id &&
+                                ((g.teams.home.id===m.teams.away.id && g.teams.away.id===m.teams.home.id) ||
+                                 (g.teams.home.id===m.teams.home.id && g.teams.away.id===m.teams.away.id))
+                              );
+                              return {leg1: m, leg2: partner||null};
+                            })();
+                            return React.createElement("div", {
+                              key:m.fixture.id,
+                              onClick: () => setSelectedPair(pair),
+                              style:{
+                                display:"flex",alignItems:"center",gap:10,
+                                padding:"11px 14px",
+                                borderBottom:i<matches.length-1?"1px solid #f5f7fa":"none",
+                                cursor:"pointer"
+                              }
+                            },
+                              // Heure
+                              React.createElement("span", {style:{fontSize:11,color:live?"#e53535":"#94a3b8",minWidth:38,fontWeight:live?700:600}},
+                                live ? "LIVE" : done ? "FT" : timeStr
+                              ),
+                              // Équipes
+                              React.createElement("div", {style:{flex:1,minWidth:0}},
+                                React.createElement("div", {style:{display:"flex",alignItems:"center",gap:7,marginBottom:4}},
+                                  React.createElement("img",{src:m.teams.home.logo,style:{width:18,height:18,objectFit:"contain",flexShrink:0},onError:e=>e.target.style.display="none"}),
+                                  React.createElement("span",{style:{fontSize:13,fontWeight:hw?700:400,color:hw?"#0f172a":"#64748b",flex:1,overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap"}},m.teams.home.name)
+                                ),
+                                React.createElement("div", {style:{display:"flex",alignItems:"center",gap:7}},
+                                  React.createElement("img",{src:m.teams.away.logo,style:{width:18,height:18,objectFit:"contain",flexShrink:0},onError:e=>e.target.style.display="none"}),
+                                  React.createElement("span",{style:{fontSize:13,fontWeight:aw?700:400,color:aw?"#0f172a":"#64748b",flex:1,overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap"}},m.teams.away.name)
+                                )
+                              ),
+                              // Score ou heure retour
+                              done||live
+                                ? React.createElement("div",{style:{textAlign:"right",minWidth:20}},
+                                    React.createElement("div",{style:{fontSize:13,fontWeight:hw?700:400,color:live?"#e53535":hw?"#0f172a":"#94a3b8",lineHeight:1.4}},hg??"–"),
+                                    React.createElement("div",{style:{fontSize:13,fontWeight:aw?700:400,color:live?"#e53535":aw?"#0f172a":"#94a3b8",lineHeight:1.4}},ag??"–")
+                                  )
+                                : null
+                            );
+                          })
+                        )
+                      )
+                    )
                   );
                 })()
           )
