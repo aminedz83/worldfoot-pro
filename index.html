@@ -5963,145 +5963,120 @@ function ScoresTab({favs,onFav,onTeam}){
         );
       })
     ),
-    React.createElement("div", { style: { display: "flex", gap: 7, padding: "8px 14px", background: T.bg0, borderBottom: q.length >= 2 ? "none" : "1px solid " + T.line, flexShrink: 0, width: "100%" } },
-      React.createElement("div", { style: { position: "relative", flex: 1 } },
-        React.createElement("svg", { style: { position: "absolute", left: 10, top: "50%", transform: "translateY(-50%)" }, width: 12, height: 12, fill: "none", stroke: T.t3, strokeWidth: 2.5, viewBox: "0 0 24 24" },
-          React.createElement("circle", { cx: 11, cy: 11, r: 8 }),
-          React.createElement("path", { d: "m21 21-4.35-4.35" })
-        ),
-        React.createElement("input", {
-          value: q,
-          onChange: e => setQ(e.target.value),
-          placeholder: "Équipe ou compétition...",
-          style: {
-            width: "100%",
-            background: T.bg2,
-            border: "1px solid " + T.line,
-            borderRadius: 10,
-            padding: "8px 28px 8px 30px",
-            color: T.t1,
-            fontSize: 16,
-            outline: "none",
-            transition: "border-color .15s"
-          },
-          onFocus: e => e.target.style.borderColor = "rgba(229,53,53,.4)",
-          onBlur: e => e.target.style.borderColor = T.line
-        }),
-        q ? React.createElement("button", {
-          onClick: () => setQ(""),
-          style: { position: "absolute", right: 8, top: "50%", transform: "translateY(-50%)", background: "none", border: "none", color: T.t3, fontSize: 13, cursor: "pointer" }
-        }, "✕") : null
-      ),
-
-      React.createElement("button", {
+    // ── Bouton "Tous les matchs" style Flashscore ─────────────────────
+    React.createElement("div", { style: {
+      padding: "8px 14px", background: "#fff",
+      borderBottom: "1px solid #ebebeb", flexShrink: 0
+    } },
+      React.createElement("div", {
         onClick: () => setPicker(true),
         style: {
-          display: "flex",
-          alignItems: "center",
-          gap: 6,
-          background: lg ? "rgba(5,150,105,0.08)" : T.bg2,
-          border: "1px solid " + (lg ? "rgba(5,150,105,0.30)" : T.line),
-          borderRadius: 10,
-          padding: "8px 11px",
-          color: lg ? "var(--c-jade)" : T.t2,
-          fontSize: 12,
-          fontWeight: 700,
+          display: "flex", alignItems: "center", gap: 12,
+          padding: "10px 14px",
+          borderRadius: 50,
+          border: "1.5px solid #e0e2e8",
+          background: "#fff",
           cursor: "pointer",
-          flexShrink: 0,
-          transition: "all .15s",
-          boxShadow: lg ? "0 1px 6px rgba(5,150,105,0.10)" : "none"
+          boxShadow: "0 1px 4px rgba(0,0,0,0.06)"
         }
       },
-        sel
-          ? React.createElement(React.Fragment, null,
-              React.createElement("span", null, sel.flag),
-              React.createElement("span", { className: "bc", style: { fontWeight: 700 } }, sel.name)
-            )
-          : React.createElement("span", { className: "bc", style: { fontWeight: 700 } }, "Ligues"),
-        React.createElement("span", { style: { fontSize: 10, opacity: 0.6 } }, "▾")
-      ),
-      lg ? React.createElement("button", {
-        onClick: () => setLg(null),
-        style: { border: "1px solid " + T.line, color: T.t3, borderRadius: 10, padding: "8px 10px", fontSize: 12, cursor: "pointer", background: "none", flexShrink: 0 }
-      }, "✕") : null
+        React.createElement("svg", { width: 18, height: 18, viewBox: "0 0 24 24", fill: "none",
+          stroke: "#1a1f2e", strokeWidth: 2, strokeLinecap: "round" },
+          React.createElement("circle", { cx: 5, cy: 6,  r: 1.8, fill: "#1a1f2e", stroke: "none" }),
+          React.createElement("circle", { cx: 5, cy: 12, r: 1.8, fill: "#1a1f2e", stroke: "none" }),
+          React.createElement("circle", { cx: 5, cy: 18, r: 1.8, fill: "#1a1f2e", stroke: "none" }),
+          React.createElement("line", { x1: 10, y1: 6,  x2: 22, y2: 6  }),
+          React.createElement("line", { x1: 10, y1: 12, x2: 22, y2: 12 }),
+          React.createElement("line", { x1: 10, y1: 18, x2: 22, y2: 18 })
+        ),
+        React.createElement("span", { style: {
+          flex: 1, fontSize: 15, fontWeight: 700, color: "#1a1f2e"
+        } }, lg && sel ? sel.name : "Tous les matchs"),
+        React.createElement("div", { style: { display: "flex", alignItems: "center", gap: 8 } },
+          lv > 0 && React.createElement("span", { style: {
+            background: "#e53535", color: "#fff",
+            fontSize: 12, fontWeight: 700, borderRadius: 6,
+            padding: "2px 8px", minWidth: 24, textAlign: "center"
+          } }, lv),
+          React.createElement("span", { style: {
+            fontSize: 15, fontWeight: 500, color: "#999"
+          } }, lg && sel
+            ? data.filter(f => f.league.id === lg).length
+            : data.length
+          ),
+          lg && React.createElement("button", {
+            onClick: e => { e.stopPropagation(); setLg(null); },
+            style: {
+              background: "#f0f1f4", border: "none", borderRadius: "50%",
+              width: 22, height: 22, display: "flex", alignItems: "center",
+              justifyContent: "center", cursor: "pointer", color: "#888",
+              fontSize: 13, flexShrink: 0
+            }
+          }, "✕")
+        )
+      )
     ),
-
-    // Dropdown résultats de recherche — juste sous la barre
-    q.length >= 2 && React.createElement("div", { style: {
-      background: "#fff", borderBottom: "1px solid #e8e8e8", flexShrink: 0
+    React.createElement("div", { style: {
+      display: "flex", gap: 7, padding: "10px 14px",
+      background: "#fff", borderBottom: "1px solid #ebebeb",
+      flexShrink: 0, overflowX: "auto", scrollbarWidth: "none",
+      WebkitOverflowScrolling: "touch"
     } },
-      teamSearching
-        ? React.createElement("div", { style: { padding: "12px 14px", textAlign: "center", fontSize: 12, color: "#94a3b8" } }, "Recherche...")
-        : teamResults.length === 0
-        ? React.createElement("div", { style: { padding: "12px 14px", textAlign: "center", fontSize: 12, color: "#94a3b8" } }, "Aucune équipe trouvée")
-        : teamResults.map((r, i) =>
-            React.createElement("div", {
-              key: i,
-              onClick: () => { setQ(""); setTeamResults([]); onTeam && onTeam(r.team.id, r.team.name, r.team.logo, r.team.country, null); },
-              style: {
-                display: "flex", alignItems: "center", gap: 12,
-                padding: "10px 14px", cursor: "pointer",
-                borderBottom: i < teamResults.length-1 ? "1px solid #f5f5f5" : "none",
-                background: "#fff"
-              }
-            },
-              React.createElement("div", { style: { width: 36, height: 36, borderRadius: 8, background: "#f8fafc", border: "1px solid #e8e8e8", display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0 } },
-                React.createElement("img", { src: r.team.logo, style: { width: 24, height: 24, objectFit: "contain" }, onError: e => e.target.style.display="none" })
-              ),
-              React.createElement("div", { style: { flex: 1, minWidth: 0 } },
-                React.createElement("div", { style: { fontSize: 14, fontWeight: 600, color: "#0f172a" } }, r.team.name),
-                React.createElement("div", { style: { fontSize: 11, color: "#94a3b8", marginTop: 2, textTransform: "uppercase", letterSpacing: 0.5 } }, r.team.country || "")
-              ),
-              React.createElement("span", { style: { fontSize: 16, color: "#ccc" } }, "›")
-            )
-          )
-    ),
-
-    React.createElement("div", { style: { display: "flex", gap: 6, padding: "10px 14px", background: "var(--c-surface)", borderBottom: "1px solid var(--c-border)", flexShrink: 0, overflowX: "auto", scrollbarWidth: "none" } },
       [
-        { key: "all",      label: "Tous",       icon: "⚽" },
-        { key: "live",     label: "En direct",  icon: "🔴" },
-        { key: "upcoming", label: "À venir",    icon: "⏳" },
-        { key: "finished", label: "Terminés",   icon: "✅" }
-      ].map(f =>
-        React.createElement("button", {
+        { key: "all",      label: "Tous",       cnt: null },
+        { key: "live",     label: "En direct",  cnt: data.filter(x=>LIVE_ST.has(x.fixture.status.short)).length },
+        { key: "upcoming", label: "À venir",    cnt: data.filter(x=>NS_ST.has(x.fixture.status.short)).length },
+        { key: "finished", label: "Terminés",   cnt: data.filter(x=>DONE_ST.has(x.fixture.status.short)).length }
+      ].map(f => {
+        const active = statusFilter === f.key;
+        return React.createElement("button", {
           key: f.key,
           onClick: () => { setStatusFilter(f.key); setVisibleLimit(30); },
           style: {
             flexShrink: 0,
-            display: "flex", alignItems: "center", gap: 5,
-            padding: "6px 13px",
-            borderRadius: 20,
-            border: statusFilter === f.key ? "1px solid " + (f.key === "live" ? "rgba(229,62,62,0.35)" : f.key === "upcoming" ? "rgba(5,150,105,0.30)" : "var(--c-border-md)") : "1px solid var(--c-border)",
-            background: statusFilter === f.key
-              ? (f.key === "live" ? "var(--c-live-dim)" : f.key === "upcoming" ? "var(--c-jade-dim)" : f.key === "finished" ? "rgba(15,23,42,0.05)" : "var(--c-ink)")
-              : "var(--c-base)",
-            color: statusFilter === f.key
-              ? (f.key === "live" ? "var(--c-live)" : f.key === "upcoming" ? "var(--c-jade)" : f.key === "finished" ? "var(--c-ink-2)" : "#fff")
-              : "var(--c-ink-3)",
-            fontSize: 11,
-            fontWeight: statusFilter === f.key ? 700 : 500,
+            display: "flex", alignItems: "center", gap: 6,
+            padding: "7px 13px",
+            borderRadius: 50,
+            border: "none",
+            background: active ? "#1a1f2e" : "#f0f1f4",
+            color: active ? "#fff" : "#555",
+            fontSize: 13, fontWeight: 600,
             fontFamily: "'Plus Jakarta Sans', sans-serif",
-            letterSpacing: "0.3px",
             cursor: "pointer",
-            transition: "all 0.18s cubic-bezier(0.22,1,0.36,1)",
-            boxShadow: statusFilter === f.key && f.key === "live" ? "0 2px 8px rgba(229,62,62,0.15)" : statusFilter === f.key && f.key === "upcoming" ? "0 2px 8px rgba(5,150,105,0.12)" : "none"
+            transition: "all 0.15s"
           }
         },
-          React.createElement("span", { style: { fontSize: 12 } }, f.icon),
+          f.key === "all"
+            ? React.createElement("svg", { width: 14, height: 14, viewBox: "0 0 24 24", fill: "none" },
+                React.createElement("circle", { cx: 12, cy: 12, r: 10, stroke: active ? "#fff" : "#555", strokeWidth: 2, fill: "none" }),
+                React.createElement("path", { d: "M12 2C6 7 6 17 12 22M12 2c6 5 6 15 0 20M2 12h20", stroke: active ? "#fff" : "#555", strokeWidth: 1.5, fill: "none" })
+              )
+            : f.key === "live"
+            ? React.createElement("div", { style: {
+                width: 10, height: 10, borderRadius: "50%",
+                background: active ? "#fff" : "#e53535", flexShrink: 0
+              } })
+            : f.key === "upcoming"
+            ? React.createElement("svg", { width: 13, height: 13, viewBox: "0 0 24 24", fill: "none",
+                stroke: active ? "#fff" : "#888", strokeWidth: 2, strokeLinecap: "round" },
+                React.createElement("circle", { cx: 12, cy: 12, r: 10 }),
+                React.createElement("polyline", { points: "12 6 12 12 16 14" })
+              )
+            : React.createElement("svg", { width: 13, height: 13, viewBox: "0 0 24 24", fill: "none",
+                stroke: active ? "#fff" : "#22c55e", strokeWidth: 2.5, strokeLinecap: "round", strokeLinejoin: "round" },
+                React.createElement("polyline", { points: "20 6 9 17 4 12" })
+              ),
           React.createElement("span", null, f.label),
-          f.key !== "all" && React.createElement("span", { style: {
-            fontSize: 9, fontFamily: "'JetBrains Mono', monospace",
-            background: statusFilter === f.key ? "rgba(255,255,255,0.20)" : "var(--c-border)",
-            color: statusFilter === f.key ? "currentColor" : "var(--c-ink-3)",
-            padding: "1px 5px", borderRadius: 10, fontWeight: 600
-          } },
-            f.key === "live" ? data.filter(x=>LIVE_ST.has(x.fixture.status.short)).length
-            : f.key === "upcoming" ? data.filter(x=>NS_ST.has(x.fixture.status.short)).length
-            : data.filter(x=>DONE_ST.has(x.fixture.status.short)).length
-          )
-        )
-      )
+          f.cnt !== null && React.createElement("span", { style: {
+            background: active ? "rgba(255,255,255,0.22)" : "#dde0e7",
+            color: active ? "#fff" : "#555",
+            fontSize: 11, fontWeight: 700,
+            borderRadius: 50, padding: "1px 7px",
+            fontFamily: "'JetBrains Mono', monospace",
+            minWidth: 20, textAlign: "center", display: "inline-block"
+          } }, f.cnt)
+        );
+      })
     ),
     React.createElement("div", { style: { flex: 1, overflowY: "auto", background: "transparent" } },
       st === "load" ? React.createElement(SkRows, null)
@@ -6137,39 +6112,40 @@ function ScoresTab({favs,onFav,onTeam}){
         React.createElement("div", {
           onClick: () => { setLg(null); setPicker(false); },
           style: {
-            display: "flex", alignItems: "center", gap: 12,
-            padding: "14px 16px", borderBottom: "1px solid " + T.line,
-            background: !lg ? "rgba(5,150,105,0.06)" : "none", cursor: "pointer"
+            display: "flex", alignItems: "center", gap: 14,
+            padding: "13px 16px", borderBottom: "1px solid " + T.line,
+            background: !lg ? "#f7f8fa" : "#fff", cursor: "pointer"
           }
         },
+          // icône liste
           React.createElement("div", { style: {
-            width: 36, height: 36, borderRadius: 10,
-            background: !lg ? "linear-gradient(135deg,#00c170,#009e5c)" : T.bg2,
-            border: "1px solid " + (!lg ? "transparent" : T.line),
-            display: "flex", alignItems: "center", justifyContent: "center",
-            flexShrink: 0, fontSize: 17,
-            boxShadow: !lg ? "0 3px 10px rgba(0,193,112,.35)" : "none"
+            width: 40, height: 40, borderRadius: 10,
+            background: !lg ? "#1a1f2e" : "#f0f1f4",
+            display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0
           } },
-            React.createElement("svg", { width: 16, height: 16, viewBox: "0 0 24 24", fill: "none",
-              stroke: !lg ? "#fff" : T.t3, strokeWidth: 2.2, strokeLinecap: "round", strokeLinejoin: "round" },
-              React.createElement("circle", { cx: 6, cy: 6, r: 1.5, fill: !lg ? "#fff" : T.t3, stroke: "none" }),
-              React.createElement("circle", { cx: 6, cy: 12, r: 1.5, fill: !lg ? "#fff" : T.t3, stroke: "none" }),
-              React.createElement("circle", { cx: 6, cy: 18, r: 1.5, fill: !lg ? "#fff" : T.t3, stroke: "none" }),
-              React.createElement("line", { x1: 10, y1: 6, x2: 21, y2: 6 }),
-              React.createElement("line", { x1: 10, y1: 12, x2: 21, y2: 12 }),
-              React.createElement("line", { x1: 10, y1: 18, x2: 21, y2: 18 })
+            React.createElement("svg", { width: 18, height: 18, viewBox: "0 0 24 24", fill: "none",
+              stroke: !lg ? "#fff" : "#888", strokeWidth: 2, strokeLinecap: "round" },
+              React.createElement("circle", { cx: 5, cy: 6,  r: 1.5, fill: !lg ? "#fff" : "#888", stroke: "none" }),
+              React.createElement("circle", { cx: 5, cy: 12, r: 1.5, fill: !lg ? "#fff" : "#888", stroke: "none" }),
+              React.createElement("circle", { cx: 5, cy: 18, r: 1.5, fill: !lg ? "#fff" : "#888", stroke: "none" }),
+              React.createElement("line", { x1: 10, y1: 6,  x2: 22, y2: 6  }),
+              React.createElement("line", { x1: 10, y1: 12, x2: 22, y2: 12 }),
+              React.createElement("line", { x1: 10, y1: 18, x2: 22, y2: 18 })
             )
           ),
-          React.createElement("span", { style: { flex: 1, fontSize: 15, fontWeight: 700, color: !lg ? "var(--c-jade)" : T.t1 } }, "Tous les matchs"),
-          React.createElement("div", { style: { display: "flex", alignItems: "center", gap: 7 } },
-            lv > 0 && React.createElement("div", { style: {
-              background: T.red, color: "#fff", fontFamily: "'JetBrains Mono', monospace",
-              fontSize: 11, fontWeight: 700, borderRadius: 6,
-              padding: "2px 7px", minWidth: 22, textAlign: "center"
+          React.createElement("span", { style: {
+            flex: 1, fontSize: 16, fontWeight: 700,
+            color: !lg ? "#1a1f2e" : T.t1
+          } }, "Tous les matchs"),
+          // badges live + total
+          React.createElement("div", { style: { display: "flex", alignItems: "center", gap: 8 } },
+            lv > 0 && React.createElement("span", { style: {
+              background: "#e53535", color: "#fff",
+              fontSize: 12, fontWeight: 700, borderRadius: 6,
+              padding: "2px 8px", minWidth: 24, textAlign: "center", display: "inline-block"
             } }, lv),
             data.length > 0 && React.createElement("span", { style: {
-              fontSize: 13, fontWeight: 600, color: T.t3,
-              fontFamily: "'JetBrains Mono', monospace"
+              fontSize: 15, fontWeight: 500, color: "#888", minWidth: 24, textAlign: "right"
             } }, data.length)
           )
         ),
@@ -6177,48 +6153,69 @@ function ScoresTab({favs,onFav,onTeam}){
         // ── Section COMPÉTITIONS FAVORITES ───────────────────────────────
         (() => {
           const FAV_IDS = new Set([2,3,848,39,140,135,78,61,1,29,186,12,13]);
-          const favLeaguesWithData = LEAGUES.filter(l => FAV_IDS.has(l.id) && data.some(f => f.league.id === l.id));
-          if (!favLeaguesWithData.length) return null;
-          return React.createElement("div", { key: "fav-section" },
+          // Construire les ligues favorites depuis data directement
+          const seen = new Set();
+          const favRows = data
+            .filter(f => FAV_IDS.has(f.league.id) && !seen.has(f.league.id) && seen.add(f.league.id))
+            .map(f => f.league)
+            .sort((a, b) => a.name.localeCompare(b.name, "fr", { sensitivity: "base" }));
+          if (!favRows.length) return null;
+          return React.createElement(React.Fragment, { key: "fav-section" },
+            // Header section
             React.createElement("div", { style: {
-              fontSize: 10, fontWeight: 700, color: "#92702a", letterSpacing: 1.4,
-              textTransform: "uppercase", padding: "10px 16px 8px",
-              background: "rgba(255,197,61,0.10)", borderBottom: "1px solid rgba(255,197,61,0.20)",
-              borderTop: "1px solid rgba(255,197,61,0.20)"
-            } }, "⭐ Compétitions favorites"),
-            favLeaguesWithData.map(l => {
-              const lgMatches = data.filter(f => f.league.id === l.id);
-              const lgLive = lgMatches.filter(f => LIVE_ST.has(f.fixture.status.short)).length;
-              const isActive = lg === l.id;
+              fontSize: 11, fontWeight: 700, color: "#a07820",
+              letterSpacing: 1.2, textTransform: "uppercase",
+              padding: "10px 16px 9px",
+              background: "#fdf8ed",
+              borderTop: "1px solid #f0e6c8",
+              borderBottom: "1px solid #f0e6c8"
+            } }, "Compétitions favorites"),
+            favRows.map(league => {
+              const lgMatches = data.filter(f => f.league.id === league.id);
+              const lgLive   = lgMatches.filter(f => LIVE_ST.has(f.fixture.status.short)).length;
+              const isActive = lg === league.id;
               return React.createElement("div", {
-                key: "fav-" + l.id,
-                onClick: () => { setLg(l.id); setPicker(false); },
+                key: "fav-" + league.id,
+                onClick: () => { setLg(league.id); setPicker(false); },
                 style: {
-                  display: "flex", alignItems: "center", gap: 12,
+                  display: "flex", alignItems: "center", gap: 14,
                   padding: "12px 16px", borderBottom: "1px solid " + T.line,
-                  background: isActive ? "rgba(5,150,105,0.06)" : "rgba(255,197,61,0.03)",
-                  cursor: "pointer"
+                  background: isActive ? "#f0faf5" : "#fff", cursor: "pointer"
                 }
               },
+                // Logo ligue depuis API
                 React.createElement("div", { style: {
-                  width: 32, height: 32, borderRadius: 8,
-                  background: isActive ? "rgba(5,150,105,0.12)" : "rgba(255,197,61,0.10)",
-                  display: "flex", alignItems: "center", justifyContent: "center",
-                  fontSize: 18, flexShrink: 0
-                } }, l.flag),
-                React.createElement("div", { style: { flex: 1, minWidth: 0 } },
-                  React.createElement("div", { style: { fontSize: 14, fontWeight: isActive ? 700 : 600, color: isActive ? "var(--c-jade)" : T.t1, whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" } }, l.name),
-                  React.createElement("div", { style: { fontSize: 11, color: T.t3, textTransform: "uppercase", letterSpacing: 0.5, marginTop: 1 } }, l.country)
+                  width: 40, height: 40, borderRadius: 8, flexShrink: 0,
+                  background: "#f4f5f7", border: "1px solid #ebebeb",
+                  display: "flex", alignItems: "center", justifyContent: "center", overflow: "hidden"
+                } },
+                  React.createElement("img", {
+                    src: league.logo, alt: league.name,
+                    style: { width: 28, height: 28, objectFit: "contain" },
+                    onError: e => { e.target.style.display = "none"; }
+                  })
                 ),
-                React.createElement("div", { style: { display: "flex", alignItems: "center", gap: 7, flexShrink: 0 } },
-                  lgLive > 0 && React.createElement("div", { style: {
-                    background: T.red, color: "#fff", fontFamily: "'JetBrains Mono', monospace",
-                    fontSize: 11, fontWeight: 700, borderRadius: 6,
-                    padding: "2px 7px", minWidth: 22, textAlign: "center"
+                // Nom + pays
+                React.createElement("div", { style: { flex: 1, minWidth: 0 } },
+                  React.createElement("div", { style: {
+                    fontSize: 11, fontWeight: 600, color: "#aaa",
+                    textTransform: "uppercase", letterSpacing: 0.6, marginBottom: 2
+                  } }, league.country),
+                  React.createElement("div", { style: {
+                    fontSize: 15, fontWeight: isActive ? 700 : 600,
+                    color: isActive ? "#059669" : "#1a1f2e",
+                    whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis"
+                  } }, league.name)
+                ),
+                // badges
+                React.createElement("div", { style: { display: "flex", alignItems: "center", gap: 8, flexShrink: 0 } },
+                  lgLive > 0 && React.createElement("span", { style: {
+                    background: "#e53535", color: "#fff",
+                    fontSize: 12, fontWeight: 700, borderRadius: 6,
+                    padding: "2px 8px", minWidth: 24, textAlign: "center", display: "inline-block"
                   } }, lgLive),
                   React.createElement("span", { style: {
-                    fontSize: 13, fontWeight: 600, color: T.t3,
-                    fontFamily: "'JetBrains Mono', monospace"
+                    fontSize: 15, fontWeight: 500, color: "#888", minWidth: 24, textAlign: "right"
                   } }, lgMatches.length)
                 )
               );
@@ -6228,51 +6225,65 @@ function ScoresTab({favs,onFav,onTeam}){
 
         // ── Section COMPÉTITIONS [A-Z] ───────────────────────────────────
         (() => {
-          // Toutes les ligues qui ont des matchs ce jour, triées A-Z par nom
-          const allWithData = LEAGUES
-            .filter(l => data.some(f => f.league.id === l.id))
+          // 100% depuis data — toutes les ligues du jour, A-Z, sans filtre LEAGUES
+          const seen = new Set();
+          const allRows = data
+            .filter(f => !seen.has(f.league.id) && seen.add(f.league.id))
+            .map(f => f.league)
             .sort((a, b) => a.name.localeCompare(b.name, "fr", { sensitivity: "base" }));
-          if (!allWithData.length) return null;
-          return React.createElement("div", { key: "az-section" },
+          if (!allRows.length) return null;
+          return React.createElement(React.Fragment, { key: "az-section" },
             React.createElement("div", { style: {
-              fontSize: 10, fontWeight: 700, color: T.t3, letterSpacing: 1.4,
-              textTransform: "uppercase", padding: "10px 16px 8px",
-              background: T.bg0, borderBottom: "1px solid " + T.line,
-              borderTop: "1px solid " + T.line
+              fontSize: 11, fontWeight: 700, color: "#999",
+              letterSpacing: 1.2, textTransform: "uppercase",
+              padding: "10px 16px 9px",
+              background: "#f4f5f7",
+              borderTop: "1px solid " + T.line,
+              borderBottom: "1px solid " + T.line
             } }, "Compétitions [A-Z]"),
-            allWithData.map(l => {
-              const lgMatches = data.filter(f => f.league.id === l.id);
-              const lgLive = lgMatches.filter(f => LIVE_ST.has(f.fixture.status.short)).length;
-              const isActive = lg === l.id;
+            allRows.map(league => {
+              const lgMatches = data.filter(f => f.league.id === league.id);
+              const lgLive   = lgMatches.filter(f => LIVE_ST.has(f.fixture.status.short)).length;
+              const isActive = lg === league.id;
               return React.createElement("div", {
-                key: "az-" + l.id,
-                onClick: () => { setLg(l.id); setPicker(false); },
+                key: "az-" + league.id,
+                onClick: () => { setLg(league.id); setPicker(false); },
                 style: {
-                  display: "flex", alignItems: "center", gap: 12,
+                  display: "flex", alignItems: "center", gap: 14,
                   padding: "12px 16px", borderBottom: "1px solid " + T.line,
-                  background: isActive ? "rgba(5,150,105,0.06)" : "none",
-                  cursor: "pointer"
+                  background: isActive ? "#f0faf5" : "#fff", cursor: "pointer"
                 }
               },
                 React.createElement("div", { style: {
-                  width: 32, height: 32, borderRadius: 8,
-                  background: isActive ? "rgba(5,150,105,0.10)" : T.bg1,
-                  display: "flex", alignItems: "center", justifyContent: "center",
-                  fontSize: 18, flexShrink: 0
-                } }, l.flag),
-                React.createElement("div", { style: { flex: 1, minWidth: 0 } },
-                  React.createElement("div", { style: { fontSize: 14, fontWeight: isActive ? 700 : 400, color: isActive ? "var(--c-jade)" : T.t1, whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" } }, l.name),
-                  React.createElement("div", { style: { fontSize: 11, color: T.t3, textTransform: "uppercase", letterSpacing: 0.5, marginTop: 1 } }, l.country)
+                  width: 40, height: 40, borderRadius: 8, flexShrink: 0,
+                  background: "#f4f5f7", border: "1px solid #ebebeb",
+                  display: "flex", alignItems: "center", justifyContent: "center", overflow: "hidden"
+                } },
+                  React.createElement("img", {
+                    src: league.logo, alt: league.name,
+                    style: { width: 28, height: 28, objectFit: "contain" },
+                    onError: e => { e.target.style.display = "none"; }
+                  })
                 ),
-                React.createElement("div", { style: { display: "flex", alignItems: "center", gap: 7, flexShrink: 0 } },
-                  lgLive > 0 && React.createElement("div", { style: {
-                    background: T.red, color: "#fff", fontFamily: "'JetBrains Mono', monospace",
-                    fontSize: 11, fontWeight: 700, borderRadius: 6,
-                    padding: "2px 7px", minWidth: 22, textAlign: "center"
+                React.createElement("div", { style: { flex: 1, minWidth: 0 } },
+                  React.createElement("div", { style: {
+                    fontSize: 11, fontWeight: 600, color: "#aaa",
+                    textTransform: "uppercase", letterSpacing: 0.6, marginBottom: 2
+                  } }, league.country),
+                  React.createElement("div", { style: {
+                    fontSize: 15, fontWeight: isActive ? 700 : 500,
+                    color: isActive ? "#059669" : "#1a1f2e",
+                    whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis"
+                  } }, league.name)
+                ),
+                React.createElement("div", { style: { display: "flex", alignItems: "center", gap: 8, flexShrink: 0 } },
+                  lgLive > 0 && React.createElement("span", { style: {
+                    background: "#e53535", color: "#fff",
+                    fontSize: 12, fontWeight: 700, borderRadius: 6,
+                    padding: "2px 8px", minWidth: 24, textAlign: "center", display: "inline-block"
                   } }, lgLive),
                   React.createElement("span", { style: {
-                    fontSize: 13, fontWeight: 600, color: T.t3,
-                    fontFamily: "'JetBrains Mono', monospace"
+                    fontSize: 15, fontWeight: 500, color: "#888", minWidth: 24, textAlign: "right"
                   } }, lgMatches.length)
                 )
               );
