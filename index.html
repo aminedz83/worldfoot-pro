@@ -3035,10 +3035,13 @@ function LeagueSheet({fix, leagueInfo, onClose}) {
   useEffect(() => {
     if(!showWinners||!leagueInfo?.seasons||!lid) return;
     const pastSeasons = leagueInfo.seasons.filter(s => !s.current);
-    // Charger par batch de 5 pour ne pas surcharger l'API
     const toLoad = pastSeasons.filter(s => !winnersData[s.year]).slice(0, 30);
+    // Pour les qualifications CAN → charger depuis la CAN principale (id:29)
+    const lgN = (fix.league?.name || "").toLowerCase();
+    const isCanQualif = lgN.includes("africa cup") || lgN.includes("cup of nations");
+    const loadLid = isCanQualif ? 29 : lid;
     toLoad.forEach(s => {
-      api(`/fixtures?league=${lid}&season=${s.year}&round=Final`, 86400000)
+      api(`/fixtures?league=${loadLid}&season=${s.year}&round=Final`, 86400000)
         .then(d => {
           const finals = (d||[]).filter(f => DONE_ST.has(f.fixture?.status?.short));
           const final = finals.sort((a,b) => new Date(b.fixture.date)-new Date(a.fixture.date))[0];
@@ -3046,7 +3049,7 @@ function LeagueSheet({fix, leagueInfo, onClose}) {
             const hg = final.goals?.home ?? 0;
             const ag = final.goals?.away ?? 0;
             const winner = hg >= ag ? final.teams.home : final.teams.away;
-            setWinnersData(prev => ({...prev, [s.year]: winner}));
+            setWinnersData(prev => ({...prev, [s.year]: {name: winner.name, logo: winner.logo}}));
           }
         }).catch(()=>{});
     });
@@ -3692,8 +3695,25 @@ function LeagueSheet({fix, leagueInfo, onClose}) {
               {name:"Canada",         logo:"https://media.api-sports.io/football/teams/19.png",  titles:1},
               {name:"Costa Rica",     logo:"https://media.api-sports.io/football/teams/20.png",  titles:3},
             ],
-            // Afrique — Nationales (CAN)
+            // Afrique — Nationales (CAN) — IDs corrects API-Football
             6: [
+              {name:"Égypte",         logo:"https://media.api-sports.io/football/teams/26.png",  titles:7},
+              {name:"Cameroun",       logo:"https://media.api-sports.io/football/teams/30.png",  titles:5},
+              {name:"Ghana",          logo:"https://media.api-sports.io/football/teams/22.png",  titles:4},
+              {name:"Nigeria",        logo:"https://media.api-sports.io/football/teams/31.png",  titles:3},
+              {name:"Côte d'Ivoire",  logo:"https://media.api-sports.io/football/teams/41.png",  titles:3},
+              {name:"Algérie",        logo:"https://media.api-sports.io/football/teams/3.png",   titles:2},
+              {name:"Congo RD",       logo:"https://media.api-sports.io/football/teams/38.png",  titles:2},
+              {name:"Maroc",          logo:"https://media.api-sports.io/football/teams/32.png",  titles:1},
+              {name:"Tunisie",        logo:"https://media.api-sports.io/football/teams/28.png",  titles:1},
+              {name:"Zambie",         logo:"https://media.api-sports.io/football/teams/44.png",  titles:1},
+              {name:"Sénégal",        logo:"https://media.api-sports.io/football/teams/29.png",  titles:1},
+              {name:"Afrique du Sud", logo:"https://media.api-sports.io/football/teams/46.png",  titles:1},
+              {name:"Ethiopie",       logo:"https://media.api-sports.io/football/teams/37.png",  titles:1},
+              {name:"Soudan",         logo:"https://media.api-sports.io/football/teams/34.png",  titles:1},
+            ],
+            // Alias pour CAN Qualification (même palmarès)
+            29: [
               {name:"Égypte",         logo:"https://media.api-sports.io/football/teams/26.png",  titles:7},
               {name:"Cameroun",       logo:"https://media.api-sports.io/football/teams/30.png",  titles:5},
               {name:"Ghana",          logo:"https://media.api-sports.io/football/teams/22.png",  titles:4},
@@ -3803,7 +3823,9 @@ function LeagueSheet({fix, leagueInfo, onClose}) {
                 .sort((a,b)=>b.titles-a.titles)
                 .map(entry => {
                   const found = Object.values(winnersData).find(w => w?.name === entry.name);
-                  return { ...entry, logo: found?.logo || entry.logo };
+                  // Pour les équipes nationales, toujours garder le logo hardcodé
+                  const isNationalLeague = [1,4,6,9,29].includes(resolvedLid);
+                  return { ...entry, logo: isNationalLeague ? entry.logo : (found?.logo || entry.logo) };
                 })
             : Object.values(
                 Object.values(winnersData).reduce((acc,w) => {
