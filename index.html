@@ -2904,7 +2904,7 @@ function MatchDetailWrapper({state,onClose,onTeam}){
   return React.createElement(MatchDetail,{state,onClose,onTeam});
 }
 
-function LeagueSheet({fix, leagueInfo, onClose, onPhaseChange, initialSubMode}) {
+function LeagueSheet({fix, leagueInfo, onClose, onPhaseChange, initialSubMode, prelimLid}) {
   const lid = fix.league.id;
   const season = fix.league.season;
   const round = fix.league?.round || "";
@@ -3927,7 +3927,7 @@ function LeagueSheet({fix, leagueInfo, onClose, onPhaseChange, initialSubMode}) 
             {
               section: "Qualification",
               items: [
-                { label: "Préliminaire", lid: fix.league.id, isCurrent: (fix.league?.name||"").toLowerCase().includes("prelim") },
+                { label: "Préliminaire", lid: prelimLid || fix.league.id, isCurrent: (fix.league?.name||"").toLowerCase().includes("prelim") || lid === (prelimLid || fix.league.id) },
                 { label: "Principal",    lid: 36,   isCurrent: lid === 36 },
               ]
             },
@@ -4369,6 +4369,7 @@ function MatchDetail({state,onClose,onTeam}){
   const[showLeagueSheet,setShowLeagueSheet]=React.useState(false);
   const[leagueInfo,setLeagueInfo]=React.useState(null);
   const[overrideLid,setOverrideLid]=React.useState(null);
+  const[originalLid,setOriginalLid]=React.useState(null);
   const contentRef=React.useRef(null);
 
   const [refereeStats, setRefereeStats] = useState(null);
@@ -6540,8 +6541,13 @@ function MatchDetail({state,onClose,onTeam}){
       fix: overrideLid ? {...fix, league: {...fix.league, id: overrideLid}} : fix,
       leagueInfo: overrideLid ? null : leagueInfo,
       initialSubMode: overrideLid ? (overrideLid === 29 ? "groups" : null) : null,
-      onClose: () => { setShowLeagueSheet(false); setOverrideLid(null); },
-      onPhaseChange: (newLid, newSub) => { setOverrideLid(newLid === fix?.league?.id ? null : newLid); setLeagueInfo(null); }
+      prelimLid: originalLid,
+      onClose: () => { setShowLeagueSheet(false); setOverrideLid(null); setOriginalLid(null); },
+      onPhaseChange: (newLid, newSub) => {
+        const orig = originalLid || fix?.league?.id;
+        setOverrideLid(newLid === orig ? null : newLid);
+        setLeagueInfo(null);
+      }
     }) : null
   );
 }
