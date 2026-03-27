@@ -2932,7 +2932,7 @@ function LeagueSheet({fix, leagueInfo, onClose}) {
       }).catch(()=>{});
   }, [lid, season, mode]);
 
-  // Charger les matchs du round actif (qualifs/groupes)
+  // Charger les matchs du round actif (qualifs/groupes) — pour tous les onglets
   useEffect(() => {
     if(!lid || !season || !activeRound || mode === "knockout") return;
     setLoading(true);
@@ -2940,6 +2940,15 @@ function LeagueSheet({fix, leagueInfo, onClose}) {
       .then(d => { setFixtures(d||[]); setLoading(false); })
       .catch(() => setLoading(false));
   }, [activeRound, lid, season, mode]);
+
+  // Pour le TABLEAU en mode qualif : charger tous les matchs de la saison si round vide
+  useEffect(() => {
+    if(!lid || !season || mode !== "qualif" || activeRound || fixtures.length) return;
+    setLoading(true);
+    api(`/fixtures?league=${lid}&season=${season}`, 86400000)
+      .then(d => { setFixtures(d||[]); setLoading(false); })
+      .catch(() => setLoading(false));
+  }, [lid, season, mode, activeRound, fixtures.length]);
 
   // Charger le classement pour les rangs
   useEffect(() => {
@@ -3165,7 +3174,103 @@ function LeagueSheet({fix, leagueInfo, onClose}) {
           loading
             ? React.createElement("div", {style:{textAlign:"center",padding:40}}, React.createElement(Spin, {s:24,c:"#00c170"}))
             : standings.length === 0
-            ? React.createElement("div", {style:{textAlign:"center",padding:40,color:"#94a3b8",fontSize:13}}, "Classement non disponible")
+            // Pas de classement → afficher les confrontations (préliminaires / aller-retour)
+            ? (() => {
+                if(!fixtures.length) return React.createElement("div", {style:{textAlign:"center",padding:40,color:"#94a3b8",fontSize:13}}, "Classement non disponible");
+                // Grouper par paires aller/retour
+                const pairs = [];
+                const seen = new Set();
+                fixtures.forEach(f => {
+                  if(seen.has(f.fixture.id)) return;
+                  const partner = fixtures.find(g =>
+                    g.fixture.id !== f.fixture.id && !seen.has(g.fixture.id) &&
+                    ((g.teams.home.id===f.teams.away.id && g.teams.away.id===f.teams.home.id) ||
+                     (g.teams.home.id===f.teams.home.id && g.teams.away.id===f.teams.away.id))
+                  );
+                  pairs.push({leg1:f, leg2:partner||null});
+                  seen.add(f.fixture.id);
+                  if(partner) seen.add(partner.fixture.id);
+                });
+                return React.createElement("div", null,
+                  pairs.map((pair,i) => {
+                    const f1 = pair.leg1, f2 = pair.leg2;
+                    const h1 = f1.goals?.home, a1 = f1.goals?.away;
+                    const h2 = f2?.goals?.home, a2 = f2?.goals?.away;
+                    const done1 = DONE_ST.has(f1.fixture?.status?.short);
+                    const done2 = f2 ? DONE_ST.has(f2.fixture?.status?.short) : false;
+                    const live1 = LIVE_ST.has(f1.fixture?.status?.short);
+                    const live2 = f2 && LIVE_ST.has(f2.fixture?.status?.short);
+                    // Total cumulé
+                    const homeTotal = (done1||live1 ? (h1||0) : 0) + (done2||live2 ? (h2||0) : 0);
+                    const awayTotal = (done1||live1 ? (a1||0) : 0) + (done2||live2 ? (a2||0) : 0);
+                    const homeWins = (done1||done2) && homeTotal > awayTotal;
+                    const awayWins = (done1||done2) && awayTotal > homeTotal;
+                    const homeName = f1.teams.home.name;
+                    const awayName = f1.teams.away.name;
+                    const homeLogo = f1.teams.home.logo;
+                    const awayLogo = f1.teams.away.logo;
+                    return React.createElement("div", {key:i, style:{
+                      background:"#fff", borderRadius:14, marginBottom:10,
+                      overflow:"hidden", boxShadow:"0 1px 4px rgba(0,0,0,.06)"
+                    }},
+                      // Header score total
+                      React.createElement("div", {style:{
+                        display:"flex", alignItems:"center", padding:"12px 14px", gap:10,
+                        borderBottom:"1px solid #f5f7fa"
+                      }},
+                        React.createElement("div", {style:{flex:1,display:"flex",alignItems:"center",gap:8}},
+                          React.createElement("img",{src:homeLogo,style:{width:26,height:26,objectFit:"contain"},onError:e=>e.target.style.display="none"}),
+                          React.createElement("span",{style:{fontSize:14,fontWeight:homeWins?800:500,color:homeWins?"#0f172a":"#64748b",flex:1,overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap"}}, homeName)
+                        ),
+                        // Score total
+                        (done1||live1) ? React.createElement("div",{style:{display:"flex",alignItems:"center",gap:8,flexShrink:0}},
+                          React.createElement("span",{style:{fontSize:16,fontWeight:800,color:homeWins?"#0f172a":"#94a3b8",minWidth:16,textAlign:"center"}}, homeTotal),
+                          React.createElement("span",{style:{fontSize:12,color:"#ccc"}},"–"),
+                          React.createElement("span",{style:{fontSize:16,fontWeight:800,color:awayWins?"#0f172a":"#94a3b8",minWidth:16,textAlign:"center"}}, awayTotal)
+                        ) : React.createElement("span",{style:{fontSize:12,color:"#94a3b8",fontWeight:500}},"À venir"),
+                        React.createElement("div", {style:{flex:1,display:"flex",alignItems:"center",gap:8,justifyContent:"flex-end"}},
+                          React.createElement("span",{style:{fontSize:14,fontWeight:awayWins?800:500,color:awayWins?"#0f172a":"#64748b",textAlign:"right",overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap"}}, awayName),
+                          React.createElement("img",{src:awayLogo,style:{width:26,height:26,objectFit:"contain"},onError:e=>e.target.style.display="none"})
+                        )
+                      ),
+                      // Matchs aller + retour
+                      [f1, f2].filter(Boolean).map((m,j) => {
+                        const hg = m.goals?.home, ag = m.goals?.away;
+                        const isDone = DONE_ST.has(m.fixture?.status?.short);
+                        const isLive = LIVE_ST.has(m.fixture?.status?.short);
+                        const hw = isDone && hg!=null && ag!=null && hg>ag;
+                        const aw = isDone && hg!=null && ag!=null && ag>hg;
+                        const dateStr = new Date(m.fixture.date).toLocaleDateString("fr-FR",{day:"2-digit",month:"2-digit"}).replace("/",".");
+                        const timeStr = new Date(m.fixture.date).toLocaleTimeString("fr-FR",{hour:"2-digit",minute:"2-digit"});
+                        return React.createElement("div",{key:j,style:{
+                          display:"flex",alignItems:"center",gap:10,
+                          padding:"9px 14px",
+                          borderBottom:j===0&&f2?"1px solid #f5f7fa":"none",
+                          background:"#fafbfc"
+                        }},
+                          React.createElement("span",{style:{fontSize:11,color:"#94a3b8",minWidth:32,fontWeight:600}}, dateStr+"."),
+                          React.createElement("div",{style:{flex:1,minWidth:0}},
+                            React.createElement("div",{style:{display:"flex",alignItems:"center",gap:6,marginBottom:3}},
+                              React.createElement("img",{src:m.teams.home.logo,style:{width:16,height:16,objectFit:"contain"},onError:e=>e.target.style.display="none"}),
+                              React.createElement("span",{style:{fontSize:12,fontWeight:hw?700:400,color:hw?"#0f172a":"#64748b",flex:1,overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap"}},m.teams.home.name)
+                            ),
+                            React.createElement("div",{style:{display:"flex",alignItems:"center",gap:6}},
+                              React.createElement("img",{src:m.teams.away.logo,style:{width:16,height:16,objectFit:"contain"},onError:e=>e.target.style.display="none"}),
+                              React.createElement("span",{style:{fontSize:12,fontWeight:aw?700:400,color:aw?"#0f172a":"#64748b",flex:1,overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap"}},m.teams.away.name)
+                            )
+                          ),
+                          isDone||isLive
+                            ? React.createElement("div",{style:{textAlign:"right",minWidth:20}},
+                                React.createElement("div",{style:{fontSize:12,fontWeight:hw?700:400,color:isLive?"#e53535":hw?"#0f172a":"#94a3b8",lineHeight:1.4}},hg??"–"),
+                                React.createElement("div",{style:{fontSize:12,fontWeight:aw?700:400,color:isLive?"#e53535":aw?"#0f172a":"#94a3b8",lineHeight:1.4}},ag??"–")
+                              )
+                            : React.createElement("span",{style:{fontSize:11,color:"#94a3b8"}},timeStr)
+                        );
+                      })
+                    );
+                  })
+                );
+              })()
             : (() => {
                 // Grouper par groupe si plusieurs groupes
                 const grouped = {};
