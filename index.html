@@ -3060,11 +3060,11 @@ function LeagueSheet({fix, leagueInfo, onClose, onPhaseChange}) {
     if(!historyYear) return;
     const lgN = (fix.league?.name || "").toLowerCase();
     const isCanFamily = lgN.includes("africa cup") || lgN.includes("cup of nations");
-    // Pour CAN : utiliser ID 29 (tournoi final) avec la saison = année de la CAN
-    // CAN 2023 → lid=29, season=2023
-    const targetLid = isCanFamily ? 29 : lid;
+    // Pour CAN : ID 36 pour standings/groupes, ID 29 pour fixtures/résultats
+    const targetLidStandings = isCanFamily ? 36 : lid;
+    const targetLidFixtures  = isCanFamily ? 29 : lid;
+    const targetLid = targetLidStandings; // utilisé pour rounds
     const yr = historyYear.year;
-    const canSeason = yr; // API stocke la CAN 2023 en saison 2023
     setHistoryLoading(true);
     setHistoryStandings([]);
     setHistoryFixtures([]);
@@ -3085,8 +3085,8 @@ function LeagueSheet({fix, leagueInfo, onClose, onPhaseChange}) {
     const seasonsToTry = isCanFamily ? [yr, yr-1] : [yr-1];
 
     trySeasons(seasonsToTry).then(async ({season: s, rounds: r}) => {
-      // Charger classement avec la bonne saison
-      api(`/standings?league=${targetLid}&season=${s}`, 86400000)
+      // Charger classement avec ID 36 (groupes qualif)
+      api(`/standings?league=${targetLidStandings}&season=${s}`, 86400000)
         .then(d => {
           const rows = (d||[]).flatMap(g => Array.isArray(g) ? g : (g?.league?.standings||[]).flat());
           setHistoryStandings(rows);
@@ -3098,12 +3098,12 @@ function LeagueSheet({fix, leagueInfo, onClose, onPhaseChange}) {
         const groupRound = r.find(x => x.toLowerCase().includes("group")) || r[r.length-1];
         setHistoryActiveRound(groupRound);
         try {
-          const fx = await api(`/fixtures?league=${targetLid}&season=${s}&round=${encodeURIComponent(groupRound)}`, 86400000);
+          const fx = await api(`/fixtures?league=${targetLidFixtures}&season=${s}&round=${encodeURIComponent(groupRound)}`, 86400000);
           setHistoryFixtures(fx||[]);
         } catch(e) {}
       } else {
         try {
-          const fx = await api(`/fixtures?league=${targetLid}&season=${s}`, 86400000);
+          const fx = await api(`/fixtures?league=${targetLidFixtures}&season=${s}`, 86400000);
           setHistoryFixtures(fx||[]);
         } catch(e) {}
       }
