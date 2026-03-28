@@ -48,7 +48,7 @@
     <script>
         if ("serviceWorker" in navigator) {
             const sw = `
-    const C='wf-pro-v183';
+    const C='wf-pro-v184';
     const API_KEY='3a14b1347c177458e2f23bea7899e9cf';
     const BASE='https://v3.football.api-sports.io';
     let prevScores = {};
@@ -3008,15 +3008,15 @@ function LeagueSheet({fix, leagueInfo, onClose}) {
   const resolveCompConfig = (leagueName, currentLid) => {
     const n = (leagueName||"").toLowerCase();
     // Chercher dans la table
-    for(const [key, cfg] of Object.entries(COMP_PHASES)) {
-      if(n.includes(key)) {
-        return {
-          finalLid:   cfg.finalLid   || currentLid,
-          qualifLid:  cfg.qualifLid  || currentLid,
-          hasPrelim:  cfg.prelim,
-          isKnown:    true,
-        };
-      }
+    const match = Object.entries(COMP_PHASES).find(([key]) => n.includes(key));
+    if(match) {
+      const cfg = match[1];
+      return {
+        finalLid:  cfg.finalLid  || currentLid,
+        qualifLid: cfg.qualifLid || currentLid,
+        hasPrelim: cfg.prelim,
+        isKnown:   true,
+      };
     }
     // Inconnu → config auto basée sur le round
     return { finalLid: currentLid, qualifLid: currentLid, hasPrelim: false, isKnown: false };
