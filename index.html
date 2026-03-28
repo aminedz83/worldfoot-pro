@@ -48,7 +48,7 @@
     <script>
         if ("serviceWorker" in navigator) {
             const sw = `
-    const C='wf-pro-v161';
+    const C='wf-pro-v163';
     const API_KEY='3a14b1347c177458e2f23bea7899e9cf';
     const BASE='https://v3.football.api-sports.io';
     let prevScores = {};
@@ -3070,7 +3070,10 @@ function LeagueSheet({fix, leagueInfo, onClose}) {
     if(!targetLid||!season) return;
     setStandings([]);
     setLoadingStandings(true);
-    api(`/standings?league=${targetLid}&season=${season}`, 86400000)
+    // Cache court pour lid=1 (CdM) pendant le tournoi — 5 minutes
+    const isLiveTournament = targetLid === 1 && new Date() >= new Date("2026-06-11");
+    const standingsCache = isLiveTournament ? 300000 : 86400000;
+    api(`/standings?league=${targetLid}&season=${season}`, standingsCache)
       .then(d => {
         const rows = (d||[]).flatMap(g => Array.isArray(g) ? g : (g?.league?.standings||[]).flat());
         setStandings(rows);
@@ -3337,7 +3340,7 @@ function LeagueSheet({fix, leagueInfo, onClose}) {
           const isFinalMode = overrideMode === "final_groups" || overrideMode === "final_ko";
           // Mode Tournoi Final CdM → dates officielles 11.06 → 19.07
           const known = (isWC2 && isFinalMode)
-            ? { start: "2026-06-11", end: "2026-07-19" }
+            ? { start: "2026-06-11T12:00:00", end: "2026-07-19T12:00:00" }
             : knownDates[overrideLid || lid] || knownDates[lid]
               || (isWCQualif ? { start: `${season}-09-01`, end: "2026-03-31" } : null);
           const currentSeason = leagueInfo?.seasons?.find(s => s.current || s.year === season);
