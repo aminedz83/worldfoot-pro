@@ -3310,14 +3310,25 @@ function LeagueSheet({fix, leagueInfo, onClose}) {
           ),
           loading
             ? React.createElement("div", {style:{textAlign:"center",padding:40}}, React.createElement(Spin, {s:24,c:"#00c170"}))
-            // Mode groups → classement
-            : (overrideMode === "qualif_main" || overrideMode === "final_groups")
+            // Mode groups → classement (IDs connus avec groupes : 1=WC, 29=CAN, 4=Euro, 36=CAN Qualif)
+            : (overrideMode === "qualif_main" || overrideMode === "final_groups" ||
+               (!overrideMode && (overrideLid||lid) === 1) ||
+               (!overrideMode && (overrideLid||lid) === 4))
             ? (() => {
-                if(!standings.length) return React.createElement("div", {style:{textAlign:"center",padding:60,color:"#94a3b8",fontSize:13}},
-                  React.createElement("div",{style:{fontSize:36,marginBottom:12}},"⏳"),
-                  React.createElement("div",{style:{fontWeight:600,color:"#64748b",marginBottom:4}}, "Groupes pas encore disponibles"),
-                  React.createElement("div",{style:{fontSize:12}}, "Le tirage au sort n'a pas encore eu lieu.")
-                );
+                if(!standings.length) {
+                  const tLid = overrideLid || lid;
+                  // IDs dont les groupes sont déjà formés
+                  const hasGroups = [1, 4, 29].includes(tLid);
+                  return React.createElement("div", {style:{textAlign:"center",padding:60,color:"#94a3b8",fontSize:13}},
+                    React.createElement("div",{style:{fontSize:36,marginBottom:12}}, hasGroups ? "⏳" : "⏳"),
+                    React.createElement("div",{style:{fontWeight:600,color:"#64748b",marginBottom:4}},
+                      hasGroups ? "Chargement des groupes..." : "Groupes pas encore disponibles"
+                    ),
+                    React.createElement("div",{style:{fontSize:12}},
+                      hasGroups ? "Les données arrivent..." : "Le tirage au sort n'a pas encore eu lieu."
+                    )
+                  );
+                }
                 const grouped = {};
                 standings.forEach(r => {
                   const grp = r.group || "Classement";
