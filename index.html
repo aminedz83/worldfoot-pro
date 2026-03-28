@@ -3321,7 +3321,7 @@ function LeagueSheet({fix, leagueInfo, onClose}) {
           ),
           loading
             ? React.createElement("div", {style:{textAlign:"center",padding:40}}, React.createElement(Spin, {s:24,c:"#00c170"}))
-            // Mode groups → classement (IDs connus avec groupes : 1=WC, 29=CAN, 4=Euro, 36=CAN Qualif)
+            // Mode groups → classement
             : (overrideMode === "qualif_main" || overrideMode === "final_groups" ||
                (!overrideMode && (overrideLid||lid) === 1) ||
                (!overrideMode && (overrideLid||lid) === 4))
@@ -3645,10 +3645,12 @@ function LeagueSheet({fix, leagueInfo, onClose}) {
                 })()
           )
 
-        // ── KNOCKOUT (mode original) ──────────────────────────────────────
+        // ── KNOCKOUT ──────────────────────────────────────────────────────
         : React.createElement("div", null,
           loading
             ? React.createElement("div", {style:{textAlign:"center",padding:40}}, React.createElement(Spin, {s:24,c:"#00c170"}))
+            : fixtures.length === 0 && overrideMode === "final_ko"
+            ? React.createElement("div", {style:{textAlign:"center",padding:40,color:"#94a3b8",fontSize:13}}, "Aucun match disponible")
             : pairs.length === 0
             ? React.createElement("div", {style:{textAlign:"center",padding:40,color:"#94a3b8",fontSize:13}}, "Aucun match disponible")
             : pairs.map((pair,i) => {
