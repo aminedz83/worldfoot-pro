@@ -6888,19 +6888,20 @@ function ScoresTab({favs,onFav,onTeam}){
     ),
     // ── Écran de recherche ──────────────────────────────────────────
     showSearch ? React.createElement("div", {
-      style:{position:"fixed",inset:0,background:"#fff",zIndex:200,display:"flex",flexDirection:"column"}
+      style:{position:"fixed",top:0,left:0,right:0,bottom:0,background:"#fff",zIndex:200,display:"flex",flexDirection:"column",width:"100%",height:"100%",overflow:"hidden"}
     },
       // Header
       React.createElement("div", {style:{
-        display:"flex",alignItems:"center",gap:10,
+        display:"flex",alignItems:"center",gap:8,
         padding:"calc(env(safe-area-inset-top,0px) + 12px) 16px 12px",
-        borderBottom:"1px solid #f0f2f5",background:"#fff",flexShrink:0
+        borderBottom:"1px solid #f0f2f5",background:"#fff",flexShrink:0,
+        width:"100%",boxSizing:"border-box"
       }},
         React.createElement("div", {style:{
           flex:1,display:"flex",alignItems:"center",gap:8,
-          background:"#f5f6f8",borderRadius:12,padding:"9px 14px"
+          background:"#f5f6f8",borderRadius:12,padding:"9px 12px",minWidth:0
         }},
-          React.createElement("svg",{width:16,height:16,viewBox:"0 0 24 24",fill:"none",stroke:"#94a3b8",strokeWidth:2.2,strokeLinecap:"round",strokeLinejoin:"round"},
+          React.createElement("svg",{width:15,height:15,viewBox:"0 0 24 24",fill:"none",stroke:"#94a3b8",strokeWidth:2.2,strokeLinecap:"round",strokeLinejoin:"round",flexShrink:0},
             React.createElement("circle",{cx:11,cy:11,r:8}),
             React.createElement("line",{x1:21,y1:21,x2:16.65,y2:16.65})
           ),
@@ -6909,12 +6910,12 @@ function ScoresTab({favs,onFav,onTeam}){
             placeholder: "Équipe, club ou compétition...",
             value: searchQuery,
             onChange: e => { setSearchQuery(e.target.value); doSearch(e.target.value); },
-            style:{flex:1,border:"none",background:"transparent",fontSize:15,color:"#0f172a",outline:"none"}
+            style:{flex:1,border:"none",background:"transparent",fontSize:15,color:"#0f172a",outline:"none",minWidth:0,width:"100%"}
           })
         ),
         React.createElement("button", {
           onClick: () => { setShowSearch(false); setSearchQuery(""); setSearchResults([]); },
-          style:{background:"none",border:"none",fontSize:14,fontWeight:600,color:"#64748b",cursor:"pointer",padding:"4px 8px"}
+          style:{background:"none",border:"none",fontSize:14,fontWeight:600,color:"#64748b",cursor:"pointer",padding:"4px 6px",flexShrink:0,whiteSpace:"nowrap"}
         }, "Annuler")
       ),
       // Résultats
