@@ -3456,50 +3456,80 @@ function LeagueSheet({fix, leagueInfo, onClose}) {
                (!overrideMode && (overrideLid||lid) === 1) ||
                (!overrideMode && (overrideLid||lid) === 4))
             ? (() => {
-                // Groupes WC 2026 hardcodés → instantané
+                // Hybride WC 2026 : hardcodé instantané + API en arrière-plan
                 const tLid = overrideLid || lid;
                 if(tLid === 1) {
-                  // Utiliser les groupes hardcodés directement
-                  const grouped = WC2026_GROUPS;
-                  return React.createElement("div", null,
-                    Object.entries(grouped).map(([grpName, teams]) =>
-                      React.createElement("div", {key:grpName, style:{marginBottom:16}},
-                        React.createElement("div",{style:{fontSize:15,fontWeight:800,color:"#0f172a",padding:"12px 4px 8px"}}, grpName),
-                        React.createElement("div",{style:{background:"#fff",borderRadius:12,overflow:"hidden",boxShadow:"0 1px 4px rgba(0,0,0,.06)"}},
-                          React.createElement("div",{style:{display:"flex",padding:"8px 12px",background:"#f8fafc",borderBottom:"1px solid #ebebeb"}},
-                            React.createElement("span",{style:{width:30,fontSize:10,fontWeight:700,color:"#94a3b8",textAlign:"center"}},"#"),
-                            React.createElement("span",{style:{flex:1,fontSize:10,fontWeight:700,color:"#94a3b8"}},"ÉQUIPE"),
-                            React.createElement("span",{style:{width:30,fontSize:10,fontWeight:700,color:"#94a3b8",textAlign:"center"}},"MJ"),
-                            React.createElement("span",{style:{width:44,fontSize:10,fontWeight:700,color:"#94a3b8",textAlign:"center"}},"B"),
-                            React.createElement("span",{style:{width:32,fontSize:10,fontWeight:800,color:"#0f172a",textAlign:"center"}},"PTS")
+                  // Si l'API a chargé les vrais standings → les utiliser
+                  // Sinon → afficher les groupes hardcodés avec les vrais scores si dispo
+                  const renderGroups = (groupedData, isFromApi) => {
+                    return React.createElement("div", null,
+                      Object.entries(groupedData).map(([grpName, rows]) =>
+                        React.createElement("div", {key:grpName, style:{marginBottom:16}},
+                          React.createElement("div",{style:{
+                            display:"flex",alignItems:"center",justifyContent:"space-between",
+                            padding:"12px 4px 8px"
+                          }},
+                            React.createElement("div",{style:{fontSize:15,fontWeight:800,color:"#0f172a"}}, grpName),
+                            loadingStandings && React.createElement(Spin,{s:14,c:"#94a3b8"})
                           ),
-                          teams.map((team, i) =>
-                            React.createElement("div",{key:i,style:{
-                              display:"flex",alignItems:"center",padding:"10px 12px",
-                              borderBottom:i<teams.length-1?"1px solid #f5f7fa":"none"
-                            }},
-                              React.createElement("div",{style:{
-                                width:26,height:26,borderRadius:6,flexShrink:0,marginRight:4,
-                                background:i<2?"#1a1f2e":"transparent",
-                                display:"flex",alignItems:"center",justifyContent:"center"
+                          React.createElement("div",{style:{background:"#fff",borderRadius:12,overflow:"hidden",boxShadow:"0 1px 4px rgba(0,0,0,.06)"}},
+                            React.createElement("div",{style:{display:"flex",padding:"8px 12px",background:"#f8fafc",borderBottom:"1px solid #ebebeb"}},
+                              React.createElement("span",{style:{width:30,fontSize:10,fontWeight:700,color:"#94a3b8",textAlign:"center"}},"#"),
+                              React.createElement("span",{style:{flex:1,fontSize:10,fontWeight:700,color:"#94a3b8"}},"ÉQUIPE"),
+                              React.createElement("span",{style:{width:30,fontSize:10,fontWeight:700,color:"#94a3b8",textAlign:"center"}},"MJ"),
+                              React.createElement("span",{style:{width:44,fontSize:10,fontWeight:700,color:"#94a3b8",textAlign:"center"}},"B"),
+                              React.createElement("span",{style:{width:32,fontSize:10,fontWeight:800,color:"#0f172a",textAlign:"center"}},"PTS")
+                            ),
+                            rows.map((row, i) => {
+                              // row peut être un objet API ou un objet hardcodé {name, logo}
+                              const name  = isFromApi ? row.team?.name  : row.name;
+                              const logo  = isFromApi ? row.team?.logo  : row.logo;
+                              const played = isFromApi ? row.all?.played : 0;
+                              const gf    = isFromApi ? (row.all?.goals?.for||0) : 0;
+                              const ga    = isFromApi ? (row.all?.goals?.against||0) : 0;
+                              const pts   = isFromApi ? row.points : 0;
+                              const rank  = isFromApi ? row.rank : i+1;
+                              const q     = rank <= 2;
+                              return React.createElement("div",{key:i,style:{
+                                display:"flex",alignItems:"center",padding:"10px 12px",
+                                borderBottom:i<rows.length-1?"1px solid #f5f7fa":"none"
                               }},
-                                React.createElement("span",{style:{fontSize:12,fontWeight:700,color:i<2?"#fff":"#94a3b8"}},(i+1)+".")
-                              ),
-                              React.createElement("div",{style:{flex:1,display:"flex",alignItems:"center",gap:8,minWidth:0}},
-                                team.logo
-                                  ? React.createElement("img",{src:team.logo,style:{width:22,height:22,objectFit:"contain",flexShrink:0},onError:e=>e.target.style.display="none"})
-                                  : React.createElement("div",{style:{width:22,height:22,borderRadius:"50%",background:"#e2e8f0",flexShrink:0}}),
-                                React.createElement("span",{style:{fontSize:14,fontWeight:i<2?700:400,color:"#0f172a",overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap"}},team.name)
-                              ),
-                              React.createElement("span",{style:{width:30,fontSize:12,color:"#94a3b8",textAlign:"center"}},"0"),
-                              React.createElement("span",{style:{width:44,fontSize:12,color:"#94a3b8",textAlign:"center"}},"0:0"),
-                              React.createElement("span",{style:{width:32,fontSize:13,fontWeight:800,color:"#0f172a",textAlign:"center"}},"0")
-                            )
+                                React.createElement("div",{style:{
+                                  width:26,height:26,borderRadius:6,flexShrink:0,marginRight:4,
+                                  background:q?"#1a1f2e":"transparent",
+                                  display:"flex",alignItems:"center",justifyContent:"center"
+                                }},
+                                  React.createElement("span",{style:{fontSize:12,fontWeight:700,color:q?"#fff":"#94a3b8"}},rank+".")
+                                ),
+                                React.createElement("div",{style:{flex:1,display:"flex",alignItems:"center",gap:8,minWidth:0}},
+                                  logo
+                                    ? React.createElement("img",{src:logo,style:{width:22,height:22,objectFit:"contain",flexShrink:0},onError:e=>e.target.style.display="none"})
+                                    : React.createElement("div",{style:{width:22,height:22,borderRadius:"50%",background:"#e2e8f0",flexShrink:0}}),
+                                  React.createElement("span",{style:{fontSize:14,fontWeight:q?700:400,color:"#0f172a",overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap"}},name)
+                                ),
+                                React.createElement("span",{style:{width:30,fontSize:12,color:"#64748b",textAlign:"center"}},played),
+                                React.createElement("span",{style:{width:44,fontSize:12,color:"#64748b",textAlign:"center"}},`${gf}:${ga}`),
+                                React.createElement("span",{style:{width:32,fontSize:13,fontWeight:800,color:"#0f172a",textAlign:"center"}},pts)
+                              );
+                            })
                           )
                         )
                       )
-                    )
-                  );
+                    );
+                  };
+
+                  // Si API standings disponibles → afficher les vrais
+                  if(standings.length > 0) {
+                    const grouped = {};
+                    standings.forEach(r => {
+                      const grp = r.group || "Classement";
+                      if(!grouped[grp]) grouped[grp] = [];
+                      grouped[grp].push(r);
+                    });
+                    return renderGroups(grouped, true);
+                  }
+                  // Sinon → afficher hardcodé instantanément (API charge en arrière-plan)
+                  return renderGroups(WC2026_GROUPS, false);
                 }
                 if(loadingStandings) return React.createElement("div",{style:{textAlign:"center",padding:40}}, React.createElement(Spin,{s:24,c:"#00c170"}));
                 if(!standings.length) return React.createElement("div",{style:{textAlign:"center",padding:60,color:"#94a3b8",fontSize:13}},
