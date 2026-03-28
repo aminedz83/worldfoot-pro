@@ -48,7 +48,7 @@
     <script>
         if ("serviceWorker" in navigator) {
             const sw = `
-    const C='wf-pro-v172';
+    const C='wf-pro-v173';
     const API_KEY='3a14b1347c177458e2f23bea7899e9cf';
     const BASE='https://v3.football.api-sports.io';
     let prevScores = {};
@@ -3207,34 +3207,6 @@ function LeagueSheet({fix, leagueInfo, onClose}) {
 
   const [showWinners, setShowWinners] = useState(false);
   const [winnersData, setWinnersData] = useState({});
-  const [selectedWCYear, setSelectedWCYear] = useState(null);
-
-  // === Vainqueurs CdM hardcodés ===
-  const WC_WINNERS = {
-    2022:{name:"Argentine",  logo:TL(26),  host:"Qatar",              finalist:"France",               third:"Croatie",        goals:172, teams:32},
-    2018:{name:"France",     logo:TL(2),   host:"Russie",             finalist:"Croatie",              third:"Belgique",       goals:169, teams:32},
-    2014:{name:"Allemagne",  logo:TL(25),  host:"Brésil",             finalist:"Argentine",            third:"Pays-Bas",       goals:171, teams:32},
-    2010:{name:"Espagne",    logo:TL(9),   host:"Afrique du Sud",     finalist:"Pays-Bas",             third:"Allemagne",      goals:145, teams:32},
-    2006:{name:"Italie",     logo:TL(768), host:"Allemagne",          finalist:"France",               third:"Allemagne",      goals:147, teams:32},
-    2002:{name:"Brésil",     logo:TL(6),   host:"Corée/Japon",        finalist:"Allemagne",            third:"Turquie",        goals:161, teams:32},
-    1998:{name:"France",     logo:TL(2),   host:"France",             finalist:"Brésil",               third:"Croatie",        goals:171, teams:32},
-    1994:{name:"Brésil",     logo:TL(6),   host:"États-Unis",         finalist:"Italie",               third:"Suède",          goals:141, teams:24},
-    1990:{name:"Allemagne",  logo:TL(25),  host:"Italie",             finalist:"Argentine",            third:"Italie",         goals:115, teams:24},
-    1986:{name:"Argentine",  logo:TL(26),  host:"Mexique",            finalist:"Allemagne",            third:"France",         goals:132, teams:24},
-    1982:{name:"Italie",     logo:TL(768), host:"Espagne",            finalist:"Allemagne",            third:"Pologne",        goals:146, teams:24},
-    1978:{name:"Argentine",  logo:TL(26),  host:"Argentine",          finalist:"Pays-Bas",             third:"Brésil",         goals:102, teams:16},
-    1974:{name:"Allemagne",  logo:TL(25),  host:"Allemagne",          finalist:"Pays-Bas",             third:"Pologne",        goals:97,  teams:16},
-    1970:{name:"Brésil",     logo:TL(6),   host:"Mexique",            finalist:"Italie",               third:"Allemagne",      goals:95,  teams:16},
-    1966:{name:"Angleterre", logo:TL(10),  host:"Angleterre",         finalist:"Allemagne",            third:"Portugal",       goals:89,  teams:16},
-    1962:{name:"Brésil",     logo:TL(6),   host:"Chili",              finalist:"Tchécoslovaquie",      third:"Chili",          goals:89,  teams:16},
-    1958:{name:"Brésil",     logo:TL(6),   host:"Suède",              finalist:"Suède",                third:"France",         goals:126, teams:16},
-    1954:{name:"Allemagne",  logo:TL(25),  host:"Suisse",             finalist:"Hongrie",              third:"Autriche",       goals:140, teams:16},
-    1950:{name:"Uruguay",    logo:TL(14),  host:"Brésil",             finalist:"Brésil",               third:"Suède",          goals:88,  teams:13},
-    1938:{name:"Italie",     logo:TL(768), host:"France",             finalist:"Hongrie",              third:"Brésil",         goals:84,  teams:15},
-    1934:{name:"Italie",     logo:TL(768), host:"Italie",             finalist:"Tchécoslovaquie",      third:"Allemagne",      goals:70,  teams:16},
-    1930:{name:"Uruguay",    logo:TL(14),  host:"Uruguay",            finalist:"Argentine",            third:"États-Unis",     goals:70,  teams:13},
-  };
-
   // Helper pour créer un fixture synthétique bracket
   const wF = (id,round,hId,hN,hL,aId,aN,aL,hg,ag,date,st="FT") => ({
     fixture:{id,date,status:{short:st}},
@@ -3475,6 +3447,71 @@ function LeagueSheet({fix, leagueInfo, onClose}) {
       wF(603,"Final",14,"Uruguay",TL(14),26,"Argentine",TL(26),4,2,"1930-07-30"),
     ],
   };
+  const [selectedWCYear, setSelectedWCYear] = useState(null);
+
+  // === Vainqueurs CdM hardcodés ===
+  const WC_WINNERS = {
+    2022:{name:"Argentine",  logo:TL(26),  host:"Qatar",              finalist:"France",               third:"Croatie",        goals:172, teams:32},
+    2018:{name:"France",     logo:TL(2),   host:"Russie",             finalist:"Croatie",              third:"Belgique",       goals:169, teams:32},
+    2014:{name:"Allemagne",  logo:TL(25),  host:"Brésil",             finalist:"Argentine",            third:"Pays-Bas",       goals:171, teams:32},
+    2010:{name:"Espagne",    logo:TL(9),   host:"Afrique du Sud",     finalist:"Pays-Bas",             third:"Allemagne",      goals:145, teams:32},
+    2006:{name:"Italie",     logo:TL(768), host:"Allemagne",          finalist:"France",               third:"Allemagne",      goals:147, teams:32},
+    2002:{name:"Brésil",     logo:TL(6),   host:"Corée/Japon",        finalist:"Allemagne",            third:"Turquie",        goals:161, teams:32},
+    1998:{name:"France",     logo:TL(2),   host:"France",             finalist:"Brésil",               third:"Croatie",        goals:171, teams:32},
+    1994:{name:"Brésil",     logo:TL(6),   host:"États-Unis",         finalist:"Italie",               third:"Suède",          goals:141, teams:24},
+    1990:{name:"Allemagne",  logo:TL(25),  host:"Italie",             finalist:"Argentine",            third:"Italie",         goals:115, teams:24},
+    1986:{name:"Argentine",  logo:TL(26),  host:"Mexique",            finalist:"Allemagne",            third:"France",         goals:132, teams:24},
+    1982:{name:"Italie",     logo:TL(768), host:"Espagne",            finalist:"Allemagne",            third:"Pologne",        goals:146, teams:24},
+    1978:{name:"Argentine",  logo:TL(26),  host:"Argentine",          finalist:"Pays-Bas",             third:"Brésil",         goals:102, teams:16},
+    1974:{name:"Allemagne",  logo:TL(25),  host:"Allemagne",          finalist:"Pays-Bas",             third:"Pologne",        goals:97,  teams:16},
+    1970:{name:"Brésil",     logo:TL(6),   host:"Mexique",            finalist:"Italie",               third:"Allemagne",      goals:95,  teams:16},
+    1966:{name:"Angleterre", logo:TL(10),  host:"Angleterre",         finalist:"Allemagne",            third:"Portugal",       goals:89,  teams:16},
+    1962:{name:"Brésil",     logo:TL(6),   host:"Chili",              finalist:"Tchécoslovaquie",      third:"Chili",          goals:89,  teams:16},
+    1958:{name:"Brésil",     logo:TL(6),   host:"Suède",              finalist:"Suède",                third:"France",         goals:126, teams:16},
+    1954:{name:"Allemagne",  logo:TL(25),  host:"Suisse",             finalist:"Hongrie",              third:"Autriche",       goals:140, teams:16},
+    1950:{name:"Uruguay",    logo:TL(14),  host:"Brésil",             finalist:"Brésil",               third:"Suède",          goals:88,  teams:13},
+    1938:{name:"Italie",     logo:TL(768), host:"France",             finalist:"Hongrie",              third:"Brésil",         goals:84,  teams:15},
+    1934:{name:"Italie",     logo:TL(768), host:"Italie",             finalist:"Tchécoslovaquie",      third:"Allemagne",      goals:70,  teams:16},
+    1930:{name:"Uruguay",    logo:TL(14),  host:"Uruguay",            finalist:"Argentine",            third:"États-Unis",     goals:70,  teams:13},
+  };
+  // Vainqueurs hardcodés CAN (données historiques complètes)
+  const CAN_WINNERS = {
+    2023:{name:"Côte d'Ivoire", logo:"https://media.api-sports.io/football/teams/19129.png"},
+    2021:{name:"Sénégal",       logo:"https://media.api-sports.io/football/teams/33.png"},
+    2019:{name:"Algérie",       logo:"https://media.api-sports.io/football/teams/1532.png"},
+    2017:{name:"Cameroun",      logo:"https://media.api-sports.io/football/teams/1530.png"},
+    2015:{name:"Côte d'Ivoire", logo:"https://media.api-sports.io/football/teams/19129.png"},
+    2013:{name:"Nigeria",       logo:"https://media.api-sports.io/football/teams/19.png"},
+    2012:{name:"Zambie",        logo:"https://media.api-sports.io/football/teams/1507.png"},
+    2010:{name:"Égypte",        logo:"https://media.api-sports.io/football/teams/32.png"},
+    2008:{name:"Égypte",        logo:"https://media.api-sports.io/football/teams/32.png"},
+    2006:{name:"Égypte",        logo:"https://media.api-sports.io/football/teams/32.png"},
+    2004:{name:"Tunisie",       logo:"https://media.api-sports.io/football/teams/28.png"},
+    2002:{name:"Cameroun",      logo:"https://media.api-sports.io/football/teams/1530.png"},
+    2000:{name:"Cameroun",      logo:"https://media.api-sports.io/football/teams/1530.png"},
+    1998:{name:"Égypte",        logo:"https://media.api-sports.io/football/teams/32.png"},
+    1996:{name:"Afrique du Sud",logo:"https://media.api-sports.io/football/teams/1531.png"},
+    1994:{name:"Nigeria",       logo:"https://media.api-sports.io/football/teams/19.png"},
+    1992:{name:"Côte d'Ivoire", logo:"https://media.api-sports.io/football/teams/19129.png"},
+    1990:{name:"Algérie",       logo:"https://media.api-sports.io/football/teams/1532.png"},
+    1988:{name:"Cameroun",      logo:"https://media.api-sports.io/football/teams/1530.png"},
+    1986:{name:"Égypte",        logo:"https://media.api-sports.io/football/teams/32.png"},
+    1984:{name:"Cameroun",      logo:"https://media.api-sports.io/football/teams/1530.png"},
+    1982:{name:"Ghana",         logo:"https://media.api-sports.io/football/teams/1504.png"},
+    1980:{name:"Nigeria",       logo:"https://media.api-sports.io/football/teams/19.png"},
+    1978:{name:"Ghana",         logo:"https://media.api-sports.io/football/teams/1504.png"},
+    1976:{name:"Maroc",         logo:"https://media.api-sports.io/football/teams/31.png"},
+    1974:{name:"Congo RD",      logo:"https://media.api-sports.io/football/teams/1508.png"},
+    1972:{name:"Congo RD",      logo:"https://media.api-sports.io/football/teams/1508.png"},
+    1970:{name:"Soudan",        logo:"https://media.api-sports.io/football/teams/1510.png"},
+    1968:{name:"Congo RD",      logo:"https://media.api-sports.io/football/teams/1508.png"},
+    1965:{name:"Ghana",         logo:"https://media.api-sports.io/football/teams/1504.png"},
+    1963:{name:"Ghana",         logo:"https://media.api-sports.io/football/teams/1504.png"},
+    1962:{name:"Éthiopie",      logo:"https://media.api-sports.io/football/teams/1506.png"},
+    1959:{name:"Égypte",        logo:"https://media.api-sports.io/football/teams/32.png"},
+    1957:{name:"Égypte",        logo:"https://media.api-sports.io/football/teams/32.png"},
+  };
+
   // Charger les vainqueurs depuis l'API pour les ligues non-CAN
   useEffect(() => {
     if(!showWinners||!lid) return;
