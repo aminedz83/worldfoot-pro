@@ -48,7 +48,7 @@
     <script>
         if ("serviceWorker" in navigator) {
             const sw = `
-    const C='wf-pro-v166';
+    const C='wf-pro-v167';
     const API_KEY='3a14b1347c177458e2f23bea7899e9cf';
     const BASE='https://v3.football.api-sports.io';
     let prevScores = {};
@@ -3126,11 +3126,52 @@ function LeagueSheet({fix, leagueInfo, onClose}) {
     return row?.rank || null;
   };
 
+  // === CdM 2022 — bracket hardcodé Phase Finale ===
+  // Structure synthétique : chaque objet simule un fixture API (champs utilisés par le bracket)
+  const mkF = (id, round, homeId, homeName, homeLogo, awayId, awayName, awayLogo, hg, ag, date, status="FT") => ({
+    fixture:{id, date, status:{short:status}},
+    league:{id:1, season:2022, round},
+    teams:{
+      home:{id:homeId, name:homeName, logo:homeLogo},
+      away:{id:awayId, name:awayName, logo:awayLogo}
+    },
+    goals:{home:hg, away:ag}
+  });
+  const L = id => `https://media.api-sports.io/football/teams/${id}.png`;
+  const WC2022_BRACKET = [
+    // 1/8 DE FINALE (Round of 16)
+    mkF(9001,"Round of 16", 10,"Netherlands",L(10),    16,"USA",L(16),           3,1,"2022-12-03"),
+    mkF(9002,"Round of 16",  7,"Argentina",L(7),       1532,"Australia",L(1532), 2,1,"2022-12-03"),
+    mkF(9003,"Round of 16", 25,"France",L(25),         24,"Poland",L(24),         3,1,"2022-12-04"),
+    mkF(9004,"Round of 16",  9,"England",L(9),         33,"Senegal",L(33),        3,0,"2022-12-04"),
+    mkF(9005,"Round of 16", 29,"Japan",L(29),           8,"Croatia",L(8),         1,1,"2022-12-05"), // Croatie gagne aux pen
+    mkF(9006,"Round of 16", 21,"Brazil",L(21),         15,"South Korea",L(15),   4,1,"2022-12-05"),
+    mkF(9007,"Round of 16", 28,"Morocco",L(28),        22,"Spain",L(22),          0,0,"2022-12-06"), // Maroc gagne aux pen
+    mkF(9008,"Round of 16", 23,"Portugal",L(23),       23,"Switzerland",L(2),     6,1,"2022-12-06"),
+    // QUARTS DE FINALE
+    mkF(9009,"Quarter-finals", 10,"Netherlands",L(10), 7,"Argentina",L(7),       2,2,"2022-12-09"), // Argentine gagne aux pen
+    mkF(9010,"Quarter-finals", 25,"France",L(25),      9,"England",L(9),          2,1,"2022-12-10"),
+    mkF(9011,"Quarter-finals",  8,"Croatia",L(8),     21,"Brazil",L(21),          1,1,"2022-12-09"), // Croatie gagne aux pen
+    mkF(9012,"Quarter-finals", 28,"Morocco",L(28),    23,"Portugal",L(23),        1,0,"2022-12-10"),
+    // DEMI-FINALES
+    mkF(9013,"Semi-finals",  7,"Argentina",L(7),       8,"Croatia",L(8),          3,0,"2022-12-13"),
+    mkF(9014,"Semi-finals", 25,"France",L(25),        28,"Morocco",L(28),         2,0,"2022-12-14"),
+    // FINALE
+    mkF(9015,"Final",        7,"Argentina",L(7),      25,"France",L(25),          3,3,"2022-12-18"), // Argentine gagne aux pen
+  ];
+
   // Charger TOUS les tours en parallèle pour le bracket complet
   useEffect(() => {
     if(!lid||!season) return;
     if(overrideMode !== "final_ko") return;
     const targetLid = overrideLid || lid;
+    // CdM 2022 hardcodé — injecté instantanément, pas besoin d'API
+    if(targetLid === 1 && Number(season) === 2022) {
+      setAllFixtures(WC2022_BRACKET);
+      setFixtures(WC2022_BRACKET);
+      setLoading(false);
+      return;
+    }
     setLoading(true);
     setAllFixtures([]);
     setFixtures([]);
