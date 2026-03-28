@@ -2994,14 +2994,15 @@ function LeagueSheet({fix, leagueInfo, onClose}) {
     return row?.rank || null;
   };
 
-  // Charger les matchs de la phase active
+  // Charger les matchs de la phase knockout active
   useEffect(() => {
-    if(!lid||!season) return;
+    if(!lid||!season||!activePhase) return;
+    const targetLid = overrideLid || lid;
     setLoading(true);
-    api(`/fixtures?league=${lid}&season=${season}&round=${encodeURIComponent(activePhase)}`, 3600000)
+    api(`/fixtures?league=${targetLid}&season=${season}&round=${encodeURIComponent(activePhase)}`, 3600000)
       .then(d => { setFixtures(d||[]); setLoading(false); })
       .catch(() => setLoading(false));
-  }, [activePhase, lid, season]);
+  }, [activePhase, overrideLid, lid, season]);
 
   // Détecter la phase actuelle
   useEffect(() => {
@@ -3012,6 +3013,15 @@ function LeagueSheet({fix, leagueInfo, onClose}) {
     else if(r.includes("Semi")) setActivePhase("Semi-finals");
     else if(r.match(/^Final$/i)) setActivePhase("Final");
   }, []);
+
+  // Quand on passe en mode final_ko, initialiser à Round of 32 si WC
+  useEffect(() => {
+    if(overrideMode === "final_ko") {
+      const tLid = overrideLid || lid;
+      // WC (1) a Round of 32, autres ont Round of 16
+      setActivePhase(tLid === 1 ? "Round of 32" : "Round of 16");
+    }
+  }, [overrideMode]);
 
   // Grouper les matchs par paires (aller/retour)
   const pairs = [];
@@ -3296,7 +3306,7 @@ function LeagueSheet({fix, leagueInfo, onClose}) {
             gap:0,marginBottom:12,borderBottom:"1px solid #f0f2f5",
             marginLeft:-12,marginRight:-12,paddingLeft:12
           }},
-            phases.filter(p => p.key !== "Round of 32").map(p =>
+            phases.map(p =>
               React.createElement("button", {
                 key:p.key,
                 onClick: () => setActivePhase(p.key),
