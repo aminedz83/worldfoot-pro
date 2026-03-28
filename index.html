@@ -6631,6 +6631,26 @@ function MatchDetail({state,onClose,onTeam}){
 }
 
 function ScoresTab({favs,onFav,onTeam}){
+  const [showSearch, setShowSearch] = React.useState(false);
+  const [searchQuery, setSearchQuery] = React.useState("");
+  const [searchResults, setSearchResults] = React.useState([]);
+  const [searchLoading, setSearchLoading] = React.useState(false);
+
+  const doSearch = async (q) => {
+    if(!q || q.length < 2) { setSearchResults([]); return; }
+    setSearchLoading(true);
+    try {
+      const [teams, leagues] = await Promise.all([
+        api(`/teams?search=${encodeURIComponent(q)}`, 3600000),
+        api(`/leagues?search=${encodeURIComponent(q)}`, 3600000)
+      ]);
+      setSearchResults([
+        ...(teams||[]).slice(0,5).map(t=>({type:"team",name:t.team.name,logo:t.team.logo,id:t.team.id,country:t.team.country})),
+        ...(leagues||[]).slice(0,5).map(l=>({type:"league",name:l.league.name,logo:l.league.logo,id:l.league.id,country:l.country.name}))
+      ]);
+    } catch(e) {}
+    setSearchLoading(false);
+  };
 
   const[date,setDate]=useState(today()),[data,setData]=useState([]),[st,setSt]=useState("load"),[err,setErr]=useState("");
   const[detail,setDet]=useState(null),[q,setQ]=useState(""),[lg,setLg]=useState(null),[favOnly,setFO]=useState(false);
@@ -6864,6 +6884,78 @@ function ScoresTab({favs,onFav,onTeam}){
         cd != null && !spin ? React.createElement("span", { style: { fontSize: 10, color: cd <= 15 ? T.red : T.t3, fontWeight: 700 } }, cd + "s") : null
       )
     ),
+
+    showSearch ? React.createElement("div", {
+      style:{position:"fixed",top:0,left:0,right:0,bottom:0,background:"#fff",zIndex:200,display:"flex",flexDirection:"column"}
+    },
+      React.createElement("div", {style:{
+        display:"flex",alignItems:"center",gap:8,
+        padding:"calc(env(safe-area-inset-top,0px) + 12px) 16px 12px",
+        borderBottom:"1px solid #f0f2f5",flexShrink:0
+      }},
+        React.createElement("div", {style:{flex:1,display:"flex",alignItems:"center",gap:8,background:"#f5f6f8",borderRadius:12,padding:"9px 12px"}},
+          React.createElement("svg",{width:15,height:15,viewBox:"0 0 24 24",fill:"none",stroke:"#94a3b8",strokeWidth:2.2,strokeLinecap:"round",strokeLinejoin:"round"},
+            React.createElement("circle",{cx:11,cy:11,r:8}),
+            React.createElement("line",{x1:21,y1:21,x2:16.65,y2:16.65})
+          ),
+          React.createElement("input",{
+            autoFocus:true,
+            placeholder:"Équipe, club ou compétition...",
+            value:searchQuery,
+            onChange:e=>{setSearchQuery(e.target.value);doSearch(e.target.value);},
+            style:{flex:1,border:"none",background:"transparent",fontSize:15,color:"#0f172a",outline:"none",minWidth:0}
+          })
+        ),
+        React.createElement("button",{
+          onClick:()=>{setShowSearch(false);setSearchQuery("");setSearchResults([]);},
+          style:{background:"none",border:"none",fontSize:14,fontWeight:600,color:"#64748b",cursor:"pointer",flexShrink:0,padding:"4px 8px"}
+        },"Annuler")
+      ),
+      React.createElement("div",{style:{flex:1,overflowY:"auto",padding:"0 16px"}},
+        searchLoading
+          ? React.createElement("div",{style:{textAlign:"center",padding:40}},React.createElement(Spin,{s:24,c:"#00c170"}))
+          : searchResults.length===0 && searchQuery.length>1
+          ? React.createElement("div",{style:{textAlign:"center",padding:60,color:"#94a3b8",fontSize:14}},"Aucun résultat")
+          : searchResults.length===0
+          ? React.createElement("div",{style:{textAlign:"center",padding:60,color:"#94a3b8"}},
+              React.createElement("div",{style:{fontSize:40,marginBottom:12}},"🔍"),
+              React.createElement("div",{style:{fontSize:13}},"Rechercher une équipe ou compétition")
+            )
+          : React.createElement("div",null,
+              searchResults.filter(r=>r.type==="team").length>0 && React.createElement("div",null,
+                React.createElement("div",{style:{fontSize:11,fontWeight:700,color:"#94a3b8",textTransform:"uppercase",letterSpacing:1,padding:"14px 0 8px"}},"Équipes"),
+                searchResults.filter(r=>r.type==="team").map((r,i)=>
+                  React.createElement("div",{key:i,
+                    onClick:()=>{onTeam&&onTeam(r.id,r.name,r.logo);setShowSearch(false);setSearchQuery("");setSearchResults([]);},
+                    style:{display:"flex",alignItems:"center",gap:12,padding:"11px 0",borderBottom:"1px solid #f5f7fa",cursor:"pointer"}
+                  },
+                    React.createElement("div",{style:{width:42,height:42,borderRadius:10,background:"#f8fafc",border:"1px solid #e8e8e8",display:"flex",alignItems:"center",justifyContent:"center",flexShrink:0}},
+                      React.createElement("img",{src:r.logo,style:{width:30,height:30,objectFit:"contain"},onError:e=>e.target.style.display="none"})
+                    ),
+                    React.createElement("div",null,
+                      React.createElement("div",{style:{fontSize:14,fontWeight:600,color:"#0f172a"}},r.name),
+                      React.createElement("div",{style:{fontSize:12,color:"#94a3b8"}},r.country)
+                    )
+                  )
+                )
+              ),
+              searchResults.filter(r=>r.type==="league").length>0 && React.createElement("div",null,
+                React.createElement("div",{style:{fontSize:11,fontWeight:700,color:"#94a3b8",textTransform:"uppercase",letterSpacing:1,padding:"14px 0 8px"}},"Compétitions"),
+                searchResults.filter(r=>r.type==="league").map((r,i)=>
+                  React.createElement("div",{key:i,style:{display:"flex",alignItems:"center",gap:12,padding:"11px 0",borderBottom:"1px solid #f5f7fa"}},
+                    React.createElement("div",{style:{width:42,height:42,borderRadius:10,background:"#f8fafc",border:"1px solid #e8e8e8",display:"flex",alignItems:"center",justifyContent:"center",flexShrink:0}},
+                      React.createElement("img",{src:r.logo,style:{width:30,height:30,objectFit:"contain"},onError:e=>e.target.style.display="none"})
+                    ),
+                    React.createElement("div",null,
+                      React.createElement("div",{style:{fontSize:14,fontWeight:600,color:"#0f172a"}},r.name),
+                      React.createElement("div",{style:{fontSize:12,color:"#94a3b8"}},r.country)
+                    )
+                  )
+                )
+              )
+            )
+      )
+    ) : null,
 
     React.createElement("div", { ref: stripRef, style: { display: "flex", gap: 5, overflowX: "auto", padding: "10px 14px 10px", background: T.bg0, borderBottom: "1px solid " + T.line, flexShrink: 0, width: "100%" } },
       dates.map(d => {
