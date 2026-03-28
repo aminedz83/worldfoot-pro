@@ -48,7 +48,7 @@
     <script>
         if ("serviceWorker" in navigator) {
             const sw = `
-    const C='wf-pro-v163';
+    const C='wf-pro-v164';
     const API_KEY='3a14b1347c177458e2f23bea7899e9cf';
     const BASE='https://v3.football.api-sports.io';
     let prevScores = {};
@@ -3067,7 +3067,6 @@ function LeagueSheet({fix, leagueInfo, onClose}) {
     if(!targetLid || !season || isKO) return;
     let cancelled = false;
     setStandings([]);
-    setFixtures([]);
     setRounds([]);
     setActiveRound("");
     setLoading(true);
@@ -3130,12 +3129,14 @@ function LeagueSheet({fix, leagueInfo, onClose}) {
   // Charger les matchs de la phase knockout active
   useEffect(() => {
     if(!lid||!season||!activePhase) return;
+    if(overrideMode !== "final_ko") return; // seulement en mode KO
     const targetLid = overrideLid || lid;
     setLoading(true);
-    api(`/fixtures?league=${targetLid}&season=${season}&round=${encodeURIComponent(activePhase)}`, 3600000)
+    // Charger TOUS les matchs du tournoi pour avoir toutes les paires
+    api(`/fixtures?league=${targetLid}&season=${season}`, 3600000)
       .then(d => { setFixtures(d||[]); setLoading(false); })
       .catch(() => setLoading(false));
-  }, [activePhase, overrideLid, lid, season]);
+  }, [activePhase, overrideLid, lid, season, overrideMode]);
 
   // Détecter la phase actuelle
   useEffect(() => {
@@ -3432,7 +3433,9 @@ function LeagueSheet({fix, leagueInfo, onClose}) {
             return [{key:"tableau", label:label1}, {key:"resultats", label:"RÉSULTATS"}].map(t =>
               React.createElement("button", {
                 key:t.key,
-                onClick:()=>setActiveTab(t.key),
+                onClick:() => {
+                  setActiveTab(t.key);
+                },
                 style:{
                   flexShrink:0,padding:"10px 14px",background:"none",border:"none",
                   fontSize:11,fontWeight:800,cursor:"pointer",whiteSpace:"nowrap",
@@ -3469,7 +3472,7 @@ function LeagueSheet({fix, leagueInfo, onClose}) {
               }, p.label)
             )
           ),
-          loading
+          (loading && overrideMode === "final_ko")
             ? React.createElement("div", {style:{textAlign:"center",padding:40}}, React.createElement(Spin, {s:24,c:"#00c170"}))
             // Phase Finale → liste matchs (jamais classement)
             : overrideMode === "final_ko"
@@ -3491,24 +3494,20 @@ function LeagueSheet({fix, leagueInfo, onClose}) {
                   if(partner) koSeen.add(partner.fixture.id);
                 });
 
-                // Organiser par tour
+                // Grouper les paires par phase
                 const phaseOrder = ["Round of 32","Round of 16","Quarter-finals","Semi-finals","Final"];
                 const phaseLabels = {"Round of 32":"1/16","Round of 16":"1/8","Quarter-finals":"Quarts","Semi-finals":"Demis","Final":"Finale"};
-                const byPhase = {};
-                phaseOrder.forEach(p => { byPhase[p] = []; });
-                fixtures.forEach(f => {
-                  const r = f.league?.round || f.fixture?.league?.round || "";
-                  for(const p of phaseOrder) {
-                    if(r.includes(p.split("-")[0]) || r.toLowerCase().includes(p.toLowerCase())) {
-                      if(!byPhase[p].find(x=>x.fixture.id===f.fixture.id)) byPhase[p].push(f);
-                      break;
-                    }
-                  }
-                });
 
-                // Si un seul tour chargé (activePhase) → vue liste enrichie
-                const activePairs = koPairs;
-                if(activePairs.length === 0) return React.createElement("div",{style:{textAlign:"center",padding:40,color:"#94a3b8",fontSize:13}},"Aucun match disponible");
+                // Filtrer les paires selon le tour actif
+                const activePairs = koPairs.filter(pair => {
+                  const r = pair.leg1?.league?.round || pair.leg1?.fixture?.status?.short || "";
+                  return r.toLowerCase().includes(activePhase.split("-")[0].toLowerCase()) ||
+                         r.toLowerCase().includes(activePhase.toLowerCase()) ||
+                         activePhase === "Final" && r.toLowerCase().includes("final");
+                });
+                const displayPairs = activePairs.length > 0 ? activePairs : koPairs;
+
+                if(displayPairs.length === 0) return React.createElement("div",{style:{textAlign:"center",padding:40,color:"#94a3b8",fontSize:13}},"Aucun match disponible");
 
                 return React.createElement("div",{style:{overflowX:"auto",paddingBottom:16}},
                   // Titre du tour
@@ -3517,7 +3516,7 @@ function LeagueSheet({fix, leagueInfo, onClose}) {
                   ),
                   // Grille de matchs
                   React.createElement("div",{style:{display:"flex",flexDirection:"column",gap:12}},
-                    activePairs.map((pair,i) =>
+                    displayPairs.map((pair,i) =>
                       React.createElement(BracketCard,{key:i,pair,onSelect:()=>setSelectedPair(pair)})
                     )
                   )
