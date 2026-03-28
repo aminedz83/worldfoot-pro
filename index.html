@@ -3539,126 +3539,229 @@ function LeagueSheet({fix, leagueInfo, onClose}) {
                 const availablePhases = phaseOrder.filter(p => pairsByPhase[p].length > 0);
                 if(!availablePhases.length) return React.createElement("div",{style:{textAlign:"center",padding:40,color:"#94a3b8",fontSize:13}},"Aucun match disponible");
 
-                // Bracket horizontal scrollable
-                return React.createElement("div",{style:{overflowX:"auto",paddingBottom:20}},
-                  React.createElement("div",{style:{
-                    display:"flex",
-                    gap:0,
-                    minWidth: availablePhases.length * 190,
-                    alignItems:"flex-start"
-                  }},
+                // === BRACKET FLASHSCORE — arbre de tournoi positionné absolument ===
+                // Constantes layout
+                const CARD_W = 172;      // largeur d'une carte match
+                const CARD_H = 70;       // hauteur d'une carte (2 équipes)
+                const COL_GAP = 40;      // gap horizontal entre colonnes (zone SVG connecteurs)
+                const COL_W = CARD_W + COL_GAP; // largeur totale d'une colonne + connecteur
+                const HEADER_H = 36;     // hauteur du label de phase
+                const TOP_PAD = 12;      // padding haut global
+
+                // Pour chaque colonne, calculer le nombre de slots = 2^(nCols-1-colIdx)
+                const nCols = availablePhases.length;
+                // La première colonne (ex: 1/16) a le + de matchs
+                const maxPairs = pairsByPhase[availablePhases[0]].length;
+
+                // Hauteur totale de la zone de jeu (sans header) — basée sur la première colonne
+                // Chaque slot = CARD_H + gap vertical entre cartes
+                // On calcule la hauteur totale pour que les cartes soient centrées dans leurs slots
+                const getSlotH = (colIdx) => {
+                  // slot height double à chaque colonne vers la droite
+                  const baseSlotH = CARD_H + 16; // card + gap minimal dans la 1ère colonne
+                  return baseSlotH * Math.pow(2, colIdx);
+                };
+
+                const totalH = getSlotH(0) * maxPairs;
+
+                // Calculer la position Y du centre d'une carte dans un slot donné
+                const getCardY = (colIdx, slotIdx) => {
+                  const slotH = getSlotH(colIdx);
+                  const slotTop = slotIdx * slotH;
+                  // Centrer la carte dans le slot
+                  return slotTop + (slotH - CARD_H) / 2;
+                };
+
+                const shortN = n => !n ? "?" : n.length > 13 ? n.split(" ").slice(-1)[0] : n;
+
+                const totalW = nCols * CARD_W + (nCols - 1) * COL_GAP + 1;
+
+                return React.createElement("div",{style:{overflowX:"auto",overflowY:"hidden",paddingBottom:16,WebkitOverflowScrolling:"touch"}},
+                  // Container SVG global pour les connecteurs + div overlay pour les cartes
+                  React.createElement("div",{style:{position:"relative",width:totalW,height:totalH + HEADER_H + TOP_PAD}},
+
+                    // === SVG GLOBAL pour tous les connecteurs ===
+                    React.createElement("svg",{
+                      width:totalW,
+                      height:totalH + HEADER_H + TOP_PAD,
+                      style:{position:"absolute",top:0,left:0,pointerEvents:"none",overflow:"visible"}
+                    },
+                      availablePhases.map((ph, colIdx) => {
+                        if(colIdx === nCols - 1) return null; // dernière colonne, pas de connecteur sortant
+                        const pairs = pairsByPhase[ph];
+                        const nextPh = availablePhases[colIdx + 1];
+                        const nextPairs = pairsByPhase[nextPh];
+
+                        // Pour chaque paire de la colonne courante, tracer un connecteur vers la carte suivante
+                        // Chaque paire dans nextCol regroupe 2 paires de la colonne courante
+                        return pairs.map((_, pairIdx) => {
+                          const cardY = getCardY(colIdx, pairIdx);
+                          const midY = cardY + CARD_H / 2; // milieu vertical de la carte courante
+
+                          // La carte destination dans la prochaine colonne
+                          const nextSlotIdx = Math.floor(pairIdx / 2);
+                          const nextCardY = getCardY(colIdx + 1, nextSlotIdx);
+                          const nextMidY = nextCardY + CARD_H / 2;
+
+                          // Points du connecteur en L
+                          const x1 = colIdx * (CARD_W + COL_GAP) + CARD_W; // sortie droite de la carte courante
+                          const x2 = (colIdx + 1) * (CARD_W + COL_GAP);    // entrée gauche de la carte suivante
+                          const xMid = x1 + COL_GAP / 2;                    // coude vertical au milieu
+                          const y = HEADER_H + TOP_PAD + midY;
+                          const yNext = HEADER_H + TOP_PAD + nextMidY;
+
+                          // On ne trace le segment vertical que pour les paires paires (groupe le haut)
+                          // et les paires impaires (groupe le bas), réunies au milieu
+                          const isSiblingTop = pairIdx % 2 === 0;
+                          const siblingPairIdx = isSiblingTop ? pairIdx + 1 : pairIdx - 1;
+                          const hasSibling = siblingPairIdx < pairs.length;
+
+                          if(hasSibling) {
+                            const siblingCardY = getCardY(colIdx, siblingPairIdx);
+                            const siblingMidY = siblingCardY + CARD_H / 2;
+                            const ySibling = HEADER_H + TOP_PAD + siblingMidY;
+                            const yMidBracket = (y + ySibling) / 2; // point de rencontre des 2 branches
+
+                            if(isSiblingTop) {
+                              // Paire du haut : trace le L complet + segment vertical jusqu'au milieu
+                              return React.createElement("g", {key:`conn-${ph}-${pairIdx}`},
+                                // Ligne horizontale sortant de la carte
+                                React.createElement("line",{x1,y1:y,x2:xMid,y2:y,stroke:"#dde3ed",strokeWidth:1.5}),
+                                // Segment vertical (haut → milieu)
+                                React.createElement("line",{x1:xMid,y1:y,x2:xMid,y2:yMidBracket,stroke:"#dde3ed",strokeWidth:1.5}),
+                                // Ligne horizontale vers la carte suivante
+                                React.createElement("line",{x1:xMid,y1:yMidBracket,x2:x2,y2:yMidBracket,stroke:"#dde3ed",strokeWidth:1.5}),
+                                // Petit rond de jonction
+                                React.createElement("circle",{cx:xMid,cy:y,r:2.5,fill:"#dde3ed"})
+                              );
+                            } else {
+                              // Paire du bas : trace juste la ligne horizontale + segment vertical bas → milieu
+                              return React.createElement("g", {key:`conn-${ph}-${pairIdx}`},
+                                React.createElement("line",{x1,y1:y,x2:xMid,y2:y,stroke:"#dde3ed",strokeWidth:1.5}),
+                                React.createElement("line",{x1:xMid,y1:y,x2:xMid,y2:yMidBracket,stroke:"#dde3ed",strokeWidth:1.5}),
+                                React.createElement("circle",{cx:xMid,cy:y,r:2.5,fill:"#dde3ed"})
+                              );
+                            }
+                          } else {
+                            // Seule paire dans ce slot (finale ou impair) — ligne directe
+                            return React.createElement("g", {key:`conn-${ph}-${pairIdx}`},
+                              React.createElement("line",{x1,y1:y,x2:xMid,y2:y,stroke:"#dde3ed",strokeWidth:1.5}),
+                              React.createElement("line",{x1:xMid,y1:y,x2:xMid,y2:yNext,stroke:"#dde3ed",strokeWidth:1.5}),
+                              React.createElement("line",{x1:xMid,y1:yNext,x2:x2,y2:yNext,stroke:"#dde3ed",strokeWidth:1.5})
+                            );
+                          }
+                        });
+                      })
+                    ),
+
+                    // === HEADERS DE COLONNES ===
+                    availablePhases.map((ph, colIdx) =>
+                      React.createElement("div",{
+                        key:`hdr-${ph}`,
+                        style:{
+                          position:"absolute",
+                          left: colIdx * (CARD_W + COL_GAP),
+                          top: TOP_PAD,
+                          width: CARD_W,
+                          textAlign:"center",
+                          fontSize:10,fontWeight:800,
+                          color:"#059669",
+                          textTransform:"uppercase",letterSpacing:1.2,
+                          paddingBottom:8,
+                          borderBottom:"2px solid #e2faf1"
+                        }
+                      }, phaseLabels[ph])
+                    ),
+
+                    // === CARTES DE MATCHS ===
                     availablePhases.map((ph, colIdx) => {
                       const pairs = pairsByPhase[ph];
-                      const isLast = colIdx === availablePhases.length - 1;
-                      // Espacement vertical entre cartes selon la colonne
-                      const cardH = 72; // hauteur d'une carte
-                      const gapBase = 12;
-                      const extraGap = colIdx * 84; // plus on avance, plus les cartes s'écartent
+                      return pairs.map((pair, pairIdx) => {
+                        const f = pair.leg1, f2 = pair.leg2;
+                        if(!f) return null;
+                        const h1=f.goals?.home, a1=f.goals?.away;
+                        const h2=f2?.goals?.home, a2=f2?.goals?.away;
+                        const done1=DONE_ST.has(f.fixture?.status?.short);
+                        const done2=f2?DONE_ST.has(f2.fixture?.status?.short):false;
+                        const live1=LIVE_ST.has(f.fixture?.status?.short);
+                        const live2=f2?LIVE_ST.has(f2.fixture?.status?.short):false;
+                        const anyResult = done1||done2||live1||live2;
+                        const hTot = (done1||live1?(h1||0):0)+(done2||live2?(h2||0):0);
+                        const aTot = (done1||live1?(a1||0):0)+(done2||live2?(a2||0):0);
+                        const hWin = anyResult && hTot > aTot;
+                        const aWin = anyResult && aTot > hTot;
+                        const isLive = live1||live2;
 
-                      return React.createElement("div",{key:ph, style:{display:"flex",flexDirection:"row",alignItems:"stretch"}},
-                        // Colonne de cartes
-                        React.createElement("div",{style:{
-                          width:170,
-                          flexShrink:0,
-                          display:"flex",
-                          flexDirection:"column",
-                          gap: gapBase + extraGap
-                        }},
-                          // Header de la colonne
+                        const cardTop = getCardY(colIdx, pairIdx);
+                        const cardLeft = colIdx * (CARD_W + COL_GAP);
+
+                        const teamRow = (team, score, wins, isBottom) =>
                           React.createElement("div",{style:{
-                            fontSize:10,fontWeight:800,color:"#94a3b8",
-                            textTransform:"uppercase",letterSpacing:1,
-                            padding:"0 0 8px 0",borderBottom:"1px solid #f0f0f0",
-                            marginBottom:4
-                          }}, phaseLabels[ph]),
-                          // Cartes des matchs
-                          pairs.map((pair, i) => {
-                            const f = pair.leg1, f2 = pair.leg2;
-                            const h1=f.goals?.home, a1=f.goals?.away;
-                            const h2=f2?.goals?.home, a2=f2?.goals?.away;
-                            const done1=DONE_ST.has(f.fixture?.status?.short);
-                            const done2=f2?DONE_ST.has(f2.fixture?.status?.short):false;
-                            const live1=LIVE_ST.has(f.fixture?.status?.short);
-                            const live2=f2?LIVE_ST.has(f2.fixture?.status?.short):false;
-                            const anyResult = done1||done2||live1||live2;
-                            const hTot = (done1||live1?(h1||0):0)+(done2||live2?(h2||0):0);
-                            const aTot = (done1||live1?(a1||0):0)+(done2||live2?(a2||0):0);
-                            const hWin = anyResult && hTot > aTot;
-                            const aWin = anyResult && aTot > hTot;
-                            const isLive = live1||live2;
-                            const shortN = n => !n ? "?" : n.length > 13 ? n.split(" ").slice(-1)[0] : n;
-
-                            const teamRow = (team, score, wins) =>
-                              React.createElement("div",{style:{
-                                display:"flex",alignItems:"center",gap:5,
-                                padding:"7px 8px",
-                                background: wins ? "#f0fdf4" : "#fff",
-                              }},
-                                React.createElement("img",{
-                                  src:team?.logo,
-                                  style:{width:16,height:16,objectFit:"contain",flexShrink:0},
-                                  onError:e=>e.target.style.display="none"
-                                }),
-                                React.createElement("span",{style:{
-                                  fontSize:12,flex:1,
-                                  fontWeight:wins?700:400,
-                                  color:wins?"#0f172a":"#64748b",
-                                  overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap"
-                                }}, shortN(team?.name)),
-                                anyResult && React.createElement("span",{style:{
+                            display:"flex",alignItems:"center",gap:6,
+                            padding:"0 10px",
+                            height: CARD_H / 2,
+                            background: wins ? "linear-gradient(90deg,#f0fdf4,#fff)" : "#fff",
+                            borderTop: isBottom ? "1px solid #f0f2f6" : "none",
+                            transition:"background 0.2s"
+                          }},
+                            React.createElement("img",{
+                              src:team?.logo,
+                              style:{width:17,height:17,objectFit:"contain",flexShrink:0},
+                              onError:e=>e.target.style.display="none"
+                            }),
+                            React.createElement("span",{style:{
+                              fontSize:11.5,flex:1,
+                              fontWeight:wins?700:400,
+                              color:wins?"#0f172a":"#64748b",
+                              overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap",
+                              letterSpacing: wins ? "0.01em" : 0
+                            }}, shortN(team?.name)),
+                            anyResult
+                              ? React.createElement("span",{style:{
                                   fontSize:13,fontWeight:wins?800:500,
                                   color:isLive?"#e53535":wins?"#0f172a":"#94a3b8",
-                                  minWidth:16,textAlign:"right"
+                                  minWidth:18,textAlign:"right",
+                                  fontVariantNumeric:"tabular-nums"
                                 }}, score)
-                              );
+                              : React.createElement("span",{style:{
+                                  fontSize:10,color:"#cbd5e1",minWidth:18,textAlign:"right"
+                                }}, "–")
+                          );
 
-                            return React.createElement("div",{
-                              key:i,
-                              onClick:()=>setSelectedPair(pair),
-                              style:{
-                                borderRadius:10,overflow:"hidden",
-                                boxShadow:"0 1px 8px rgba(0,0,0,.08)",
-                                border:"1px solid #f0f2f5",
-                                background:"#fff",
-                                cursor:"pointer",
-                                position:"relative"
-                              }
-                            },
-                              teamRow(f.teams.home, hTot, hWin),
-                              React.createElement("div",{style:{height:1,background:"#f0f2f5",margin:"0 8px"}}),
-                              teamRow(f.teams.away, aTot, aWin),
-                              // Badge live
-                              isLive && React.createElement("div",{style:{
-                                position:"absolute",top:4,right:4,
-                                background:"#e53535",color:"#fff",
-                                fontSize:8,fontWeight:800,borderRadius:4,
-                                padding:"2px 4px"
-                              }},"LIVE")
-                            );
-                          })
-                        ),
-
-                        // Connecteurs SVG vers la colonne suivante
-                        !isLast && React.createElement("div",{style:{
-                          width:20,flexShrink:0,
-                          display:"flex",flexDirection:"column",
-                          justifyContent:"space-around",
-                          paddingTop: 36 // compenser le header
-                        }},
-                          pairs.map((_,i) =>
-                            React.createElement("svg",{
-                              key:i,
-                              width:20,height:cardH + gapBase + extraGap,
-                              style:{overflow:"visible",display:"block"}
-                            },
-                              React.createElement("path",{
-                                d:`M 0 36 L 10 36 L 10 ${(cardH + gapBase + extraGap) - 36} L 20 ${(cardH + gapBase + extraGap) - 36}`,
-                                fill:"none",stroke:"#e2e8f0",strokeWidth:1.5,strokeLinecap:"round"
-                              })
-                            )
-                          )
-                        )
-                      );
+                        return React.createElement("div",{
+                          key:`card-${ph}-${pairIdx}`,
+                          onClick:()=>setSelectedPair(pair),
+                          style:{
+                            position:"absolute",
+                            left: cardLeft,
+                            top: HEADER_H + TOP_PAD + cardTop,
+                            width: CARD_W,
+                            height: CARD_H,
+                            borderRadius:10,
+                            overflow:"hidden",
+                            boxShadow: isLive
+                              ? "0 0 0 1.5px #e53535, 0 2px 12px rgba(229,83,53,.15)"
+                              : "0 1px 6px rgba(0,0,0,.08), 0 0 0 1px #f0f2f6",
+                            background:"#fff",
+                            cursor:"pointer",
+                          }
+                        },
+                          teamRow(f.teams.home, hTot, hWin, false),
+                          teamRow(f.teams.away, aTot, aWin, true),
+                          // Badge LIVE
+                          isLive && React.createElement("div",{style:{
+                            position:"absolute",top:4,right:6,
+                            background:"#e53535",color:"#fff",
+                            fontSize:8,fontWeight:800,borderRadius:4,letterSpacing:0.5,
+                            padding:"2px 5px",lineHeight:"14px"
+                          }},"LIVE"),
+                          // Date si pas de résultat
+                          !anyResult && f.fixture?.date && React.createElement("div",{style:{
+                            position:"absolute",bottom:3,right:7,
+                            fontSize:9,color:"#94a3b8",fontWeight:500
+                          }}, new Date(f.fixture.date).toLocaleDateString("fr-FR",{day:"2-digit",month:"2-digit"}))
+                        );
+                      });
                     })
                   )
                 );
