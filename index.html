@@ -2977,16 +2977,17 @@ function LeagueSheet({fix, leagueInfo, onClose}) {
       .catch(() => setLoading(false));
   }, [activeRound]);
 
-  // Charger standings selon la phase
+  // Charger standings selon la phase (recharge quand overrideLid change)
   useEffect(() => {
     const targetLid = overrideLid || lid;
     if(!targetLid||!season) return;
+    setStandings([]);
     api(`/standings?league=${targetLid}&season=${season}`, 86400000)
       .then(d => {
         const rows = (d||[]).flatMap(g => Array.isArray(g) ? g : (g?.league?.standings||[]).flat());
         setStandings(rows);
       }).catch(()=>{});
-  }, [lid, season]);
+  }, [overrideLid, lid, season]);
 
   const getRank = (teamId) => {
     const row = standings.find(r => r.team?.id === teamId);
