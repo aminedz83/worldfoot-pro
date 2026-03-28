@@ -2933,11 +2933,11 @@ function LeagueSheet({fix, leagueInfo, onClose}) {
   const [overrideMode, setOverrideMode] = useState(null);
 
   const phases = [
-    {key:"Round of 32", label:"1/16 DE FINALE"},
-    {key:"Round of 16", label:"1/8 DE FINALE"},
+    {key:"Round of 32",    label:"1/16 DE FINALE"},
+    {key:"Round of 16",    label:"1/8 DE FINALE"},
     {key:"Quarter-finals", label:"QUARTS DE FINALE"},
-    {key:"Semi-finals", label:"DEMI-FINALES"},
-    {key:"Final", label:"FINALE"}
+    {key:"Semi-finals",    label:"DEMI-FINALES"},
+    {key:"Final",          label:"FINALE"}
   ];
 
   // Chargement quand phase change
@@ -3138,25 +3138,49 @@ function LeagueSheet({fix, leagueInfo, onClose}) {
             ),
             (() => {
               const lgN = (fix.league?.name||"").toLowerCase();
-              const isCan = lgN.includes("africa cup") || lgN.includes("cup of nations");
-              if(!isCan) return null;
-              // Nom de la phase active
-              const phaseNames = {
-                qualif_prelim: "Qualification (Préliminaire)",
-                qualif_main:   "Qualification (Principal)",
-                final_groups:  "Tournoi final (Principal)",
-                final_ko:      "Tournoi final (Phase Finale)",
+              // Compétitions avec sélecteur de phases
+              const isCan  = lgN.includes("africa cup") || lgN.includes("cup of nations");
+              const isWC   = lgN.includes("world cup") || lgN.includes("coupe du monde");
+              const isEuro = lgN.includes("euro ") || lgN.includes("european championship");
+              const hasPhaseSel = isCan || isWC || isEuro;
+              if(!hasPhaseSel) return null;
+
+              // Config phases par compétition
+              const PHASE_CONFIG = {
+                // CAN
+                can: {
+                  qualif_prelim: { label:"Qualification (Préliminaire)", lid: lid },
+                  qualif_main:   { label:"Qualification (Principal)",    lid: 36  },
+                  final_groups:  { label:"Tournoi final (Principal)",    lid: 29  },
+                  final_ko:      { label:"Tournoi final (Phase Finale)", lid: 29  },
+                },
+                // Coupe du Monde
+                wc: {
+                  qualif_main:   { label:"Qualification",                lid: lid },
+                  final_groups:  { label:"Tournoi final (Principal)",    lid: 1   },
+                  final_ko:      { label:"Tournoi final (Phase Finale)", lid: 1   },
+                },
+                // Euro
+                euro: {
+                  qualif_main:   { label:"Qualification",                lid: lid },
+                  final_groups:  { label:"Tournoi final (Principal)",    lid: 4   },
+                  final_ko:      { label:"Tournoi final (Phase Finale)", lid: 4   },
+                },
               };
+              const config = isCan ? PHASE_CONFIG.can : isWC ? PHASE_CONFIG.wc : PHASE_CONFIG.euro;
               const activePhaseKey = overrideMode || (
-                lid === 36 ? "qualif_main" :
+                lid === 1  ? "final_groups" :
                 lid === 29 ? "final_groups" :
-                "qualif_prelim"
+                lid === 36 ? "qualif_main"  :
+                lid === 4  ? "final_groups" :
+                "qualif_main"
               );
+              const activeName = config[activePhaseKey]?.label || "Qualification";
               return React.createElement("div", {
                 onClick: () => setShowPhaseSelector(true),
                 style:{fontSize:12,color:"#64748b",marginTop:2,display:"flex",alignItems:"center",gap:4,cursor:"pointer"}
               },
-                React.createElement("span", {style:{fontWeight:500}}, phaseNames[activePhaseKey] || "Qualification (Préliminaire)"),
+                React.createElement("span", {style:{fontWeight:500}}, activeName),
                 React.createElement("span", {style:{fontSize:10}}, "▼")
               );
             })()
@@ -3765,17 +3789,34 @@ function LeagueSheet({fix, leagueInfo, onClose}) {
             style:{background:"#f1f5f9",border:"none",width:32,height:32,borderRadius:"50%",fontSize:18,color:"#64748b",cursor:"pointer"}
           }, "×")
         ),
-        // Sections
-        [
-          { section:"Qualification", items:[
-            { label:"Préliminaire", key:"qualif_prelim", lid: lid },
-            { label:"Principal",    key:"qualif_main",  lid: 36  },
-          ]},
-          { section:"Tournoi final", items:[
-            { label:"Principal",    key:"final_groups", lid: 29  },
-            { label:"Phase Finale", key:"final_ko",     lid: 29  },
-          ]},
-        ].map((sec,si) =>
+        // Sections selon la compétition
+        (() => {
+          const lgN2 = (fix.league?.name||"").toLowerCase();
+          const isCan2  = lgN2.includes("africa cup") || lgN2.includes("cup of nations");
+          const isWC2   = lgN2.includes("world cup") || lgN2.includes("coupe du monde");
+          const isEuro2 = lgN2.includes("euro ") || lgN2.includes("european championship");
+          const tourneyLid = isCan2 ? 29 : isWC2 ? 1 : isEuro2 ? 4 : 29;
+
+          const sections = isCan2 ? [
+            { section:"Qualification", items:[
+              { label:"Préliminaire", key:"qualif_prelim", lid: lid },
+              { label:"Principal",    key:"qualif_main",  lid: 36  },
+            ]},
+            { section:"Tournoi final", items:[
+              { label:"Principal",    key:"final_groups", lid: 29  },
+              { label:"Phase Finale", key:"final_ko",     lid: 29  },
+            ]},
+          ] : [
+            { section:"Qualification", items:[
+              { label:"Qualification", key:"qualif_main", lid: lid },
+            ]},
+            { section:"Tournoi final", items:[
+              { label:"Principal",    key:"final_groups", lid: tourneyLid },
+              { label:"Phase Finale", key:"final_ko",     lid: tourneyLid },
+            ]},
+          ];
+          return sections;
+        })().map((sec,si) =>
           React.createElement("div", {key:si},
             React.createElement("div", {style:{
               fontSize:14,fontWeight:600,color:"#0f172a",
@@ -3783,7 +3824,10 @@ function LeagueSheet({fix, leagueInfo, onClose}) {
               borderTop: si>0 ? "1px solid #f0f2f5" : "1px solid #f0f2f5"
             }}, sec.section),
             sec.items.map((item,ii) => {
-              const isActive = overrideMode === item.key || (!overrideMode && item.key === "qualif_prelim");
+              const lgNa = (fix.league?.name||"").toLowerCase();
+              const isCanA = lgNa.includes("africa cup") || lgNa.includes("cup of nations");
+              const defaultKey = isCanA ? "qualif_prelim" : "qualif_main";
+              const isActive = overrideMode === item.key || (!overrideMode && item.key === defaultKey);
               return React.createElement("div", {
                 key:ii,
                 onClick: () => {
