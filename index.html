@@ -48,7 +48,7 @@
     <script>
         if ("serviceWorker" in navigator) {
             const sw = `
-    const C='wf-pro-v181';
+    const C='wf-pro-v182';
     const API_KEY='3a14b1347c177458e2f23bea7899e9cf';
     const BASE='https://v3.football.api-sports.io';
     let prevScores = {};
@@ -3791,7 +3791,6 @@ function LeagueSheet({fix, leagueInfo, onClose}) {
             const label1   = isGroups ? "CLASSEMENT" : "TABLEAU";
             // 3 onglets : TABLEAU/CLASSEMENT · MATCHS · BRACKET(KO seulement)
             const tabs = [{key:"tableau", label:label1}, {key:"matchs", label:"MATCHS"}];
-            if(isKO) tabs.push({key:"bracket", label:"BRACKET"});
             return tabs.map(t =>
               React.createElement("button", {
                 key:t.key,
@@ -3812,7 +3811,7 @@ function LeagueSheet({fix, leagueInfo, onClose}) {
       React.createElement("div", {style:{flex:1,overflowY:"auto",padding:"12px 12px 32px"}},
 
         // ── TABLEAU / CLASSEMENT selon mode ─────────────────────────────
-        (activeTab === "tableau" || activeTab === "bracket") ? React.createElement("div", null,
+        activeTab === "tableau" ? React.createElement("div", null,
           // Phase Finale → sous-onglets 1/8 · Quarts · Demis · Finale
           overrideMode === "final_ko" && React.createElement("div", {style:{
             display:"flex",overflowX:"auto",scrollbarWidth:"none",
