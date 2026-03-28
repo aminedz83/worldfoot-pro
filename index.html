@@ -2931,6 +2931,7 @@ function LeagueSheet({fix, leagueInfo, onClose}) {
   const [showPhaseSelector, setShowPhaseSelector] = useState(false);
   const [overrideLid, setOverrideLid] = useState(null);
   const [overrideMode, setOverrideMode] = useState(null);
+  const [loadingStandings, setLoadingStandings] = useState(false);
 
   const phases = [
     {key:"Round of 32",    label:"1/16 DE FINALE"},
@@ -2939,6 +2940,83 @@ function LeagueSheet({fix, leagueInfo, onClose}) {
     {key:"Semi-finals",    label:"DEMI-FINALES"},
     {key:"Final",          label:"FINALE"}
   ];
+
+
+  // Groupes Coupe du Monde 2026 hardcodés — source Flashscore
+  const WC2026_GROUPS = {
+    "Groupe A": [
+      {name:"Mexique",              logo:"https://media.api-sports.io/football/teams/16.png"},
+      {name:"Afrique du Sud",       logo:"https://media.api-sports.io/football/teams/1526.png"},
+      {name:"Corée du Sud",         logo:"https://media.api-sports.io/football/teams/149.png"},
+      {name:"Équipe à confirmer",   logo:""},
+    ],
+    "Groupe B": [
+      {name:"Suisse",               logo:"https://media.api-sports.io/football/teams/15.png"},
+      {name:"Canada",               logo:"https://media.api-sports.io/football/teams/95.png"},
+      {name:"Qatar",                logo:"https://media.api-sports.io/football/teams/160.png"},
+      {name:"Équipe à confirmer",   logo:""},
+    ],
+    "Groupe C": [
+      {name:"Écosse",   logo:"https://media.api-sports.io/football/teams/1108.png"},
+      {name:"Brésil",   logo:"https://media.api-sports.io/football/teams/6.png"},
+      {name:"Haïti",    logo:"https://media.api-sports.io/football/teams/96.png"},
+      {name:"Maroc",    logo:"https://media.api-sports.io/football/teams/31.png"},
+    ],
+    "Groupe D": [
+      {name:"Paraguay",             logo:"https://media.api-sports.io/football/teams/24.png"},
+      {name:"USA",                  logo:"https://media.api-sports.io/football/teams/17.png"},
+      {name:"Australie",            logo:"https://media.api-sports.io/football/teams/25.png"},
+      {name:"Équipe à confirmer",   logo:""},
+    ],
+    "Groupe E": [
+      {name:"Allemagne",        logo:"https://media.api-sports.io/football/teams/25.png"},
+      {name:"Équateur",         logo:"https://media.api-sports.io/football/teams/36.png"},
+      {name:"Côte d'Ivoire",    logo:"https://media.api-sports.io/football/teams/19129.png"},
+      {name:"Curaçao",          logo:"https://media.api-sports.io/football/teams/1322.png"},
+    ],
+    "Groupe F": [
+      {name:"Pays-Bas",             logo:"https://media.api-sports.io/football/teams/1118.png"},
+      {name:"Tunisie",              logo:"https://media.api-sports.io/football/teams/28.png"},
+      {name:"Japon",                logo:"https://media.api-sports.io/football/teams/26.png"},
+      {name:"Équipe à confirmer",   logo:""},
+    ],
+    "Groupe G": [
+      {name:"Belgique",         logo:"https://media.api-sports.io/football/teams/1.png"},
+      {name:"Égypte",           logo:"https://media.api-sports.io/football/teams/32.png"},
+      {name:"Iran",             logo:"https://media.api-sports.io/football/teams/163.png"},
+      {name:"Nouvelle-Zélande", logo:"https://media.api-sports.io/football/teams/186.png"},
+    ],
+    "Groupe H": [
+      {name:"Espagne",          logo:"https://media.api-sports.io/football/teams/9.png"},
+      {name:"Uruguay",          logo:"https://media.api-sports.io/football/teams/7.png"},
+      {name:"Cap-Vert",         logo:"https://media.api-sports.io/football/teams/1529.png"},
+      {name:"Arabie Saoudite",  logo:"https://media.api-sports.io/football/teams/159.png"},
+    ],
+    "Groupe I": [
+      {name:"France",               logo:"https://media.api-sports.io/football/teams/2.png"},
+      {name:"Norvège",              logo:"https://media.api-sports.io/football/teams/1108.png"},
+      {name:"Sénégal",              logo:"https://media.api-sports.io/football/teams/13.png"},
+      {name:"Équipe à confirmer",   logo:""},
+    ],
+    "Groupe J": [
+      {name:"Autriche",   logo:"https://media.api-sports.io/football/teams/1016.png"},
+      {name:"Argentine",  logo:"https://media.api-sports.io/football/teams/26.png"},
+      {name:"Algérie",    logo:"https://media.api-sports.io/football/teams/1532.png"},
+      {name:"Jordanie",   logo:"https://media.api-sports.io/football/teams/164.png"},
+    ],
+    "Groupe K": [
+      {name:"Portugal",             logo:"https://media.api-sports.io/football/teams/27.png"},
+      {name:"Colombie",             logo:"https://media.api-sports.io/football/teams/12.png"},
+      {name:"Ouzbékistan",          logo:"https://media.api-sports.io/football/teams/1215.png"},
+      {name:"Équipe à confirmer",   logo:""},
+    ],
+    "Groupe L": [
+      {name:"Croatie",    logo:"https://media.api-sports.io/football/teams/1019.png"},
+      {name:"Angleterre", logo:"https://media.api-sports.io/football/teams/10.png"},
+      {name:"Ghana",      logo:"https://media.api-sports.io/football/teams/1504.png"},
+      {name:"Panama",     logo:"https://media.api-sports.io/football/teams/91.png"},
+    ],
+  };
 
   // Chargement quand phase change
   useEffect(() => {
@@ -2982,11 +3060,13 @@ function LeagueSheet({fix, leagueInfo, onClose}) {
     const targetLid = overrideLid || lid;
     if(!targetLid||!season) return;
     setStandings([]);
+    setLoadingStandings(true);
     api(`/standings?league=${targetLid}&season=${season}`, 86400000)
       .then(d => {
         const rows = (d||[]).flatMap(g => Array.isArray(g) ? g : (g?.league?.standings||[]).flat());
         setStandings(rows);
-      }).catch(()=>{});
+        setLoadingStandings(false);
+      }).catch(()=>{ setLoadingStandings(false); });
   }, [overrideLid, lid, season]);
 
   const getRank = (teamId) => {
@@ -3376,20 +3456,57 @@ function LeagueSheet({fix, leagueInfo, onClose}) {
                (!overrideMode && (overrideLid||lid) === 1) ||
                (!overrideMode && (overrideLid||lid) === 4))
             ? (() => {
-                if(!standings.length) {
-                  const tLid = overrideLid || lid;
-                  // IDs dont les groupes sont déjà formés
-                  const hasGroups = [1, 4, 29].includes(tLid);
-                  return React.createElement("div", {style:{textAlign:"center",padding:60,color:"#94a3b8",fontSize:13}},
-                    React.createElement("div",{style:{fontSize:36,marginBottom:12}}, hasGroups ? "⏳" : "⏳"),
-                    React.createElement("div",{style:{fontWeight:600,color:"#64748b",marginBottom:4}},
-                      hasGroups ? "Chargement des groupes..." : "Groupes pas encore disponibles"
-                    ),
-                    React.createElement("div",{style:{fontSize:12}},
-                      hasGroups ? "Les données arrivent..." : "Le tirage au sort n'a pas encore eu lieu."
+                // Groupes WC 2026 hardcodés → instantané
+                const tLid = overrideLid || lid;
+                if(tLid === 1) {
+                  // Utiliser les groupes hardcodés directement
+                  const grouped = WC2026_GROUPS;
+                  return React.createElement("div", null,
+                    Object.entries(grouped).map(([grpName, teams]) =>
+                      React.createElement("div", {key:grpName, style:{marginBottom:16}},
+                        React.createElement("div",{style:{fontSize:15,fontWeight:800,color:"#0f172a",padding:"12px 4px 8px"}}, grpName),
+                        React.createElement("div",{style:{background:"#fff",borderRadius:12,overflow:"hidden",boxShadow:"0 1px 4px rgba(0,0,0,.06)"}},
+                          React.createElement("div",{style:{display:"flex",padding:"8px 12px",background:"#f8fafc",borderBottom:"1px solid #ebebeb"}},
+                            React.createElement("span",{style:{width:30,fontSize:10,fontWeight:700,color:"#94a3b8",textAlign:"center"}},"#"),
+                            React.createElement("span",{style:{flex:1,fontSize:10,fontWeight:700,color:"#94a3b8"}},"ÉQUIPE"),
+                            React.createElement("span",{style:{width:30,fontSize:10,fontWeight:700,color:"#94a3b8",textAlign:"center"}},"MJ"),
+                            React.createElement("span",{style:{width:44,fontSize:10,fontWeight:700,color:"#94a3b8",textAlign:"center"}},"B"),
+                            React.createElement("span",{style:{width:32,fontSize:10,fontWeight:800,color:"#0f172a",textAlign:"center"}},"PTS")
+                          ),
+                          teams.map((team, i) =>
+                            React.createElement("div",{key:i,style:{
+                              display:"flex",alignItems:"center",padding:"10px 12px",
+                              borderBottom:i<teams.length-1?"1px solid #f5f7fa":"none"
+                            }},
+                              React.createElement("div",{style:{
+                                width:26,height:26,borderRadius:6,flexShrink:0,marginRight:4,
+                                background:i<2?"#1a1f2e":"transparent",
+                                display:"flex",alignItems:"center",justifyContent:"center"
+                              }},
+                                React.createElement("span",{style:{fontSize:12,fontWeight:700,color:i<2?"#fff":"#94a3b8"}},(i+1)+".")
+                              ),
+                              React.createElement("div",{style:{flex:1,display:"flex",alignItems:"center",gap:8,minWidth:0}},
+                                team.logo
+                                  ? React.createElement("img",{src:team.logo,style:{width:22,height:22,objectFit:"contain",flexShrink:0},onError:e=>e.target.style.display="none"})
+                                  : React.createElement("div",{style:{width:22,height:22,borderRadius:"50%",background:"#e2e8f0",flexShrink:0}}),
+                                React.createElement("span",{style:{fontSize:14,fontWeight:i<2?700:400,color:"#0f172a",overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap"}},team.name)
+                              ),
+                              React.createElement("span",{style:{width:30,fontSize:12,color:"#94a3b8",textAlign:"center"}},"0"),
+                              React.createElement("span",{style:{width:44,fontSize:12,color:"#94a3b8",textAlign:"center"}},"0:0"),
+                              React.createElement("span",{style:{width:32,fontSize:13,fontWeight:800,color:"#0f172a",textAlign:"center"}},"0")
+                            )
+                          )
+                        )
+                      )
                     )
                   );
                 }
+                if(loadingStandings) return React.createElement("div",{style:{textAlign:"center",padding:40}}, React.createElement(Spin,{s:24,c:"#00c170"}));
+                if(!standings.length) return React.createElement("div",{style:{textAlign:"center",padding:60,color:"#94a3b8",fontSize:13}},
+                  React.createElement("div",{style:{fontSize:36,marginBottom:12}},"⏳"),
+                  React.createElement("div",{style:{fontWeight:600,color:"#64748b",marginBottom:4}},"Groupes pas encore disponibles"),
+                  React.createElement("div",{style:{fontSize:12}},"Le tirage au sort n'a pas encore eu lieu.")
+                );
                 const grouped = {};
                 standings.forEach(r => {
                   const grp = r.group || "Classement";
