@@ -2937,41 +2937,48 @@ function LeagueSheet({fix, leagueInfo, onClose}) {
     {key:"Final", label:"FINALE"}
   ];
 
-  // Chargement unifié : rounds puis fixtures en cascade
+  // Chargement quand phase change
   useEffect(() => {
-    if(!lid || !season || mode === "knockout") return;
+    const isKO = overrideMode === "final_ko";
+    const targetLid = overrideLid || lid;
+    if(!targetLid || !season || isKO) return;
+    let cancelled = false;
+    setStandings([]);
+    setFixtures([]);
+    setRounds([]);
+    setActiveRound("");
     setLoading(true);
-    // 1. Charger les rounds
-    api(`/fixtures/rounds?league=${lid}&season=${season}`, 86400000)
+    api(`/fixtures/rounds?league=${targetLid}&season=${season}`, 86400000)
       .then(d => {
+        if(cancelled) return;
         if(d && d.length) {
           setRounds(d);
-          const cur = d.find(r => r === round) || d[d.length - 1] || d[0];
+          const cur = d.find(r => r === round) || d[d.length-1] || d[0];
           setActiveRound(cur);
-          // 2. Charger immédiatement les fixtures du round courant
-          return api(`/fixtures?league=${lid}&season=${season}&round=${encodeURIComponent(cur)}`, 3600000);
-        } else {
-          // Pas de rounds → charger tous les matchs de la saison
-          return api(`/fixtures?league=${lid}&season=${season}`, 86400000);
+          return api(`/fixtures?league=${targetLid}&season=${season}&round=${encodeURIComponent(cur)}`, 3600000);
         }
+        return api(`/fixtures?league=${targetLid}&season=${season}`, 86400000);
       })
-      .then(d => { setFixtures(d||[]); setLoading(false); })
-      .catch(() => setLoading(false));
-  }, [lid, season, mode]);
+      .then(d => { if(!cancelled){ setFixtures(d||[]); setLoading(false); } })
+      .catch(() => { if(!cancelled) setLoading(false); });
+    return () => { cancelled = true; };
+  }, [overrideLid, overrideMode, season]);
 
-  // Recharger fixtures quand activeRound change manuellement (clic sur un round)
+  // Recharger fixtures quand round change
   useEffect(() => {
-    if(!lid || !season || !activeRound || mode === "knockout") return;
+    const targetLid = overrideLid || lid;
+    if(!targetLid || !season || !activeRound) return;
     setLoading(true);
-    api(`/fixtures?league=${lid}&season=${season}&round=${encodeURIComponent(activeRound)}`, 3600000)
+    api(`/fixtures?league=${targetLid}&season=${season}&round=${encodeURIComponent(activeRound)}`, 3600000)
       .then(d => { setFixtures(d||[]); setLoading(false); })
       .catch(() => setLoading(false));
   }, [activeRound]);
 
-  // Charger le classement pour les rangs
+  // Charger standings selon la phase
   useEffect(() => {
-    if(!lid||!season) return;
-    api(`/standings?league=${lid}&season=${season}`, 86400000)
+    const targetLid = overrideLid || lid;
+    if(!targetLid||!season) return;
+    api(`/standings?league=${targetLid}&season=${season}`, 86400000)
       .then(d => {
         const rows = (d||[]).flatMap(g => Array.isArray(g) ? g : (g?.league?.standings||[]).flat());
         setStandings(rows);
@@ -3029,6 +3036,10 @@ function LeagueSheet({fix, leagueInfo, onClose}) {
 
   const [showWinners, setShowWinners] = useState(false);
   const [winnersData, setWinnersData] = useState({});
+  const [showPhaseSelector, setShowPhaseSelector] = useState(false);
+  const [overrideLid, setOverrideLid] = useState(null); // ID de la phase active
+  const [overrideMode, setOverrideMode] = useState(null); // "qualif"|"groups"|"knockout"
+  const activeLid = overrideLid || lid;
 
   // Vainqueurs hardcodés CAN (données historiques complètes)
   const CAN_WINNERS = {
@@ -3127,10 +3138,30 @@ function LeagueSheet({fix, leagueInfo, onClose}) {
               `${season}/${season+1}`,
               React.createElement("span", {style:{fontSize:10}}, "▼")
             ),
-            React.createElement("div", {style:{fontSize:12,color:"#64748b",marginTop:2,display:"flex",alignItems:"center",gap:6}},
-              "Phase Finale",
-              React.createElement("span", {style:{fontSize:10}}, "▼")
-            )
+            (() => {
+              const lgN = (fix.league?.name||"").toLowerCase();
+              const isCan = lgN.includes("africa cup") || lgN.includes("cup of nations");
+              if(!isCan) return null;
+              // Nom de la phase active
+              const phaseNames = {
+                qualif_prelim: "Qualification (Préliminaire)",
+                qualif_main:   "Qualification (Principal)",
+                final_groups:  "Tournoi final (Principal)",
+                final_ko:      "Tournoi final (Phase Finale)",
+              };
+              const activePhaseKey = overrideMode || (
+                lid === 36 ? "qualif_main" :
+                lid === 29 ? "final_groups" :
+                "qualif_prelim"
+              );
+              return React.createElement("div", {
+                onClick: () => setShowPhaseSelector(true),
+                style:{fontSize:12,color:"#64748b",marginTop:2,display:"flex",alignItems:"center",gap:4,cursor:"pointer"}
+              },
+                React.createElement("span", {style:{fontWeight:500}}, phaseNames[activePhaseKey] || "Qualification (Préliminaire)"),
+                React.createElement("span", {style:{fontSize:10}}, "▼")
+              );
+            })()
           )
         ),
 
@@ -3205,36 +3236,113 @@ function LeagueSheet({fix, leagueInfo, onClose}) {
           );
         })(),
 
-        // Onglets universels : TABLEAU / RÉSULTATS / CALENDRIER
+        // Onglets contextuels selon la phase
         React.createElement("div", {style:{display:"flex",overflowX:"auto",scrollbarWidth:"none",gap:0,borderBottom:"1px solid #f0f0f0",marginLeft:-16,marginRight:-16,paddingLeft:16}},
-          [
-            {key:"tableau",    label:"TABLEAU"},
-            {key:"resultats",  label:"RÉSULTATS"},
-            {key:"calendrier", label:"CALENDRIER"}
-          ].map(t =>
-            React.createElement("button", {
-              key:t.key,
-              onClick:()=>setActiveTab(t.key),
-              style:{
-                flexShrink:0,padding:"10px 14px",background:"none",border:"none",
-                fontSize:11,fontWeight:800,cursor:"pointer",whiteSpace:"nowrap",
-                color:activeTab===t.key?"#0f172a":"#94a3b8",
-                borderBottom:activeTab===t.key?"2px solid #0f172a":"2px solid transparent",
-              }
-            }, t.label)
-          )
+          (() => {
+            const isPrelim  = !overrideMode || overrideMode === "qualif_prelim";
+            const isKO      = overrideMode === "final_ko";
+            const isGroups  = overrideMode === "qualif_main" || overrideMode === "final_groups";
+            // Préliminaire → TABLEAU + RÉSULTATS
+            // Principal (qualif/tournoi) → CLASSEMENT + RÉSULTATS
+            // Phase Finale → TABLEAU + RÉSULTATS
+            const label1 = isGroups ? "CLASSEMENT" : "TABLEAU";
+            return [{key:"tableau", label:label1}, {key:"resultats", label:"RÉSULTATS"}].map(t =>
+              React.createElement("button", {
+                key:t.key,
+                onClick:()=>setActiveTab(t.key),
+                style:{
+                  flexShrink:0,padding:"10px 14px",background:"none",border:"none",
+                  fontSize:11,fontWeight:800,cursor:"pointer",whiteSpace:"nowrap",
+                  color:activeTab===t.key?"#0f172a":"#94a3b8",
+                  borderBottom:activeTab===t.key?"2px solid #0f172a":"2px solid transparent",
+                }
+              }, t.label)
+            );
+          })()
         )
       ),
 
       // Contenu principal selon onglet + mode
       React.createElement("div", {style:{flex:1,overflowY:"auto",padding:"12px 12px 32px"}},
 
-        // ── CLASSEMENT (TABLEAU) ────────────────────────────────────────
+        // ── TABLEAU / CLASSEMENT selon mode ─────────────────────────────
         activeTab === "tableau" ? React.createElement("div", null,
+          // Phase Finale → sous-onglets 1/8 · Quarts · Demis · Finale
+          overrideMode === "final_ko" && React.createElement("div", {style:{
+            display:"flex",overflowX:"auto",scrollbarWidth:"none",
+            gap:0,marginBottom:12,borderBottom:"1px solid #f0f2f5",
+            marginLeft:-12,marginRight:-12,paddingLeft:12
+          }},
+            phases.filter(p => p.key !== "Round of 32").map(p =>
+              React.createElement("button", {
+                key:p.key,
+                onClick: () => setActivePhase(p.key),
+                style:{
+                  flexShrink:0,padding:"9px 12px",background:"none",border:"none",
+                  fontSize:11,fontWeight:700,cursor:"pointer",whiteSpace:"nowrap",
+                  color: activePhase===p.key ? "#0f172a" : "#94a3b8",
+                  borderBottom: activePhase===p.key ? "2px solid #0f172a" : "2px solid transparent"
+                }
+              }, p.label)
+            )
+          ),
           loading
             ? React.createElement("div", {style:{textAlign:"center",padding:40}}, React.createElement(Spin, {s:24,c:"#00c170"}))
+            // Mode groups → classement
+            : (overrideMode === "qualif_main" || overrideMode === "final_groups")
+            ? (() => {
+                if(!standings.length) return React.createElement("div", {style:{textAlign:"center",padding:60,color:"#94a3b8",fontSize:13}},
+                  React.createElement("div",{style:{fontSize:36,marginBottom:12}},"⏳"),
+                  React.createElement("div",{style:{fontWeight:600,color:"#64748b",marginBottom:4}}, "Groupes pas encore disponibles"),
+                  React.createElement("div",{style:{fontSize:12}}, "Le tirage au sort n'a pas encore eu lieu.")
+                );
+                const grouped = {};
+                standings.forEach(r => {
+                  const grp = r.group || "Classement";
+                  if(!grouped[grp]) grouped[grp] = [];
+                  grouped[grp].push(r);
+                });
+                return React.createElement("div", null,
+                  Object.entries(grouped).map(([grpName, rows]) =>
+                    React.createElement("div", {key:grpName, style:{marginBottom:16}},
+                      React.createElement("div",{style:{fontSize:15,fontWeight:800,color:"#0f172a",padding:"12px 4px 8px"}}, grpName),
+                      React.createElement("div",{style:{background:"#fff",borderRadius:12,overflow:"hidden",boxShadow:"0 1px 4px rgba(0,0,0,.06)"}},
+                        React.createElement("div",{style:{display:"flex",padding:"8px 12px",background:"#f8fafc",borderBottom:"1px solid #ebebeb"}},
+                          React.createElement("span",{style:{width:30,fontSize:10,fontWeight:700,color:"#94a3b8",textAlign:"center"}},"#"),
+                          React.createElement("span",{style:{flex:1,fontSize:10,fontWeight:700,color:"#94a3b8"}},"ÉQUIPE"),
+                          React.createElement("span",{style:{width:30,fontSize:10,fontWeight:700,color:"#94a3b8",textAlign:"center"}},"MJ"),
+                          React.createElement("span",{style:{width:44,fontSize:10,fontWeight:700,color:"#94a3b8",textAlign:"center"}},"B"),
+                          React.createElement("span",{style:{width:32,fontSize:10,fontWeight:800,color:"#0f172a",textAlign:"center"}},"PTS")
+                        ),
+                        rows.map((r,i) => {
+                          const q = r.rank <= 2;
+                          return React.createElement("div",{key:i,style:{
+                            display:"flex",alignItems:"center",padding:"10px 12px",
+                            borderBottom:i<rows.length-1?"1px solid #f5f7fa":"none"
+                          }},
+                            React.createElement("div",{style:{
+                              width:26,height:26,borderRadius:6,flexShrink:0,marginRight:4,
+                              background:q?"#1a1f2e":"transparent",
+                              display:"flex",alignItems:"center",justifyContent:"center"
+                            }},
+                              React.createElement("span",{style:{fontSize:12,fontWeight:700,color:q?"#fff":"#94a3b8"}},r.rank+".")
+                            ),
+                            React.createElement("div",{style:{flex:1,display:"flex",alignItems:"center",gap:8,minWidth:0}},
+                              React.createElement("img",{src:r.team?.logo,style:{width:22,height:22,objectFit:"contain",flexShrink:0},onError:e=>e.target.style.display="none"}),
+                              React.createElement("span",{style:{fontSize:14,fontWeight:q?700:400,color:"#0f172a",overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap"}},r.team?.name)
+                            ),
+                            React.createElement("span",{style:{width:30,fontSize:12,color:"#64748b",textAlign:"center"}},r.all?.played),
+                            React.createElement("span",{style:{width:44,fontSize:12,color:"#64748b",textAlign:"center"}},`${r.all?.goals?.for||0}:${r.all?.goals?.against||0}`),
+                            React.createElement("span",{style:{width:32,fontSize:13,fontWeight:800,color:"#0f172a",textAlign:"center"}},r.points)
+                          );
+                        })
+                      )
+                    )
+                  )
+                );
+              })()
             : standings.length === 0
-            // Pas de classement → afficher les confrontations (préliminaires / aller-retour)
+            // Pas de classement → paires aller/retour (Préliminaire ou Phase Finale)
             ? (() => {
                 if(!fixtures.length) return React.createElement("div", {style:{textAlign:"center",padding:40,color:"#94a3b8",fontSize:13}}, "Classement non disponible");
                 // Grouper par paires aller/retour
@@ -3643,6 +3751,69 @@ function LeagueSheet({fix, leagueInfo, onClose}) {
     ),
 
     // Sheet historique vainqueurs
+    // ── Sélecteur de phases ──────────────────────────────────────────
+    showPhaseSelector ? React.createElement("div", {
+      style:{position:"fixed",inset:0,background:"rgba(0,0,0,.5)",zIndex:120,display:"flex",flexDirection:"column",justifyContent:"flex-end"},
+      onClick: e => { if(e.target===e.currentTarget) setShowPhaseSelector(false); }
+    },
+      React.createElement("div", {style:{background:"#fff",borderRadius:"20px 20px 0 0",paddingBottom:40}},
+        React.createElement("div", {style:{width:36,height:4,borderRadius:2,background:"#e2e8f0",margin:"14px auto 0"}}),
+        React.createElement("div", {style:{display:"flex",alignItems:"center",justifyContent:"space-between",padding:"16px 20px 8px"}},
+          React.createElement("span", {style:{fontSize:16,fontWeight:700,color:"#0f172a"}},
+            ((fix.league?.name||"").includes("Africa") ? "CAN" : fix.league?.name) + " - " + season
+          ),
+          React.createElement("button", {
+            onClick:()=>setShowPhaseSelector(false),
+            style:{background:"#f1f5f9",border:"none",width:32,height:32,borderRadius:"50%",fontSize:18,color:"#64748b",cursor:"pointer"}
+          }, "×")
+        ),
+        // Sections
+        [
+          { section:"Qualification", items:[
+            { label:"Préliminaire", key:"qualif_prelim", lid: lid },
+            { label:"Principal",    key:"qualif_main",  lid: 36  },
+          ]},
+          { section:"Tournoi final", items:[
+            { label:"Principal",    key:"final_groups", lid: 29  },
+            { label:"Phase Finale", key:"final_ko",     lid: 29  },
+          ]},
+        ].map((sec,si) =>
+          React.createElement("div", {key:si},
+            React.createElement("div", {style:{
+              fontSize:14,fontWeight:600,color:"#0f172a",
+              padding:"12px 20px 6px",
+              borderTop: si>0 ? "1px solid #f0f2f5" : "1px solid #f0f2f5"
+            }}, sec.section),
+            sec.items.map((item,ii) => {
+              const isActive = overrideMode === item.key || (!overrideMode && item.key === "qualif_prelim");
+              return React.createElement("div", {
+                key:ii,
+                onClick: () => {
+                  setShowPhaseSelector(false);
+                  setOverrideMode(item.key);
+                  setOverrideLid(item.lid === lid ? null : item.lid);
+                  setActiveTab("tableau");
+                },
+                style:{
+                  display:"flex",alignItems:"center",
+                  padding:"13px 20px 13px 32px",
+                  background: isActive ? "rgba(37,99,235,.06)" : "#fff",
+                  borderLeft: isActive ? "3px solid #2563eb" : "3px solid transparent",
+                  cursor:"pointer"
+                }
+              },
+                React.createElement("span", {style:{
+                  fontSize:14,
+                  fontWeight: isActive ? 700 : 400,
+                  color: isActive ? "#2563eb" : "#0f172a"
+                }}, item.label)
+              );
+            })
+          )
+        )
+      )
+    ) : null,
+
     showWinners ? React.createElement("div", {
       style:{position:"fixed",inset:0,background:"#fff",zIndex:100,display:"flex",flexDirection:"column"},
     },
