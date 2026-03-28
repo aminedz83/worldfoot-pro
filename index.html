@@ -610,7 +610,7 @@
             }
             try {
                 var jsxCode = document.getElementById("jsx-source").textContent;
-                var compiled = Babel.transform(jsxCode, { presets: ["react"] }).code;
+                var compiled = Babel.transform(jsxCode, { presets: ["react"], compact: false, generatorOpts: { maxLength: Infinity } }).code;
                 var script = document.createElement("script");
                 script.textContent = compiled;
                 document.head.appendChild(script);
@@ -2928,6 +2928,9 @@ function LeagueSheet({fix, leagueInfo, onClose}) {
   const [standings, setStandings] = useState([]);
   const [rounds, setRounds] = useState([]);
   const [activeRound, setActiveRound] = useState("");
+  const [showPhaseSelector, setShowPhaseSelector] = useState(false);
+  const [overrideLid, setOverrideLid] = useState(null);
+  const [overrideMode, setOverrideMode] = useState(null);
 
   const phases = [
     {key:"Round of 32", label:"1/16 DE FINALE"},
@@ -3036,11 +3039,6 @@ function LeagueSheet({fix, leagueInfo, onClose}) {
 
   const [showWinners, setShowWinners] = useState(false);
   const [winnersData, setWinnersData] = useState({});
-  const [showPhaseSelector, setShowPhaseSelector] = useState(false);
-  const [overrideLid, setOverrideLid] = useState(null); // ID de la phase active
-  const [overrideMode, setOverrideMode] = useState(null); // "qualif"|"groups"|"knockout"
-  const activeLid = overrideLid || lid;
-
   // Vainqueurs hardcodés CAN (données historiques complètes)
   const CAN_WINNERS = {
     2023: {name:"Côte d'Ivoire", logo:"https://media.api-sports.io/football/teams/19129.png"},
