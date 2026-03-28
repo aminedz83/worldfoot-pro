@@ -48,7 +48,7 @@
     <script>
         if ("serviceWorker" in navigator) {
             const sw = `
-    const C='wf-pro-v160';
+    const C='wf-pro-v161';
     const API_KEY='3a14b1347c177458e2f23bea7899e9cf';
     const BASE='https://v3.football.api-sports.io';
     let prevScores = {};
@@ -3298,8 +3298,15 @@ function LeagueSheet({fix, leagueInfo, onClose}) {
             // Équipes nationales Europe
             4:   { start: `${season+1}-06-01`, end: `${season+1}-07-14` }, // Euro
             5:   { start: `${season}-09-01`,   end: `${season+1}-06-15` }, // Nations League
-            // Monde
-            1:   { start: `${season+1}-06-01`, end: `${season+1}-07-15` }, // Coupe du Monde
+            // Monde — finale Coupe du Monde 2026 : 11 juin → 19 juillet
+            1:   { start: "2026-06-11",         end: "2026-07-19"        }, // CdM 2026 dates exactes
+            // Qualifications CdM 2026 (toutes confédérations)
+            31:  { start: `${season}-03-01`,   end: "2026-03-31"        }, // Qualif Afrique
+            32:  { start: `${season}-03-01`,   end: "2026-03-31"        }, // Qualif Asie
+            34:  { start: `${season}-09-01`,   end: "2025-11-30"        }, // Qualif CONCACAF
+            29:  { start: `${season}-01-01`,   end: "2026-03-31"        }, // Qualif CONMEBOL
+            33:  { start: `${season}-03-01`,   end: "2026-03-31"        }, // Qualif Europe
+            36:  { start: `${season}-03-01`,   end: "2026-03-31"        }, // Qualif OFC
             // Amérique du Sud
             9:   { start: `${season+1}-06-01`, end: `${season+1}-07-20` }, // Copa América
             13:  { start: `${season}-04-01`,   end: `${season}-11-30`   }, // Copa Libertadores
@@ -3308,10 +3315,10 @@ function LeagueSheet({fix, leagueInfo, onClose}) {
             30:  { start: `${season+1}-02-01`, end: `${season+1}-07-31` }, // Gold Cup
             // Afrique
             6:   { start: `${season+1}-01-01`, end: `${season+1}-02-15` }, // CAN
-            12:  { start: `${season}-10-01`,   end: `${season+1}-05-23` }, // CAF Champions League finale 23 mai
-            20:  { start: `${season}-10-01`,   end: `${season+1}-05-16` }, // CAF Confédération finale 16 mai
+            12:  { start: `${season}-10-01`,   end: `${season+1}-05-23` }, // CAF Champions
+            20:  { start: `${season}-10-01`,   end: `${season+1}-05-16` }, // CAF Confédération
             // Asie
-            17:  { start: `${season}-04-01`,   end: `${season+1}-05-15` }, // AFC Champions League
+            17:  { start: `${season}-04-01`,   end: `${season+1}-05-15` }, // AFC Champions
             // Championnats
             39:  { start: `${season}-08-01`,   end: `${season+1}-05-31` }, // Premier League
             140: { start: `${season}-08-01`,   end: `${season+1}-05-31` }, // La Liga
@@ -3322,7 +3329,17 @@ function LeagueSheet({fix, leagueInfo, onClose}) {
             88:  { start: `${season}-08-01`,   end: `${season+1}-05-31` }, // Eredivisie
             186: { start: `${season}-09-01`,   end: `${season+1}-05-31` }, // Algérie
           };
-          const known = knownDates[lid];
+
+          // Pour les qualifications CdM (lid non reconnu mais isWC détecté)
+          const lgN2 = (fix.league?.name||"").toLowerCase();
+          const isWCQualif = lgN2.includes("world cup") && lgN2.includes("qualif");
+          const isWC2 = lgN2.includes("world cup") || lgN2.includes("coupe du monde") || lid === 1;
+          const isFinalMode = overrideMode === "final_groups" || overrideMode === "final_ko";
+          // Mode Tournoi Final CdM → dates officielles 11.06 → 19.07
+          const known = (isWC2 && isFinalMode)
+            ? { start: "2026-06-11", end: "2026-07-19" }
+            : knownDates[overrideLid || lid] || knownDates[lid]
+              || (isWCQualif ? { start: `${season}-09-01`, end: "2026-03-31" } : null);
           const currentSeason = leagueInfo?.seasons?.find(s => s.current || s.year === season);
           const startStr = known?.start || currentSeason?.start || `${season}-07-01`;
           const endStr   = known?.end   || currentSeason?.end   || `${season+1}-06-01`;
