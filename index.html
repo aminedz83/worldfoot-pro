@@ -3647,67 +3647,66 @@ function LeagueSheet({fix, leagueInfo, onClose}) {
                 })()
           )
 
-        // ── KNOCKOUT ──────────────────────────────────────────────────────
+        // ── KNOCKOUT — liste simple matchs avec dates ──────────────────
         : React.createElement("div", null,
           loading
             ? React.createElement("div", {style:{textAlign:"center",padding:40}}, React.createElement(Spin, {s:24,c:"#00c170"}))
-            : fixtures.length === 0 && overrideMode === "final_ko"
+            : fixtures.length === 0
             ? React.createElement("div", {style:{textAlign:"center",padding:40,color:"#94a3b8",fontSize:13}}, "Aucun match disponible")
-            : pairs.length === 0
-            ? React.createElement("div", {style:{textAlign:"center",padding:40,color:"#94a3b8",fontSize:13}}, "Aucun match disponible")
-            : pairs.map((pair,i) => {
-              const f1 = pair.leg1;
-              const f2 = pair.leg2;
-              const leg1 = f1;
-              const leg2 = f2;
-              const h1 = leg1.goals?.home ?? null;
-              const a1 = leg1.goals?.away ?? null;
-              const h2 = leg2?.goals?.home ?? null;
-              const a2 = leg2?.goals?.away ?? null;
-              const homeTotal = (h1??0) + (h2??0);
-              const awayTotal = (a1??0) + (a2??0);
-              const homeName = leg1.teams.home.name;
-              const awayName = leg1.teams.away.name;
-              const homeLogo = leg1.teams.home.logo;
-              const awayLogo = leg1.teams.away.logo;
-              const homeId = leg1.teams.home.id;
-              const awayId = leg1.teams.away.id;
-              const homeWins = homeTotal > awayTotal;
-              const awayWins = awayTotal > homeTotal;
-              const done1 = DONE_ST.has(leg1.fixture?.status?.short);
-              const done2 = leg2 ? DONE_ST.has(leg2.fixture?.status?.short) : false;
-              const homeRank = getRank(homeId);
-              const awayRank = getRank(awayId);
-
-              return React.createElement("div", {key:i, style:{background:"#fff",borderRadius:14,marginBottom:10,overflow:"hidden",boxShadow:"0 1px 4px rgba(0,0,0,.06)",cursor:"pointer"},
-                onClick: () => setSelectedPair(pair)
-              },
-                React.createElement("div", {style:{display:"flex",alignItems:"center",padding:"14px 12px",gap:8}},
-                  React.createElement("div", {style:{width:28,height:28,borderRadius:"50%",background:"#f5f5f5",display:"flex",alignItems:"center",justifyContent:"center",flexShrink:0,fontSize:12,color:"#aaa"}}, "‹"),
-                  React.createElement("div", {style:{flex:1,minWidth:0}},
-                    React.createElement("div", {style:{display:"flex",alignItems:"center",gap:8,marginBottom:6}},
-                      React.createElement("img", {src:homeLogo,style:{width:22,height:22,objectFit:"contain",flexShrink:0},onError:e=>e.target.style.display="none"}),
-                      React.createElement("span", {style:{fontSize:13,fontWeight:homeWins?700:400,color:homeWins?"#0f172a":"#64748b",flex:1,overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap"}},
-                        homeName,
-                        homeRank ? React.createElement("span", {style:{fontSize:11,color:"#94a3b8",fontWeight:400}}, ` (${homeRank})`) : null
-                      ),
-                      done1 ? React.createElement("span", {style:{fontSize:13,fontWeight:homeWins?700:400,color:homeWins?"#0f172a":"#94a3b8",minWidth:16,textAlign:"right"}}, h1??"-") : null,
-                      done2 ? React.createElement("span", {style:{fontSize:13,fontWeight:homeWins?700:400,color:homeWins?"#0f172a":"#94a3b8",minWidth:16,textAlign:"right"}}, h2??"-") : null
-                    ),
-                    React.createElement("div", {style:{display:"flex",alignItems:"center",gap:8}},
-                      React.createElement("img", {src:awayLogo,style:{width:22,height:22,objectFit:"contain",flexShrink:0},onError:e=>e.target.style.display="none"}),
-                      React.createElement("span", {style:{fontSize:13,fontWeight:awayWins?700:400,color:awayWins?"#0f172a":"#64748b",flex:1,overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap"}},
-                        awayName,
-                        awayRank ? React.createElement("span", {style:{fontSize:11,color:"#94a3b8",fontWeight:400}}, ` (${awayRank})`) : null
-                      ),
-                      done1 ? React.createElement("span", {style:{fontSize:13,fontWeight:awayWins?700:400,color:awayWins?"#0f172a":"#94a3b8",minWidth:16,textAlign:"right"}}, a1??"-") : null,
-                      done2 ? React.createElement("span", {style:{fontSize:13,fontWeight:awayWins?700:400,color:awayWins?"#0f172a":"#94a3b8",minWidth:16,textAlign:"right"}}, a2??"-") : null
+            : (() => {
+                // Grouper par date
+                const grouped = {};
+                [...fixtures].sort((a,b) => new Date(a.fixture.date)-new Date(b.fixture.date))
+                  .forEach(m => {
+                    const d = new Date(m.fixture.date).toLocaleDateString("fr-FR",{day:"2-digit",month:"2-digit",year:"2-digit"}).replace(/\//g,".");
+                    if(!grouped[d]) grouped[d] = [];
+                    grouped[d].push(m);
+                  });
+                return React.createElement("div", null,
+                  Object.entries(grouped).map(([dateKey, matches]) =>
+                    React.createElement("div", {key:dateKey, style:{marginBottom:10}},
+                      React.createElement("div", {style:{
+                        fontSize:11,fontWeight:700,color:"#64748b",
+                        padding:"8px 4px 6px",letterSpacing:0.5
+                      }}, dateKey),
+                      React.createElement("div", {style:{background:"#fff",borderRadius:12,overflow:"hidden",boxShadow:"0 1px 4px rgba(0,0,0,.06)"}},
+                        matches.map((m,i) => {
+                          const hg=m.goals?.home, ag=m.goals?.away;
+                          const done=DONE_ST.has(m.fixture?.status?.short);
+                          const live=LIVE_ST.has(m.fixture?.status?.short);
+                          const hw=done&&hg!=null&&ag!=null&&hg>ag;
+                          const aw=done&&hg!=null&&ag!=null&&ag>hg;
+                          const timeStr=new Date(m.fixture.date).toLocaleTimeString("fr-FR",{hour:"2-digit",minute:"2-digit"});
+                          return React.createElement("div", {key:m.fixture.id, style:{
+                            display:"flex",alignItems:"center",gap:10,padding:"11px 14px",
+                            borderBottom:i<matches.length-1?"1px solid #f5f7fa":"none"
+                          }},
+                            React.createElement("span",{style:{fontSize:11,color:live?"#e53535":"#94a3b8",minWidth:38,fontWeight:live?700:500}},
+                              live?"LIVE":done?"FT":timeStr
+                            ),
+                            React.createElement("div",{style:{flex:1,minWidth:0}},
+                              React.createElement("div",{style:{display:"flex",alignItems:"center",gap:7,marginBottom:4}},
+                                React.createElement("img",{src:m.teams.home.logo,style:{width:20,height:20,objectFit:"contain",flexShrink:0},onError:e=>e.target.style.display="none"}),
+                                React.createElement("span",{style:{fontSize:13,fontWeight:hw?700:400,color:hw?"#0f172a":"#64748b",flex:1,overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap"}},m.teams.home.name)
+                              ),
+                              React.createElement("div",{style:{display:"flex",alignItems:"center",gap:7}},
+                                React.createElement("img",{src:m.teams.away.logo,style:{width:20,height:20,objectFit:"contain",flexShrink:0},onError:e=>e.target.style.display="none"}),
+                                React.createElement("span",{style:{fontSize:13,fontWeight:aw?700:400,color:aw?"#0f172a":"#64748b",flex:1,overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap"}},m.teams.away.name)
+                              )
+                            ),
+                            done||live
+                              ? React.createElement("div",{style:{textAlign:"right",minWidth:20}},
+                                  React.createElement("div",{style:{fontSize:14,fontWeight:hw?800:400,color:live?"#e53535":hw?"#0f172a":"#94a3b8",lineHeight:1.4}},hg??"–"),
+                                  React.createElement("div",{style:{fontSize:14,fontWeight:aw?800:400,color:live?"#e53535":aw?"#0f172a":"#94a3b8",lineHeight:1.4}},ag??"–")
+                                )
+                              : React.createElement("span",{style:{fontSize:11,color:"#94a3b8",fontWeight:500}}, timeStr)
+                          );
+                        })
+                      )
                     )
-                  ),
-                  React.createElement("div", {style:{width:28,height:28,borderRadius:"50%",background:"#f5f5f5",display:"flex",alignItems:"center",justifyContent:"center",flexShrink:0,fontSize:12,color:"#aaa"}}, "›")
-                )
-              );
-            })
+                  )
+                );
+              })()
         )  // fin knockout
       ),
 
