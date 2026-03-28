@@ -48,7 +48,7 @@
     <script>
         if ("serviceWorker" in navigator) {
             const sw = `
-    const C='wf-pro-v180';
+    const C='wf-pro-v181';
     const API_KEY='3a14b1347c177458e2f23bea7899e9cf';
     const BASE='https://v3.football.api-sports.io';
     let prevScores = {};
@@ -4506,7 +4506,7 @@ function LeagueSheet({fix, leagueInfo, onClose}) {
                               const hw   = done && hg!=null && ag!=null && hg>ag;
                               const aw   = done && hg!=null && ag!=null && ag>hg;
                               const timeStr = new Date(m.fixture.date).toLocaleTimeString("fr-FR",{hour:"2-digit",minute:"2-digit"});
-                              const liveTime = useMatchTimer(m.fixture?.status?.elapsed, m.fixture?.status?.short, m.fixture?.date, m.fixture?.id);
+                              const liveTime = m.fixture?.status?.elapsed || 0;
                               const pair = {leg1:m, leg2:null};
                               return React.createElement("div", {
                                 key:m.fixture.id,
@@ -4522,7 +4522,7 @@ function LeagueSheet({fix, leagueInfo, onClose}) {
                                 React.createElement("div", {style:{minWidth:38,textAlign:"center"}},
                                   live
                                     ? React.createElement("span",{style:{fontSize:10,fontWeight:800,color:"#e53535"}},
-                                        formatMatchTime(liveTime, m.fixture?.status?.short)
+                                        liveTime ? `${liveTime}'` : "LIVE"
                                       )
                                     : done
                                     ? React.createElement("span",{style:{fontSize:10,fontWeight:600,color:"#94a3b8"}},"FT")
