@@ -3321,10 +3321,12 @@ function LeagueSheet({fix, leagueInfo, onClose}) {
           ),
           loading
             ? React.createElement("div", {style:{textAlign:"center",padding:40}}, React.createElement(Spin, {s:24,c:"#00c170"}))
-            // Mode groups → classement
-            : (overrideMode === "qualif_main" || overrideMode === "final_groups" ||
-               (!overrideMode && (overrideLid||lid) === 1) ||
-               (!overrideMode && (overrideLid||lid) === 4))
+            // Mode groups → classement (jamais si final_ko)
+            : overrideMode !== "final_ko" && (
+                overrideMode === "qualif_main" || overrideMode === "final_groups" ||
+                (!overrideMode && (overrideLid||lid) === 1) ||
+                (!overrideMode && (overrideLid||lid) === 4)
+              )
             ? (() => {
                 if(!standings.length) {
                   const tLid = overrideLid || lid;
