@@ -48,7 +48,7 @@
     <script>
         if ("serviceWorker" in navigator) {
             const sw = `
-    const C='wf-pro-v190';
+    const C='wf-pro-v191';
     const API_KEY='3a14b1347c177458e2f23bea7899e9cf';
     const BASE='https://v3.football.api-sports.io';
     let prevScores = {};
@@ -11046,6 +11046,24 @@ function App() {
     },400);
   };
   const closeSrch = ()=>{ setSrchOpen(false); setSrchQ(""); setSrchRes([]); if(srchTimer.current) clearTimeout(srchTimer.current); };
+
+  // Bloquer le scroll du body quand overlay ouvert (fix iOS Safari)
+  useEffect(()=>{
+    if(srchOpen){
+      document.body.style.overflow = "hidden";
+      document.body.style.position = "fixed";
+      document.body.style.width = "100%";
+    } else {
+      document.body.style.overflow = "";
+      document.body.style.position = "";
+      document.body.style.width = "";
+    }
+    return ()=>{
+      document.body.style.overflow = "";
+      document.body.style.position = "";
+      document.body.style.width = "";
+    };
+  },[srchOpen]);
   const openTeam = useCallback((teamId, teamName, teamLogo, leagueId, season) => {
     setTeamPage({ teamId, teamName, teamLogo, leagueId, season });
   }, []);
@@ -11317,8 +11335,8 @@ function App() {
     },
       React.createElement("div",{onClick:closeSrch,style:{position:"absolute",inset:0,background:"rgba(0,0,0,.45)"}}),
       React.createElement("div",{style:{
-        position:"relative",zIndex:1,
-        marginTop:"calc(env(safe-area-inset-top, 0px) + 56px)",
+        position:"absolute",zIndex:1,
+        top:0,left:0,right:0,
         background:"#fff",
         borderRadius:"0 0 18px 18px",
         boxShadow:"0 8px 32px rgba(0,0,0,.18)",
