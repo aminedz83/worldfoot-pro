@@ -48,7 +48,7 @@
     <script>
         if ("serviceWorker" in navigator) {
             const sw = `
-    const C='wf-pro-v185';
+    const C='wf-pro-v186';
     const API_KEY='3a14b1347c177458e2f23bea7899e9cf';
     const BASE='https://v3.football.api-sports.io';
     let prevScores = {};
@@ -11021,6 +11021,44 @@ function App() {
   }, [currentTab]);
 
   const [teamPage, setTeamPage] = useState(null);
+
+  // === RECHERCHE GLOBALE ===
+  const [searchQuery, setSearchQuery]   = useState("");
+  const [searchResults, setSearchResults] = useState(null); // null=fermé, []=[résultats]
+  const [searchLoading, setSearchLoading] = useState(false);
+  const searchTimerRef2 = useRef(null);
+
+  const handleSearch = (q) => {
+    setSearchQuery(q);
+    if(searchTimerRef2.current) clearTimeout(searchTimerRef2.current);
+    if(!q.trim()) { setSearchResults(null); setSearchLoading(false); return; }
+    setSearchLoading(true);
+    searchTimerRef2.current = setTimeout(async () => {
+      try {
+        const [teams, leagues] = await Promise.all([
+          api(`/teams?search=${encodeURIComponent(q.trim())}`, 300000).catch(()=>[]),
+          api(`/leagues?search=${encodeURIComponent(q.trim())}`, 300000).catch(()=>[]),
+        ]);
+        const teamRes = (teams||[]).slice(0,6).map(t=>({
+          type:"team", id:t.team?.id, name:t.team?.name,
+          logo:t.team?.logo, sub:t.venue?.city||t.team?.country||""
+        }));
+        const leagueRes = (leagues||[]).slice(0,5).map(l=>({
+          type:"league", id:l.league?.id, name:l.league?.name,
+          logo:l.league?.logo, sub:l.country?.name||""
+        }));
+        setSearchResults([...teamRes, ...leagueRes]);
+      } catch { setSearchResults([]); }
+      setSearchLoading(false);
+    }, 400);
+  };
+
+  const closeSearch = () => {
+    setSearchQuery("");
+    setSearchResults(null);
+    setSearchLoading(false);
+    if(searchTimerRef2.current) clearTimeout(searchTimerRef2.current);
+  };
   const openTeam = useCallback((teamId, teamName, teamLogo, leagueId, season) => {
     setTeamPage({ teamId, teamName, teamLogo, leagueId, season });
   }, []);
@@ -11272,6 +11310,114 @@ function App() {
               transition: "all 0.2s cubic-bezier(0.22,1,0.36,1)"
             }
           }, tab.label)
+        )
+      )
+    ),
+
+    // === BARRE DE RECHERCHE ===
+    React.createElement("div", {style:{
+      flexShrink:0, padding:"8px 14px",
+      background:"#fff",
+      borderBottom:"1px solid var(--c-border)"
+    }},
+      React.createElement("div", {style:{
+        display:"flex", alignItems:"center", gap:8,
+        background:"var(--c-base)",
+        border:"1px solid var(--c-border)",
+        borderRadius:24, padding:"8px 14px",
+        transition:"border-color .15s"
+      }},
+        // Icône loupe SVG
+        React.createElement("svg", {width:16,height:16,viewBox:"0 0 24 24",fill:"none",flexShrink:0,style:{flexShrink:0}},
+          React.createElement("circle",{cx:11,cy:11,r:7,stroke:"var(--c-ink-3)",strokeWidth:2}),
+          React.createElement("path",{d:"M20 20L16.65 16.65",stroke:"var(--c-ink-3)",strokeWidth:2,strokeLinecap:"round"})
+        ),
+        React.createElement("input", {
+          type:"text",
+          value: searchQuery,
+          onChange: e => handleSearch(e.target.value),
+          placeholder:"Équipe, compétition, nation...",
+          style:{
+            flex:1, border:"none", outline:"none",
+            background:"transparent",
+            fontSize:14, color:"var(--c-ink)",
+            fontFamily:"'Plus Jakarta Sans', sans-serif"
+          }
+        }),
+        searchQuery && React.createElement("button", {
+          onClick: closeSearch,
+          style:{
+            background:"none", border:"none", cursor:"pointer",
+            color:"var(--c-ink-3)", fontSize:16, lineHeight:1,
+            padding:"0 2px", flexShrink:0
+          }
+        }, "×")
+      ),
+
+      // Résultats de recherche
+      searchResults && React.createElement("div", {style:{
+        marginTop:8,
+        background:"#fff",
+        borderRadius:14,
+        border:"1px solid var(--c-border)",
+        overflow:"hidden",
+        boxShadow:"0 4px 20px rgba(0,0,0,.08)"
+      }},
+        searchLoading && React.createElement("div", {style:{
+          display:"flex", alignItems:"center", justifyContent:"center",
+          padding:16
+        }}, React.createElement(Spin, {s:20, c:"var(--c-jade)"})),
+
+        !searchLoading && searchResults.length === 0 && React.createElement("div", {
+          style:{padding:"14px 16px", fontSize:13, color:"var(--c-ink-3)", textAlign:"center"}
+        }, "Aucun résultat"),
+
+        !searchLoading && searchResults.map((r, i) =>
+          React.createElement("div", {
+            key:i,
+            onClick: () => {
+              if(r.type === "team") {
+                openTeam(r.id, r.name, r.logo, null, null);
+                closeSearch();
+              }
+              // Pour les ligues → fermer juste la recherche pour l'instant
+              else { closeSearch(); }
+            },
+            style:{
+              display:"flex", alignItems:"center", gap:10,
+              padding:"10px 14px",
+              borderTop: i > 0 ? "1px solid var(--c-border)" : "none",
+              cursor:"pointer",
+              background:"#fff"
+            }
+          },
+            React.createElement("div", {style:{
+              width:32, height:32, borderRadius:8,
+              background:"var(--c-base)",
+              display:"flex", alignItems:"center", justifyContent:"center",
+              flexShrink:0
+            }},
+              React.createElement("img", {
+                src:r.logo, style:{width:24,height:24,objectFit:"contain"},
+                onError:e=>e.target.style.display="none"
+              })
+            ),
+            React.createElement("div", {style:{flex:1,minWidth:0}},
+              React.createElement("div", {style:{
+                fontSize:13, fontWeight:600, color:"var(--c-ink)",
+                overflow:"hidden", textOverflow:"ellipsis", whiteSpace:"nowrap"
+              }}, r.name),
+              r.sub && React.createElement("div", {style:{
+                fontSize:11, color:"var(--c-ink-3)", marginTop:1
+              }}, r.sub)
+            ),
+            React.createElement("span", {style:{
+              fontSize:10, fontWeight:600,
+              padding:"2px 7px", borderRadius:8,
+              background: r.type==="team" ? "rgba(5,150,105,.1)" : "rgba(37,99,235,.1)",
+              color: r.type==="team" ? "var(--c-jade)" : "#2563eb"
+            }}, r.type==="team" ? "Équipe" : "Compétition")
+          )
         )
       )
     ),
