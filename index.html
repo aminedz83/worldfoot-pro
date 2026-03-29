@@ -3051,10 +3051,10 @@ function PlayerPage({ playerId, playerName, playerPhoto, playerPos, playerNumber
           }
         }).catch(()=>{});
 
-        // Matchs depuis le vrai club actuel
+        // Matchs via /fixtures?player=X — inclut club + sélection nationale
         Promise.allSettled([
-          api(`/fixtures?team=${currentTeamId}&season=${curSeason}`, 3600000),
-          api(`/fixtures?team=${currentTeamId}&season=${curSeason-1}`, 86400000),
+          api(`/fixtures?player=${playerId}&season=${curSeason}`, 3600000),
+          api(`/fixtures?player=${playerId}&season=${curSeason-1}`, 86400000),
         ]).then(fixResults => {
           const rF1=fixResults[0],rF2=fixResults[1];
           if(cancelled) return;
@@ -3063,12 +3063,12 @@ function PlayerPage({ playerId, playerName, playerPhoto, playerPos, playerNumber
             ...(rF2.status==="fulfilled" ? rF2.value||[] : []),
           ].filter(f => ["FT","AET","PEN","AWD","WO"].includes(f.fixture?.status?.short))
            .sort((a,b) => new Date(b.fixture.date) - new Date(a.fixture.date))
-           .slice(0,30);
+           .slice(0,40);
           setFixtures(allFix);
           
           // Charger stats en PARALLÈLE par batch de 5, mise à jour progressive
           const loadMatchStats = function(fixList) {
-            var limited = fixList.slice(0, 20);
+            var limited = fixList.slice(0, 40);
             var BATCH = 5;
             var batchIndex = 0;
 
@@ -3082,15 +3082,19 @@ function PlayerPage({ playerId, playerName, playerPhoto, playerPos, playerNumber
               Promise.allSettled(batch.map(function(fix) {
                 var fid = fix.fixture && fix.fixture.id;
                 if(!fid) return Promise.resolve(null);
-                // 1 seul appel API par match — games.substitute détecte le banc
-                return api('/fixtures/players?fixture=' + fid, 86400000).catch(function(){return [];}).then(function(players) {
+                // Appel players + injuries en parallèle
+                return Promise.all([
+                  api('/fixtures/players?fixture=' + fid, 86400000).catch(function(){return [];}),
+                  api('/injuries?fixture=' + fid, 86400000).catch(function(){return [];})
+                ]).then(function(res) {
+                  var players = res[0];
+                  var injuries = res[1];
                   var allPlayers = (players||[]).reduce(function(acc,t){return acc.concat(t.players||[]);}, []);
                   var pData = null;
                   for(var k=0;k<allPlayers.length;k++){
                     if(allPlayers[k].player && allPlayers[k].player.id===playerId){pData=allPlayers[k];break;}
                   }
                   var pStats = pData && pData.statistics && pData.statistics[0];
-                  // games.substitute=true + minutes=null = sur le banc sans jouer
                   var isSubstitute = pStats && pStats.games && pStats.games.substitute === true;
                   var playedMinutes = pStats && pStats.games && pStats.games.minutes;
                   var onBench = isSubstitute && !playedMinutes;
@@ -3104,12 +3108,23 @@ function PlayerPage({ playerId, playerName, playerPhoto, playerPos, playerNumber
                         goals: pStats && pStats.goals && pStats.goals.total || null,
                         assists: pStats && pStats.goals && pStats.goals.assists || null,
                         onBench: onBench,
-                        didNotPlay: !onBench && !playedMinutes,
                       }
                     };
                   }
-                  // Joueur absent de ce match → marquer comme "vérifié, pas de données"
-                  return { fid: fid, data: { notFound: true } };
+                  // Vérifier si blessé via /injuries
+                  var injured = false;
+                  var injuryReason = null;
+                  if(injuries && injuries.length) {
+                    for(var j=0;j<injuries.length;j++){
+                      var inj = injuries[j];
+                      if(inj.player && inj.player.id === playerId) {
+                        injured = true;
+                        injuryReason = inj.player.reason || inj.player.type || "Blessé";
+                        break;
+                      }
+                    }
+                  }
+                  return { fid: fid, data: { notFound: true, injured: injured, injuryReason: injuryReason } };
                 });
               })).then(function(results) {
                 if(cancelled) return;
@@ -3370,23 +3385,31 @@ function PlayerPage({ playerId, playerName, playerPhoto, playerPos, playerNumber
         fixtures.length===0
           ? React.createElement("div",{style:{textAlign:"center",padding:"48px 24px",color:"#94a3b8",fontSize:14}},"Aucun match récent")
           : fixtures.map((f,i) => {
-              const isH = f.teams?.home?.id === currentClub?.team?.id;
               const home = f.teams?.home;
               const away = f.teams?.away;
               const hg = f.goals?.home;
               const ag = f.goals?.away;
               const sh = f.fixture?.status?.short;
               const done = ["FT","AET","PEN","AWD","WO"].includes(sh);
+              // Déterminer si le joueur était dans l'équipe home ou away
+              const isH = home?.id === currentClub?.team?.id || 
+                (!away || away?.id !== currentClub?.team?.id ? true : false);
               const gF = isH ? hg : ag;
               const gA = isH ? ag : hg;
               const res = done && gF!=null ? (gF>gA?"W":gF<gA?"L":"D") : null;
               const RC = {W:"#22c55e",D:"#f59e0b",L:"#ef4444"};
               const RL = {W:"V",D:"N",L:"D"};
+              // Chercher dans quelle équipe était le joueur (club OU sélection nationale)
               const playerTeamId = currentClub?.team?.id;
+              // Si on a les stats, le joueur était dans l'équipe dont il a les données
+              // Sinon fallback sur le club actuel
               const isPlayerTeamHome = home?.id === playerTeamId;
               const isPlayerTeamAway = away?.id === playerTeamId;
-              const playerTeam = isPlayerTeamHome ? home : isPlayerTeamAway ? away : null;
-              const oppTeam = isPlayerTeamHome ? away : isPlayerTeamAway ? home : null;
+              // Pour les matchs de sélection ou ancien club: vérifier les 2 équipes
+              const playerInHome = isPlayerTeamHome || (!isPlayerTeamHome && !isPlayerTeamAway && home?.id != null);
+              const effectiveIsHome = isPlayerTeamHome ? true : isPlayerTeamAway ? false : true;
+              const playerTeam = effectiveIsHome ? home : away;
+              const oppTeam = effectiveIsHome ? away : home;
               
               const fStats = fixtureStats[f.fixture?.id];
               const onBench = fStats?.onBench;
@@ -3426,7 +3449,11 @@ function PlayerPage({ playerId, playerName, playerPhoto, playerPos, playerNumber
                         }},rating)
                       )
                     : fStats && fStats.notFound
-                    ? null
+                    ? React.createElement("span",{style:{
+                        fontSize:10,
+                        color: fStats.injured ? "#f97316" : "#cbd5e1",
+                        fontStyle:"italic"
+                      }}, fStats.injured ? "🤕 Blessé" : "Absent")
                     : React.createElement("div",{style:{width:36,height:20,borderRadius:5,background:"#f1f5f9",animation:"pulse 1.2s ease-in-out infinite"}})
                 ),
                 done && React.createElement("div",{style:{display:"flex",flexDirection:"column",alignItems:"flex-end",gap:3,minWidth:20}},
