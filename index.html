@@ -48,7 +48,7 @@
     <script>
         if ("serviceWorker" in navigator) {
             const sw = `
-    const C='wf-pro-v216';
+    const C='wf-pro-v217';
     const API_KEY='3a14b1347c177458e2f23bea7899e9cf';
     const BASE='https://v3.football.api-sports.io';
     let prevScores = {};
@@ -11033,9 +11033,9 @@ function TeamPage({ teamId, teamName, teamLogo, leagueId, season, onClose, onTea
 
   const S = {
     // Layout
-    page:  {position:"fixed",inset:0,zIndex:500,background:"#f2f3f5",display:"flex",flexDirection:"column",overflowY:"hidden"},
+    page:  {position:"fixed",inset:0,zIndex:500,background:"#f2f3f5",display:"flex",flexDirection:"column",overflow:"hidden"},
     // Header
-    hdr:   {background:"#fff",flexShrink:0,paddingTop:0,position:"sticky",top:0,zIndex:20},
+    hdr:   {background:"#fff",flexShrink:0,paddingTop:0},
     fixedBack:{position:"sticky",top:0,zIndex:10,background:"#fff",paddingTop:"calc(env(safe-area-inset-top,0px) + 8px)",paddingBottom:4,paddingLeft:10,paddingRight:10,borderBottom:"none"},
     topBar:{display:"flex",alignItems:"center",gap:10,padding:"0 14px 12px"},
     backBtn:{background:"none",border:"none",cursor:"pointer",padding:4,display:"flex",alignItems:"center"},
@@ -11045,7 +11045,7 @@ function TeamPage({ teamId, teamName, teamLogo, leagueId, season, onClose, onTea
     country:{fontSize:12,color:"#94a3b8",marginTop:3,display:"flex",alignItems:"center",gap:5},
     stadRow:{display:"flex",alignItems:"center",gap:10,padding:"10px 16px",borderTop:"1px solid #f1f5f9",borderBottom:"1px solid #f1f5f9"},
     // Tabs
-    tabBar:{display:"flex",overflowX:"auto",scrollbarWidth:"none",borderBottom:"2px solid #f1f5f9",background:"#fff",position:"sticky",top:0,zIndex:10},
+    tabBar:{display:"flex",overflowX:"auto",scrollbarWidth:"none",borderBottom:"2px solid #f1f5f9",background:"#fff",flexShrink:0},
     tabBtn:(active)=>({
       flexShrink:0,padding:"12px 16px",background:"none",border:"none",cursor:"pointer",
       fontSize:11,fontWeight:700,letterSpacing:.5,
@@ -11132,7 +11132,30 @@ function TeamPage({ teamId, teamName, teamLogo, leagueId, season, onClose, onTea
           React.createElement("img",{src:teamLogo||team?.logo,style:{width:52,height:52,objectFit:"contain"},onError:e=>e.target.style.display="none"})
         ),
         React.createElement("div",null,
-          React.createElement("div",{style:S.teamName}, teamName||team?.name),
+          React.createElement("div",{style:S.teamName}, (()=>{
+            const n = teamName||team?.name||"";
+            const TR = {"Algeria":"Algérie","Morocco":"Maroc","Tunisia":"Tunisie","Egypt":"Égypte",
+              "Senegal":"Sénégal","Nigeria":"Nigéria","Cameroon":"Cameroun","Ivory Coast":"Côte d'Ivoire",
+              "Congo DR":"RD Congo","Equatorial Guinea":"Guinée Équatoriale","Burkina Faso":"Burkina Faso",
+              "Mali":"Mali","Ghana":"Ghana","Angola":"Angola","Gabon":"Gabon","Libya":"Libye",
+              "Sudan":"Soudan","Mauritania":"Mauritanie","Guinea":"Guinée","Gambia":"Gambie",
+              "Zambia":"Zambie","Zimbabwe":"Zimbabwe","Mozambique":"Mozambique","Uganda":"Ouganda",
+              "Tanzania":"Tanzanie","Kenya":"Kenya","Ethiopia":"Éthiopie","Eritrea":"Érythrée",
+              "Somalia":"Somalie","Djibouti":"Djibouti","Rwanda":"Rwanda","Burundi":"Burundi",
+              "South Africa":"Afrique du Sud","Botswana":"Botswana","Namibia":"Namibie",
+              "France":"France","Spain":"Espagne","Germany":"Allemagne","Italy":"Italie",
+              "Portugal":"Portugal","England":"Angleterre","Netherlands":"Pays-Bas",
+              "Belgium":"Belgique","Croatia":"Croatie","Serbia":"Serbie","Switzerland":"Suisse",
+              "Denmark":"Danemark","Sweden":"Suède","Norway":"Norvège","Austria":"Autriche",
+              "Brazil":"Brésil","Argentina":"Argentine","Colombia":"Colombie","Uruguay":"Uruguay",
+              "Chile":"Chili","Paraguay":"Paraguay","Ecuador":"Équateur","Peru":"Pérou",
+              "Mexico":"Mexique","United States":"États-Unis","Canada":"Canada",
+              "Japan":"Japon","South Korea":"Corée du Sud","Australia":"Australie",
+              "Saudi Arabia":"Arabie Saoudite","Iran":"Iran","Iraq":"Irak",
+              "Guatemala":"Guatemala","United Arab Emirates":"Émirats Arabes Unis",
+            };
+            return TR[n] || n;
+          })()),
           myStand && React.createElement("div",{style:{display:"flex",alignItems:"center",gap:8,marginTop:6}},
             React.createElement("span",{style:{fontSize:12,color:"#64748b"}},`${myStand.rank}e · ${myStand.points} pts`),
             last5.length>0 && React.createElement("div",{style:{display:"flex",gap:3}},
@@ -11176,7 +11199,12 @@ function TeamPage({ teamId, teamName, teamLogo, leagueId, season, onClose, onTea
                   ),
                   React.createElement("div",{style:{fontSize:11,color:"#94a3b8",textTransform:"uppercase",letterSpacing:.3,display:"flex",alignItems:"center",gap:4}},
                     grp.league?.flag && React.createElement("img",{src:grp.league.flag,style:{width:14,height:10,objectFit:"cover",borderRadius:1}}),
-                    grp.league?.country
+                    ({"World":"International","Algeria":"Algérie","France":"France","Morocco":"Maroc",
+                      "Tunisia":"Tunisie","Egypt":"Égypte","Senegal":"Sénégal","Nigeria":"Nigéria",
+                      "Cameroon":"Cameroun","Mali":"Mali","Ghana":"Ghana","Ivory Coast":"Côte d'Ivoire",
+                      "Africa":"Afrique","Europe":"Europe","South America":"Amérique du Sud",
+                      "England":"Angleterre","Spain":"Espagne","Germany":"Allemagne","Italy":"Italie",
+                      "Portugal":"Portugal","Brazil":"Brésil","Argentina":"Argentine"})[grp.league?.country] || grp.league?.country
                   )
                 )
               ),
@@ -11223,7 +11251,12 @@ function TeamPage({ teamId, teamName, teamLogo, leagueId, season, onClose, onTea
                   ),
                   React.createElement("div",{style:{fontSize:11,color:"#94a3b8",textTransform:"uppercase",letterSpacing:.3,display:"flex",alignItems:"center",gap:4}},
                     grp.league?.flag && React.createElement("img",{src:grp.league.flag,style:{width:14,height:10,objectFit:"cover",borderRadius:1}}),
-                    grp.league?.country
+                    ({"World":"International","Algeria":"Algérie","France":"France","Morocco":"Maroc",
+                      "Tunisia":"Tunisie","Egypt":"Égypte","Senegal":"Sénégal","Nigeria":"Nigéria",
+                      "Cameroon":"Cameroun","Mali":"Mali","Ghana":"Ghana","Ivory Coast":"Côte d'Ivoire",
+                      "Africa":"Afrique","Europe":"Europe","South America":"Amérique du Sud",
+                      "England":"Angleterre","Spain":"Espagne","Germany":"Allemagne","Italy":"Italie",
+                      "Portugal":"Portugal","Brazil":"Brésil","Argentina":"Argentine"})[grp.league?.country] || grp.league?.country
                   )
                 )
               ),
