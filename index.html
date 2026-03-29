@@ -3066,49 +3066,68 @@ function PlayerPage({ playerId, playerName, playerPhoto, playerPos, playerNumber
            .slice(0,30);
           setFixtures(allFix);
           
-          // Charger stats + lineups pour chaque match (API Pro)
-          // On charge par batch de 5 pour ne pas surcharger
-          const loadMatchStats = async (fixList) => {
-            const stats = {};
-            for(let i = 0; i < Math.min(fixList.length, 20); i++) {
-              const fid = fixList[i].fixture?.id;
-              if(!fid || cancelled) break;
-              try {
-                const [players, lineups] = await Promise.all([
-                  api(`/fixtures/players?fixture=${fid}`, 86400000).catch(()=>[]),
-                  api(`/fixtures/lineups?fixture=${fid}`, 86400000).catch(()=>[]),
-                ]);
-                // Stats du joueur dans ce match
-                const allPlayers = (players||[]).flatMap(t => t.players||[]);
-                const pData = allPlayers.find(p => p.player?.id === playerId);
-                const pStats = pData?.statistics?.[0];
-                
-                // Vérifier si sur le banc dans les lineups
-                let onBench = false;
-                let didPlay = false;
-                if(lineups && lineups.length > 0) {
-                  const allLineups = lineups.flatMap(l => [...(l.startXI||[]), ...(l.substitutes||[])]);
-                  const pInLineup = allLineups.find(p => p.player?.id === playerId);
-                  const inStartXI = (lineups.flatMap(l => l.startXI||[])).find(p => p.player?.id === playerId);
-                  const inSubs = (lineups.flatMap(l => l.substitutes||[])).find(p => p.player?.id === playerId);
-                  onBench = !!inSubs && !inStartXI;
-                  didPlay = !!pStats?.games?.minutes && pStats.games.minutes > 0;
-                }
-                
-                if(pStats || onBench) {
-                  stats[fid] = {
-                    rating: pStats?.games?.rating ? parseFloat(pStats.games.rating).toFixed(1) : null,
-                    minutes: pStats?.games?.minutes || null,
-                    saves: pStats?.goalkeeper?.saves || null,
-                    goals: pStats?.goals?.total || null,
-                    assists: pStats?.goals?.assists || null,
-                    onBench: onBench && !pStats?.games?.minutes,
-                    didNotPlay: !onBench && !pStats?.games?.minutes,
-                  };
-                }
-              } catch(e) {}
-            }
-            if(!cancelled) setFixtureStats(stats);
+          // Charger stats en PARALLÈLE par batch de 5, mise à jour progressive
+          const loadMatchStats = function(fixList) {
+            var limited = fixList.slice(0, 20);
+            var BATCH = 5;
+            var batchIndex = 0;
+
+            var runBatch = function() {
+              if(cancelled) return;
+              var start = batchIndex * BATCH;
+              if(start >= limited.length) return;
+              var batch = limited.slice(start, start + BATCH);
+              batchIndex++;
+
+              Promise.allSettled(batch.map(function(fix) {
+                var fid = fix.fixture && fix.fixture.id;
+                if(!fid) return Promise.resolve(null);
+                // 1 seul appel API par match — games.substitute détecte le banc
+                return api('/fixtures/players?fixture=' + fid, 86400000).catch(function(){return [];}).then(function(players) {
+                  var allPlayers = (players||[]).reduce(function(acc,t){return acc.concat(t.players||[]);}, []);
+                  var pData = null;
+                  for(var k=0;k<allPlayers.length;k++){
+                    if(allPlayers[k].player && allPlayers[k].player.id===playerId){pData=allPlayers[k];break;}
+                  }
+                  var pStats = pData && pData.statistics && pData.statistics[0];
+                  // games.substitute=true + minutes=null = sur le banc sans jouer
+                  var isSubstitute = pStats && pStats.games && pStats.games.substitute === true;
+                  var playedMinutes = pStats && pStats.games && pStats.games.minutes;
+                  var onBench = isSubstitute && !playedMinutes;
+                  if(pStats || onBench) {
+                    return {
+                      fid: fid,
+                      data: {
+                        rating: pStats && pStats.games && pStats.games.rating ? parseFloat(pStats.games.rating).toFixed(1) : null,
+                        minutes: playedMinutes || null,
+                        saves: pStats && pStats.goals && pStats.goals.saves || null,
+                        goals: pStats && pStats.goals && pStats.goals.total || null,
+                        assists: pStats && pStats.goals && pStats.goals.assists || null,
+                        onBench: onBench,
+                        didNotPlay: !onBench && !playedMinutes,
+                      }
+                    };
+                  }
+                  return null;
+                });
+              })).then(function(results) {
+                if(cancelled) return;
+                // Mise à jour progressive — on ajoute au state existant
+                setFixtureStats(function(prev) {
+                  var next = Object.assign({}, prev);
+                  for(var i=0;i<results.length;i++){
+                    if(results[i].status==='fulfilled'&&results[i].value){
+                      next[results[i].value.fid] = results[i].value.data;
+                    }
+                  }
+                  return next;
+                });
+                // Lancer le batch suivant
+                setTimeout(runBatch, 0);
+              });
+            };
+
+            runBatch();
           };
           loadMatchStats(allFix);
         });
@@ -3389,14 +3408,14 @@ function PlayerPage({ playerId, playerName, playerPhoto, playerPos, playerNumber
                   )
                 ),
                 // Stats du joueur dans ce match
-                React.createElement("div",{style:{display:"flex",flexDirection:"column",alignItems:"center",gap:2,marginRight:8,minWidth:60}},
+                React.createElement("div",{style:{display:"flex",flexDirection:"column",alignItems:"center",justifyContent:"center",gap:2,marginRight:8,minWidth:60}},
                   onBench
                     ? React.createElement("span",{style:{fontSize:11,color:"#94a3b8",fontStyle:"italic"}},"Sur le banc")
                     : fStats
                     ? React.createElement(React.Fragment,null,
                         React.createElement("div",{style:{display:"flex",alignItems:"center",gap:4}},
-                          minutes && React.createElement("span",{style:{fontSize:10,color:"#94a3b8"}},`${minutes}'`),
-                          saves!=null && React.createElement("span",{style:{fontSize:10,color:"#64748b"}},`✋${saves}`)
+                          minutes && React.createElement("span",{style:{fontSize:10,color:"#94a3b8"}},minutes+"'"),
+                          saves!=null && React.createElement("span",{style:{fontSize:10,color:"#64748b"}},"✋"+saves)
                         ),
                         rating && React.createElement("div",{style:{
                           background:parseFloat(rating)>=7.5?"#22c55e":parseFloat(rating)>=6.5?"#f59e0b":"#ef4444",
@@ -3404,7 +3423,7 @@ function PlayerPage({ playerId, playerName, playerPhoto, playerPos, playerNumber
                           borderRadius:5,padding:"2px 6px"
                         }},rating)
                       )
-                    : null
+                    : React.createElement("div",{style:{width:36,height:20,borderRadius:5,background:"#f1f5f9",animation:"pulse 1.2s ease-in-out infinite"}})
                 ),
                 done && React.createElement("div",{style:{display:"flex",flexDirection:"column",alignItems:"flex-end",gap:3,minWidth:20}},
                   React.createElement("span",{style:{fontSize:13,fontWeight:hg>ag?700:400,color:"#0f172a"}},hg??"-"),
