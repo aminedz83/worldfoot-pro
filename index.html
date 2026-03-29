@@ -8315,16 +8315,37 @@ function MatchDetail({state,onClose,onTeam}){
             React.createElement("div",{style:{padding:"0 16px"}},
               [
                 {lbl:"Tirs totaux",val:(function(){var v=playerSheet.stats.shots?.total;return v!=null?v:"-";})()},
-                {lbl:"Expected Goals (xG)",val:(function(){var v=playerSheet.stats.shots?.goals_xg??playerSheet.stats.goals?.expected_goals;return v!=null?parseFloat(v).toFixed(2):"-";})()},
+                {lbl:"Expected Goals (xG)",val:(function(){var v=playerSheet.stats.shots?.goals_xg!=null?playerSheet.stats.shots.goals_xg:(playerSheet.stats.goals?.expected_goals!=null?playerSheet.stats.goals.expected_goals:null);return v!=null?parseFloat(v).toFixed(2):"-";})()},
                 {lbl:"xG cadrés (xGOT)",val:(function(){var v=playerSheet.stats.shots?.on_xg;return v!=null?parseFloat(v).toFixed(2):"-";})()},
                 {lbl:"Tirs cadrés",val:(function(){var v=playerSheet.stats.shots?.on;return v!=null?v:"-";})()},
                 {lbl:"Tirs non cadrés",val:(function(){var sh=playerSheet.stats.shots?.total;var on=playerSheet.stats.shots?.on;return (sh!=null&&on!=null)?(sh-on):"-";})()},
                 {lbl:"Tirs contrés",val:(function(){var v=playerSheet.stats.shots?.blocked;return v!=null?v:"-";})()},
                 {lbl:"Tirs dans la surface",val:(function(){var v=playerSheet.stats.shots?.insidebox;return v!=null?v:"-";})()},
                 {lbl:"Tirs en dehors de la surface",val:(function(){var v=playerSheet.stats.shots?.outsidebox;return v!=null?v:"-";})()},
+                {lbl:"Tirs de la tête",val:(function(){var v=playerSheet.stats.shots?.header;return v!=null?v:"-";})()},
               ].map(function(item){return React.createElement("div",{key:item.lbl,style:{display:"flex",justifyContent:"space-between",alignItems:"center",padding:"11px 0",borderBottom:"1px solid #f1f5f9"}},
-                React.createElement("span",{style:{fontSize:14,color:"#374151"}},item.lbl),
-                React.createElement("span",{style:{fontSize:14,fontWeight:700,color:"#0f172a"}},item.val)
+                React.createElement("span",{style:{fontSize:14,color:"#374151",flex:1,paddingRight:12}},item.lbl),
+                React.createElement("span",{style:{fontSize:14,fontWeight:700,color:"#0f172a",whiteSpace:"nowrap"}},item.val)
+              )})
+            )
+          ),
+          // ── Section Attaque ──
+          playerSheet.stats && React.createElement("div",null,
+            React.createElement("div",{style:{padding:"14px 16px 6px",fontWeight:700,fontSize:15,color:"#0f172a"}},"Attaque"),
+            React.createElement("div",{style:{padding:"0 16px"}},
+              [
+                {lbl:"Touches dans la surface adverse",val:(function(){var v=playerSheet.stats.dribbles?.past;return v!=null?v:"-";})()},
+                {lbl:"Grosses occasions manquées",val:(function(){var v=playerSheet.stats.shots?.big_chance_missed;return v!=null?v:"-";})()},
+                {lbl:"Dribbles réussis",val:(function(){
+                  var suc=playerSheet.stats.dribbles?.success;
+                  var att=playerSheet.stats.dribbles?.attempts;
+                  if(suc!=null&&att!=null&&att>0) return suc+"/"+att+" ("+Math.round(suc/att*100)+"%)";
+                  if(suc!=null) return suc;
+                  return "-";
+                })()},
+              ].map(function(item){return React.createElement("div",{key:item.lbl,style:{display:"flex",justifyContent:"space-between",alignItems:"center",padding:"11px 0",borderBottom:"1px solid #f1f5f9"}},
+                React.createElement("span",{style:{fontSize:14,color:"#374151",flex:1,paddingRight:12}},item.lbl),
+                React.createElement("span",{style:{fontSize:14,fontWeight:700,color:"#0f172a",whiteSpace:"nowrap"}},item.val)
               )})
             )
           ),
@@ -8342,45 +8363,24 @@ function MatchDetail({state,onClose,onTeam}){
                   if(pct!=null) return total+" ("+pct+"%)";
                   return total;
                 })()},
-                {lbl:"Occasions créées",val:(function(){var v=playerSheet.stats.passes?.key_passes??playerSheet.stats.passes?.key;return v!=null?v:"-";})()},
-                {lbl:"Expected Assists (xA)",val:(function(){var v=playerSheet.stats.goals?.xassists??playerSheet.stats.passes?.expected_assists;return v!=null?parseFloat(v).toFixed(2):"-";})()},
+                {lbl:"Occasions créées",val:(function(){var v=playerSheet.stats.passes?.key_passes!=null?playerSheet.stats.passes.key_passes:(playerSheet.stats.passes?.key!=null?playerSheet.stats.passes.key:null);return v!=null?v:"-";})()},
+                {lbl:"Expected Assists (xA)",val:(function(){var v=playerSheet.stats.goals?.xassists!=null?playerSheet.stats.goals.xassists:(playerSheet.stats.passes?.expected_assists!=null?playerSheet.stats.passes.expected_assists:null);return v!=null?parseFloat(v).toFixed(2):"-";})()},
                 {lbl:"Passes réussies dans le dernier tiers",val:(function(){
                   var acc=playerSheet.stats.passes?.third_accurate;
-                  var tot=playerSheet.stats.passes?.third_total??playerSheet.stats.passes?.key;
-                  if(acc!=null&&tot!=null&&tot>0) return acc+"/"+tot+" ("+Math.round(acc/tot*100)+"%)";
-                  if(tot!=null) return tot;
-                  return "-";
-                })()},
-                {lbl:"Longues passes réussies",val:(function(){
-                  var acc=playerSheet.stats.passes?.long_accurate??playerSheet.stats.passes?.long;
-                  var tot=playerSheet.stats.passes?.long_total;
+                  var tot=playerSheet.stats.passes?.third_total;
                   if(acc!=null&&tot!=null&&tot>0) return acc+"/"+tot+" ("+Math.round(acc/tot*100)+"%)";
                   if(acc!=null) return acc;
                   return "-";
                 })()},
-                {lbl:"Centres réussis",val:(function(){var v=playerSheet.stats.passes?.cross_accurate??playerSheet.stats.passes?.cross;return v!=null?v:"-";})()},
-              ].map(function(item){return React.createElement("div",{key:item.lbl,style:{display:"flex",justifyContent:"space-between",alignItems:"center",padding:"11px 0",borderBottom:"1px solid #f1f5f9"}},
-                React.createElement("span",{style:{fontSize:14,color:"#374151",flex:1,paddingRight:12}},item.lbl),
-                React.createElement("span",{style:{fontSize:14,fontWeight:700,color:"#0f172a",whiteSpace:"nowrap"}},item.val)
-              )})
-            )
-          ),
-          // ── Section Attaque ──
-          playerSheet.stats && React.createElement("div",null,
-            React.createElement("div",{style:{padding:"14px 16px 6px",fontWeight:700,fontSize:15,color:"#0f172a"}},"Attaque"),
-            React.createElement("div",{style:{padding:"0 16px"}},
-              [
-                {lbl:"Touches dans la surface adverse",val:(function(){var v=playerSheet.stats.dribbles?.past??playerSheet.stats.shots?.insidebox;return v!=null?v:"-";})()},
-                {lbl:"Grosses occasions manquées",val:(function(){var v=playerSheet.stats.shots?.big_chance_missed;return v!=null?v:"-";})()},
-                {lbl:"Dribbles réussis",val:(function(){
-                  var suc=playerSheet.stats.dribbles?.success;
-                  var att=playerSheet.stats.dribbles?.attempts;
-                  if(suc!=null&&att!=null&&att>0) return suc+"/"+att+" ("+Math.round(suc/att*100)+"%)";
-                  if(suc!=null) return suc;
+                {lbl:"Longues passes réussies",val:(function(){
+                  var acc=playerSheet.stats.passes?.long_accurate;
+                  var tot=playerSheet.stats.passes?.long_total;
+                  var fallback=playerSheet.stats.passes?.long;
+                  if(acc!=null&&tot!=null&&tot>0) return acc+"/"+tot+" ("+Math.round(acc/tot*100)+"%)";
+                  if(fallback!=null) return fallback;
                   return "-";
                 })()},
-                {lbl:"Touches",val:(function(){var v=playerSheet.stats.dribbles?.past??playerSheet.stats.duels?.total;return v!=null?v:"-";})()},
-                {lbl:"Fautes subies",val:(function(){var v=playerSheet.stats.fouls?.drawn;return v!=null?v:"-";})()},
+                {lbl:"Centres réussis",val:(function(){var v=playerSheet.stats.passes?.cross_accurate!=null?playerSheet.stats.passes.cross_accurate:(playerSheet.stats.passes?.cross!=null?playerSheet.stats.passes.cross:null);return v!=null?v:"-";})()},
               ].map(function(item){return React.createElement("div",{key:item.lbl,style:{display:"flex",justifyContent:"space-between",alignItems:"center",padding:"11px 0",borderBottom:"1px solid #f1f5f9"}},
                 React.createElement("span",{style:{fontSize:14,color:"#374151",flex:1,paddingRight:12}},item.lbl),
                 React.createElement("span",{style:{fontSize:14,fontWeight:700,color:"#0f172a",whiteSpace:"nowrap"}},item.val)
@@ -8408,13 +8408,17 @@ function MatchDetail({state,onClose,onTeam}){
                   return "-";
                 })()},
                 {lbl:"Tacles réussis",val:(function(){
-                  var suc=playerSheet.stats.tackles?.interceptions??playerSheet.stats.tackles?.total;
-                  return suc!=null?suc:"-";
+                  var suc=playerSheet.stats.tackles?.total;
+                  var tot=playerSheet.stats.tackles?.total_attempted;
+                  if(suc!=null&&tot!=null&&tot>0) return suc+"/"+tot+" ("+Math.round(suc/tot*100)+"%)";
+                  if(suc!=null) return suc;
+                  return "-";
                 })()},
                 {lbl:"Fautes commises",val:(function(){var v=playerSheet.stats.fouls?.committed;return v!=null?v:"-";})()},
                 {lbl:"Erreurs menant à un but",val:(function(){var v=playerSheet.stats.penalty?.committed;return v!=null?v:"-";})()},
+                {lbl:"Erreurs menant à un tir",val:(function(){var v=playerSheet.stats.penalty?.won;return v!=null?v:"-";})()},
                 {lbl:"Interceptions",val:(function(){var v=playerSheet.stats.tackles?.interceptions;return v!=null?v:"-";})()},
-                {lbl:"Dégagements",val:(function(){var v=playerSheet.stats.tackles?.blocks??playerSheet.stats.blocks;return v!=null?v:"-";})()},
+                {lbl:"Dégagements",val:(function(){var v=playerSheet.stats.tackles?.blocks!=null?playerSheet.stats.tackles.blocks:(playerSheet.stats.blocks!=null?playerSheet.stats.blocks:null);return v!=null?v:"-";})()},
               ].map(function(item){return React.createElement("div",{key:item.lbl,style:{display:"flex",justifyContent:"space-between",alignItems:"center",padding:"11px 0",borderBottom:"1px solid #f1f5f9"}},
                 React.createElement("span",{style:{fontSize:14,color:"#374151",flex:1,paddingRight:12}},item.lbl),
                 React.createElement("span",{style:{fontSize:14,fontWeight:700,color:"#0f172a",whiteSpace:"nowrap"}},item.val)
@@ -12575,6 +12579,93 @@ if (localStorage.getItem('wf_auth') !== '1') {
   window.location.href = 'login.html';
 } else {
   ReactDOM.render(React.createElement(App, null), document.getElementById('root'));
+}
+
+// ── DEBUG TOOL : ?debug=1 dans l'URL ──
+if (new URLSearchParams(window.location.search).get('debug') === '1') {
+  var dbg = document.createElement('div');
+  dbg.style.cssText = 'position:fixed;inset:0;z-index:9999;background:#0f172a;color:#e2e8f0;font-family:monospace;overflow-y:auto;padding:16px';
+  dbg.innerHTML = [
+    '<h2 style="color:#22c55e;margin:0 0 12px">🔍 API Football — Structure réelle</h2>',
+    '<div style="display:flex;gap:8px;margin-bottom:16px;flex-wrap:wrap">',
+    '<input id="dbg-fid" placeholder="Fixture ID" style="font-size:16px;padding:10px;border-radius:8px;border:1px solid #334155;background:#1e293b;color:#e2e8f0;width:160px">',
+    '<button onclick="dbgLoad()" style="font-size:14px;padding:10px 16px;border-radius:8px;background:#22c55e;color:#000;font-weight:700;border:none;cursor:pointer">Charger</button>',
+    '<button onclick="dbgRecent()" style="font-size:14px;padding:10px 16px;border-radius:8px;background:#3b82f6;color:#fff;font-weight:700;border:none;cursor:pointer">Real Madrid récents</button>',
+    '<button onclick="document.body.removeChild(document.getElementById(\'dbg-wrap\'))" style="font-size:14px;padding:10px 16px;border-radius:8px;background:#ef4444;color:#fff;font-weight:700;border:none;cursor:pointer">✕ Fermer</button>',
+    '</div>',
+    '<div id="dbg-out" style="font-size:12px">En attente...</div>'
+  ].join('');
+  dbg.id = 'dbg-wrap';
+  document.body.appendChild(dbg);
+
+  window.dbgRecent = async function() {
+    document.getElementById('dbg-out').innerHTML = 'Chargement...';
+    try {
+      var d = await api('/fixtures?team=541&last=5&status=FT', 60000);
+      var html = '<p style="color:#f59e0b;font-weight:700">Clique un ID pour charger les stats joueurs :</p>';
+      d.forEach(function(f) {
+        html += '<div style="margin:6px 0;padding:10px;background:#1e293b;border-radius:8px;display:flex;align-items:center;gap:16px">';
+        html += '<b style="color:#60a5fa;cursor:pointer;text-decoration:underline;font-size:16px" onclick="document.getElementById(\'dbg-fid\').value=\'' + f.fixture.id + '\';dbgLoad()">' + f.fixture.id + '</b>';
+        html += '<span>' + f.teams.home.name + ' <b>' + f.goals.home + '-' + f.goals.away + '</b> ' + f.teams.away.name + '</span>';
+        html += '<span style="color:#94a3b8">' + f.fixture.date.slice(0,10) + '</span>';
+        html += '</div>';
+      });
+      document.getElementById('dbg-out').innerHTML = html;
+    } catch(e) {
+      document.getElementById('dbg-out').innerHTML = '<span style="color:#ef4444">Erreur: ' + e.message + '</span>';
+    }
+  };
+
+  window.dbgLoad = async function() {
+    var fid = document.getElementById('dbg-fid').value.trim();
+    if (!fid) { alert('Entre un fixture ID'); return; }
+    document.getElementById('dbg-out').innerHTML = 'Chargement fixture ' + fid + '...';
+    try {
+      var data = await api('/fixtures/players?fixture=' + fid, 0);
+      if (!data || !data.length) {
+        document.getElementById('dbg-out').innerHTML = '<span style="color:#ef4444">Aucune donnée pour ce fixture</span>';
+        return;
+      }
+      var SECTIONS = ['games','offsides','shots','goals','passes','tackles','duels','dribbles','fouls','cards','penalty','goalkeeper'];
+      var html = '<p style="color:#22c55e;font-weight:700">Fixture ' + fid + ' — ' + data.length + ' équipes</p>';
+      data.forEach(function(team) {
+        html += '<h3 style="color:#f59e0b;margin:20px 0 8px">🏟 ' + team.team.name + '</h3>';
+        (team.players || []).forEach(function(p) {
+          var s = (p.statistics || [])[0] || {};
+          var rating = s.games && s.games.rating;
+          html += '<div style="background:#1e293b;border:1px solid #334155;border-radius:10px;padding:12px;margin-bottom:10px">';
+          html += '<div style="font-weight:700;font-size:14px;margin-bottom:8px;color:#f8fafc">';
+          html += p.player.name;
+          html += s.games && s.games.position ? ' <span style="color:#94a3b8;font-weight:400">(' + s.games.position + ')</span>' : '';
+          if (rating) html += ' <span style="background:#22c55e;color:#000;padding:1px 7px;border-radius:4px;font-size:12px">' + parseFloat(rating).toFixed(1) + '</span>';
+          html += '</div>';
+          SECTIONS.forEach(function(sec) {
+            if (!s[sec]) return;
+            var obj = s[sec];
+            var keys = Object.keys(obj);
+            if (!keys.length) return;
+            html += '<div style="margin-bottom:6px"><span style="color:#f59e0b;font-size:11px;font-weight:700">' + sec.toUpperCase() + '</span>';
+            keys.forEach(function(k) {
+              var v = obj[k];
+              html += '<div style="display:flex;justify-content:space-between;padding:2px 8px;border-bottom:1px solid #0f172a">';
+              html += '<span style="color:#94a3b8">' + sec + '.' + k + '</span>';
+              html += v !== null && v !== undefined
+                ? '<span style="color:#34d399;font-weight:700">' + v + '</span>'
+                : '<span style="color:#475569">null</span>';
+              html += '</div>';
+            });
+            html += '</div>';
+          });
+          html += '</div>';
+        });
+      });
+      document.getElementById('dbg-out').innerHTML = html;
+      console.log('RAW /fixtures/players:', JSON.stringify(data, null, 2));
+    } catch(e) {
+      document.getElementById('dbg-out').innerHTML = '<span style="color:#ef4444">Erreur: ' + e.message + '</span>';
+      console.error(e);
+    }
+  };
 }
 </script>
 </body>
