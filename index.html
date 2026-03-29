@@ -48,7 +48,7 @@
     <script>
         if ("serviceWorker" in navigator) {
             const sw = `
-    const C='wf-pro-v206';
+    const C='wf-pro-v208';
     const API_KEY='3a14b1347c177458e2f23bea7899e9cf';
     const BASE='https://v3.football.api-sports.io';
     let prevScores = {};
@@ -7521,8 +7521,53 @@ function ScoresTab({favs,onFav,onTeam}){
     searchTimerRef.current=setTimeout(async()=>{
       try{
         // Traduction FR → EN pour les équipes nationales et clubs
+        // IDs directs pour équipes nationales — bypass la recherche textuelle
+        const NATIONAL_IDS = {
+          "algérie":1532,"algerie":1532,"alg":1532,"algeria":1532,
+          "maroc":1546,"morocco":1546,
+          "tunisie":1530,"tunisia":1530,"tun":1530,
+          "sénégal":1523,"senegal":1523,"sen":1523,
+          "nigeria":1531,"nig":1531,
+          "cameroun":1519,"cameroon":1519,"cam":1519,
+          "côte d'ivoire":1522,"cote d'ivoire":1522,"cdi":1522,"ivory coast":1522,
+          "ghana":1526,"gha":1526,
+          "égypte":1524,"egypte":1524,"egypt":1524,"egy":1524,
+          "mali":1545,"mli":1545,
+          "france":2,"fra":2,
+          "espagne":9,"spain":9,"esp":9,
+          "portugal":10,"por":10,
+          "italie":768,"italy":768,"ita":768,
+          "allemagne":25,"germany":25,"all":25,
+          "angleterre":10,"england":10,"ang":10,
+          "brésil":6,"bresil":6,"brazil":6,"bré":6,
+          "argentine":26,"argentina":26,"arg":26,
+          "pays-bas":1118,"netherlands":1118,"pays bas":1118,
+          "belgique":1,"belgium":1,"bel":1,
+          "croatie":3,"croatia":3,"cro":3,
+          "états-unis":17,"usa":17,"etats-unis":17,"united states":17,
+          "japon":63,"japan":63,"jap":63,
+          "corée du sud":149,"coree du sud":149,"south korea":149,
+          "mexique":16,"mexico":16,"mex":16,
+          "australie":161,"australia":161,"aus":161,
+          "suisse":15,"switzerland":15,"sui":15,
+          "danemark":21,"denmark":21,"dan":21,
+          "colombie":12,"colombia":12,"col":12,
+          "uruguay":14,"uru":14,
+          "serbie":14,"serbia":14,
+        };
+
+        const qLow = q.trim().toLowerCase();
+
+        // Si c'est une équipe nationale connue → charger directement par ID
+        if(NATIONAL_IDS[qLow]) {
+          const res = await api(`/teams?id=${NATIONAL_IDS[qLow]}`, 86400000);
+          setTeamResults((res||[]).slice(0,8));
+          setTeamSearching(false);
+          return;
+        }
+
         const FR_TO_EN = {
-          // Équipes nationales
+          // Équipes nationales (fallback textuel)
           "algérie":"Algeria","algerie":"Algeria","alg":"Algeria",
           "france":"France","fra":"France",
           "maroc":"Morocco","maroc":"Morocco",
@@ -7573,7 +7618,6 @@ function ScoresTab({favs,onFav,onTeam}){
           "usma":"USM Alger","mca":"MC Alger","crb":"CR Belouizdad",
           "belouizdad":"CR Belouizdad","mouloudia":"MC Alger",
         };
-        const qLow = q.trim().toLowerCase();
         const translated = FR_TO_EN[qLow] || q.trim();
         const res=await api(`/teams?search=${encodeURIComponent(translated)}`,300000);
         setTeamResults((res||[]).slice(0,8));
