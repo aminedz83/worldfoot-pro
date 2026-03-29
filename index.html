@@ -3145,8 +3145,10 @@ function PlayerPage({ playerId, playerName, playerPhoto, playerPos, playerNumber
                         rating: pStats && pStats.games && pStats.games.rating ? parseFloat(pStats.games.rating).toFixed(1) : null,
                         minutes: playedMinutes || null,
                         saves: pStats && pStats.goals && pStats.goals.saves || null,
-                        goals: pStats && pStats.goals && pStats.goals.total || null,
-                        assists: pStats && pStats.goals && pStats.goals.assists || null,
+                        goals: (pStats && pStats.goals && pStats.goals.total>0) ? pStats.goals.total : null,
+                        assists: (pStats && pStats.goals && pStats.goals.assists>0) ? pStats.goals.assists : null,
+                        yellowCard: pStats && pStats.cards && pStats.cards.yellow>0 || false,
+                        redCard: pStats && pStats.cards && pStats.cards.red>0 || false,
                         onBench: onBench,
                       }
                     };
@@ -3452,10 +3454,14 @@ function PlayerPage({ playerId, playerName, playerPhoto, playerPos, playerNumber
               const oppTeam = effectiveIsHome ? away : home;
               
               const fStats = fixtureStats[f.fixture?.id];
-              const onBench = fStats?.onBench;
-              const rating = fStats?.rating;
-              const minutes = fStats?.minutes;
-              const saves = fStats?.saves;
+              const onBench = fStats && fStats.onBench;
+              const rating = fStats && fStats.rating;
+              const minutes = fStats && fStats.minutes;
+              const saves = fStats && fStats.saves;
+              const goals = fStats && fStats.goals;
+              const assists = fStats && fStats.assists;
+              const yellowCard = fStats && fStats.yellowCard;
+              const redCard = fStats && fStats.redCard;
               
               return React.createElement("div", {key:f.fixture?.id, style:{
                 display:"flex",alignItems:"center",gap:0,
@@ -3478,14 +3484,44 @@ function PlayerPage({ playerId, playerName, playerPhoto, playerPos, playerNumber
                     ? React.createElement("span",{style:{fontSize:11,color:"#94a3b8",fontStyle:"italic"}},"Sur le banc")
                     : (fStats && !fStats.notFound)
                     ? React.createElement(React.Fragment,null,
-                        React.createElement("div",{style:{display:"flex",alignItems:"center",gap:4}},
-                          minutes && React.createElement("span",{style:{fontSize:10,color:"#94a3b8"}},minutes+"'"),
-                          saves!=null && React.createElement("span",{style:{fontSize:10,color:"#64748b"}},"✋"+saves)
+                        // Ligne 1 : minutes + icônes événements
+                        React.createElement("div",{style:{display:"flex",alignItems:"center",gap:3,marginBottom:2,flexWrap:"wrap",justifyContent:"center"}},
+                          minutes && React.createElement("span",{style:{fontSize:10,color:"#94a3b8",marginRight:1}},minutes+"'"),
+                          // Ballon avec nb buts
+                          goals>0 && React.createElement("div",{style:{position:"relative",display:"inline-flex"}},
+                            React.createElement("span",{style:{fontSize:12}},"⚽"),
+                            goals>1 && React.createElement("span",{style:{
+                              position:"absolute",top:-4,right:-5,
+                              background:"#0f172a",color:"#fff",
+                              fontSize:8,fontWeight:800,borderRadius:"50%",
+                              width:12,height:12,display:"flex",alignItems:"center",justifyContent:"center",
+                              lineHeight:1
+                            }},goals)
+                          ),
+                          // A avec nb assists
+                          assists>0 && React.createElement("div",{style:{position:"relative",display:"inline-flex"}},
+                            React.createElement("span",{style:{
+                              fontSize:10,fontWeight:800,color:"#fff",
+                              background:"#64748b",borderRadius:3,
+                              padding:"0 3px",lineHeight:"14px"
+                            }},"A"),
+                            assists>1 && React.createElement("span",{style:{
+                              position:"absolute",top:-4,right:-5,
+                              background:"#0f172a",color:"#fff",
+                              fontSize:8,fontWeight:800,borderRadius:"50%",
+                              width:12,height:12,display:"flex",alignItems:"center",justifyContent:"center",
+                              lineHeight:1
+                            }},assists)
+                          ),
+                          // Cartons
+                          yellowCard && React.createElement("div",{style:{width:7,height:10,background:"#f59e0b",borderRadius:1}}),
+                          redCard && React.createElement("div",{style:{width:7,height:10,background:"#ef4444",borderRadius:1}})
                         ),
+                        // Ligne 2 : badge note
                         rating && React.createElement("div",{style:{
                           background:parseFloat(rating)>=7.5?"#22c55e":parseFloat(rating)>=6.5?"#f59e0b":"#ef4444",
                           color:"#fff",fontSize:11,fontWeight:700,
-                          borderRadius:5,padding:"2px 6px"
+                          borderRadius:5,padding:"2px 7px",minWidth:32,textAlign:"center"
                         }},rating)
                       )
                     : fStats && fStats.notFound
