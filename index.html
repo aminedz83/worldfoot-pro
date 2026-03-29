@@ -48,7 +48,7 @@
     <script>
         if ("serviceWorker" in navigator) {
             const sw = `
-    const C='wf-pro-v193';
+    const C='wf-pro-v194';
     const API_KEY='3a14b1347c177458e2f23bea7899e9cf';
     const BASE='https://v3.football.api-sports.io';
     let prevScores = {};
@@ -7499,6 +7499,29 @@ function MatchDetail({state,onClose,onTeam}){
 }
 
 function ScoresTab({favs,onFav,onTeam}){
+  const [srchQ, setSrchQ]         = React.useState("");
+  const [srchRes, setSrchRes]     = React.useState([]);
+  const [srchLoading, setSrchLoading] = React.useState(false);
+  const srchTimer = React.useRef(null);
+  const doSearch = q => {
+    setSrchQ(q);
+    if(srchTimer.current) clearTimeout(srchTimer.current);
+    if(!q.trim()){ setSrchRes([]); setSrchLoading(false); return; }
+    setSrchLoading(true);
+    srchTimer.current = setTimeout(async()=>{
+      try{
+        const [t,l] = await Promise.all([
+          api(`/teams?search=${encodeURIComponent(q.trim())}`,300000).catch(()=>[]),
+          api(`/leagues?search=${encodeURIComponent(q.trim())}`,300000).catch(()=>[]),
+        ]);
+        setSrchRes([
+          ...(t||[]).slice(0,5).map(x=>({type:"team",  id:x.team?.id,   name:x.team?.name,   logo:x.team?.logo,   sub:x.team?.country||""})),
+          ...(l||[]).slice(0,4).map(x=>({type:"league",id:x.league?.id, name:x.league?.name, logo:x.league?.logo, sub:x.country?.name||""})),
+        ]);
+      }catch{ setSrchRes([]); }
+      setSrchLoading(false);
+    },400);
+  };
 
 
 
@@ -7734,6 +7757,40 @@ function ScoresTab({favs,onFav,onTeam}){
       )
     ),
 
+    React.createElement("div", {style:{padding:"8px 14px 6px",background:T.bg1,borderBottom:"1px solid "+T.line,flexShrink:0}},
+      React.createElement("div", {style:{display:"flex",alignItems:"center",gap:8,background:T.bg0,border:"1px solid "+T.line,borderRadius:20,padding:"6px 12px"}},
+        React.createElement("svg",{width:13,height:13,viewBox:"0 0 24 24",fill:"none",style:{flexShrink:0}},
+          React.createElement("circle",{cx:11,cy:11,r:7,stroke:T.t3,strokeWidth:2}),
+          React.createElement("path",{d:"M20 20L16.65 16.65",stroke:T.t3,strokeWidth:2,strokeLinecap:"round"})
+        ),
+        React.createElement("input",{
+          type:"text",value:q,
+          onChange:e=>setQ(e.target.value),
+          placeholder:"Équipe, compétition, nation...",
+          style:{flex:1,border:"none",outline:"none",background:"transparent",fontSize:13,color:T.t1,fontFamily:"'Plus Jakarta Sans',sans-serif"}
+        }),
+        q && React.createElement("button",{
+          onClick:()=>setQ(""),
+          style:{background:"none",border:"none",cursor:"pointer",color:T.t3,fontSize:17,lineHeight:1,padding:0,flexShrink:0}
+        },"×")
+      ),
+      teamSearching && React.createElement("div",{style:{paddingTop:6,display:"flex",justifyContent:"center"}},React.createElement(Spin,{s:16,c:T.jade})),
+      !teamSearching && teamResults.length>0 && React.createElement("div",{style:{marginTop:6,borderRadius:10,background:T.bg1,border:"1px solid "+T.line,overflow:"hidden"}},
+        teamResults.map((t,i)=>React.createElement("div",{
+          key:t.team?.id,
+          onClick:()=>{onTeam(t.team?.id,t.team?.name,t.team?.logo,null,null);setQ("");},
+          style:{display:"flex",alignItems:"center",gap:10,padding:"8px 12px",borderTop:i>0?"1px solid "+T.line:"none",cursor:"pointer",background:T.bg1}
+        },
+          React.createElement("img",{src:t.team?.logo,style:{width:24,height:24,objectFit:"contain",flexShrink:0},onError:e=>e.target.style.display="none"}),
+          React.createElement("div",{style:{flex:1,minWidth:0}},
+            React.createElement("div",{style:{fontSize:13,fontWeight:600,color:T.t1,overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap"}},t.team?.name),
+            React.createElement("div",{style:{fontSize:11,color:T.t3}},t.team?.country||"")
+          ),
+          React.createElement("span",{style:{fontSize:10,fontWeight:700,padding:"2px 7px",borderRadius:8,background:"rgba(5,150,105,.1)",color:T.jade,flexShrink:0}},"Équipe")
+        ))
+      )
+    ),
+
     React.createElement("div", { ref: stripRef, style: { display: "flex", gap: 5, overflowX: "auto", padding: "10px 14px 10px", background: T.bg0, borderBottom: "1px solid " + T.line, flexShrink: 0, width: "100%" } },
       dates.map(d => {
         const td = d === today();
@@ -7846,6 +7903,41 @@ function ScoresTab({favs,onFav,onTeam}){
       )
     ),
     React.createElement("div", { style: { flex: 1, overflowY: "auto", background: "#f4f5f7" } },
+      // Barre de recherche — dans le scroll, pas dans le layout fixe
+      React.createElement("div", {style:{padding:"10px 14px 4px",background:"#f4f5f7"}},
+        React.createElement("div", {style:{display:"flex",alignItems:"center",gap:8,background:"#fff",border:"1px solid #e2e8f0",borderRadius:20,padding:"8px 14px",boxShadow:"0 1px 4px rgba(0,0,0,.05)"}},
+          React.createElement("svg",{width:14,height:14,viewBox:"0 0 24 24",fill:"none",style:{flexShrink:0}},
+            React.createElement("circle",{cx:11,cy:11,r:7,stroke:"#94a3b8",strokeWidth:2}),
+            React.createElement("path",{d:"M20 20L16.65 16.65",stroke:"#94a3b8",strokeWidth:2,strokeLinecap:"round"})
+          ),
+          React.createElement("input",{
+            type:"text", value:srchQ,
+            onChange:e=>doSearch(e.target.value),
+            placeholder:"Équipe, compétition, nation...",
+            style:{flex:1,border:"none",outline:"none",background:"transparent",fontSize:13,color:"#0f172a",fontFamily:"'Plus Jakarta Sans',sans-serif"}
+          }),
+          srchQ && React.createElement("button",{
+            onClick:()=>{setSrchQ("");setSrchRes([]);},
+            style:{background:"none",border:"none",cursor:"pointer",color:"#94a3b8",fontSize:18,lineHeight:1,padding:0,flexShrink:0}
+          },"×")
+        ),
+        srchLoading && React.createElement("div",{style:{display:"flex",justifyContent:"center",padding:"10px 0"}},React.createElement(Spin,{s:18,c:"var(--c-jade)"})),
+        srchQ && !srchLoading && srchRes.length===0 && React.createElement("div",{style:{padding:"10px 4px",fontSize:13,color:"#94a3b8",textAlign:"center"}},"Aucun résultat"),
+        srchQ && !srchLoading && srchRes.length>0 && React.createElement("div",{style:{marginTop:6,borderRadius:12,background:"#fff",border:"1px solid #e2e8f0",overflow:"hidden",boxShadow:"0 2px 8px rgba(0,0,0,.08)"}},
+          srchRes.map((r,i)=>React.createElement("div",{
+            key:i,
+            onClick:()=>{ if(r.type==="team"&&onTeam){ onTeam(r.id,r.name,r.logo,null,null); setSrchQ(""); setSrchRes([]); } },
+            style:{display:"flex",alignItems:"center",gap:10,padding:"9px 12px",borderTop:i>0?"1px solid #f1f5f9":"none",cursor:r.type==="team"?"pointer":"default",background:"#fff"}
+          },
+            React.createElement("img",{src:r.logo,style:{width:24,height:24,objectFit:"contain",flexShrink:0},onError:e=>e.target.style.display="none"}),
+            React.createElement("div",{style:{flex:1,minWidth:0}},
+              React.createElement("div",{style:{fontSize:13,fontWeight:600,color:"#0f172a",overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap"}},r.name),
+              r.sub&&React.createElement("div",{style:{fontSize:11,color:"#94a3b8"}},r.sub)
+            ),
+            React.createElement("span",{style:{fontSize:10,fontWeight:700,padding:"2px 7px",borderRadius:8,flexShrink:0,background:r.type==="team"?"rgba(5,150,105,.1)":"rgba(37,99,235,.1)",color:r.type==="team"?"var(--c-jade)":"#2563eb"}},r.type==="team"?"Équipe":"Compétition")
+          ))
+        )
+      ),
       st === "load" ? React.createElement(SkRows, null)
       : st === "err" ? React.createElement("div", { style: { textAlign: "center", padding: "52px 24px" } },
           React.createElement("div", { style: { fontSize: 44, marginBottom: 16 } }, "\u26a0\ufe0f"),
@@ -10977,96 +11069,6 @@ function TeamPage({ teamId, teamName, teamLogo, leagueId, season, onClose }) {
   );
 }
 
-
-function SearchTab({onTeam, srchQ, setSrchQ, srchRes, setSrchRes, srchLoading, doSearch, closeSrch}) {
-  return React.createElement("div", {style:{display:"flex",flexDirection:"column",height:"100%",background:"var(--c-base)"}},
-
-    // Barre de recherche
-    React.createElement("div", {style:{padding:"12px 14px",background:"#fff",borderBottom:"1px solid var(--c-border)",flexShrink:0}},
-      React.createElement("div", {style:{
-        display:"flex",alignItems:"center",gap:10,
-        background:"var(--c-base)",
-        border:"1.5px solid var(--c-jade)",
-        borderRadius:24,padding:"9px 16px"
-      }},
-        React.createElement("svg",{width:16,height:16,viewBox:"0 0 24 24",fill:"none",style:{flexShrink:0}},
-          React.createElement("circle",{cx:11,cy:11,r:7,stroke:"var(--c-jade)",strokeWidth:2.2}),
-          React.createElement("path",{d:"M20 20L16.65 16.65",stroke:"var(--c-jade)",strokeWidth:2.2,strokeLinecap:"round"})
-        ),
-        React.createElement("input",{
-          autoFocus:true,
-          type:"text",
-          value:srchQ,
-          onChange:e=>doSearch(e.target.value),
-          placeholder:"Équipe, compétition, nation...",
-          style:{flex:1,border:"none",outline:"none",background:"transparent",fontSize:15,color:"var(--c-ink)",fontFamily:"'Plus Jakarta Sans',sans-serif"}
-        }),
-        srchQ && React.createElement("button",{
-          onClick:()=>{setSrchQ("");setSrchRes([]);},
-          style:{background:"none",border:"none",cursor:"pointer",color:"var(--c-ink-3)",fontSize:20,lineHeight:1,padding:"0 2px",flexShrink:0}
-        },"×")
-      )
-    ),
-
-    // Contenu
-    React.createElement("div",{style:{flex:1,overflowY:"auto",WebkitOverflowScrolling:"touch"}},
-
-      // État vide — pas encore tapé
-      !srchQ && React.createElement("div",{style:{
-        display:"flex",flexDirection:"column",alignItems:"center",
-        justifyContent:"center",padding:"60px 20px",gap:12
-      }},
-        React.createElement("svg",{width:48,height:48,viewBox:"0 0 24 24",fill:"none",style:{opacity:.25}},
-          React.createElement("circle",{cx:11,cy:11,r:7,stroke:"var(--c-ink)",strokeWidth:1.5}),
-          React.createElement("path",{d:"M20 20L16.65 16.65",stroke:"var(--c-ink)",strokeWidth:1.5,strokeLinecap:"round"})
-        ),
-        React.createElement("div",{style:{fontSize:15,fontWeight:600,color:"var(--c-ink-2)"}},"Rechercher"),
-        React.createElement("div",{style:{fontSize:13,color:"var(--c-ink-3)",textAlign:"center"}},"Équipes, compétitions, nations...")
-      ),
-
-      // Chargement
-      srchQ && srchLoading && React.createElement("div",{style:{display:"flex",justifyContent:"center",padding:32}},
-        React.createElement(Spin,{s:24,c:"var(--c-jade)"})
-      ),
-
-      // Aucun résultat
-      srchQ && !srchLoading && srchRes.length===0 && React.createElement("div",{
-        style:{padding:"32px 20px",fontSize:14,color:"var(--c-ink-3)",textAlign:"center"}
-      },"Aucun résultat pour \"" + srchQ + "\""),
-
-      // Résultats
-      srchQ && !srchLoading && srchRes.length>0 && React.createElement("div",{style:{padding:"8px 14px",display:"flex",flexDirection:"column",gap:6}},
-        srchRes.map((r,i)=>React.createElement("div",{
-          key:i,
-          onClick:()=>{ if(r.type==="team"){ onTeam(r.id,r.name,r.logo,null,null); } },
-          style:{
-            display:"flex",alignItems:"center",gap:12,
-            padding:"12px 14px",
-            background:"#fff",
-            borderRadius:14,
-            boxShadow:"0 1px 4px rgba(0,0,0,.06)",
-            cursor: r.type==="team" ? "pointer" : "default"
-          }
-        },
-          React.createElement("div",{style:{width:40,height:40,borderRadius:10,background:"var(--c-base)",display:"flex",alignItems:"center",justifyContent:"center",flexShrink:0,border:"1px solid var(--c-border)"}},
-            React.createElement("img",{src:r.logo,style:{width:28,height:28,objectFit:"contain"},onError:e=>e.target.style.display="none"})
-          ),
-          React.createElement("div",{style:{flex:1,minWidth:0}},
-            React.createElement("div",{style:{fontSize:14,fontWeight:600,color:"var(--c-ink)",overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap"}},r.name),
-            r.sub && React.createElement("div",{style:{fontSize:11,color:"var(--c-ink-3)",marginTop:2}},r.sub)
-          ),
-          React.createElement("span",{style:{
-            fontSize:10,fontWeight:700,letterSpacing:".3px",
-            padding:"3px 8px",borderRadius:8,flexShrink:0,
-            background:r.type==="team"?"rgba(5,150,105,.1)":"rgba(37,99,235,.1)",
-            color:r.type==="team"?"var(--c-jade)":"#2563eb"
-          }},r.type==="team"?"Équipe":"Compétition")
-        ))
-      )
-    )
-  );
-}
-
 function App() {
 
   const [currentTab, setCurrentTab] = useState(() => {
@@ -11111,31 +11113,6 @@ function App() {
   }, [currentTab]);
 
   const [teamPage, setTeamPage] = useState(null);
-  const [srchQ, setSrchQ]         = useState("");
-  const [srchRes, setSrchRes]     = useState([]);
-  const [srchLoading, setSrchLoading] = useState(false);
-  const srchTimer = useRef(null);
-  const doSearch = q => {
-    setSrchQ(q);
-    if(srchTimer.current) clearTimeout(srchTimer.current);
-    if(!q.trim()){ setSrchRes([]); setSrchLoading(false); return; }
-    setSrchLoading(true);
-    srchTimer.current = setTimeout(async()=>{
-      try{
-        const [t,l] = await Promise.all([
-          api(`/teams?search=${encodeURIComponent(q.trim())}`,300000).catch(()=>[]),
-          api(`/leagues?search=${encodeURIComponent(q.trim())}`,300000).catch(()=>[]),
-        ]);
-        setSrchRes([
-          ...(t||[]).slice(0,5).map(x=>({type:"team",  id:x.team?.id,   name:x.team?.name,   logo:x.team?.logo,   sub:x.team?.country||""})),
-          ...(l||[]).slice(0,4).map(x=>({type:"league",id:x.league?.id, name:x.league?.name, logo:x.league?.logo, sub:x.country?.name||""})),
-        ]);
-      }catch{ setSrchRes([]); }
-      setSrchLoading(false);
-    },400);
-  };
-  const closeSrch = ()=>{ setSrchQ(""); setSrchRes([]); if(srchTimer.current) clearTimeout(srchTimer.current); };
-
   const openTeam = useCallback((teamId, teamName, teamLogo, leagueId, season) => {
     setTeamPage({ teamId, teamName, teamLogo, leagueId, season });
   }, []);
@@ -11190,10 +11167,6 @@ function App() {
     { id: "actu", label: "ACTUALITÉS" },
     { id: "jsk", label: "JSK" }
   ];
-
-  const handleTabClick = (tabId) => {
-    setCurrentTab(tabId);
-  };
 
   const renderContent = () => {
     switch (currentTab) {
@@ -11264,8 +11237,7 @@ function App() {
               fontSize: 8, fontWeight: 500, letterSpacing: "3px",
               textTransform: "uppercase", color: "var(--c-jade)"
             } }, "PRO · LIVE")
-          ),
-
+          )
         ),
 
         React.createElement("div", { style: { display: "flex", alignItems: "center", gap: 7 } },
@@ -11374,7 +11346,7 @@ function App() {
         tabs.map(tab =>
           React.createElement("button", {
             key: tab.id,
-            onClick: () => handleTabClick(tab.id),
+            onClick: () => setCurrentTab(tab.id),
             style: {
               flexShrink: 0,
               padding: "7px 14px",
@@ -11396,46 +11368,11 @@ function App() {
       )
     ),
 
-    React.createElement("div", {style:{flexShrink:0,padding:"8px 14px 6px",background:"#fff",borderBottom:"1px solid var(--c-border)"}},
-      React.createElement("div", {style:{display:"flex",alignItems:"center",gap:8,background:"var(--c-base)",border:"1px solid var(--c-border)",borderRadius:20,padding:"7px 14px"}},
-        React.createElement("svg",{width:14,height:14,viewBox:"0 0 24 24",fill:"none",style:{flexShrink:0}},
-          React.createElement("circle",{cx:11,cy:11,r:7,stroke:"var(--c-ink-3)",strokeWidth:2}),
-          React.createElement("path",{d:"M20 20L16.65 16.65",stroke:"var(--c-ink-3)",strokeWidth:2,strokeLinecap:"round"})
-        ),
-        React.createElement("input",{
-          type:"text",value:srchQ,
-          onChange:e=>doSearch(e.target.value),
-          placeholder:"Équipe, compétition, nation...",
-          style:{flex:1,border:"none",outline:"none",background:"transparent",fontSize:13,color:"var(--c-ink)",fontFamily:"'Plus Jakarta Sans',sans-serif"}
-        }),
-        srchQ && React.createElement("button",{
-          onClick:()=>{setSrchQ("");setSrchRes([]);},
-          style:{background:"none",border:"none",cursor:"pointer",color:"var(--c-ink-3)",fontSize:18,lineHeight:1,padding:0,flexShrink:0}
-        },"×")
-      ),
-      srchQ && !srchLoading && srchRes.length>0 && React.createElement("div",{style:{marginTop:6,borderRadius:12,background:"#fff",border:"1px solid var(--c-border)",overflow:"hidden",boxShadow:"0 4px 16px rgba(0,0,0,.08)"}},
-        srchRes.map((r,i)=>React.createElement("div",{
-          key:i,
-          onClick:()=>{ if(r.type==="team"){ openTeam(r.id,r.name,r.logo,null,null); setSrchQ(""); setSrchRes([]); } },
-          style:{display:"flex",alignItems:"center",gap:10,padding:"9px 12px",borderTop:i>0?"1px solid var(--c-border)":"none",cursor:r.type==="team"?"pointer":"default",background:"#fff"}
-        },
-          React.createElement("img",{src:r.logo,style:{width:26,height:26,objectFit:"contain",flexShrink:0},onError:e=>e.target.style.display="none"}),
-          React.createElement("div",{style:{flex:1,minWidth:0}},
-            React.createElement("div",{style:{fontSize:13,fontWeight:600,color:"var(--c-ink)",overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap"}},r.name),
-            r.sub&&React.createElement("div",{style:{fontSize:11,color:"var(--c-ink-3)"}},r.sub)
-          ),
-          React.createElement("span",{style:{fontSize:10,fontWeight:700,padding:"2px 7px",borderRadius:8,background:r.type==="team"?"rgba(5,150,105,.1)":"rgba(37,99,235,.1)",color:r.type==="team"?"var(--c-jade)":"#2563eb",flexShrink:0}},r.type==="team"?"Équipe":"Compétition")
-        ))
-      ),
-      srchQ && srchLoading && React.createElement("div",{style:{marginTop:6,padding:"10px",textAlign:"center"}},React.createElement(Spin,{s:18,c:"var(--c-jade)"}))
-    ),
-
     React.createElement("div", { style: { flex: 1, overflow: "hidden" } },
       renderContent()
     ),
 
-
-        teamPage ? React.createElement(TeamPage, {
+    teamPage ? React.createElement(TeamPage, {
       key: teamPage.teamId,
       teamId:   teamPage.teamId,
       teamName: teamPage.teamName,
