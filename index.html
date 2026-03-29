@@ -3052,19 +3052,33 @@ function PlayerPage({ playerId, playerName, playerPhoto, playerPos, playerNumber
         }).catch(()=>{});
 
         // Matchs via /fixtures?player=X — inclut club + sélection nationale
+        // Club actuel (2 saisons) + sélection nationale via player endpoint
         Promise.allSettled([
+          api(`/fixtures?team=${currentTeamId}&season=${curSeason}`, 3600000),
+          api(`/fixtures?team=${currentTeamId}&season=${curSeason-1}`, 86400000),
           api(`/fixtures?player=${playerId}&season=${curSeason}`, 3600000),
           api(`/fixtures?player=${playerId}&season=${curSeason-1}`, 86400000),
         ]).then(fixResults => {
-          const rF1=fixResults[0],rF2=fixResults[1];
           if(cancelled) return;
-          const allFix = [
-            ...(rF1.status==="fulfilled" ? rF1.value||[] : []),
-            ...(rF2.status==="fulfilled" ? rF2.value||[] : []),
-          ].filter(f => ["FT","AET","PEN","AWD","WO"].includes(f.fixture?.status?.short))
-           .sort((a,b) => new Date(b.fixture.date) - new Date(a.fixture.date))
-           .slice(0,40);
-          setFixtures(allFix);
+          const seen = {};
+          const allFix = [];
+          for(var ri=0;ri<fixResults.length;ri++){
+            var rv = fixResults[ri];
+            if(rv.status!=='fulfilled'||!rv.value) continue;
+            for(var fi=0;fi<rv.value.length;fi++){
+              var f = rv.value[fi];
+              var fid = f.fixture && f.fixture.id;
+              if(!fid||seen[fid]) continue;
+              if(["FT","AET","PEN","AWD","WO"].includes(f.fixture.status && f.fixture.status.short)){
+                seen[fid]=true;
+                allFix.push(f);
+              }
+            }
+          }
+          allFix.sort(function(a,b){return new Date(b.fixture.date)-new Date(a.fixture.date);});
+          var limited = allFix.slice(0,40);
+          setFixtures(limited);
+          var allFixForStats = limited;
           
           // Charger stats en PARALLÈLE par batch de 5, mise à jour progressive
           const loadMatchStats = function(fixList) {
@@ -3146,7 +3160,7 @@ function PlayerPage({ playerId, playerName, playerPhoto, playerPos, playerNumber
 
             runBatch();
           };
-          loadMatchStats(allFix);
+          loadMatchStats(allFixForStats);
         });
       }
     }).catch(()=>{});
