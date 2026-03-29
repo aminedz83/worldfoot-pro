@@ -48,7 +48,7 @@
     <script>
         if ("serviceWorker" in navigator) {
             const sw = `
-    const C='wf-pro-v203';
+    const C='wf-pro-v204';
     const API_KEY='3a14b1347c177458e2f23bea7899e9cf';
     const BASE='https://v3.football.api-sports.io';
     let prevScores = {};
@@ -10468,6 +10468,15 @@ function JSKTab() {
   );
 }
 
+// Stades mal renseignés dans l'API — surcharge manuelle
+const VENUE_OVERRIDE = {
+  918:  { name: "Hocine Ait Ahmed Stadium", city: "Tizi Ouzou", capacity: 50766 },
+  904:  { name: "Stade Omar Hamadi", city: "Alger", capacity: 10000 },
+  906:  { name: "Stade du 5 Juillet 1962", city: "Alger", capacity: 80000 },
+  910:  { name: "Stade Omar Hamadi", city: "Alger", capacity: 10000 },
+};
+
+
 function TeamPage({ teamId, teamName, teamLogo, leagueId, season, onClose }) {
   const [info,      setInfo]      = useState(null);
   const [results,   setResults]   = useState([]);
@@ -10662,7 +10671,9 @@ function TeamPage({ teamId, teamName, teamLogo, leagueId, season, onClose }) {
     )
   );
 
-  const venue = info?.venue;
+  const venue = VENUE_OVERRIDE[teamId]
+    ? { ...info?.venue, ...VENUE_OVERRIDE[teamId] }
+    : info?.venue;
   const team  = info?.team;
 
   // ── RENDER ────────────────────────────────────────────────
@@ -10837,7 +10848,7 @@ function TeamPage({ teamId, teamName, teamLogo, leagueId, season, onClose }) {
       ),
 
       // ── EFFECTIF ──
-      tab==="effectif" && React.createElement("div",null,
+      tab==="effectif" && React.createElement("div",{style:{background:"#f2f3f5"}},
         squad.length===0
           ? React.createElement("div",{style:{textAlign:"center",padding:"48px 24px",color:"#94a3b8",fontSize:14}},"Effectif indisponible")
           : (() => {
@@ -10847,37 +10858,58 @@ function TeamPage({ teamId, teamName, teamLogo, leagueId, season, onClose }) {
                 if(!grouped[pos]) grouped[pos]=[];
                 grouped[pos].push(p);
               });
+              const natFlag = nat => {
+                const m = {"Algeria":"dz","France":"fr","Morocco":"ma","Tunisia":"tn","Senegal":"sn",
+                  "Mali":"ml","Cameroon":"cm","Nigeria":"ng","Ivory Coast":"ci","Ghana":"gh",
+                  "Egypt":"eg","Spain":"es","Portugal":"pt","Brazil":"br","Argentina":"ar"};
+                return m[nat]||null;
+              };
               return posOrder.filter(pos=>grouped[pos]).map(pos=>
-                React.createElement("div",{key:pos},
-                  React.createElement("div",{style:{padding:"12px 16px 6px",fontSize:12,fontWeight:700,color:"#64748b",textTransform:"uppercase",letterSpacing:.5,background:"#f8fafc",borderBottom:"1px solid #f1f5f9"}},pos+"S"),
-                  grouped[pos].map((p,i)=>React.createElement("div",{key:p.id||i,style:S.playerRow},
-                    React.createElement("div",{style:{position:"relative",flexShrink:0}},
-                      React.createElement("img",{
-                        src:p.photo,
-                        style:{width:44,height:44,borderRadius:12,objectFit:"cover",background:"#f1f5f9"},
-                        onError:e=>{ e.target.src="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24'%3E%3Ccircle cx='12' cy='8' r='4' fill='%23cbd5e1'/%3E%3Cellipse cx='12' cy='19' rx='7' ry='4' fill='%23cbd5e1'/%3E%3C/svg%3E"; }
-                      }),
-                      p.number && React.createElement("div",{style:{
-                        position:"absolute",bottom:-4,right:-4,
-                        background:"#0f172a",color:"#fff",
-                        fontSize:9,fontWeight:800,borderRadius:5,
-                        padding:"1px 4px",lineHeight:"14px"
-                      }},p.number)
-                    ),
-                    React.createElement("div",{style:{flex:1,minWidth:0}},
-                      React.createElement("div",{style:{fontSize:14,fontWeight:600,color:"#0f172a"}},p.name),
-                      React.createElement("div",{style:{fontSize:11,color:"#94a3b8",marginTop:2,display:"flex",alignItems:"center",gap:4}},
-                        p.nationality && React.createElement("img",{
-                          src:`https://flagcdn.com/w20/${
-                            p.nationality==="Algeria"?"dz":p.nationality==="France"?"fr":p.nationality==="Morocco"?"ma":p.nationality==="Tunisia"?"tn":"xx"
-                          }.png`,
-                          style:{width:14,height:10,objectFit:"cover",borderRadius:2}
+                React.createElement("div",{key:pos,style:{marginBottom:0}},
+                  React.createElement("div",{style:{
+                    padding:"14px 16px 10px",
+                    fontSize:16,fontWeight:700,color:"#0f172a",
+                    background:"#f2f3f5"
+                  }},pos+"s"),
+                  React.createElement("div",{style:{background:"#fff"}},
+                    grouped[pos].map((p,i)=>React.createElement("div",{key:p.id||i,style:{
+                      display:"flex",alignItems:"center",gap:12,
+                      padding:"10px 16px",
+                      borderBottom:"1px solid #f1f5f9",
+                      background:"#fff"
+                    }},
+                      React.createElement("div",{style:{position:"relative",flexShrink:0}},
+                        React.createElement("img",{
+                          src:p.photo,
+                          style:{width:46,height:46,borderRadius:"50%",objectFit:"cover",background:"#f1f5f9",border:"1px solid #f1f5f9"},
+                          onError:e=>{ e.target.src="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 44 44'%3E%3Ccircle cx='22' cy='22' r='22' fill='%23e2e8f0'/%3E%3Ccircle cx='22' cy='16' r='7' fill='%23cbd5e1'/%3E%3Cellipse cx='22' cy='36' rx='11' ry='7' fill='%23cbd5e1'/%3E%3C/svg%3E"; }
                         }),
-                        p.nationality,
-                        p.age && React.createElement("span",null,`· ${p.age} ans`)
+                        p.number!=null && React.createElement("div",{style:{
+                          position:"absolute",bottom:0,right:-2,
+                          background:"#334155",color:"#fff",
+                          fontSize:9,fontWeight:800,borderRadius:4,
+                          padding:"1px 4px",lineHeight:"13px",
+                          border:"1.5px solid #fff"
+                        }},p.number)
+                      ),
+                      React.createElement("div",{style:{flex:1,minWidth:0}},
+                        React.createElement("div",{style:{
+                          fontSize:14,fontWeight:600,color:"#0f172a",
+                          overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap"
+                        }},p.name),
+                        React.createElement("div",{style:{
+                          fontSize:12,color:"#64748b",marginTop:3,
+                          display:"flex",alignItems:"center",gap:5
+                        }},
+                          natFlag(p.nationality) && React.createElement("img",{
+                            src:`https://flagcdn.com/w20/${natFlag(p.nationality)}.png`,
+                            style:{width:16,height:11,objectFit:"cover",borderRadius:2,flexShrink:0}
+                          }),
+                          p.age && React.createElement("span",null,`· ${p.age} ans`)
+                        )
                       )
-                    )
-                  ))
+                    ))
+                  )
                 )
               );
             })()
