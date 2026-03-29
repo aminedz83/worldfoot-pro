@@ -48,7 +48,7 @@
     <script>
         if ("serviceWorker" in navigator) {
             const sw = `
-    const C='wf-pro-v221';
+    const C='wf-pro-v222';
     const API_KEY='3a14b1347c177458e2f23bea7899e9cf';
     const BASE='https://v3.football.api-sports.io';
     let prevScores = {};
@@ -983,19 +983,69 @@ function SkRows(){
 // Retourne le bon logo pour une ligue (corrige les logos obsolètes de l'API)
 function getLeagueLogo(leagueId, leagueName, originalLogo) {
   const name = (leagueName || "").toLowerCase();
-  // CAN Qualification → logo de la CAN officielle
-  if(name.includes("africa cup of nations") || name.includes("afcon") ||
-     name.includes("can - qualif") || name.includes("cup of nations - qualif")) {
-    return "https://media.api-sports.io/football/leagues/29.png";
-  }
-  // Coupe du Monde Qualification → logo FIFA
-  if(name.includes("world cup") && name.includes("qualif")) {
+
+  // CdM Qualification (toutes confédérations) → logo FIFA CdM
+  if(name.includes("world cup")) {
     return "https://media.api-sports.io/football/leagues/1.png";
   }
-  // Euro Qualification
-  if((name.includes("euro") || name.includes("european")) && name.includes("qualif")) {
+  // CAN / Africa Cup → logo CAN
+  if(name.includes("africa cup of nations") || name.includes("afcon") ||
+     name.includes("cup of nations")) {
+    return "https://media.api-sports.io/football/leagues/29.png";
+  }
+  // Euro / European Championship → logo Euro
+  if(name.includes("euro ") || name.includes("european championship")) {
     return "https://media.api-sports.io/football/leagues/4.png";
   }
+  // Champions League UEFA
+  if(name.includes("champions league") && !name.includes("caf")) {
+    return "https://media.api-sports.io/football/leagues/2.png";
+  }
+  // Europa League
+  if(name.includes("europa league")) {
+    return "https://media.api-sports.io/football/leagues/3.png";
+  }
+  // Conference League
+  if(name.includes("conference league")) {
+    return "https://media.api-sports.io/football/leagues/848.png";
+  }
+  // Copa América
+  if(name.includes("copa america") || name.includes("copa américa")) {
+    return "https://media.api-sports.io/football/leagues/9.png";
+  }
+  // Nations League
+  if(name.includes("nations league")) {
+    return "https://media.api-sports.io/football/leagues/5.png";
+  }
+  // CAF Champions League
+  if(name.includes("caf champions")) {
+    return "https://media.api-sports.io/football/leagues/12.png";
+  }
+  // Copa Libertadores
+  if(name.includes("libertadores")) {
+    return "https://media.api-sports.io/football/leagues/13.png";
+  }
+  // Coupe arabe FIFA
+  if(name.includes("arab cup") || name.includes("arabian")) {
+    return "https://media.api-sports.io/football/leagues/73.png";
+  }
+  // CHAN (Championnat d'Afrique des Nations)
+  if(name.includes("championship of african nations") || name.includes("chan")) {
+    return "https://media.api-sports.io/football/leagues/6.png";
+  }
+  // Gold Cup
+  if(name.includes("gold cup")) {
+    return "https://media.api-sports.io/football/leagues/30.png";
+  }
+  // Asian Cup
+  if(name.includes("asian cup") || name.includes("afc asian")) {
+    return "https://media.api-sports.io/football/leagues/7.png";
+  }
+  // Amical International → globe générique
+  if(name.includes("friendly") || name.includes("amical")) {
+    return "https://media.api-sports.io/football/leagues/10.png";
+  }
+
   return originalLogo;
 }
 
@@ -3701,12 +3751,15 @@ function LeagueSheet({fix, leagueInfo, onClose}) {
               const cfg = resolveCompConfig(fix.league?.name, lid);
 
               // Détecter la phase active depuis le round actuel
+              const lgNQ = (fix.league?.name||"").toLowerCase();
+              const isQualifLeague = lgNQ.includes("qualif") || lgNQ.includes("qualification");
               const activeKey = overrideMode || (() => {
-                if(r.includes("preliminary"))                                                          return "qualif_prelim";
-                if(r.includes("qualifying") || r.includes("playoff"))                               return "qualif_main";
-                if(r.includes("group") || r.includes("league stage") || r.includes("matchday"))   return "final_groups";
+                if(r.includes("preliminary"))                                                                    return "qualif_prelim";
+                if(r.includes("qualifying") || r.includes("playoff"))                                        return "qualif_main";
+                // Ligue de qualification avec groupes → rester en qualif
+                if(isQualifLeague && (r.includes("group") || r.includes("matchday")))                       return "qualif_main";
+                if(r.includes("group") || r.includes("league stage") || r.includes("matchday"))            return "final_groups";
                 if(r.includes("round of") || r.includes("quarter") || r.includes("semi") || r.match(/\bfinal\b/)) return "final_ko";
-                // Fallback selon lid
                 return lid === cfg.finalLid ? "final_groups" : "qualif_main";
               })();
 
@@ -4757,9 +4810,12 @@ function LeagueSheet({fix, leagueInfo, onClose}) {
           const r   = (fix.league?.round||"").toLowerCase();
 
           // Phase active courante
+          const lgNQ2 = (fix.league?.name||"").toLowerCase();
+          const isQualifLg2 = lgNQ2.includes("qualif") || lgNQ2.includes("qualification");
           const activeKey = overrideMode || (() => {
             if(r.includes("preliminary"))                                                          return "qualif_prelim";
             if(r.includes("qualifying") || r.includes("playoff"))                               return "qualif_main";
+            if(isQualifLg2 && (r.includes("group") || r.includes("matchday")))                  return "qualif_main";
             if(r.includes("group") || r.includes("league stage"))                               return "final_groups";
             if(r.includes("round of") || r.includes("quarter") || r.includes("semi") || r.match(/\bfinal\b/)) return "final_ko";
             return lid === cfg.finalLid ? "final_groups" : "qualif_main";
@@ -11189,7 +11245,7 @@ function TeamPage({ teamId, teamName, teamLogo, leagueId, season, onClose, onTea
     ),
 
     // ── CONTENT ──
-    React.createElement("div",{style:S.scroll},
+    React.createElement("div",{className:"md-content"},
 
       // ── RÉSULTATS ──
       tab==="resultats" && React.createElement("div",null,
