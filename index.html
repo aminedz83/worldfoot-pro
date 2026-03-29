@@ -48,7 +48,7 @@
     <script>
         if ("serviceWorker" in navigator) {
             const sw = `
-    const C='wf-pro-v205';
+    const C='wf-pro-v206';
     const API_KEY='3a14b1347c177458e2f23bea7899e9cf';
     const BASE='https://v3.football.api-sports.io';
     let prevScores = {};
@@ -7520,7 +7520,62 @@ function ScoresTab({favs,onFav,onTeam}){
     setTeamSearching(true);
     searchTimerRef.current=setTimeout(async()=>{
       try{
-        const res=await api(`/teams?search=${encodeURIComponent(q.trim())}`,300000);
+        // Traduction FR → EN pour les équipes nationales et clubs
+        const FR_TO_EN = {
+          // Équipes nationales
+          "algérie":"Algeria","algerie":"Algeria","alg":"Algeria",
+          "france":"France","fra":"France",
+          "maroc":"Morocco","maroc":"Morocco",
+          "tunisie":"Tunisia","tun":"Tunisia",
+          "sénégal":"Senegal","senegal":"Senegal",
+          "nigeria":"Nigeria","nig":"Nigeria",
+          "cameroun":"Cameroon","cam":"Cameroon",
+          "côte d'ivoire":"Ivory Coast","cote d'ivoire":"Ivory Coast","côte divoire":"Ivory Coast","cdi":"Ivory Coast",
+          "ghana":"Ghana",
+          "égypte":"Egypt","egypte":"Egypt","egy":"Egypt",
+          "mali":"Mali",
+          "espagne":"Spain","esp":"Spain",
+          "portugal":"Portugal","por":"Portugal",
+          "italie":"Italy","ita":"Italy",
+          "allemagne":"Germany","all":"Germany",
+          "angleterre":"England","ang":"England",
+          "brésil":"Brazil","bresil":"Brazil","bré":"Brazil",
+          "argentine":"Argentina","arg":"Argentina",
+          "pays-bas":"Netherlands","pays bas":"Netherlands",
+          "belgique":"Belgium","bel":"Belgium",
+          "croatie":"Croatia","cro":"Croatia",
+          "serbie":"Serbia",
+          "suisse":"Switzerland","sui":"Switzerland",
+          "pologne":"Poland","pol":"Poland",
+          "danemark":"Denmark","dan":"Denmark",
+          "suède":"Sweden","suede":"Sweden",
+          "norvège":"Norway","norvege":"Norway",
+          "autriche":"Austria","aut":"Austria",
+          "mexique":"Mexico","mex":"Mexico",
+          "colombie":"Colombia","col":"Colombia",
+          "japon":"Japan","jap":"Japan",
+          "corée":"Korea","coree":"Korea",
+          "australie":"Australia","aus":"Australia",
+          "états-unis":"United States","usa":"United States","etats-unis":"United States",
+          // Clubs connus
+          "psg":"Paris Saint-Germain","paris":"Paris Saint-Germain",
+          "barca":"Barcelona","barça":"Barcelona",
+          "madrid":"Real Madrid","real":"Real Madrid",
+          "man utd":"Manchester United","manchester united":"Manchester United",
+          "man city":"Manchester City","city":"Manchester City",
+          "juventus":"Juventus","juve":"Juventus",
+          "milan":"AC Milan","inter":"Inter Milan",
+          "bayern":"Bayern Munich","munich":"Bayern Munich",
+          "dortmund":"Borussia Dortmund","bvb":"Borussia Dortmund",
+          "ajax":"Ajax","porto":"Porto","benfica":"Benfica",
+          "liverpool":"Liverpool","chelsea":"Chelsea","arsenal":"Arsenal","spurs":"Tottenham",
+          "jsk":"JS Kabylie","kabylie":"JS Kabylie",
+          "usma":"USM Alger","mca":"MC Alger","crb":"CR Belouizdad",
+          "belouizdad":"CR Belouizdad","mouloudia":"MC Alger",
+        };
+        const qLow = q.trim().toLowerCase();
+        const translated = FR_TO_EN[qLow] || q.trim();
+        const res=await api(`/teams?search=${encodeURIComponent(translated)}`,300000);
         setTeamResults((res||[]).slice(0,8));
       }catch{setTeamResults([]);}
       setTeamSearching(false);
