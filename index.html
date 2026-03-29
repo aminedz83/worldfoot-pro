@@ -48,7 +48,7 @@
     <script>
         if ("serviceWorker" in navigator) {
             const sw = `
-    const C='wf-pro-v215';
+    const C='wf-pro-v216';
     const API_KEY='3a14b1347c177458e2f23bea7899e9cf';
     const BASE='https://v3.football.api-sports.io';
     let prevScores = {};
@@ -10889,14 +10889,125 @@ function TeamPage({ teamId, teamName, teamLogo, leagueId, season, onClose, onTea
   ];
 
   // ── GROUP fixtures by league ───────────────────────────────
+  // Construire le label de phase depuis le round
+  const phaseLabel = (leagueName, round) => {
+    if(!round) return null;
+    const r = round.toLowerCase();
+    const n = (leagueName||"").toLowerCase();
+
+    // Groupes
+    if(r.includes("group") || r.includes("matchday") || r.includes("league stage"))
+      return "Phase de groupes";
+    // Qualification préliminaire
+    if(r.includes("preliminary"))
+      return "Qualification préliminaire";
+    // Qualification
+    if(r.includes("qualifying") || r.includes("qualification"))
+      return "Qualification";
+    // Play-offs
+    if(r.includes("play-off") || r.includes("playoff"))
+      return "Play-offs";
+    // Phases finales KO
+    if(r.includes("round of 32") || r.includes("1/16")) return "1/16 de finale";
+    if(r.includes("round of 16") || r.includes("1/8"))  return "1/8 de finale";
+    if(r.includes("quarter"))                           return "Quarts de finale";
+    if(r.includes("semi"))                              return "Demi-finales";
+    if(r.match(/\bfinal\b/) && !r.includes("semi") && !r.includes("quarter")) return "Finale";
+    // 3rd place
+    if(r.includes("3rd") || r.includes("third"))       return "Match pour la 3e place";
+    // Friendlies
+    if(r.includes("friendly") || n.includes("friendly") || n.includes("amical"))
+      return "Match amical";
+    return null;
+  };
+
+  // Traduction noms de compétitions
+  const translateLeague = (name, round) => {
+    if(!name) return name;
+    const n = name.toLowerCase();
+    const r = (round||"").toLowerCase();
+    const phase = phaseLabel(name, round);
+    const phaseSuffix = phase ? ` - ${phase}` : "";
+
+    // Compétitions nationales
+    if(n.includes("africa cup of nations") || n.includes("african cup"))
+      return "CAN" + phaseSuffix;
+    if(n.includes("world cup") || n.includes("coupe du monde")) {
+      if(n.includes("qualification")) return "Coupe du Monde - Qualification";
+      return "Coupe du Monde" + phaseSuffix;
+    }
+    if(n.includes("euro ") || n.includes("european championship"))
+      return "Euro" + phaseSuffix;
+    if(n.includes("copa america") || n.includes("copa américa"))
+      return "Copa América" + phaseSuffix;
+    if(n.includes("gold cup"))
+      return "Gold Cup" + phaseSuffix;
+    if(n.includes("nations league"))
+      return "Ligue des Nations" + phaseSuffix;
+    if(n.includes("arab cup") || n.includes("coupe arabe"))
+      return "Coupe arabe FIFA" + phaseSuffix;
+    if(n.includes("chan") || n.includes("championship of african nations") || n.includes("championnat d'afrique"))
+      return "Championnat d'Afrique des Nations" + phaseSuffix;
+    if(n.includes("afcon") || n.includes("africa nations"))
+      return "CAN" + phaseSuffix;
+    // Clubs UEFA
+    if(n.includes("champions league") && !n.includes("caf"))
+      return "Ligue des Champions" + phaseSuffix;
+    if(n.includes("europa league"))
+      return "Ligue Europa" + phaseSuffix;
+    if(n.includes("conference league"))
+      return "Ligue Europa Conférence" + phaseSuffix;
+    // Clubs CAF
+    if(n.includes("caf champions"))
+      return "Ligue des Champions CAF" + phaseSuffix;
+    if(n.includes("confederation cup") || n.includes("caf confederation"))
+      return "Coupe de la Confédération CAF" + phaseSuffix;
+    // Clubs Amérique
+    if(n.includes("libertadores"))
+      return "Copa Libertadores" + phaseSuffix;
+    if(n.includes("sudamericana"))
+      return "Copa Sudamericana" + phaseSuffix;
+    // Coupes nationales
+    if(n.includes("fa cup"))        return "FA Cup" + phaseSuffix;
+    if(n.includes("coupe de france")) return "Coupe de France" + phaseSuffix;
+    if(n.includes("copa del rey"))  return "Copa del Rey" + phaseSuffix;
+    if(n.includes("coppa italia"))  return "Coppa Italia" + phaseSuffix;
+    if(n.includes("dfb pokal"))     return "DFB Pokal" + phaseSuffix;
+    if(n.includes("coupe d'algérie") || n.includes("algerian cup"))
+      return "Coupe d'Algérie" + phaseSuffix;
+    // Ligues nationales
+    if(n === "ligue 1" || n.includes("algerian ligue") || n.includes("ligue professionnelle"))
+      return "Ligue 1 Algérie" + phaseSuffix;
+    if(n.includes("premier league") && n.includes("english"))
+      return "Premier League" + phaseSuffix;
+    if(n === "ligue 1" && !n.includes("algeri"))
+      return "Ligue 1" + phaseSuffix;
+    if(n.includes("friendly") || n.includes("amical"))
+      return "Amical International";
+    // Fallback — garder le nom original + phase
+    return name + phaseSuffix;
+  };
+
   const groupByLeague = (fixtures) => {
     const map = {};
     fixtures.forEach(f => {
-      const key = f.league?.id;
-      if(!map[key]) map[key] = {league:f.league, matches:[]};
+      // Grouper par ligue + phase pour séparer groupes / KO / qualifs
+      const r = (f.league?.round||"").toLowerCase();
+      const isKO = r.includes("round of") || r.includes("quarter") || r.includes("semi") || r.match(/\bfinal\b/) || r.includes("1/8") || r.includes("1/16");
+      const isGroups = r.includes("group") || r.includes("matchday") || r.includes("league stage");
+      const isQualif = r.includes("qualifying") || r.includes("qualification") || r.includes("preliminary") || r.includes("play-off");
+      const phase = isKO ? "ko" : isGroups ? "groups" : isQualif ? "qualif" : "other";
+      const key = `${f.league?.id}_${phase}`;
+      if(!map[key]) map[key] = {league:f.league, matches:[], phase};
       map[key].matches.push(f);
     });
-    return Object.values(map);
+    return Object.values(map)
+      .sort((a,b) => {
+        // Trier par date du dernier match (plus récent en premier)
+        const dA = new Date(a.matches[0]?.fixture?.date||0);
+        const dB = new Date(b.matches[0]?.fixture?.date||0);
+        return dB - dA;
+      });
   };
 
   // ── POSITION LABEL ────────────────────────────────────────
@@ -11058,10 +11169,15 @@ function TeamPage({ teamId, teamName, teamLogo, leagueId, season, onClose, onTea
           ? React.createElement("div",{style:{textAlign:"center",padding:"48px 24px",color:"#94a3b8",fontSize:14}},"Aucun résultat")
           : groupByLeague(results).map((grp,gi)=>React.createElement("div",{key:gi},
               React.createElement("div",{style:S.lgHdr},
-                React.createElement("img",{src:grp.league?.logo,style:{width:24,height:24,objectFit:"contain"},onError:e=>e.target.style.display="none"}),
+                React.createElement("img",{src:grp.league?.logo,style:{width:28,height:28,objectFit:"contain",borderRadius:4},onError:e=>e.target.style.display="none"}),
                 React.createElement("div",null,
-                  React.createElement("div",{style:{fontSize:13,fontWeight:700,color:"#0f172a"}},grp.league?.name),
-                  React.createElement("div",{style:{fontSize:11,color:"#94a3b8",textTransform:"uppercase",letterSpacing:.3}},grp.league?.country)
+                  React.createElement("div",{style:{fontSize:13,fontWeight:700,color:"#0f172a"}},
+                    translateLeague(grp.league?.name, grp.matches[0]?.league?.round)
+                  ),
+                  React.createElement("div",{style:{fontSize:11,color:"#94a3b8",textTransform:"uppercase",letterSpacing:.3,display:"flex",alignItems:"center",gap:4}},
+                    grp.league?.flag && React.createElement("img",{src:grp.league.flag,style:{width:14,height:10,objectFit:"cover",borderRadius:1}}),
+                    grp.league?.country
+                  )
                 )
               ),
               grp.matches.map((m,mi)=>{
@@ -11100,10 +11216,15 @@ function TeamPage({ teamId, teamName, teamLogo, leagueId, season, onClose, onTea
           ? React.createElement("div",{style:{textAlign:"center",padding:"48px 24px",color:"#94a3b8",fontSize:14}},"Aucun match à venir")
           : groupByLeague(upcoming).map((grp,gi)=>React.createElement("div",{key:gi},
               React.createElement("div",{style:S.lgHdr},
-                React.createElement("img",{src:grp.league?.logo,style:{width:24,height:24,objectFit:"contain"},onError:e=>e.target.style.display="none"}),
+                React.createElement("img",{src:grp.league?.logo,style:{width:28,height:28,objectFit:"contain",borderRadius:4},onError:e=>e.target.style.display="none"}),
                 React.createElement("div",null,
-                  React.createElement("div",{style:{fontSize:13,fontWeight:700,color:"#0f172a"}},grp.league?.name),
-                  React.createElement("div",{style:{fontSize:11,color:"#94a3b8",textTransform:"uppercase",letterSpacing:.3}},grp.league?.country)
+                  React.createElement("div",{style:{fontSize:13,fontWeight:700,color:"#0f172a"}},
+                    translateLeague(grp.league?.name, grp.matches[0]?.league?.round)
+                  ),
+                  React.createElement("div",{style:{fontSize:11,color:"#94a3b8",textTransform:"uppercase",letterSpacing:.3,display:"flex",alignItems:"center",gap:4}},
+                    grp.league?.flag && React.createElement("img",{src:grp.league.flag,style:{width:14,height:10,objectFit:"cover",borderRadius:1}}),
+                    grp.league?.country
+                  )
                 )
               ),
               grp.matches.map((m,mi)=>{
