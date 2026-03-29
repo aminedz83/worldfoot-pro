@@ -48,7 +48,7 @@
     <script>
         if ("serviceWorker" in navigator) {
             const sw = `
-    const C='wf-pro-v227';
+    const C='wf-pro-v228';
     const API_KEY='3a14b1347c177458e2f23bea7899e9cf';
     const BASE='https://v3.football.api-sports.io';
     let prevScores = {};
@@ -3036,8 +3036,7 @@ function PlayerPage({ playerId, playerName, playerPhoto, playerPos, playerNumber
       api(`/players?id=${playerId}&season=${curSeason-3}`, 86400000),
       api(`/players?id=${playerId}&season=${curSeason-4}`, 86400000),
       api(`/transfers?player=${playerId}`, 86400000),
-      api(`/fixtures?player=${playerId}&season=${curSeason}`, 3600000),
-    ]).then(([r0,r1,r2,r3,r4,rTr,rFix]) => {
+    ]).then(([r0,r1,r2,r3,r4,rTr]) => {
       if(cancelled) return;
 
       // Info joueur depuis saison courante ou précédente
@@ -3046,9 +3045,12 @@ function PlayerPage({ playerId, playerName, playerPhoto, playerPos, playerNumber
       const pInfo = p0 || p1;
       setInfo(pInfo);
 
-      // Charger le squad de l'équipe pour avoir le contrat
+      // Charger le squad + contrat + fixtures depuis l'équipe du joueur
       const teamId = pInfo?.statistics?.[0]?.team?.id;
+      const leagueId = pInfo?.statistics?.[0]?.league?.id;
+      const leagueSeason = pInfo?.statistics?.[0]?.league?.season;
       if(teamId) {
+        // Contrat
         api(`/players/squads?team=${teamId}`, 86400000).then(sq => {
           if(cancelled) return;
           const found = (sq?.[0]?.players||[]).find(p => p.id === playerId);
@@ -3056,6 +3058,21 @@ function PlayerPage({ playerId, playerName, playerPhoto, playerPos, playerNumber
             setInfo(prev => prev ? {...prev, _contract: found.contract} : prev);
           }
         }).catch(()=>{});
+        // Matchs récents depuis l'équipe
+        const seas = leagueSeason || curSeason;
+        Promise.allSettled([
+          api(`/fixtures?team=${teamId}&season=${seas}`, 3600000),
+          api(`/fixtures?team=${teamId}&season=${seas-1}`, 86400000),
+        ]).then(([rF1,rF2]) => {
+          if(cancelled) return;
+          const allFix = [
+            ...(rF1.status==="fulfilled" ? rF1.value||[] : []),
+            ...(rF2.status==="fulfilled" ? rF2.value||[] : []),
+          ].filter(f => ["FT","AET","PEN","AWD","WO"].includes(f.fixture?.status?.short))
+           .sort((a,b) => new Date(b.fixture.date) - new Date(a.fixture.date))
+           .slice(0,30);
+          setFixtures(allFix);
+        });
       }
 
       // Carrière : agréger toutes les saisons
@@ -3077,10 +3094,7 @@ function PlayerPage({ playerId, playerName, playerPhoto, playerPos, playerNumber
         setTransfers((rTr.value?.[0]?.transfers || rTr.value || []).sort((a,b) => new Date(b.date||0) - new Date(a.date||0)));
       }
 
-      // Matchs récents
-      if(rFix.status==="fulfilled") {
-        setFixtures((rFix.value || []).sort((a,b) => new Date(b.fixture?.date||0) - new Date(a.fixture?.date||0)));
-      }
+      // Matchs chargés séparément depuis l'équipe
 
       if(!cancelled) setLoading(false);
     });
@@ -3099,7 +3113,9 @@ function PlayerPage({ playerId, playerName, playerPhoto, playerPos, playerNumber
 
   const player = info?.player;
   const photo = playerPhoto || player?.photo;
-  const name = playerName || player?.name || "—";
+  const name = playerName || 
+    (player?.firstname && player?.lastname ? player.firstname+" "+player.lastname : null) ||
+    player?.name || "—";
   const pos = playerPos || info?.statistics?.[0]?.games?.position || "—";
   const nat = playerNationality || player?.nationality;
   const age = player?.age;
@@ -3130,7 +3146,11 @@ function PlayerPage({ playerId, playerName, playerPhoto, playerPos, playerNumber
     return m[nat] || null;
   };
 
-  const currentClub = info?.statistics?.[0];
+  // Prioriser le club (non national team) dans les stats
+  const currentClub = info?.statistics?.find(s => 
+    s.league?.type === "League" || s.league?.type === "Cup" ||
+    !s.league?.name?.toLowerCase().includes("nation")
+  ) || info?.statistics?.[0];
 
   const TABS = ["matchs","carriere","transferts"];
   const TABS_LABEL = {matchs:"MATCHS", carriere:"CARRIÈRE", transferts:"TRANSFERTS"};
