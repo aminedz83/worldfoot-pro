@@ -48,7 +48,7 @@
     <script>
         if ("serviceWorker" in navigator) {
             const sw = `
-    const C='wf-pro-v199';
+    const C='wf-pro-v201';
     const API_KEY='3a14b1347c177458e2f23bea7899e9cf';
     const BASE='https://v3.football.api-sports.io';
     let prevScores = {};
@@ -10489,26 +10489,33 @@ function TeamPage({ teamId, teamName, teamLogo, leagueId, season, onClose }) {
 
     Promise.allSettled([
       api(`/teams?id=${teamId}`, 86400000),
-      api(`/fixtures?team=${teamId}&season=${curSeason}&status=FT,AET,PEN`, TTL.DONE),
+      api(`/fixtures?team=${teamId}&season=${curSeason}`, TTL.DONE),
+      api(`/fixtures?team=${teamId}&season=${curSeason-1}`, TTL.DONE),
       api(`/fixtures?team=${teamId}&next=15`, TTL.UPCOMING),
       api(`/players/squads?team=${teamId}`, 86400000),
       api(`/transfers?team=${teamId}`, 86400000),
-    ]).then(async ([rInfo, rRes, rNext, rSquad, rTransfers]) => {
+    ]).then(async ([rInfo, rRes, rResPrev, rNext, rSquad, rTransfers]) => {
       if(cancelled) return;
 
       if(rInfo.status==="fulfilled") setInfo(rInfo.value?.[0]||null);
 
-      const done = (rRes.status==="fulfilled" ? rRes.value||[] : [])
+      const DONE_S = new Set(["FT","AET","PEN","AWD","WO"]);
+      const allFix = [
+        ...(rRes.status==="fulfilled" ? rRes.value||[] : []),
+        ...(rResPrev.status==="fulfilled" ? rResPrev.value||[] : []),
+      ];
+      const done = allFix
+        .filter(f => DONE_S.has(f.fixture?.status?.short))
         .sort((a,b)=>new Date(b.fixture.date)-new Date(a.fixture.date))
-        .slice(0,30);
+        .slice(0,40);
       setResults(done);
 
       const nxt = rNext.status==="fulfilled" ? rNext.value||[] : [];
       setUpcoming(nxt);
 
       // Standings
-      const allFix = [...done, ...nxt];
-      const det = allFix.find(f=>f.league?.id);
+      const allFixStand = [...done, ...nxt];
+      const det = allFixStand.find(f=>f.league?.id);
       const lid  = leagueId || det?.league?.id || 186;
       const seas = season   || det?.league?.season || curSeason;
       const rStand = await api(`/standings?league=${lid}&season=${seas}`, TTL.DONE).catch(()=>null);
@@ -10733,27 +10740,26 @@ function TeamPage({ teamId, teamName, teamLogo, leagueId, season, onClose }) {
                 )
               ),
               grp.matches.map((m,mi)=>{
-                const isH=m.teams?.home?.id===teamId;
-                const opp=isH?m.teams?.away:m.teams?.home;
-                const myTeam=isH?m.teams?.home:m.teams?.away;
-                const gF=isH?m.goals?.home:m.goals?.away;
-                const gA=isH?m.goals?.away:m.goals?.home;
+                const home=m.teams?.home;
+                const away=m.teams?.away;
+                const hg=m.goals?.home;
+                const ag=m.goals?.away;
                 const r=getRes(m);
                 return React.createElement("div",{key:m.fixture?.id,style:S.matchRow},
                   React.createElement("div",{style:S.dateCol},ddmm(m.fixture?.date)),
                   React.createElement("div",{style:S.teamsCol},
                     React.createElement("div",{style:S.teamLine},
-                      React.createElement("img",{src:myTeam?.logo,style:{width:18,height:18,objectFit:"contain",flexShrink:0},onError:e=>e.target.style.display="none"}),
-                      React.createElement("span",{style:{fontSize:13,fontWeight:700,color:"#0f172a",overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap"}},myTeam?.name)
+                      React.createElement("img",{src:home?.logo,style:{width:18,height:18,objectFit:"contain",flexShrink:0},onError:e=>e.target.style.display="none"}),
+                      React.createElement("span",{style:{fontSize:13,fontWeight:home?.id===teamId?700:400,color:home?.id===teamId?"#0f172a":"#64748b",overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap"}},home?.name)
                     ),
                     React.createElement("div",{style:S.teamLine},
-                      React.createElement("img",{src:opp?.logo,style:{width:18,height:18,objectFit:"contain",flexShrink:0},onError:e=>e.target.style.display="none"}),
-                      React.createElement("span",{style:{fontSize:13,fontWeight:400,color:"#64748b",overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap"}},opp?.name)
+                      React.createElement("img",{src:away?.logo,style:{width:18,height:18,objectFit:"contain",flexShrink:0},onError:e=>e.target.style.display="none"}),
+                      React.createElement("span",{style:{fontSize:13,fontWeight:away?.id===teamId?700:400,color:away?.id===teamId?"#0f172a":"#64748b",overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap"}},away?.name)
                     )
                   ),
                   React.createElement("div",{style:S.scoreCol},
-                    React.createElement("span",{style:{fontSize:13,fontWeight:gF>gA?700:400,color:"#0f172a"}},gF??"-"),
-                    React.createElement("span",{style:{fontSize:13,fontWeight:gA>gF?700:400,color:"#0f172a"}},gA??"-")
+                    React.createElement("span",{style:{fontSize:13,fontWeight:hg>ag?700:400,color:"#0f172a"}},hg??"-"),
+                    React.createElement("span",{style:{fontSize:13,fontWeight:ag>hg?700:400,color:"#0f172a"}},ag??"-")
                   ),
                   React.createElement("div",{style:S.badgeCol},
                     r && React.createElement("div",{style:S.badge(r)},RL[r])
