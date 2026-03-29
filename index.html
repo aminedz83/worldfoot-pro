@@ -48,7 +48,7 @@
     <script>
         if ("serviceWorker" in navigator) {
             const sw = `
-    const C='wf-pro-v224';
+    const C='wf-pro-v225';
     const API_KEY='3a14b1347c177458e2f23bea7899e9cf';
     const BASE='https://v3.football.api-sports.io';
     let prevScores = {};
@@ -1630,7 +1630,14 @@ const renderTerrainFlash = (fix, hLu, aLu, players, events, hid, aid, has, hg, a
               const hasYellow = playerEvents.some(e => e.type === "Card" && e.detail === "Yellow Card");
               const hasRed = playerEvents.some(e => e.type === "Card" && (e.detail === "Red Card" || e.detail === "Second Yellow Card"));
               const hasSub = playerEvents.some(e => e.type === "subst");
-              return React.createElement("div", { key: player.id, style: { position: "relative" } },
+              return React.createElement("div", { key: player.id, style: { position: "relative", cursor:"pointer" },
+                onClick: () => onPlayerClick && onPlayerClick({
+                  id: player.id, name: player.name, photo: player.photo,
+                  pos: player.pos || player.position, number: player.number,
+                  nationality: player.nationality,
+                  teamLogo: homeTeam?.logo,
+                  stats: players.flatMap(t=>t.players||[]).find(p=>p.player?.id===player.id)?.statistics?.[0]
+                })},
                 React.createElement(PlayerFlash, { player: player, rating: player.rating, isHome: true }),
                 // But — en haut à gauche de la photo (top:18 pour aligner avec la photo)
                 hasGoal && React.createElement("div", { style: { position:"absolute", top:18, left:2, display:"flex", flexDirection:"column", gap:1 } },
@@ -1666,7 +1673,14 @@ const renderTerrainFlash = (fix, hLu, aLu, players, events, hid, aid, has, hg, a
               const hasYellow = playerEvents.some(e => e.type === "Card" && e.detail === "Yellow Card");
               const hasRed = playerEvents.some(e => e.type === "Card" && (e.detail === "Red Card" || e.detail === "Second Yellow Card"));
               const hasSub = playerEvents.some(e => e.type === "subst");
-              return React.createElement("div", { key: player.id, style: { position: "relative" } },
+              return React.createElement("div", { key: player.id, style: { position: "relative", cursor:"pointer" },
+                onClick: () => onPlayerClick && onPlayerClick({
+                  id: player.id, name: player.name, photo: player.photo,
+                  pos: player.pos || player.position, number: player.number,
+                  nationality: player.nationality,
+                  teamLogo: awayTeam?.logo,
+                  stats: players.flatMap(t=>t.players||[]).find(p=>p.player?.id===player.id)?.statistics?.[0]
+                })},
                 React.createElement(PlayerFlash, { player: player, rating: player.rating, isHome: false }),
                 // But — en haut à gauche de la photo
                 hasGoal && React.createElement("div", { style: { position:"absolute", top:18, left:2, display:"flex", flexDirection:"column", gap:1 } },
@@ -2594,7 +2608,7 @@ const renderListeFlash = (fix, hLu, aLu, players, events, injuries, hid, aid) =>
   );
 };
 
-function ComposPanel({lineups, players, homeTeam, awayTeam, isPartial, fix, events, injuries}) {
+function ComposPanel({lineups, players, homeTeam, awayTeam, isPartial, fix, events, injuries, onPlayerClick}) {
   const [view, setView] = useState("pitch");
   const hLu = lineups?.find(l => l.team?.id === homeTeam?.id);
   const aLu = lineups?.find(l => l.team?.id === awayTeam?.id);
@@ -2999,6 +3013,325 @@ const getRefereeStats = async (refereeName) => {
     return null;
   }
 };
+
+function PlayerPage({ playerId, playerName, playerPhoto, playerPos, playerNumber, playerNationality, matchStats, onClose }) {
+  const [tab, setTab] = React.useState("matchs");
+  const [info, setInfo] = React.useState(null);
+  const [career, setCareer] = React.useState([]);
+  const [transfers, setTransfers] = React.useState([]);
+  const [fixtures, setFixtures] = React.useState([]);
+  const [loading, setLoading] = React.useState(true);
+  const curSeason = new Date().getMonth() >= 6 ? new Date().getFullYear() : new Date().getFullYear() - 1;
+
+  React.useEffect(() => {
+    if(!playerId) return;
+    let cancelled = false;
+    setLoading(true);
+
+    Promise.allSettled([
+      api(`/players?id=${playerId}&season=${curSeason}`, 3600000),
+      api(`/players?id=${playerId}&season=${curSeason-1}`, 86400000),
+      api(`/players?id=${playerId}&season=${curSeason-2}`, 86400000),
+      api(`/players?id=${playerId}&season=${curSeason-3}`, 86400000),
+      api(`/players?id=${playerId}&season=${curSeason-4}`, 86400000),
+      api(`/transfers?player=${playerId}`, 86400000),
+      api(`/fixtures?player=${playerId}&last=20`, 3600000),
+    ]).then(([r0,r1,r2,r3,r4,rTr,rFix]) => {
+      if(cancelled) return;
+
+      // Info joueur depuis saison courante ou précédente
+      const p0 = r0.status==="fulfilled" ? r0.value?.[0] : null;
+      const p1 = r1.status==="fulfilled" ? r1.value?.[0] : null;
+      setInfo(p0 || p1);
+
+      // Carrière : agréger toutes les saisons
+      const allSeasons = [r0,r1,r2,r3,r4]
+        .filter(r => r.status==="fulfilled" && r.value?.[0])
+        .map(r => r.value[0]);
+      
+      const careerMap = {};
+      allSeasons.forEach(p => {
+        (p.statistics||[]).forEach(s => {
+          const key = `${s.league?.season}_${s.team?.id}`;
+          if(!careerMap[key]) careerMap[key] = { season: s.league?.season, team: s.team, league: s.league, stats: s };
+        });
+      });
+      setCareer(Object.values(careerMap).sort((a,b) => (b.season||0) - (a.season||0)));
+
+      // Transferts
+      if(rTr.status==="fulfilled") {
+        setTransfers((rTr.value?.[0]?.transfers || rTr.value || []).sort((a,b) => new Date(b.date||0) - new Date(a.date||0)));
+      }
+
+      // Matchs récents
+      if(rFix.status==="fulfilled") {
+        setFixtures((rFix.value || []).sort((a,b) => new Date(b.fixture?.date||0) - new Date(a.fixture?.date||0)));
+      }
+
+      if(!cancelled) setLoading(false);
+    });
+    return () => { cancelled = true; };
+  }, [playerId]);
+
+  const ratingColor = r => {
+    const v = parseFloat(r);
+    if(v >= 7.5) return "#22c55e";
+    if(v >= 6.5) return "#f59e0b";
+    return "#ef4444";
+  };
+
+  const ddmm = d => d ? new Date(d).toLocaleDateString("fr-FR", {day:"2-digit",month:"2-digit"}) : "";
+  const yyyymm = d => d ? new Date(d).toLocaleDateString("fr-FR", {day:"2-digit",month:"2-digit",year:"numeric"}) : "";
+
+  const player = info?.player;
+  const photo = playerPhoto || player?.photo;
+  const name = playerName || player?.name || "—";
+  const pos = playerPos || info?.statistics?.[0]?.games?.position || "—";
+  const nat = playerNationality || player?.nationality;
+  const age = player?.age;
+  const birth = player?.birth?.date;
+  const marketVal = null; // API gratuite ne donne pas la valeur marchande
+
+  // Poste traduit
+  const posLabel = p => {
+    if(!p) return "—";
+    const pl = p.toLowerCase();
+    if(pl.includes("goalkeeper") || pl==="g") return "Gardien de but";
+    if(pl.includes("defender") || pl==="d") return "Défenseur";
+    if(pl.includes("midfielder") || pl==="m") return "Milieu";
+    if(pl.includes("attacker") || pl==="f" || pl==="a") return "Attaquant";
+    return p;
+  };
+
+  // Nationalité → code drapeau
+  const natFlag = nat => {
+    const m = {"Algeria":"dz","France":"fr","Morocco":"ma","Tunisia":"tn","Senegal":"sn",
+      "Nigeria":"ng","Cameroon":"cm","Mali":"ml","Ghana":"gh","Egypt":"eg",
+      "Spain":"es","Portugal":"pt","Brazil":"br","Argentina":"ar","England":"gb-eng",
+      "Germany":"de","Italy":"it","Netherlands":"nl","Belgium":"be","Croatia":"hr",
+      "Ukraine":"ua","Serbia":"rs","Switzerland":"ch","Denmark":"dk","Sweden":"se",
+      "Uruguay":"uy","Colombia":"co","Mexico":"mx","Japan":"jp","South Korea":"kr",
+      "Ivory Coast":"ci","Guinea":"gn","Gabon":"ga","Congo DR":"cd","Angola":"ao",
+      "United States":"us","Canada":"ca","Australia":"au","Saudi Arabia":"sa","Iran":"ir"};
+    return m[nat] || null;
+  };
+
+  const currentClub = info?.statistics?.[0];
+
+  const TABS = ["matchs","carriere","transferts"];
+  const TABS_LABEL = {matchs:"MATCHS", carriere:"CARRIÈRE", transferts:"TRANSFERTS"};
+
+  return React.createElement("div", {
+    style:{position:"fixed",inset:0,zIndex:600,background:"#f2f3f5",display:"flex",flexDirection:"column",overflow:"hidden"}
+  },
+    // ── HEADER ──
+    React.createElement("div", {style:{background:"#fff",flexShrink:0,paddingTop:"calc(env(safe-area-inset-top,0px) + 8px)"}},
+      // Top bar
+      React.createElement("div", {style:{display:"flex",alignItems:"center",gap:10,padding:"4px 14px 10px"}},
+        React.createElement("button", {onClick:onClose, style:{background:"none",border:"none",cursor:"pointer",padding:4,display:"flex",alignItems:"center"}},
+          React.createElement("svg",{width:22,height:22,viewBox:"0 0 24 24",fill:"none"},
+            React.createElement("path",{d:"M19 12H5M5 12l7-7M5 12l7 7",stroke:"#0f172a",strokeWidth:2.5,strokeLinecap:"round",strokeLinejoin:"round"})
+          )
+        ),
+        nat && natFlag(nat) && React.createElement("img",{src:`https://flagcdn.com/w20/${natFlag(nat)}.png`,style:{width:18,height:12,objectFit:"cover",borderRadius:2}}),
+        nat && React.createElement("span",{style:{fontSize:12,fontWeight:600,color:"#64748b",textTransform:"uppercase",letterSpacing:.5}},nat)
+      ),
+
+      // Hero
+      React.createElement("div", {style:{display:"flex",alignItems:"center",gap:14,padding:"0 16px 14px"}},
+        React.createElement("div", {style:{position:"relative",flexShrink:0}},
+          React.createElement("img", {
+            src:photo,
+            style:{width:72,height:72,borderRadius:"50%",objectFit:"cover",border:"2px solid #f1f5f9",background:"#f8fafc"},
+            onError:e=>e.target.style.display="none"
+          })
+        ),
+        React.createElement("div", {style:{flex:1,minWidth:0}},
+          React.createElement("div", {style:{fontSize:22,fontWeight:800,color:"#0f172a",lineHeight:1.1}}, name),
+          React.createElement("div", {style:{fontSize:13,color:"#64748b",marginTop:4}},
+            [age && `${age} ans`, birth && `(${yyyymm(birth)})`].filter(Boolean).join(" ")
+          ),
+          currentClub && React.createElement("div", {style:{display:"flex",alignItems:"center",gap:6,marginTop:6}},
+            React.createElement("img",{src:currentClub.team?.logo,style:{width:18,height:18,objectFit:"contain"},onError:e=>e.target.style.display="none"}),
+            React.createElement("span",{style:{fontSize:12,fontWeight:600,color:"#0f172a"}},currentClub.team?.name),
+            React.createElement("span",{style:{fontSize:11,color:"#94a3b8"}}, "·"),
+            React.createElement("span",{style:{fontSize:12,color:"#64748b"}},posLabel(pos))
+          )
+        )
+      ),
+
+      // Stats du match actuel (si disponibles)
+      matchStats && React.createElement("div", {style:{
+        display:"flex",alignItems:"center",gap:12,padding:"10px 16px",
+        borderTop:"1px solid #f1f5f9",background:"#f8fafc"
+      }},
+        matchStats.games?.rating && React.createElement("div", {style:{
+          background:ratingColor(matchStats.games.rating),
+          color:"#fff",fontSize:14,fontWeight:800,
+          borderRadius:8,padding:"4px 10px",flexShrink:0
+        }}, parseFloat(matchStats.games.rating).toFixed(1)),
+        React.createElement("span",{style:{fontSize:12,color:"#64748b"}},
+          [matchStats.games?.minutes && `${matchStats.games.minutes}'`,
+           matchStats.goals?.total && `${matchStats.goals.total} but(s)`,
+           matchStats.goals?.assists && `${matchStats.goals.assists} passe(s) D`
+          ].filter(Boolean).join(" · ")
+        )
+      ),
+
+      // Tab bar
+      React.createElement("div", {style:{display:"flex",borderBottom:"2px solid #f1f5f9",background:"#fff"}},
+        TABS.map(t => React.createElement("button", {
+          key:t, onClick:()=>setTab(t),
+          style:{
+            flex:1,padding:"12px 0",background:"none",border:"none",cursor:"pointer",
+            fontSize:11,fontWeight:700,letterSpacing:.4,
+            color:tab===t?"#ef4444":"#64748b",
+            borderBottom:tab===t?"2px solid #ef4444":"2px solid transparent",
+            marginBottom:-2
+          }
+        }, TABS_LABEL[t]))
+      )
+    ),
+
+    // ── CONTENT ──
+    loading ? React.createElement("div",{style:{flex:1,display:"flex",alignItems:"center",justifyContent:"center"}},
+      React.createElement(Spin,{s:28,c:"#ef4444"})
+    ) :
+
+    React.createElement("div", {style:{flex:1,overflowY:"auto",WebkitOverflowScrolling:"touch"}},
+
+      // ── MATCHS ──
+      tab==="matchs" && React.createElement("div",null,
+        fixtures.length===0
+          ? React.createElement("div",{style:{textAlign:"center",padding:"48px 24px",color:"#94a3b8",fontSize:14}},"Aucun match récent")
+          : fixtures.map((f,i) => {
+              const isH = f.teams?.home?.id === currentClub?.team?.id;
+              const home = f.teams?.home;
+              const away = f.teams?.away;
+              const hg = f.goals?.home;
+              const ag = f.goals?.away;
+              const sh = f.fixture?.status?.short;
+              const done = ["FT","AET","PEN","AWD","WO"].includes(sh);
+              const gF = isH ? hg : ag;
+              const gA = isH ? ag : hg;
+              const res = done && gF!=null ? (gF>gA?"W":gF<gA?"L":"D") : null;
+              const RC = {W:"#22c55e",D:"#f59e0b",L:"#ef4444"};
+              const RL = {W:"V",D:"N",L:"D"};
+              return React.createElement("div", {key:f.fixture?.id, style:{
+                display:"flex",alignItems:"center",gap:0,
+                padding:"0 16px",borderBottom:"1px solid #f1f5f9",background:"#fff",minHeight:52
+              }},
+                React.createElement("div",{style:{width:42,fontSize:11,color:"#94a3b8",fontWeight:500,flexShrink:0}},ddmm(f.fixture?.date)),
+                React.createElement("div",{style:{flex:1,display:"flex",flexDirection:"column",gap:3,padding:"10px 0"}},
+                  React.createElement("div",{style:{display:"flex",alignItems:"center",gap:8}},
+                    React.createElement("img",{src:home?.logo,style:{width:18,height:18,objectFit:"contain",flexShrink:0},onError:e=>e.target.style.display="none"}),
+                    React.createElement("span",{style:{fontSize:13,fontWeight:home?.id===currentClub?.team?.id?700:400,color:"#0f172a",overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap"}},home?.name)
+                  ),
+                  React.createElement("div",{style:{display:"flex",alignItems:"center",gap:8}},
+                    React.createElement("img",{src:away?.logo,style:{width:18,height:18,objectFit:"contain",flexShrink:0},onError:e=>e.target.style.display="none"}),
+                    React.createElement("span",{style:{fontSize:13,fontWeight:away?.id===currentClub?.team?.id?700:400,color:"#0f172a",overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap"}},away?.name)
+                  )
+                ),
+                done && React.createElement("div",{style:{display:"flex",flexDirection:"column",alignItems:"flex-end",gap:3,marginRight:8,minWidth:20}},
+                  React.createElement("span",{style:{fontSize:13,fontWeight:hg>ag?700:400,color:"#0f172a"}},hg??"-"),
+                  React.createElement("span",{style:{fontSize:13,fontWeight:ag>hg?700:400,color:"#0f172a"}},ag??"-")
+                ),
+                res && React.createElement("div",{style:{width:22,height:22,borderRadius:6,background:RC[res],display:"flex",alignItems:"center",justifyContent:"center",fontSize:10,fontWeight:800,color:"#fff",flexShrink:0}},RL[res])
+              );
+            })
+      ),
+
+      // ── CARRIÈRE ──
+      tab==="carriere" && React.createElement("div",null,
+        career.length===0
+          ? React.createElement("div",{style:{textAlign:"center",padding:"48px 24px",color:"#94a3b8",fontSize:14}},"Carrière indisponible")
+          : React.createElement("div",null,
+              React.createElement("div",{style:{
+                display:"flex",padding:"8px 16px",
+                background:"#f8fafc",borderBottom:"1px solid #f1f5f9",
+                fontSize:10,fontWeight:700,color:"#94a3b8"
+              }},
+                React.createElement("span",{style:{width:52,flexShrink:0}},"SAISON"),
+                React.createElement("span",{style:{flex:1}},"CLUB"),
+                React.createElement("span",{style:{width:36,textAlign:"center"}},"ØR"),
+                React.createElement("span",{style:{width:28,textAlign:"center"}},"MJ"),
+                React.createElement("span",{style:{width:36,textAlign:"center"}},"BUT"),
+                React.createElement("span",{style:{width:28,textAlign:"center"}},"🟨"),
+                React.createElement("span",{style:{width:28,textAlign:"center"}},"🟥")
+              ),
+              career.map((c,i) => {
+                const s = c.stats;
+                const rating = s?.games?.rating ? parseFloat(s.games.rating).toFixed(1) : null;
+                const played = s?.games?.appearences ?? s?.games?.minutes ? "—" : 0;
+                return React.createElement("div",{key:i,style:{
+                  display:"flex",alignItems:"center",
+                  padding:"10px 16px",borderBottom:"1px solid #f1f5f9",background:"#fff"
+                }},
+                  React.createElement("span",{style:{width:52,fontSize:11,color:"#64748b",flexShrink:0}},
+                    c.season ? `${String(c.season).slice(2)}/${String(c.season+1).slice(2)}` : "—"
+                  ),
+                  React.createElement("div",{style:{flex:1,display:"flex",alignItems:"center",gap:7,minWidth:0}},
+                    React.createElement("img",{src:c.team?.logo,style:{width:20,height:20,objectFit:"contain",flexShrink:0},onError:e=>e.target.style.display="none"}),
+                    React.createElement("span",{style:{fontSize:13,fontWeight:500,color:"#0f172a",overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap"}},c.team?.name)
+                  ),
+                  React.createElement("div",{style:{width:36,textAlign:"center"}},
+                    rating ? React.createElement("span",{style:{
+                      background:ratingColor(rating),color:"#fff",
+                      fontSize:11,fontWeight:700,borderRadius:5,padding:"2px 5px"
+                    }},rating) : React.createElement("span",{style:{fontSize:11,color:"#94a3b8"}},"-")
+                  ),
+                  React.createElement("span",{style:{width:28,fontSize:12,color:"#0f172a",textAlign:"center",fontWeight:600}},s?.games?.appearences??"-"),
+                  React.createElement("span",{style:{width:36,fontSize:12,color:"#0f172a",textAlign:"center"}},s?.goals?.total??"-"),
+                  React.createElement("span",{style:{width:28,fontSize:12,color:"#f59e0b",textAlign:"center"}},s?.cards?.yellow??"-"),
+                  React.createElement("span",{style:{width:28,fontSize:12,color:"#ef4444",textAlign:"center"}},s?.cards?.red??"-")
+                );
+              })
+            )
+      ),
+
+      // ── TRANSFERTS ──
+      tab==="transferts" && React.createElement("div",null,
+        transfers.length===0
+          ? React.createElement("div",{style:{textAlign:"center",padding:"48px 24px",color:"#94a3b8",fontSize:14}},"Aucun transfert")
+          : React.createElement("div",null,
+              React.createElement("div",{style:{
+                display:"flex",padding:"10px 16px",background:"#f8fafc",
+                borderBottom:"1px solid #f1f5f9",fontSize:10,fontWeight:700,color:"#94a3b8"
+              }},
+                React.createElement("span",{style:{width:40,flexShrink:0}},"DATE"),
+                React.createElement("span",{style:{flex:1}}),"DE",
+                React.createElement("span",{style:{flex:1,textAlign:"right"}}),"VERS"
+              ),
+              transfers.map((t,i) => {
+                const yr = t.date ? new Date(t.date).getFullYear() : "—";
+                const typeMap = {Transfer:"Transfert",Loan:"Prêt",Free:"Libre","N/A":"—"};
+                return React.createElement("div",{key:i,style:{
+                  padding:"12px 16px",borderBottom:"1px solid #f1f5f9",background:"#fff"
+                }},
+                  React.createElement("div",{style:{fontSize:11,color:"#94a3b8",marginBottom:8,fontWeight:600}},
+                    t.date ? new Date(t.date).toLocaleDateString("fr-FR",{day:"2-digit",month:"2-digit",year:"numeric"}) : "—",
+                    " · ",
+                    React.createElement("span",{style:{color:"#64748b"}},typeMap[t.type]||t.type||"—")
+                  ),
+                  React.createElement("div",{style:{display:"flex",alignItems:"center",gap:8}},
+                    React.createElement("div",{style:{flex:1,display:"flex",alignItems:"center",gap:8,minWidth:0}},
+                      React.createElement("img",{src:t.teams?.out?.logo,style:{width:22,height:22,objectFit:"contain",flexShrink:0},onError:e=>e.target.style.display="none"}),
+                      React.createElement("span",{style:{fontSize:13,fontWeight:500,color:"#0f172a",overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap"}},t.teams?.out?.name)
+                    ),
+                    React.createElement("span",{style:{fontSize:16,color:"#94a3b8",flexShrink:0}},"→"),
+                    React.createElement("div",{style:{flex:1,display:"flex",alignItems:"center",gap:8,minWidth:0,justifyContent:"flex-end"}},
+                      React.createElement("span",{style:{fontSize:13,fontWeight:500,color:"#0f172a",overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap",textAlign:"right"}},t.teams?.in?.name),
+                      React.createElement("img",{src:t.teams?.in?.logo,style:{width:22,height:22,objectFit:"contain",flexShrink:0},onError:e=>e.target.style.display="none"})
+                    )
+                  )
+                );
+              })
+            )
+      )
+    )
+  );
+}
+
 
 function MatchDetailWrapper({state,onClose,onTeam}){
   if(!state)return null;
@@ -5440,6 +5773,7 @@ function MatchDetail({state,onClose,onTeam}){
   const[tab,setTab]=React.useState("resume");
   const[period,setPeriod]=React.useState("all");
   const[playerSheet,setPlayerSheet]=React.useState(null);
+  const[playerPage,setPlayerPage]=React.useState(null);
   const[standings,setStandings]=React.useState([]);
   const[roundStandings,setRoundStandings]=React.useState(null);
   const[venueInfo,setVenueInfo]=React.useState(null);
@@ -7682,7 +8016,8 @@ function MatchDetail({state,onClose,onTeam}){
           isPartial: isPartial,
           fix: fix,
           events: events,
-          injuries: injuries
+          injuries: injuries,
+          onPlayerClick: (player) => setPlayerSheet(player)
         })
       ):null,
 
@@ -7694,39 +8029,99 @@ function MatchDetail({state,onClose,onTeam}){
       ):null
     ),
 
-    playerSheet?React.createElement("div",{className:"md-player-sheet-bg",onClick:e=>{if(e.target===e.currentTarget)setPlayerSheet(null);}},
-      React.createElement("div",{className:"md-player-sheet-inner"},
-        React.createElement("button",{onClick:()=>setPlayerSheet(null),style:{float:"right",background:"none",border:"none",color:"rgba(17,24,39,0.69)",fontSize:22,cursor:"pointer"}},"✕"),
-        React.createElement("div",{style:{display:"flex",alignItems:"center",gap:14,marginBottom:18}},
-          React.createElement("div",{style:{width:56,height:56,borderRadius:"50%",border:"2px solid #FF6B4A",overflow:"hidden",background:"rgba(0,0,0,0.06)",display:"flex",alignItems:"center",justifyContent:"center",fontSize:20,color:"rgba(17,24,39,0.37)",flexShrink:0}},
-            playerSheet.photo?React.createElement("img",{src:playerSheet.photo,style:{width:"100%",height:"100%",objectFit:"cover"},onError:e=>{e.target.parentNode.textContent="👤"}}):"👤"
+    playerSheet ? React.createElement("div",{
+      style:{position:"fixed",inset:0,zIndex:550,display:"flex",flexDirection:"column",justifyContent:"flex-end",background:"rgba(0,0,0,.5)"},
+      onClick:e=>{if(e.target===e.currentTarget)setPlayerSheet(null);}
+    },
+      React.createElement("div",{style:{background:"#fff",borderRadius:"20px 20px 0 0",paddingBottom:"calc(env(safe-area-inset-bottom,0px)+16px)",maxHeight:"85vh",overflowY:"auto"}},
+        // Handle
+        React.createElement("div",{style:{width:36,height:4,borderRadius:2,background:"#e2e8f0",margin:"14px auto 16px"}}),
+        // Header joueur
+        React.createElement("div",{style:{display:"flex",alignItems:"center",gap:14,padding:"0 16px 14px",borderBottom:"1px solid #f1f5f9"}},
+          React.createElement("div",{style:{position:"relative",flexShrink:0}},
+            React.createElement("img",{src:playerSheet.photo,style:{width:64,height:64,borderRadius:"50%",objectFit:"cover",background:"#f1f5f9"},
+              onError:e=>e.target.style.display="none"}),
+            playerSheet.teamLogo && React.createElement("img",{src:playerSheet.teamLogo,style:{position:"absolute",bottom:-2,right:-2,width:22,height:22,borderRadius:"50%",border:"2px solid #fff",background:"#fff",objectFit:"contain"},onError:e=>e.target.style.display="none"})
           ),
-          React.createElement("div",null,
-            React.createElement("div",{style:{fontFamily:"'Barlow Condensed',sans-serif",fontSize:18,fontWeight:800,color:"#111827"}},[playerSheet.name]),
-            React.createElement("div",{style:{fontSize:12,color:"rgba(17,24,39,0.69)",marginTop:3}},
-              [playerSheet.pos,playerSheet.nationality,playerSheet.number?"#"+playerSheet.number:null].filter(Boolean).join(" · ")
+          React.createElement("div",{style:{flex:1,minWidth:0}},
+            React.createElement("div",{style:{fontSize:18,fontWeight:800,color:"#0f172a"}},playerSheet.name),
+            React.createElement("div",{style:{fontSize:12,color:"#64748b",marginTop:3}},
+              [playerSheet.pos,playerSheet.number?"#"+playerSheet.number:null].filter(Boolean).join(" · ")
             )
-          )
+          ),
+          playerSheet.stats?.games?.rating && React.createElement("div",{style:{
+            background: parseFloat(playerSheet.stats.games.rating)>=7.5?"#22c55e":parseFloat(playerSheet.stats.games.rating)>=6.5?"#f59e0b":"#ef4444",
+            color:"#fff",fontSize:16,fontWeight:800,borderRadius:10,padding:"6px 12px"
+          }},parseFloat(playerSheet.stats.games.rating).toFixed(1))
         ),
-        playerSheet.stats?React.createElement(React.Fragment,null,
-          playerSheet.stats.games?.rating&&(()=>{const r=parseFloat(playerSheet.stats.games.rating);const rc=r>=8?"#4CAF50":r>=7?"#FFC107":"#F44336"; return React.createElement("div",{style:{background:"#f2f4f8",borderRadius:10,padding:12,textAlign:"center",marginBottom:8}},React.createElement("div",{style:{fontFamily:"'Barlow Condensed',sans-serif",fontSize:28,fontWeight:800,color:rc}},[r.toFixed(1)]),React.createElement("div",{style:{fontSize:10,color:"rgba(17,24,39,0.37)",marginTop:3}},"Note du match"));})(),
-          React.createElement("div",{style:{display:"grid",gridTemplateColumns:"repeat(3,1fr)",gap:8}},
-            [{val:playerSheet.stats.games?.minutes??"-",lbl:"Minutes"},
-             {val:playerSheet.stats.goals?.total??0,lbl:"Buts"},
-             {val:playerSheet.stats.goals?.assists??0,lbl:"Passes D"},
-             {val:playerSheet.stats.shots?.on??0,lbl:"Tirs"},
-             {val:playerSheet.stats.cards?.yellow??0,lbl:"🟨",color:"#00c170"},
-             {val:playerSheet.stats.cards?.red??0,lbl:"🟥",color:"#e53935"},
-            ].map(({val,lbl,color})=>
-              React.createElement("div",{key:lbl,style:{background:"#f2f4f8",borderRadius:10,padding:10,textAlign:"center"}},
-                React.createElement("div",{style:{fontFamily:"'Barlow Condensed',sans-serif",fontSize:20,fontWeight:800,color:color||"#FF6B4A"}},[val]),
-                React.createElement("div",{style:{fontSize:10,color:"rgba(17,24,39,0.69)",marginTop:3}},[lbl])
-              )
-            )
-          )
-        ):React.createElement("div",{style:{textAlign:"center",color:"rgba(17,24,39,0.35)",fontSize:12,padding:12}},"Statistiques non disponibles")
+        // Stats du match
+        playerSheet.stats && React.createElement("div",{style:{padding:"14px 16px"}},
+          // Infos générales
+          React.createElement("div",{style:{display:"flex",gap:8,marginBottom:14,flexWrap:"wrap"}},
+            [{lbl:"Minutes",val:playerSheet.stats.games?.minutes??"-"},
+             {lbl:"Buts",val:playerSheet.stats.goals?.total??0},
+             {lbl:"Passes D",val:playerSheet.stats.goals?.assists??0},
+             {lbl:"Tirs",val:playerSheet.stats.shots?.on??0},
+             {lbl:"🟨",val:playerSheet.stats.cards?.yellow??0},
+             {lbl:"🟥",val:playerSheet.stats.cards?.red??0},
+            ].map(({lbl,val})=>React.createElement("div",{key:lbl,style:{flex:"1 0 auto",minWidth:60,background:"#f8fafc",borderRadius:10,padding:"8px 6px",textAlign:"center",border:"1px solid #f1f5f9"}},
+              React.createElement("div",{style:{fontSize:18,fontWeight:700,color:"#0f172a"}},val),
+              React.createElement("div",{style:{fontSize:10,color:"#94a3b8",marginTop:2}},lbl)
+            ))
+          ),
+          // Stats spécifiques gardien
+          playerSheet.stats.goalkeeper && React.createElement("div",{style:{background:"#f8fafc",borderRadius:12,padding:"12px 14px",marginBottom:14}},
+            React.createElement("div",{style:{fontSize:11,fontWeight:700,color:"#94a3b8",textTransform:"uppercase",letterSpacing:.5,marginBottom:8}},"Gardien"),
+            [{lbl:"Arrêts",val:playerSheet.stats.goalkeeper?.saves??0},
+             {lbl:"Buts encaissés",val:playerSheet.stats.goals?.conceded??0},
+             {lbl:"Relances poing",val:playerSheet.stats.goalkeeper?.punches??0},
+             {lbl:"Relances main",val:playerSheet.stats.goalkeeper?.throws??0},
+            ].map(({lbl,val})=>React.createElement("div",{key:lbl,style:{display:"flex",justifyContent:"space-between",padding:"5px 0",borderBottom:"1px solid #f1f5f9"}},
+              React.createElement("span",{style:{fontSize:13,color:"#64748b"}},lbl),
+              React.createElement("span",{style:{fontSize:13,fontWeight:600,color:"#0f172a"}},val??"—")
+            ))
+          ),
+          // Stats passes
+          React.createElement("div",{style:{background:"#f8fafc",borderRadius:12,padding:"12px 14px",marginBottom:14}},
+            React.createElement("div",{style:{fontSize:11,fontWeight:700,color:"#94a3b8",textTransform:"uppercase",letterSpacing:.5,marginBottom:8}},"Passes"),
+            [{lbl:"Passes réussies",val:playerSheet.stats.passes?.accuracy?`${playerSheet.stats.passes?.total??0} (${playerSheet.stats.passes.accuracy}%)`:playerSheet.stats.passes?.total??0},
+             {lbl:"Passes clés",val:playerSheet.stats.passes?.key??0},
+            ].map(({lbl,val})=>React.createElement("div",{key:lbl,style:{display:"flex",justifyContent:"space-between",padding:"5px 0",borderBottom:"1px solid #f1f5f9"}},
+              React.createElement("span",{style:{fontSize:13,color:"#64748b"}},lbl),
+              React.createElement("span",{style:{fontSize:13,fontWeight:600,color:"#0f172a"}},val??"—")
+            ))
+          ),
+          // Bouton profil complet
+          React.createElement("button",{
+            onClick:()=>{
+              setPlayerPage({
+                playerId: playerSheet.id,
+                playerName: playerSheet.name,
+                playerPhoto: playerSheet.photo,
+                playerPos: playerSheet.pos,
+                playerNumber: playerSheet.number,
+                playerNationality: playerSheet.nationality,
+                matchStats: playerSheet.stats
+              });
+              setPlayerSheet(null);
+            },
+            style:{
+              width:"100%",padding:"14px",marginTop:8,
+              background:"#0f172a",color:"#fff",
+              border:"none",borderRadius:14,
+              fontSize:13,fontWeight:700,letterSpacing:.5,
+              cursor:"pointer",textTransform:"uppercase"
+            }
+          },"Profil du joueur")
+        )
       )
     ):null,
+
+    // ── PAGE JOUEUR COMPLÈTE ──
+    playerPage && React.createElement(PlayerPage, {
+      ...playerPage,
+      onClose: () => setPlayerPage(null)
+    }),
 
     // Fiche compétition (bottom sheet)
     showLeagueSheet ? React.createElement(LeagueSheet, {
