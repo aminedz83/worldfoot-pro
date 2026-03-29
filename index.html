@@ -48,7 +48,7 @@
     <script>
         if ("serviceWorker" in navigator) {
             const sw = `
-    const C='wf-pro-v231';
+    const C='wf-pro-v232';
     const API_KEY='3a14b1347c177458e2f23bea7899e9cf';
     const BASE='https://v3.football.api-sports.io';
     let prevScores = {};
@@ -3021,6 +3021,7 @@ function PlayerPage({ playerId, playerName, playerPhoto, playerPos, playerNumber
   const [career, setCareer] = React.useState([]);
   const [transfers, setTransfers] = React.useState([]);
   const [fixtures, setFixtures] = React.useState([]);
+  const [fixtureStats, setFixtureStats] = React.useState({}); // {fixtureId: {rating, minutes, saves, onBench}}
   const [loading, setLoading] = React.useState(true);
   const curSeason = new Date().getMonth() >= 6 ? new Date().getFullYear() : new Date().getFullYear() - 1;
 
@@ -3064,6 +3065,52 @@ function PlayerPage({ playerId, playerName, playerPhoto, playerPos, playerNumber
            .sort((a,b) => new Date(b.fixture.date) - new Date(a.fixture.date))
            .slice(0,30);
           setFixtures(allFix);
+          
+          // Charger stats + lineups pour chaque match (API Pro)
+          // On charge par batch de 5 pour ne pas surcharger
+          const loadMatchStats = async (fixList) => {
+            const stats = {};
+            for(let i = 0; i < Math.min(fixList.length, 20); i++) {
+              const fid = fixList[i].fixture?.id;
+              if(!fid || cancelled) break;
+              try {
+                const [players, lineups] = await Promise.all([
+                  api(`/fixtures/players?fixture=${fid}`, 86400000).catch(()=>[]),
+                  api(`/fixtures/lineups?fixture=${fid}`, 86400000).catch(()=>[]),
+                ]);
+                // Stats du joueur dans ce match
+                const allPlayers = (players||[]).flatMap(t => t.players||[]);
+                const pData = allPlayers.find(p => p.player?.id === playerId);
+                const pStats = pData?.statistics?.[0];
+                
+                // Vérifier si sur le banc dans les lineups
+                let onBench = false;
+                let didPlay = false;
+                if(lineups && lineups.length > 0) {
+                  const allLineups = lineups.flatMap(l => [...(l.startXI||[]), ...(l.substitutes||[])]);
+                  const pInLineup = allLineups.find(p => p.player?.id === playerId);
+                  const inStartXI = (lineups.flatMap(l => l.startXI||[])).find(p => p.player?.id === playerId);
+                  const inSubs = (lineups.flatMap(l => l.substitutes||[])).find(p => p.player?.id === playerId);
+                  onBench = !!inSubs && !inStartXI;
+                  didPlay = !!pStats?.games?.minutes && pStats.games.minutes > 0;
+                }
+                
+                if(pStats || onBench) {
+                  stats[fid] = {
+                    rating: pStats?.games?.rating ? parseFloat(pStats.games.rating).toFixed(1) : null,
+                    minutes: pStats?.games?.minutes || null,
+                    saves: pStats?.goalkeeper?.saves || null,
+                    goals: pStats?.goals?.total || null,
+                    assists: pStats?.goals?.assists || null,
+                    onBench: onBench && !pStats?.games?.minutes,
+                    didNotPlay: !onBench && !pStats?.games?.minutes,
+                  };
+                }
+              } catch(e) {}
+            }
+            if(!cancelled) setFixtureStats(stats);
+          };
+          loadMatchStats(allFix);
         });
       }
     }).catch(()=>{});
@@ -3144,7 +3191,24 @@ function PlayerPage({ playerId, playerName, playerPhoto, playerPos, playerNumber
   const nat = playerNationality || player?.nationality;
   const age = player?.age;
   const birth = player?.birth?.date;
-  const marketVal = null; // API gratuite ne donne pas la valeur marchande
+  const [marketVal, setMarketVal] = React.useState(null);
+  
+  // Charger valeur marchande depuis Transfermarkt via API non officielle
+  React.useEffect(() => {
+    if(!playerId || !player?.name) return;
+    // Utiliser l'API transfermarkt-api.vercel.app (gratuite et publique)
+    const searchName = encodeURIComponent(player.name);
+    fetch(`https://transfermarkt-api.vercel.app/players/search/${searchName}`)
+      .then(r => r.json())
+      .then(data => {
+        const found = data?.results?.find(p => 
+          p.name?.toLowerCase().includes(player.name?.toLowerCase().split(" ").pop()?.toLowerCase())
+        );
+        if(found?.marketValue) {
+          setMarketVal(found.marketValue);
+        }
+      }).catch(()=>{});
+  }, [player?.name]);
 
   // Poste traduit
   const posLabel = p => {
@@ -3222,6 +3286,9 @@ function PlayerPage({ playerId, playerName, playerPhoto, playerPos, playerNumber
           React.createElement("div", {style:{fontSize:13,color:"#64748b",marginTop:4}},
             [age && `${age} ans`, birth && `(${yyyymm(birth)})`].filter(Boolean).join(" ")
           ),
+          marketVal && React.createElement("div", {style:{
+            fontSize:12,color:"#059669",fontWeight:700,marginTop:3
+          }}, `Valeur marchande: ${marketVal}`),
           currentClub && React.createElement("div", {style:{marginTop:8}},
             React.createElement("div",{style:{display:"flex",alignItems:"center",gap:8,padding:"8px 12px",background:"#f8fafc",borderRadius:10,border:"1px solid #f1f5f9"}},
               React.createElement("img",{src:currentClub.team?.logo,style:{width:28,height:28,objectFit:"contain",flexShrink:0},onError:e=>e.target.style.display="none"}),
@@ -3300,9 +3367,15 @@ function PlayerPage({ playerId, playerName, playerPhoto, playerPos, playerNumber
               const playerTeam = isPlayerTeamHome ? home : isPlayerTeamAway ? away : null;
               const oppTeam = isPlayerTeamHome ? away : isPlayerTeamAway ? home : null;
               
+              const fStats = fixtureStats[f.fixture?.id];
+              const onBench = fStats?.onBench;
+              const rating = fStats?.rating;
+              const minutes = fStats?.minutes;
+              const saves = fStats?.saves;
+              
               return React.createElement("div", {key:f.fixture?.id, style:{
                 display:"flex",alignItems:"center",gap:0,
-                padding:"0 16px",borderBottom:"1px solid #f1f5f9",background:"#fff",minHeight:52
+                padding:"0 16px",borderBottom:"1px solid #f1f5f9",background:"#fff",minHeight:56
               }},
                 React.createElement("div",{style:{width:42,fontSize:11,color:"#94a3b8",fontWeight:500,flexShrink:0}},ddmm(f.fixture?.date)),
                 React.createElement("div",{style:{flex:1,display:"flex",flexDirection:"column",gap:3,padding:"10px 0"}},
@@ -3315,11 +3388,29 @@ function PlayerPage({ playerId, playerName, playerPhoto, playerPos, playerNumber
                     React.createElement("span",{style:{fontSize:13,fontWeight:away?.id===playerTeamId?700:400,color:away?.id===playerTeamId?"#0f172a":"#64748b",overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap"}},away?.name)
                   )
                 ),
-                done && React.createElement("div",{style:{display:"flex",flexDirection:"column",alignItems:"flex-end",gap:3,marginRight:8,minWidth:20}},
+                // Stats du joueur dans ce match
+                React.createElement("div",{style:{display:"flex",flexDirection:"column",alignItems:"center",gap:2,marginRight:8,minWidth:60}},
+                  onBench
+                    ? React.createElement("span",{style:{fontSize:11,color:"#94a3b8",fontStyle:"italic"}},"Sur le banc")
+                    : fStats
+                    ? React.createElement(React.Fragment,null,
+                        React.createElement("div",{style:{display:"flex",alignItems:"center",gap:4}},
+                          minutes && React.createElement("span",{style:{fontSize:10,color:"#94a3b8"}},`${minutes}'`),
+                          saves!=null && React.createElement("span",{style:{fontSize:10,color:"#64748b"}},`✋${saves}`)
+                        ),
+                        rating && React.createElement("div",{style:{
+                          background:parseFloat(rating)>=7.5?"#22c55e":parseFloat(rating)>=6.5?"#f59e0b":"#ef4444",
+                          color:"#fff",fontSize:11,fontWeight:700,
+                          borderRadius:5,padding:"2px 6px"
+                        }},rating)
+                      )
+                    : null
+                ),
+                done && React.createElement("div",{style:{display:"flex",flexDirection:"column",alignItems:"flex-end",gap:3,minWidth:20}},
                   React.createElement("span",{style:{fontSize:13,fontWeight:hg>ag?700:400,color:"#0f172a"}},hg??"-"),
                   React.createElement("span",{style:{fontSize:13,fontWeight:ag>hg?700:400,color:"#0f172a"}},ag??"-")
                 ),
-                res && React.createElement("div",{style:{width:22,height:22,borderRadius:6,background:RC[res],display:"flex",alignItems:"center",justifyContent:"center",fontSize:10,fontWeight:800,color:"#fff",flexShrink:0}},RL[res])
+                res && React.createElement("div",{style:{width:22,height:22,borderRadius:6,background:RC[res],display:"flex",alignItems:"center",justifyContent:"center",fontSize:10,fontWeight:800,color:"#fff",flexShrink:0,marginLeft:6}},RL[res])
               );
             })
       ),
