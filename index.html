@@ -3028,10 +3028,31 @@ function PlayerPage({ playerId, playerName, playerPhoto, playerPos, playerNumber
   React.useEffect(() => {
     if(!playerId) return;
     let cancelled = false;
+    // Vider immédiatement les données précédentes
     setLoading(true);
+    setFixtures([]);
+    setFixtureStats({});
+    setInfo(null);
+    setCareer([]);
+    setTransfers([]);
 
-    // Étape 1 : trouver le club actuel via /players/squads?player=X
-    api(`/players/squads?player=${playerId}`, 3600000).then(squadData => {
+    // Étape 1 : squad + fixtures/player en parallèle pour accélérer
+    // Lancer fixtures?player immédiatement sans attendre le squad
+    Promise.allSettled([
+      api(`/fixtures?player=${playerId}&season=${curSeason}`, 3600000),
+      api(`/fixtures?player=${playerId}&season=${curSeason-1}`, 86400000),
+    ]).then(function(natResults) {
+      if(cancelled) return;
+      var natFixes = [];
+      for(var ri=0;ri<natResults.length;ri++){
+        var rv=natResults[ri];
+        if(rv.status==='fulfilled'&&rv.value) natFixes=natFixes.concat(rv.value);
+      }
+      // Stocker pour fusion après squad
+      if(!cancelled) window['_natFix_'+playerId] = natFixes;
+    }).catch(function(){});
+
+    api(`/players/squads?player=${playerId}`, 21600000).then(squadData => {
       if(cancelled) return;
       const currentTeam = squadData?.[0]?.team;
       const currentTeamId = currentTeam?.id;
@@ -3052,21 +3073,25 @@ function PlayerPage({ playerId, playerName, playerPhoto, playerPos, playerNumber
         }).catch(()=>{});
 
         // Matchs via /fixtures?player=X — inclut club + sélection nationale
-        // Club actuel (2 saisons) + sélection nationale via player endpoint
+        // Club actuel (2 saisons) — fixtures?player déjà lancé en parallèle
         Promise.allSettled([
           api(`/fixtures?team=${currentTeamId}&season=${curSeason}`, 3600000),
           api(`/fixtures?team=${currentTeamId}&season=${curSeason-1}`, 86400000),
-          api(`/fixtures?player=${playerId}&season=${curSeason}`, 3600000),
-          api(`/fixtures?player=${playerId}&season=${curSeason-1}`, 86400000),
         ]).then(fixResults => {
           if(cancelled) return;
           const seen = {};
           const allFix = [];
+          // Fusionner avec les matchs nationaux pré-chargés
+          var natFix = window['_natFix_'+playerId] || [];
+          var allSources = [natFix];
           for(var ri=0;ri<fixResults.length;ri++){
             var rv = fixResults[ri];
-            if(rv.status!=='fulfilled'||!rv.value) continue;
-            for(var fi=0;fi<rv.value.length;fi++){
-              var f = rv.value[fi];
+            if(rv.status==='fulfilled'&&rv.value) allSources.push(rv.value);
+          }
+          for(var si=0;si<allSources.length;si++){
+            var src = allSources[si];
+            for(var fi=0;fi<src.length;fi++){
+              var f = src[fi];
               var fid = f.fixture && f.fixture.id;
               if(!fid||seen[fid]) continue;
               if(["FT","AET","PEN","AWD","WO"].includes(f.fixture.status && f.fixture.status.short)){
@@ -3075,6 +3100,7 @@ function PlayerPage({ playerId, playerName, playerPhoto, playerPos, playerNumber
               }
             }
           }
+          delete window['_natFix_'+playerId];
           allFix.sort(function(a,b){return new Date(b.fixture.date)-new Date(a.fixture.date);});
           var limited = allFix.slice(0,40);
           setFixtures(limited);
