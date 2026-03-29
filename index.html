@@ -48,7 +48,7 @@
     <script>
         if ("serviceWorker" in navigator) {
             const sw = `
-    const C='wf-pro-v198';
+    const C='wf-pro-v199';
     const API_KEY='3a14b1347c177458e2f23bea7899e9cf';
     const BASE='https://v3.football.api-sports.io';
     let prevScores = {};
@@ -10469,548 +10469,461 @@ function JSKTab() {
 }
 
 function TeamPage({ teamId, teamName, teamLogo, leagueId, season, onClose }) {
-  const [info,     setInfo]     = useState(null);
-  const [results,  setResults]  = useState([]);
-  const [next,     setNext]     = useState([]);
-  const [standing, setStanding] = useState(null);
-  const [topScore, setTopScore] = useState([]);
-  const [loading,  setLoading]  = useState(true);
-  const [tab,      setTab]      = useState("resultats");
+  const [info,      setInfo]      = useState(null);
+  const [results,   setResults]   = useState([]);
+  const [upcoming,  setUpcoming]  = useState([]);
+  const [standings, setStandings] = useState([]);
+  const [squad,     setSquad]     = useState([]);
+  const [transfers, setTransfers] = useState([]);
+  const [loading,   setLoading]   = useState(true);
+  const [tab,       setTab]       = useState("resultats");
+  const [trFilter,  setTrFilter]  = useState("all"); // all | in | out
 
   useEffect(() => {
-    if (!teamId) return;
+    if(!teamId) return;
     let cancelled = false;
     setLoading(true);
+    setResults([]); setUpcoming([]); setStandings([]); setSquad([]); setTransfers([]);
 
-    const currentSeason = season || (new Date().getMonth() >= 6 ? new Date().getFullYear() : new Date().getFullYear() - 1);
+    const curSeason = season || (new Date().getMonth() >= 6 ? new Date().getFullYear() : new Date().getFullYear()-1);
 
     Promise.allSettled([
       api(`/teams?id=${teamId}`, 86400000),
-      api(`/fixtures?team=${teamId}&season=${currentSeason}`, TTL.DONE),
-      api(`/fixtures?team=${teamId}&season=${currentSeason - 1}`, TTL.DONE),
-      api(`/fixtures?team=${teamId}&next=10`, TTL.UPCOMING),
-    ]).then(async ([rInfo, rRes, rResPrev, rNext]) => {
-      if (cancelled) return;
-      if (rInfo.status === "fulfilled") setInfo(rInfo.value?.[0] || null);
-      const thisSeason = rRes.status === "fulfilled" ? (rRes.value || []) : [];
-      const prevSeason = rResPrev.status === "fulfilled" ? (rResPrev.value || []) : [];
-      const allDone = [...thisSeason, ...prevSeason]
-        .filter(f => DONE_ST.has(f.fixture?.status?.short))
-        .sort((a,b) => new Date(b.fixture.date) - new Date(a.fixture.date));
-      const recentFix = allDone.slice(0, 30);
-      const nextFix = rNext.status === "fulfilled" ? (rNext.value || []) : [];
-      if (recentFix.length) setResults(recentFix);
-      if (nextFix.length)   setNext(nextFix);
+      api(`/fixtures?team=${teamId}&season=${curSeason}&status=FT,AET,PEN`, TTL.DONE),
+      api(`/fixtures?team=${teamId}&next=15`, TTL.UPCOMING),
+      api(`/players/squads?team=${teamId}`, 86400000),
+      api(`/transfers?team=${teamId}`, 86400000),
+    ]).then(async ([rInfo, rRes, rNext, rSquad, rTransfers]) => {
+      if(cancelled) return;
 
-      const allFix = [...recentFix, ...nextFix];
-      const detectedLeague = allFix.find(f => f.league?.id)?.league;
-      const lid  = leagueId  || detectedLeague?.id     || 39;
-      const seas = season    || detectedLeague?.season  || new Date().getFullYear();
+      if(rInfo.status==="fulfilled") setInfo(rInfo.value?.[0]||null);
 
-      const [rStand, rPlayers] = await Promise.allSettled([
-        api(`/standings?league=${lid}&season=${seas}`, TTL.STANDING),
-        api(`/players?team=${teamId}&season=${seas}`, 3600000),
-      ]);
-      if (cancelled) return;
+      const done = (rRes.status==="fulfilled" ? rRes.value||[] : [])
+        .sort((a,b)=>new Date(b.fixture.date)-new Date(a.fixture.date))
+        .slice(0,30);
+      setResults(done);
 
-      if (rStand.status === "fulfilled") {
-        const rows = (rStand.value || []).flatMap(g =>
-          Array.isArray(g) ? g : (g?.league?.standings || []).flat()
-        );
-        setStanding(rows.find(r => r.team?.id === teamId) || null);
+      const nxt = rNext.status==="fulfilled" ? rNext.value||[] : [];
+      setUpcoming(nxt);
+
+      // Standings
+      const allFix = [...done, ...nxt];
+      const det = allFix.find(f=>f.league?.id);
+      const lid  = leagueId || det?.league?.id || 186;
+      const seas = season   || det?.league?.season || curSeason;
+      const rStand = await api(`/standings?league=${lid}&season=${seas}`, TTL.DONE).catch(()=>null);
+      if(!cancelled && rStand) {
+        const rows = (rStand||[]).flatMap(g=>Array.isArray(g)?g:(g?.league?.standings||[]).flat());
+        setStandings(rows);
       }
-      if (rPlayers.status === "fulfilled") {
-        const sorted = (rPlayers.value || [])
-          .filter(p => (p.statistics?.[0]?.goals?.total || 0) > 0)
-          .sort((a, b) => (b.statistics?.[0]?.goals?.total || 0) - (a.statistics?.[0]?.goals?.total || 0));
-        setTopScore(sorted.slice(0, 5));
+
+      if(rSquad.status==="fulfilled") {
+        const sq = rSquad.value?.[0]?.players||[];
+        setSquad(sq);
       }
-      setLoading(false);
+
+      if(rTransfers.status==="fulfilled") {
+        const tr = (rTransfers.value||[])
+          .sort((a,b)=>new Date(b.transfers?.[0]?.date||0)-new Date(a.transfers?.[0]?.date||0));
+        setTransfers(tr);
+      }
+
+      if(!cancelled) setLoading(false);
     });
-    return () => { cancelled = true; };
+    return ()=>{ cancelled=true; };
   }, [teamId, leagueId, season]);
 
-  const FC = { W: "#00c170", D: "#f59e0b", L: "#ef4444" };
-  const FL = { W: "V", D: "N", L: "D" };
-  const getRes = (m) => {
-    const isH = m.teams?.home?.id === teamId;
-    const gF = isH ? m.goals?.home : m.goals?.away;
-    const gA = isH ? m.goals?.away : m.goals?.home;
-    if (gF == null || gA == null) return null;
-    return gF > gA ? "W" : gF < gA ? "L" : "D";
+  // Helpers
+  const getRes = m => {
+    const h = m.teams?.home?.id===teamId;
+    const gF = h ? m.goals?.home : m.goals?.away;
+    const gA = h ? m.goals?.away : m.goals?.home;
+    if(gF==null||gA==null) return null;
+    return gF>gA?"W":gF<gA?"L":"D";
   };
-  const last5 = [...results].reverse().slice(0, 5);
-  const formStr = last5.map(m => getRes(m)).filter(Boolean);
-  const winPct = results.length
-    ? Math.round((results.filter(m => getRes(m) === "W").length / results.length) * 100)
-    : null;
+  const RC = {W:"#22c55e",D:"#f59e0b",L:"#ef4444"};
+  const RL = {W:"V",D:"N",L:"D"};
+  const hhmm = d => d ? new Date(d).toLocaleTimeString("fr-FR",{hour:"2-digit",minute:"2-digit"}) : "";
+  const ddmm = d => d ? new Date(d).toLocaleDateString("fr-FR",{day:"2-digit",month:"2-digit"}) : "";
+  const fmt  = d => d ? new Date(d).toLocaleDateString("fr-FR",{day:"2-digit",month:"short"}) : "";
 
-  const heroGrad = "linear-gradient(180deg, #0b0f1a 0%, #111827 60%, #1a1d23 100%)";
+  const last5 = [...results].slice(0,5);
+  const myStand = standings.find(r=>r.team?.id===teamId);
 
-  const FormDots = ({ matches, size = 26 }) => {
-    const last = [...matches].reverse().slice(0, 5);
-    return (
-      <div style={{ display: "flex", gap: 4 }}>
-        {last.map((m, i) => {
-          const r = getRes(m);
-          if (!r) return null;
-          return (
-            <div key={i} style={{
-              width: size, height: size, borderRadius: size / 3,
-              background: FC[r],
-              display: "flex", alignItems: "center", justifyContent: "center",
-              color: "#fff", fontSize: size * .38, fontWeight: 900,
-              boxShadow: `0 2px 6px ${FC[r]}55`
-            }}>{FL[r]}</div>
-          );
-        })}
-      </div>
-    );
-  };
-
-  const MatchRow = ({ m, idx }) => {
-    const isHome  = m.teams?.home?.id === teamId;
-    const opp     = isHome ? m.teams?.away : m.teams?.home;
-    const gF = isHome ? m.goals?.home : m.goals?.away;
-    const gA = isHome ? m.goals?.away : m.goals?.home;
-    const sh = m.fixture?.status?.short;
-    const done = ["FT","AET","PEN","AWD","WO"].includes(sh);
-    const ns   = ["NS","TBD","PST"].includes(sh);
-    const res  = done && gF != null ? getRes(m) : null;
-
-    return (
-      <div style={{
-        display: "flex", alignItems: "center", gap: 10,
-        padding: "12px 16px",
-        borderBottom: "1px solid rgba(0,0,0,.05)",
-        background: "#fff",
-      }}>
-        <div style={{
-          width: 28, height: 28, borderRadius: 8, flexShrink: 0,
-          background: res ? FC[res] : ns ? "#f1f5f9" : "#f1f5f9",
-          display: "flex", alignItems: "center", justifyContent: "center",
-          boxShadow: res ? `0 2px 6px ${FC[res]}44` : "none"
-        }}>
-          {res
-            ? <span style={{ color: "#fff", fontSize: 10, fontWeight: 900 }}>{FL[res]}</span>
-            : <span style={{ color: "#94a3b8", fontSize: 9, fontWeight: 700 }}>{ns ? hhmm(m.fixture?.date) : "—"}</span>
-          }
-        </div>
-        <Logo src={opp?.logo} size={26} />
-        <div style={{ flex: 1, minWidth: 0 }}>
-          <div style={{ fontSize: 13, fontWeight: 700, color: "#0f1117", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
-            <span style={{ fontSize: 10, color: "#94a3b8", fontWeight: 600, marginRight: 4 }}>{isHome ? "DOM" : "EXT"}</span>
-            {opp?.name}
-          </div>
-          <div style={{ fontSize: 10, color: "#94a3b8", marginTop: 2, display: "flex", alignItems: "center", gap: 4 }}>
-            <Logo src={m.league?.logo} size={10} />
-            {m.league?.name} · {DL(m.fixture?.date?.slice(0, 10))}
-          </div>
-        </div>
-        {done && gF != null && (
-          <div style={{
-            fontFamily: "monospace", fontSize: 15, fontWeight: 900,
-            color: res === "W" ? "#00c170" : res === "L" ? "#ef4444" : "#f59e0b",
-            background: res === "W" ? "rgba(0,193,112,.08)" : res === "L" ? "rgba(239,68,68,.08)" : "rgba(245,158,11,.08)",
-            borderRadius: 8, padding: "4px 10px", flexShrink: 0,
-            border: `1px solid ${res === "W" ? "rgba(0,193,112,.2)" : res === "L" ? "rgba(239,68,68,.2)" : "rgba(245,158,11,.2)"}`
-          }}>{gF} – {gA}</div>
-        )}
-        {ns && (
-          <div style={{ fontSize: 10, color: "#94a3b8", background: "#f8fafc", borderRadius: 8, padding: "4px 10px", flexShrink: 0, fontWeight: 600, border: "1px solid #e8edf3" }}>
-            {hhmm(m.fixture?.date)}
-          </div>
-        )}
-      </div>
-    );
-  };
-
+  // ── TABS ──────────────────────────────────────────────────
   const TABS = [
-    { id: "resultats", label: "Résultats", icon: "📊" },
-    { id: "prochains", label: "Prochains", icon: "📅" },
-    { id: "stats",     label: "Stats",     icon: "🏆" },
-    { id: "infos",     label: "Infos",     icon: "🏟️" },
+    {id:"resultats",  label:"RÉSULTATS"},
+    {id:"calendrier", label:"CALENDRIER"},
+    {id:"classement", label:"CLASSEMENT"},
+    {id:"effectif",   label:"EFFECTIF"},
+    {id:"transferts", label:"TRANSFERTS"},
   ];
 
-  if (loading) {
-    return (
-      <div className="md-overlay" style={{ background: heroGrad }}>
-        <div className="md-topbar" style={{ background: "transparent", borderBottom: "none", paddingTop: "calc(env(safe-area-inset-top, 0px) + 14px)" }}>
-          <button onClick={onClose} style={{ background: "rgba(0,193,112,.85)", border: "none", color: "#fff", width: 44, height: 44, borderRadius: 14, cursor: "pointer", fontSize: 22, fontWeight: 700, boxShadow: "0 4px 12px rgba(0,193,112,.4)", display:"flex", alignItems:"center", justifyContent:"center" }}>←</button>
-        </div>
-        <div style={{ flex: 1, display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", gap: 16 }}>
-          <Logo src={teamLogo} size={64} />
-          <Spin s={28} c="#00c170" />
-          <span style={{ color: "rgba(255,255,255,.4)", fontSize: 13 }}>Chargement de la fiche…</span>
-        </div>
-      </div>
-    );
-  }
+  // ── GROUP fixtures by league ───────────────────────────────
+  const groupByLeague = (fixtures) => {
+    const map = {};
+    fixtures.forEach(f => {
+      const key = f.league?.id;
+      if(!map[key]) map[key] = {league:f.league, matches:[]};
+      map[key].matches.push(f);
+    });
+    return Object.values(map);
+  };
+
+  // ── POSITION LABEL ────────────────────────────────────────
+  const posLabel = pos => {
+    if(!pos) return "—";
+    const p = pos.toLowerCase();
+    if(p==="goalkeeper") return "Gardien";
+    if(p==="defender")   return "Défenseur";
+    if(p==="midfielder") return "Milieu";
+    if(p==="attacker")   return "Attaquant";
+    return pos;
+  };
+  const posOrder = ["Gardien","Défenseur","Milieu","Attaquant"];
+
+  // ── TRANSFER DIRECTION ───────────────────────────────────
+  const trDir = tr => {
+    const t = tr.transfers?.[0];
+    if(!t) return null;
+    if(t.teams?.in?.id===teamId)  return "in";
+    if(t.teams?.out?.id===teamId) return "out";
+    return null;
+  };
+
+  const S = {
+    // Layout
+    page:  {position:"fixed",inset:0,zIndex:500,background:"#f2f3f5",display:"flex",flexDirection:"column",overflowY:"hidden"},
+    // Header
+    hdr:   {background:"#fff",flexShrink:0,paddingTop:"calc(env(safe-area-inset-top,0px) + 10px)"},
+    topBar:{display:"flex",alignItems:"center",gap:10,padding:"0 14px 12px"},
+    backBtn:{background:"none",border:"none",cursor:"pointer",padding:4,display:"flex",alignItems:"center"},
+    heroRow:{display:"flex",alignItems:"center",gap:14,padding:"0 16px 14px"},
+    logoBox:{width:72,height:72,borderRadius:16,background:"#f8fafc",border:"1px solid #e8edf3",display:"flex",alignItems:"center",justifyContent:"center",flexShrink:0},
+    teamName:{fontSize:22,fontWeight:800,color:"#0f172a",lineHeight:1.1},
+    country:{fontSize:12,color:"#94a3b8",marginTop:3,display:"flex",alignItems:"center",gap:5},
+    stadRow:{display:"flex",alignItems:"center",gap:10,padding:"10px 16px",borderTop:"1px solid #f1f5f9",borderBottom:"1px solid #f1f5f9"},
+    // Tabs
+    tabBar:{display:"flex",overflowX:"auto",scrollbarWidth:"none",borderBottom:"2px solid #f1f5f9",background:"#fff"},
+    tabBtn:(active)=>({
+      flexShrink:0,padding:"12px 16px",background:"none",border:"none",cursor:"pointer",
+      fontSize:11,fontWeight:700,letterSpacing:.5,
+      color:active?"#ef4444":"#64748b",
+      borderBottom:active?"2px solid #ef4444":"2px solid transparent",
+      marginBottom:-2,whiteSpace:"nowrap"
+    }),
+    // Content
+    scroll:{flex:1,overflowY:"auto",WebkitOverflowScrolling:"touch"},
+    lgHdr:{display:"flex",alignItems:"center",gap:10,padding:"12px 16px",background:"#f8fafc",borderBottom:"1px solid #f1f5f9"},
+    // Match row — style Flashscore
+    matchRow:{display:"flex",alignItems:"center",gap:0,padding:"0 16px",borderBottom:"1px solid #f1f5f9",background:"#fff",minHeight:52},
+    dateCol:{width:42,fontSize:11,color:"#94a3b8",fontWeight:500,flexShrink:0},
+    teamsCol:{flex:1,display:"flex",flexDirection:"column",gap:3,padding:"10px 0"},
+    teamLine:{display:"flex",alignItems:"center",gap:8},
+    scoreCol:{display:"flex",flexDirection:"column",alignItems:"flex-end",gap:3,minWidth:20,marginRight:8},
+    badgeCol:{width:26,display:"flex",alignItems:"center",justifyContent:"center"},
+    badge:(r)=>({
+      width:22,height:22,borderRadius:6,background:RC[r]||"#e2e8f0",
+      display:"flex",alignItems:"center",justifyContent:"center",
+      fontSize:10,fontWeight:800,color:"#fff"
+    }),
+    // Standing
+    standHdr:{display:"flex",padding:"8px 16px",background:"#f8fafc",borderBottom:"1px solid #f1f5f9"},
+    standRow:(active)=>({
+      display:"flex",alignItems:"center",padding:"10px 16px",
+      borderBottom:"1px solid #f1f5f9",
+      background:active?"rgba(239,68,68,.06)":"#fff"
+    }),
+    // Squad
+    playerRow:{display:"flex",alignItems:"center",gap:12,padding:"10px 16px",borderBottom:"1px solid #f1f5f9",background:"#fff"},
+    // Transfer
+    trRow:{display:"flex",alignItems:"center",gap:10,padding:"12px 16px",borderBottom:"1px solid #f1f5f9",background:"#fff"},
+  };
+
+  if(loading) return React.createElement("div",{style:S.page},
+    React.createElement("div",{style:{...S.hdr,...S.topBar}},
+      React.createElement("button",{onClick:onClose,style:S.backBtn},
+        React.createElement("svg",{width:22,height:22,viewBox:"0 0 24 24",fill:"none"},
+          React.createElement("path",{d:"M19 12H5M5 12l7-7M5 12l7 7",stroke:"#0f172a",strokeWidth:2.5,strokeLinecap:"round",strokeLinejoin:"round"})
+        )
+      )
+    ),
+    React.createElement("div",{style:{flex:1,display:"flex",alignItems:"center",justifyContent:"center",flexDirection:"column",gap:16}},
+      React.createElement("img",{src:teamLogo,style:{width:64,height:64,objectFit:"contain"},onError:e=>e.target.style.display="none"}),
+      React.createElement(Spin,{s:28,c:"#ef4444"})
+    )
+  );
 
   const venue = info?.venue;
   const team  = info?.team;
-  const st    = standing;
-  const totalGames = st ? (st.all?.win + st.all?.draw + st.all?.lose) : 0;
-  const goalsFor   = st?.all?.goals?.for || 0;
-  const goalsAgainst = st?.all?.goals?.against || 0;
-  const goalDiff   = goalsFor - goalsAgainst;
 
-  return (
-    <div className="md-overlay" style={{ background: "#f1f4f9" }}>
-      <div style={{
-        position: "relative", zIndex: 2,
-        background: "transparent",
-        display: "flex", alignItems: "center",
-        paddingTop: "calc(env(safe-area-inset-top, 0px) + 14px)",
-        paddingLeft: 16, paddingRight: 16, paddingBottom: 0,
-        flexShrink: 0,
-      }}>
-        <button onClick={onClose} style={{
-          background: "linear-gradient(135deg,#00c170,#009e5c)", border: "none", color: "#fff",
-          width: 44, height: 44, borderRadius: 14, cursor: "pointer",
-          display: "flex", alignItems: "center", justifyContent: "center",
-          fontSize: 22, fontWeight: 900,
-          boxShadow: "0 4px 16px rgba(0,193,112,.55)",
-          flexShrink: 0,
-        }}>←</button>
-      </div>
-      <div style={{
-        background: heroGrad,
-        padding: "12px 16px 0",
-        flexShrink: 0,
-        position: "relative", overflow: "hidden",
-      }}>
-        <div style={{
-          position: "absolute", right: -30, top: -30,
-          width: 180, height: 180, borderRadius: "50%",
-          background: "rgba(255,255,255,.03)",
-          pointerEvents: "none"
-        }} />
-        <div style={{
-          position: "absolute", right: 20, top: 10,
-          width: 100, height: 100, borderRadius: "50%",
-          background: "rgba(0,193,112,.05)",
-          pointerEvents: "none"
-        }} />
-        <div style={{ display: "flex", alignItems: "center", gap: 16, marginBottom: 16, position: "relative" }}>
-          <div style={{
-            width: 76, height: 76, borderRadius: 20, flexShrink: 0,
-            background: "rgba(255,255,255,.06)",
-            border: "1.5px solid rgba(255,255,255,.1)",
-            display: "flex", alignItems: "center", justifyContent: "center",
-            boxShadow: "0 8px 32px rgba(0,0,0,.4), 0 0 0 8px rgba(255,255,255,.03)",
-            backdropFilter: "blur(8px)",
-          }}>
-            <Logo src={teamLogo} size={54} />
-          </div>
+  // ── RENDER ────────────────────────────────────────────────
+  return React.createElement("div",{style:S.page},
 
-          <div style={{ flex: 1, minWidth: 0 }}>
-            <div style={{ fontSize: 20, fontWeight: 900, color: "#fff", lineHeight: 1.15, letterSpacing: "-.3px" }}>
-              {teamName}
-            </div>
-            {team && (
-              <div style={{ fontSize: 11, color: "rgba(255,255,255,.45)", marginTop: 4, display: "flex", alignItems: "center", gap: 6 }}>
-                <span>{team.country}</span>
-                {team.founded && <><span style={{ color: "rgba(255,255,255,.2)" }}>·</span><span>Fondé {team.founded}</span></>}
-                {team.national && <span style={{ background: "rgba(255,255,255,.1)", borderRadius: 4, padding: "1px 6px", fontSize: 9, fontWeight: 700 }}>NATIONAL</span>}
-              </div>
-            )}
-            {st && (
-              <div style={{ display: "flex", alignItems: "center", gap: 6, marginTop: 8 }}>
-                <div style={{
-                  background: "linear-gradient(135deg,#00c170,#009e5c)",
-                  borderRadius: 8, padding: "4px 10px",
-                  fontSize: 12, fontWeight: 900, color: "#fff",
-                  boxShadow: "0 2px 8px rgba(0,193,112,.4)"
-                }}>#{st.rank}</div>
-                <div style={{
-                  background: "rgba(255,255,255,.08)", borderRadius: 8, padding: "4px 10px",
-                  fontSize: 11, color: "rgba(255,255,255,.7)", fontWeight: 700
-                }}>{st.points} pts</div>
-                <div style={{
-                  background: goalDiff > 0 ? "rgba(0,193,112,.15)" : goalDiff < 0 ? "rgba(239,68,68,.15)" : "rgba(255,255,255,.08)",
-                  borderRadius: 8, padding: "4px 10px", fontSize: 11, fontWeight: 700,
-                  color: goalDiff > 0 ? "#00c170" : goalDiff < 0 ? "#ef4444" : "rgba(255,255,255,.5)"
-                }}>{goalDiff > 0 ? "+" : ""}{goalDiff}</div>
-              </div>
-            )}
-          </div>
-          {last5.length > 0 && (
-            <div style={{ flexShrink: 0, display: "flex", flexDirection: "column", alignItems: "flex-end", gap: 6 }}>
-              <div style={{ fontSize: 8, color: "rgba(255,255,255,.3)", fontWeight: 700, textTransform: "uppercase", letterSpacing: ".8px" }}>Forme</div>
-              <FormDots matches={results} size={22} />
-              {winPct !== null && (
-                <div style={{ fontSize: 9, color: "rgba(255,255,255,.3)", fontWeight: 600 }}>{winPct}% victoires</div>
-              )}
-            </div>
-          )}
-        </div>
-        {st && (
-          <div style={{
-            display: "grid", gridTemplateColumns: "repeat(5,1fr)",
-            background: "rgba(255,255,255,.05)",
-            borderRadius: 14, overflow: "hidden",
-            border: "1px solid rgba(255,255,255,.07)",
-            marginBottom: 0,
-          }}>
-            {[
-              { label: "Victoires", val: st.all?.win,   color: "#00c170", sub: `${totalGames > 0 ? Math.round((st.all?.win/totalGames)*100) : 0}%` },
-              { label: "Nuls",      val: st.all?.draw,  color: "#f59e0b", sub: `${totalGames > 0 ? Math.round((st.all?.draw/totalGames)*100) : 0}%` },
-              { label: "Défaites",  val: st.all?.lose,  color: "#ef4444", sub: `${totalGames > 0 ? Math.round((st.all?.lose/totalGames)*100) : 0}%` },
-              { label: "Buts +",    val: goalsFor,      color: "#3b82f6", sub: `${totalGames > 0 ? (goalsFor/totalGames).toFixed(1) : 0}/J` },
-              { label: "Buts -",    val: goalsAgainst,  color: "#94a3b8", sub: `${totalGames > 0 ? (goalsAgainst/totalGames).toFixed(1) : 0}/J` },
-            ].map((s, i) => (
-              <div key={i} style={{
-                textAlign: "center", padding: "12px 4px",
-                borderRight: i < 4 ? "1px solid rgba(255,255,255,.06)" : "none",
-                position: "relative"
-              }}>
-                <div style={{
-                  fontSize: 20, fontWeight: 900, color: s.color,
-                  textShadow: `0 0 20px ${s.color}66`, lineHeight: 1
-                }}>{s.val || 0}</div>
-                <div style={{ fontSize: 8, color: "rgba(255,255,255,.3)", fontWeight: 700, marginTop: 3, textTransform: "uppercase", letterSpacing: ".5px" }}>{s.label}</div>
-                <div style={{ fontSize: 9, color: s.color, opacity: .6, fontWeight: 600, marginTop: 1 }}>{s.sub}</div>
-              </div>
-            ))}
-          </div>
-        )}
-        <div style={{ display: "flex", marginTop: 14, borderTop: "1px solid rgba(255,255,255,.06)", marginLeft: -16, marginRight: -16, paddingLeft: 16 }}>
-          {TABS.map(t => (
-            <button key={t.id} onClick={() => setTab(t.id)} style={{
-              padding: "12px 14px 11px",
-              background: "none", border: "none", cursor: "pointer",
-              fontSize: 11, fontWeight: 800,
-              color: tab === t.id ? "#00c170" : "rgba(255,255,255,.35)",
-              borderBottom: tab === t.id ? "2px solid #00c170" : "2px solid transparent",
-              whiteSpace: "nowrap", transition: "all .15s"
-            }}>{t.icon} {t.label}</button>
-          ))}
-        </div>
-      </div>
-      <div style={{ flex: 1, overflowY: "auto" }}>
-        {tab === "resultats" && (
-          <div style={{ paddingBottom: 16 }}>
-            {results.length === 0
-              ? <div style={{ textAlign: "center", padding: 40, color: "#94a3b8" }}>Aucun résultat</div>
-              : (() => {
-                  // Grouper par compétition
-                  const grouped = [];
-                  const seen = new Map();
-                  [...results].sort((a,b) => new Date(b.fixture.date)-new Date(a.fixture.date)).forEach(m => {
-                    const lid = m.league?.id;
-                    if (!seen.has(lid)) {
-                      seen.set(lid, grouped.length);
-                      grouped.push({ league: m.league, matches: [] });
-                    }
-                    grouped[seen.get(lid)].matches.push(m);
-                  });
-                  return grouped.map((g, gi) => (
-                    <div key={gi}>
-                      {/* Header compétition */}
-                      <div style={{ display: "flex", alignItems: "center", gap: 10, padding: "10px 14px", background: "#f5f5f5", borderBottom: "1px solid #e8e8e8", borderTop: gi > 0 ? "1px solid #e8e8e8" : "none" }}>
-                        <div style={{ width: 36, height: 36, borderRadius: 8, background: "#fff", border: "1px solid #e8e8e8", display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0 }}>
-                          <img src={g.league?.logo} style={{ width: 24, height: 24, objectFit: "contain" }} onError={e => e.target.style.display="none"} />
-                        </div>
-                        <div>
-                          <div style={{ fontSize: 13, fontWeight: 700, color: "#0f172a" }}>{g.league?.name}</div>
-                          <div style={{ fontSize: 10, fontWeight: 600, color: "#94a3b8", textTransform: "uppercase", letterSpacing: 0.5 }}>{g.league?.country}</div>
-                        </div>
-                      </div>
-                      {/* Matchs */}
-                      {g.matches.map((m, i) => <MatchRow key={m.fixture?.id || i} m={m} idx={i} />)}
-                    </div>
-                  ));
-                })()
+    // ── HEADER ──
+    React.createElement("div",{style:S.hdr},
+      // Top bar — back + country
+      React.createElement("div",{style:S.topBar},
+        React.createElement("button",{onClick:onClose,style:S.backBtn},
+          React.createElement("svg",{width:22,height:22,viewBox:"0 0 24 24",fill:"none"},
+            React.createElement("path",{d:"M19 12H5M5 12l7-7M5 12l7 7",stroke:"#0f172a",strokeWidth:2.5,strokeLinecap:"round",strokeLinejoin:"round"})
+          )
+        ),
+        team?.country && React.createElement(React.Fragment,null,
+          React.createElement("img",{
+            src:`https://flagcdn.com/w20/${
+              ({"Algeria":"dz","France":"fr","England":"gb-eng","Spain":"es","Germany":"de",
+                 "Italy":"it","Portugal":"pt","Brazil":"br","Argentina":"ar","Morocco":"ma"})[team.country]||"xx"
+            }.png`,
+            style:{width:16,height:11,objectFit:"cover",borderRadius:2}
+          }),
+          React.createElement("span",{style:{fontSize:12,fontWeight:600,color:"#64748b",textTransform:"uppercase",letterSpacing:.5}},
+            team.country
+          )
+        )
+      ),
+
+      // Hero row — logo + nom
+      React.createElement("div",{style:S.heroRow},
+        React.createElement("div",{style:S.logoBox},
+          React.createElement("img",{src:teamLogo||team?.logo,style:{width:52,height:52,objectFit:"contain"},onError:e=>e.target.style.display="none"})
+        ),
+        React.createElement("div",null,
+          React.createElement("div",{style:S.teamName}, teamName||team?.name),
+          myStand && React.createElement("div",{style:{display:"flex",alignItems:"center",gap:8,marginTop:6}},
+            React.createElement("span",{style:{fontSize:12,color:"#64748b"}},`${myStand.rank}e · ${myStand.points} pts`),
+            last5.length>0 && React.createElement("div",{style:{display:"flex",gap:3}},
+              last5.map((m,i)=>{const r=getRes(m);return r?React.createElement("div",{key:i,style:{width:18,height:18,borderRadius:4,background:RC[r],display:"flex",alignItems:"center",justifyContent:"center",fontSize:9,fontWeight:800,color:"#fff"}},RL[r]):null;})
+            )
+          )
+        )
+      ),
+
+      // Stade
+      venue?.name && React.createElement("div",{style:S.stadRow},
+        React.createElement("svg",{width:18,height:18,viewBox:"0 0 24 24",fill:"none",style:{flexShrink:0}},
+          React.createElement("rect",{x:2,y:8,width:20,height:12,rx:2,stroke:"#94a3b8",strokeWidth:1.5}),
+          React.createElement("path",{d:"M2 12h20M7 8V6M17 8V6",stroke:"#94a3b8",strokeWidth:1.5,strokeLinecap:"round"})
+        ),
+        React.createElement("div",null,
+          React.createElement("div",{style:{fontSize:13,fontWeight:600,color:"#0f172a"}},venue.name+(venue.city?` (${venue.city})`:"") ),
+          venue.capacity && React.createElement("div",{style:{fontSize:11,color:"#94a3b8",marginTop:1}},`Capacité: ${venue.capacity.toLocaleString()}`)
+        )
+      ),
+
+      // Tab bar
+      React.createElement("div",{style:S.tabBar},
+        TABS.map(t=>React.createElement("button",{key:t.id,onClick:()=>setTab(t.id),style:S.tabBtn(tab===t.id)},t.label))
+      )
+    ),
+
+    // ── CONTENT ──
+    React.createElement("div",{style:S.scroll},
+
+      // ── RÉSULTATS ──
+      tab==="resultats" && React.createElement("div",null,
+        results.length===0
+          ? React.createElement("div",{style:{textAlign:"center",padding:"48px 24px",color:"#94a3b8",fontSize:14}},"Aucun résultat")
+          : groupByLeague(results).map((grp,gi)=>React.createElement("div",{key:gi},
+              React.createElement("div",{style:S.lgHdr},
+                React.createElement("img",{src:grp.league?.logo,style:{width:24,height:24,objectFit:"contain"},onError:e=>e.target.style.display="none"}),
+                React.createElement("div",null,
+                  React.createElement("div",{style:{fontSize:13,fontWeight:700,color:"#0f172a"}},grp.league?.name),
+                  React.createElement("div",{style:{fontSize:11,color:"#94a3b8",textTransform:"uppercase",letterSpacing:.3}},grp.league?.country)
+                )
+              ),
+              grp.matches.map((m,mi)=>{
+                const isH=m.teams?.home?.id===teamId;
+                const opp=isH?m.teams?.away:m.teams?.home;
+                const myTeam=isH?m.teams?.home:m.teams?.away;
+                const gF=isH?m.goals?.home:m.goals?.away;
+                const gA=isH?m.goals?.away:m.goals?.home;
+                const r=getRes(m);
+                return React.createElement("div",{key:m.fixture?.id,style:S.matchRow},
+                  React.createElement("div",{style:S.dateCol},ddmm(m.fixture?.date)),
+                  React.createElement("div",{style:S.teamsCol},
+                    React.createElement("div",{style:S.teamLine},
+                      React.createElement("img",{src:myTeam?.logo,style:{width:18,height:18,objectFit:"contain",flexShrink:0},onError:e=>e.target.style.display="none"}),
+                      React.createElement("span",{style:{fontSize:13,fontWeight:700,color:"#0f172a",overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap"}},myTeam?.name)
+                    ),
+                    React.createElement("div",{style:S.teamLine},
+                      React.createElement("img",{src:opp?.logo,style:{width:18,height:18,objectFit:"contain",flexShrink:0},onError:e=>e.target.style.display="none"}),
+                      React.createElement("span",{style:{fontSize:13,fontWeight:400,color:"#64748b",overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap"}},opp?.name)
+                    )
+                  ),
+                  React.createElement("div",{style:S.scoreCol},
+                    React.createElement("span",{style:{fontSize:13,fontWeight:gF>gA?700:400,color:"#0f172a"}},gF??"-"),
+                    React.createElement("span",{style:{fontSize:13,fontWeight:gA>gF?700:400,color:"#0f172a"}},gA??"-")
+                  ),
+                  React.createElement("div",{style:S.badgeCol},
+                    r && React.createElement("div",{style:S.badge(r)},RL[r])
+                  )
+                );
+              })
+            ))
+      ),
+
+      // ── CALENDRIER ──
+      tab==="calendrier" && React.createElement("div",null,
+        upcoming.length===0
+          ? React.createElement("div",{style:{textAlign:"center",padding:"48px 24px",color:"#94a3b8",fontSize:14}},"Aucun match à venir")
+          : groupByLeague(upcoming).map((grp,gi)=>React.createElement("div",{key:gi},
+              React.createElement("div",{style:S.lgHdr},
+                React.createElement("img",{src:grp.league?.logo,style:{width:24,height:24,objectFit:"contain"},onError:e=>e.target.style.display="none"}),
+                React.createElement("div",null,
+                  React.createElement("div",{style:{fontSize:13,fontWeight:700,color:"#0f172a"}},grp.league?.name),
+                  React.createElement("div",{style:{fontSize:11,color:"#94a3b8",textTransform:"uppercase",letterSpacing:.3}},grp.league?.country)
+                )
+              ),
+              grp.matches.map((m,mi)=>{
+                const isH=m.teams?.home?.id===teamId;
+                const home=m.teams?.home;
+                const away=m.teams?.away;
+                return React.createElement("div",{key:m.fixture?.id,style:S.matchRow},
+                  React.createElement("div",{style:S.dateCol},ddmm(m.fixture?.date)),
+                  React.createElement("div",{style:S.teamsCol},
+                    React.createElement("div",{style:S.teamLine},
+                      React.createElement("img",{src:home?.logo,style:{width:18,height:18,objectFit:"contain",flexShrink:0},onError:e=>e.target.style.display="none"}),
+                      React.createElement("span",{style:{fontSize:13,fontWeight:home?.id===teamId?700:400,color:"#0f172a"}},home?.name)
+                    ),
+                    React.createElement("div",{style:S.teamLine},
+                      React.createElement("img",{src:away?.logo,style:{width:18,height:18,objectFit:"contain",flexShrink:0},onError:e=>e.target.style.display="none"}),
+                      React.createElement("span",{style:{fontSize:13,fontWeight:away?.id===teamId?700:400,color:"#0f172a"}},away?.name)
+                    )
+                  ),
+                  React.createElement("div",{style:{...S.scoreCol,alignItems:"center",justifyContent:"center"}},
+                    React.createElement("span",{style:{fontSize:12,color:"#94a3b8",fontWeight:500}},hhmm(m.fixture?.date))
+                  )
+                );
+              })
+            ))
+      ),
+
+      // ── CLASSEMENT ──
+      tab==="classement" && React.createElement("div",null,
+        standings.length===0
+          ? React.createElement("div",{style:{textAlign:"center",padding:"48px 24px",color:"#94a3b8",fontSize:14}},"Classement indisponible")
+          : React.createElement("div",null,
+              React.createElement("div",{style:S.standHdr},
+                React.createElement("span",{style:{width:28,fontSize:10,fontWeight:700,color:"#94a3b8",textAlign:"center"}},"#"),
+                React.createElement("span",{style:{flex:1,fontSize:10,fontWeight:700,color:"#94a3b8"},"marginLeft":8},"ÉQUIPE"),
+                React.createElement("span",{style:{width:32,fontSize:10,fontWeight:700,color:"#94a3b8",textAlign:"center"}},"MJ"),
+                React.createElement("span",{style:{width:40,fontSize:10,fontWeight:700,color:"#94a3b8",textAlign:"center"}},"B"),
+                React.createElement("span",{style:{width:32,fontSize:10,fontWeight:800,color:"#0f172a",textAlign:"center"}},"PTS")
+              ),
+              standings.map((r,i)=>{
+                const active=r.team?.id===teamId;
+                return React.createElement("div",{key:i,style:S.standRow(active)},
+                  React.createElement("div",{style:{width:28,height:28,borderRadius:8,background:active?"#ef4444":"transparent",display:"flex",alignItems:"center",justifyContent:"center",flexShrink:0}},
+                    React.createElement("span",{style:{fontSize:12,fontWeight:700,color:active?"#fff":"#64748b"}},r.rank)
+                  ),
+                  React.createElement("div",{style:{flex:1,display:"flex",alignItems:"center",gap:8,marginLeft:4,minWidth:0}},
+                    React.createElement("img",{src:r.team?.logo,style:{width:22,height:22,objectFit:"contain",flexShrink:0},onError:e=>e.target.style.display="none"}),
+                    React.createElement("span",{style:{fontSize:13,fontWeight:active?700:400,color:"#0f172a",overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap"}},r.team?.name)
+                  ),
+                  React.createElement("span",{style:{width:32,fontSize:12,color:"#64748b",textAlign:"center"}},r.all?.played),
+                  React.createElement("span",{style:{width:40,fontSize:12,color:"#64748b",textAlign:"center"}},`${r.all?.goals?.for}:${r.all?.goals?.against}`),
+                  React.createElement("span",{style:{width:32,fontSize:13,fontWeight:700,color:active?"#ef4444":"#0f172a",textAlign:"center"}},r.points)
+                );
+              })
+            )
+      ),
+
+      // ── EFFECTIF ──
+      tab==="effectif" && React.createElement("div",null,
+        squad.length===0
+          ? React.createElement("div",{style:{textAlign:"center",padding:"48px 24px",color:"#94a3b8",fontSize:14}},"Effectif indisponible")
+          : (() => {
+              const grouped = {};
+              squad.forEach(p => {
+                const pos = posLabel(p.position);
+                if(!grouped[pos]) grouped[pos]=[];
+                grouped[pos].push(p);
+              });
+              return posOrder.filter(pos=>grouped[pos]).map(pos=>
+                React.createElement("div",{key:pos},
+                  React.createElement("div",{style:{padding:"12px 16px 6px",fontSize:12,fontWeight:700,color:"#64748b",textTransform:"uppercase",letterSpacing:.5,background:"#f8fafc",borderBottom:"1px solid #f1f5f9"}},pos+"S"),
+                  grouped[pos].map((p,i)=>React.createElement("div",{key:p.id||i,style:S.playerRow},
+                    React.createElement("div",{style:{position:"relative",flexShrink:0}},
+                      React.createElement("img",{
+                        src:p.photo,
+                        style:{width:44,height:44,borderRadius:12,objectFit:"cover",background:"#f1f5f9"},
+                        onError:e=>{ e.target.src="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24'%3E%3Ccircle cx='12' cy='8' r='4' fill='%23cbd5e1'/%3E%3Cellipse cx='12' cy='19' rx='7' ry='4' fill='%23cbd5e1'/%3E%3C/svg%3E"; }
+                      }),
+                      p.number && React.createElement("div",{style:{
+                        position:"absolute",bottom:-4,right:-4,
+                        background:"#0f172a",color:"#fff",
+                        fontSize:9,fontWeight:800,borderRadius:5,
+                        padding:"1px 4px",lineHeight:"14px"
+                      }},p.number)
+                    ),
+                    React.createElement("div",{style:{flex:1,minWidth:0}},
+                      React.createElement("div",{style:{fontSize:14,fontWeight:600,color:"#0f172a"}},p.name),
+                      React.createElement("div",{style:{fontSize:11,color:"#94a3b8",marginTop:2,display:"flex",alignItems:"center",gap:4}},
+                        p.nationality && React.createElement("img",{
+                          src:`https://flagcdn.com/w20/${
+                            p.nationality==="Algeria"?"dz":p.nationality==="France"?"fr":p.nationality==="Morocco"?"ma":p.nationality==="Tunisia"?"tn":"xx"
+                          }.png`,
+                          style:{width:14,height:10,objectFit:"cover",borderRadius:2}
+                        }),
+                        p.nationality,
+                        p.age && React.createElement("span",null,`· ${p.age} ans`)
+                      )
+                    )
+                  ))
+                )
+              );
+            })()
+      ),
+
+      // ── TRANSFERTS ──
+      tab==="transferts" && React.createElement("div",null,
+        // Filtres
+        React.createElement("div",{style:{display:"flex",gap:8,padding:"12px 16px",background:"#fff",borderBottom:"1px solid #f1f5f9"}},
+          ["all","in","out"].map(f=>React.createElement("button",{
+            key:f,
+            onClick:()=>setTrFilter(f),
+            style:{
+              padding:"6px 16px",borderRadius:20,border:"none",cursor:"pointer",
+              fontSize:12,fontWeight:700,
+              background:trFilter===f?"#ef4444":"#f1f5f9",
+              color:trFilter===f?"#fff":"#64748b"
             }
-          </div>
-        )}
-        {tab === "prochains" && (
-          <div style={{ paddingBottom: 16 }}>
-            {next.length === 0
-              ? <div style={{ textAlign: "center", padding: 40, color: "#94a3b8" }}>Aucun match à venir</div>
-              : (() => {
-                  const grouped = [];
-                  const seen = new Map();
-                  next.forEach(m => {
-                    const lid = m.league?.id;
-                    if (!seen.has(lid)) { seen.set(lid, grouped.length); grouped.push({ league: m.league, matches: [] }); }
-                    grouped[seen.get(lid)].matches.push(m);
-                  });
-                  return grouped.map((g, gi) => (
-                    <div key={gi}>
-                      <div style={{ display: "flex", alignItems: "center", gap: 10, padding: "10px 14px", background: "#f5f5f5", borderBottom: "1px solid #e8e8e8", borderTop: gi > 0 ? "1px solid #e8e8e8" : "none" }}>
-                        <div style={{ width: 36, height: 36, borderRadius: 8, background: "#fff", border: "1px solid #e8e8e8", display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0 }}>
-                          <img src={g.league?.logo} style={{ width: 24, height: 24, objectFit: "contain" }} onError={e => e.target.style.display="none"} />
-                        </div>
-                        <div>
-                          <div style={{ fontSize: 13, fontWeight: 700, color: "#0f172a" }}>{g.league?.name}</div>
-                          <div style={{ fontSize: 10, fontWeight: 600, color: "#94a3b8", textTransform: "uppercase", letterSpacing: 0.5 }}>{g.league?.country}</div>
-                        </div>
-                      </div>
-                      {g.matches.map((m, i) => <MatchRow key={m.fixture?.id || i} m={m} idx={i} />)}
-                    </div>
-                  ));
-                })()
-            }
-          </div>
-        )}
-        {tab === "stats" && (
-          <div style={{ padding: 14 }}>
-            {st && (
-              <>
-                <div style={{ fontSize: 10, fontWeight: 800, color: "#94a3b8", textTransform: "uppercase", letterSpacing: ".8px", marginBottom: 10 }}>Bilan</div>
-                <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 10, marginBottom: 16 }}>
-                  {[
-                    { label: "À domicile", d: st.home, color: "#3b82f6", icon: "🏠" },
-                    { label: "À l'extérieur", d: st.away, color: "#f59e0b", icon: "✈️" },
-                  ].map((s, i) => (
-                    <div key={i} style={{
-                      background: "#fff", borderRadius: 14, padding: "14px",
-                      boxShadow: "0 2px 8px rgba(0,0,0,.06)",
-                      borderTop: `3px solid ${s.color}`
-                    }}>
-                      <div style={{ fontSize: 11, fontWeight: 700, color: "#64748b", marginBottom: 10 }}>{s.icon} {s.label}</div>
-                      <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr 1fr", gap: 6 }}>
-                        {[
-                          { l: "V", v: s.d?.win,  c: "#00c170" },
-                          { l: "N", v: s.d?.draw, c: "#f59e0b" },
-                          { l: "D", v: s.d?.lose, c: "#ef4444" },
-                        ].map((r, j) => (
-                          <div key={j} style={{ textAlign: "center" }}>
-                            <div style={{ fontSize: 18, fontWeight: 900, color: r.c }}>{r.v || 0}</div>
-                            <div style={{ fontSize: 9, color: "#94a3b8", fontWeight: 700 }}>{r.l}</div>
-                          </div>
-                        ))}
-                      </div>
-                    </div>
-                  ))}
-                </div>
-                <div style={{ fontSize: 10, fontWeight: 800, color: "#94a3b8", textTransform: "uppercase", letterSpacing: ".8px", marginBottom: 10 }}>Répartition saison</div>
-                <div style={{ background: "#fff", borderRadius: 14, padding: 16, boxShadow: "0 2px 8px rgba(0,0,0,.06)", marginBottom: 16 }}>
-                  {[
-                    { label: "Victoires", val: st.all?.win,  total: totalGames, color: "#00c170" },
-                    { label: "Nuls",      val: st.all?.draw, total: totalGames, color: "#f59e0b" },
-                    { label: "Défaites",  val: st.all?.lose, total: totalGames, color: "#ef4444" },
-                  ].map((r, i) => {
-                    const pct = totalGames > 0 ? Math.round((r.val / totalGames) * 100) : 0;
-                    return (
-                      <div key={i} style={{ marginBottom: i < 2 ? 12 : 0 }}>
-                        <div style={{ display: "flex", justifyContent: "space-between", marginBottom: 4 }}>
-                          <span style={{ fontSize: 11, color: "#64748b", fontWeight: 600 }}>{r.label}</span>
-                          <span style={{ fontSize: 11, fontWeight: 800, color: r.color }}>{r.val} <span style={{ color: "#94a3b8", fontWeight: 500 }}>({pct}%)</span></span>
-                        </div>
-                        <div style={{ height: 6, background: "#f1f5f9", borderRadius: 4, overflow: "hidden" }}>
-                          <div style={{ width: `${pct}%`, height: "100%", background: r.color, borderRadius: 4, transition: "width .6s ease" }} />
-                        </div>
-                      </div>
-                    );
-                  })}
-                </div>
-              </>
-            )}
-            {topScore.length > 0 && (
-              <>
-                <div style={{ fontSize: 10, fontWeight: 800, color: "#94a3b8", textTransform: "uppercase", letterSpacing: ".8px", marginBottom: 10 }}>Buteurs du club</div>
-                <div style={{ background: "#fff", borderRadius: 14, overflow: "hidden", boxShadow: "0 2px 8px rgba(0,0,0,.06)" }}>
-                  {topScore.map((p, i) => {
-                    const st2 = p.statistics?.[0];
-                    return (
-                      <div key={i} style={{
-                        display: "flex", alignItems: "center", gap: 12,
-                        padding: "12px 16px",
-                        borderBottom: i < topScore.length - 1 ? "1px solid #f1f5f9" : "none"
-                      }}>
-                        <PlayerImage playerId={p.player?.id} playerName={p.player?.name} size={40} ring="#e8edf3" />
-                        <div style={{ flex: 1 }}>
-                          <div style={{ fontSize: 13, fontWeight: 700, color: "#0f1117" }}>{p.player?.name}</div>
-                          <div style={{ fontSize: 10, color: "#94a3b8", marginTop: 2 }}>{st2?.games?.position || "—"}</div>
-                        </div>
-                        <div style={{ display: "flex", gap: 8 }}>
-                          <div style={{ textAlign: "center" }}>
-                            <div style={{ fontSize: 18, fontWeight: 900, color: "#00c170" }}>{st2?.goals?.total || 0}</div>
-                            <div style={{ fontSize: 8, color: "#94a3b8", fontWeight: 700 }}>BUTS</div>
-                          </div>
-                          <div style={{ textAlign: "center" }}>
-                            <div style={{ fontSize: 18, fontWeight: 900, color: "#3b82f6" }}>{st2?.goals?.assists || 0}</div>
-                            <div style={{ fontSize: 8, color: "#94a3b8", fontWeight: 700 }}>PASSES</div>
-                          </div>
-                        </div>
-                      </div>
-                    );
-                  })}
-                </div>
-              </>
-            )}
-          </div>
-        )}
-        {tab === "infos" && (
-          <div style={{ padding: 14, paddingBottom: 24 }}>
-            {venue && (
-              <div style={{ background: "#fff", borderRadius: 16, overflow: "hidden", boxShadow: "0 4px 20px rgba(0,0,0,.08)", marginBottom: 14 }}>
-                {venue.image && (
-                  <div style={{ position: "relative", height: 170, overflow: "hidden" }}>
-                    <img src={venue.image} alt="" style={{ width: "100%", height: "100%", objectFit: "cover" }} onError={e => e.target.parentElement.style.display = "none"} />
-                    <div style={{ position: "absolute", bottom: 0, left: 0, right: 0, height: "60%", background: "linear-gradient(transparent,rgba(0,0,0,.7))" }} />
-                    <div style={{ position: "absolute", bottom: 12, left: 14, right: 14 }}>
-                      <div style={{ fontSize: 15, fontWeight: 900, color: "#fff" }}>{teamId === 918 ? "Stade Hocine Aït Ahmed" : venue.name}</div>
-                      <div style={{ fontSize: 11, color: "rgba(255,255,255,.65)", marginTop: 2 }}>{venue.city}</div>
-                    </div>
-                  </div>
-                )}
-                <div style={{ padding: "14px 16px" }}>
-                  {!venue.image && <div style={{ fontSize: 15, fontWeight: 800, color: "#0f1117", marginBottom: 8 }}>{teamId === 918 ? "Stade Hocine Aït Ahmed" : venue.name}</div>}
-                  <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 10 }}>
-                    {[
-                      { label: "Capacité", val: venue.capacity ? venue.capacity.toLocaleString("fr-FR") + " places" : "—", icon: "🏟️" },
-                      { label: "Surface", val: venue.surface || "—", icon: "🌿" },
-                      { label: "Ville", val: venue.city || "—", icon: "📍" },
-                      { label: "Adresse", val: venue.address || "—", icon: "🗺️" },
-                    ].map((r, i) => (
-                      <div key={i} style={{ background: "#f8fafc", borderRadius: 10, padding: "10px 12px" }}>
-                        <div style={{ fontSize: 9, color: "#94a3b8", fontWeight: 700, textTransform: "uppercase", letterSpacing: ".5px", marginBottom: 4 }}>{r.icon} {r.label}</div>
-                        <div style={{ fontSize: 12, fontWeight: 700, color: "#0f1117" }}>{r.val}</div>
-                      </div>
-                    ))}
-                  </div>
-                </div>
-              </div>
-            )}
-            {team && (
-              <div style={{ background: "#fff", borderRadius: 16, overflow: "hidden", boxShadow: "0 4px 20px rgba(0,0,0,.08)" }}>
-                <div style={{ padding: "14px 16px 10px", borderBottom: "1px solid #f1f5f9", display: "flex", alignItems: "center", gap: 12 }}>
-                  <Logo src={teamLogo} size={36} />
-                  <div>
-                    <div style={{ fontSize: 14, fontWeight: 800, color: "#0f1117" }}>{team.name}</div>
-                    <div style={{ fontSize: 10, color: "#94a3b8", marginTop: 2 }}>{team.country}</div>
-                  </div>
-                </div>
-                <div style={{ padding: "8px 0" }}>
-                  {[
-                    { label: "Fondé en", val: team.founded, icon: "📅" },
-                    { label: "Code",     val: team.code,    icon: "🔤" },
-                    { label: "Pays",     val: team.country, icon: "🌍" },
-                  ].filter(r => r.val).map((r, i, arr) => (
-                    <div key={i} style={{
-                      display: "flex", justifyContent: "space-between", alignItems: "center",
-                      padding: "10px 16px",
-                      borderBottom: i < arr.length - 1 ? "1px solid #f8fafc" : "none"
-                    }}>
-                      <span style={{ fontSize: 12, color: "#64748b", display: "flex", alignItems: "center", gap: 8 }}>
-                        <span>{r.icon}</span>{r.label}
-                      </span>
-                      <span style={{ fontSize: 13, fontWeight: 700, color: "#0f1117" }}>{r.val}</span>
-                    </div>
-                  ))}
-                </div>
-              </div>
-            )}
-          </div>
-        )}
+          },{all:"TOUS",in:"ARRIVÉES",out:"DÉPARTS"}[f]))
+        ),
+        transfers.length===0
+          ? React.createElement("div",{style:{textAlign:"center",padding:"48px 24px",color:"#94a3b8",fontSize:14}},"Aucun transfert")
+          : transfers
+              .filter(tr=>trFilter==="all"||trDir(tr)===trFilter)
+              .flatMap(tr=>
+                (tr.transfers||[]).map((t,ti)=>{
+                  const dir = t.teams?.in?.id===teamId?"in":"out";
+                  if(trFilter!=="all"&&dir!==trFilter) return null;
+                  const other = dir==="in" ? t.teams?.out : t.teams?.in;
+                  return React.createElement("div",{key:`${tr.player?.id}-${ti}`,style:S.trRow},
+                    React.createElement("div",{style:{fontSize:11,color:"#94a3b8",fontWeight:500,minWidth:36}},
+                      t.date ? new Date(t.date).toLocaleDateString("fr-FR",{day:"2-digit",month:"2-digit"}) : "—"
+                    ),
+                    React.createElement("div",{style:{fontSize:16,color:dir==="in"?"#22c55e":"#ef4444",fontWeight:700,flexShrink:0}},
+                      dir==="in"?"←":"→"
+                    ),
+                    React.createElement("div",{style:{flex:1,minWidth:0}},
+                      React.createElement("div",{style:{fontSize:13,fontWeight:700,color:"#0f172a"}},tr.player?.name),
+                      React.createElement("div",{style:{display:"flex",alignItems:"center",gap:6,marginTop:3}},
+                        other?.logo && React.createElement("img",{src:other.logo,style:{width:16,height:16,objectFit:"contain"},onError:e=>e.target.style.display="none"}),
+                        React.createElement("span",{style:{fontSize:11,color:"#64748b"}},other?.name)
+                      )
+                    ),
+                    React.createElement("span",{style:{fontSize:11,color:"#94a3b8",flexShrink:0}},
+                      {Transfer:"Transfert",Loan:"Prêt",Free:"Libre","N/A":"—"}[t.type]||t.type||"—"
+                    )
+                  );
+                }).filter(Boolean)
+              )
+      )
 
-      </div>
-    </div>
-  );
+    ) // fin scroll
+  ); // fin page
 }
 
 function App() {
