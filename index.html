@@ -48,7 +48,7 @@
     <script>
         if ("serviceWorker" in navigator) {
             const sw = `
-    const C='wf-pro-v210';
+    const C='wf-pro-v211';
     const API_KEY='3a14b1347c177458e2f23bea7899e9cf';
     const BASE='https://v3.football.api-sports.io';
     let prevScores = {};
@@ -10606,7 +10606,7 @@ const VENUE_OVERRIDE = {
 };
 
 
-function TeamPage({ teamId, teamName, teamLogo, leagueId, season, onClose }) {
+function TeamPage({ teamId, teamName, teamLogo, leagueId, season, onClose, onTeam }) {
   const [info,      setInfo]      = useState(null);
   const [results,   setResults]   = useState([]);
   const [upcoming,  setUpcoming]  = useState([]);
@@ -10616,6 +10616,30 @@ function TeamPage({ teamId, teamName, teamLogo, leagueId, season, onClose }) {
   const [loading,   setLoading]   = useState(true);
   const [tab,       setTab]       = useState("resultats");
   const [trFilter,  setTrFilter]  = useState("all"); // all | in | out
+  const [detailMatch, setDetailMatch] = useState(null);
+
+  const openMatchDetail = async (fixtureId) => {
+    setDetailMatch({ loading: true });
+    try {
+      const fx = await api(`/fixtures?id=${fixtureId}`, 30000);
+      const fix = fx?.[0];
+      if(!fix) throw new Error("Match introuvable");
+      const hid = fix.teams.home.id, aid = fix.teams.away.id, fid = fix.fixture.id;
+      const isLive = LIVE_ST.has(fix.fixture.status.short);
+      const isDone = DONE_ST.has(fix.fixture.status.short);
+      const ttl = isLive ? 15000 : isDone ? 10800000 : 3600000;
+      setDetailMatch({ partial: true, data: { fixture: fix, stats: [], events: [], lineups: [], players: [], h2h: [], injuries: [] } });
+      const upd = patch => setDetailMatch(prev => prev?.data ? { ...prev, partial: true, data: { ...prev.data, ...patch } } : prev);
+      await Promise.allSettled([
+        api(`/fixtures/events?fixture=${fid}`, ttl).then(d => upd({ events: d })).catch(() => {}),
+        api(`/fixtures/statistics?fixture=${fid}`, ttl).then(d => upd({ stats: d })).catch(() => {}),
+        api(`/fixtures/lineups?fixture=${fid}`, ttl).then(d => upd({ lineups: d })).catch(() => {}),
+        api(`/fixtures/players?fixture=${fid}`, ttl).then(d => upd({ players: d })).catch(() => {}),
+        api(`/fixtures/headtohead?h2h=${hid}-${aid}&last=20`, 86400000).then(d => upd({ h2h: d })).catch(() => {}),
+      ]);
+      setDetailMatch(prev => prev?.data ? { ...prev, partial: false } : prev);
+    } catch(e) { setDetailMatch({ error: e.message }); }
+  };
 
   useEffect(() => {
     if(!teamId) return;
@@ -10893,7 +10917,7 @@ function TeamPage({ teamId, teamName, teamLogo, leagueId, season, onClose }) {
                 const hg=m.goals?.home;
                 const ag=m.goals?.away;
                 const r=getRes(m);
-                return React.createElement("div",{key:m.fixture?.id,style:S.matchRow},
+                return React.createElement("div",{key:m.fixture?.id,style:{...S.matchRow,cursor:"pointer"},onClick:()=>openMatchDetail(m.fixture?.id)},
                   React.createElement("div",{style:S.dateCol},ddmm(m.fixture?.date)),
                   React.createElement("div",{style:S.teamsCol},
                     React.createElement("div",{style:S.teamLine},
@@ -10933,7 +10957,7 @@ function TeamPage({ teamId, teamName, teamLogo, leagueId, season, onClose }) {
                 const isH=m.teams?.home?.id===teamId;
                 const home=m.teams?.home;
                 const away=m.teams?.away;
-                return React.createElement("div",{key:m.fixture?.id,style:S.matchRow},
+                return React.createElement("div",{key:m.fixture?.id,style:{...S.matchRow,cursor:"pointer"},onClick:()=>openMatchDetail(m.fixture?.id)},
                   React.createElement("div",{style:S.dateCol},ddmm(m.fixture?.date)),
                   React.createElement("div",{style:S.teamsCol},
                     React.createElement("div",{style:S.teamLine},
@@ -11098,6 +11122,13 @@ function TeamPage({ teamId, teamName, teamLogo, leagueId, season, onClose }) {
       )
 
     ) // fin scroll
+    ,
+    // ── MATCH DETAIL ──
+    detailMatch && React.createElement(MatchDetailWrapper, {
+      state: detailMatch,
+      onClose: () => setDetailMatch(null),
+      onTeam: onTeam
+    })
   ); // fin page
 }
 
@@ -11411,7 +11442,8 @@ function App() {
       teamLogo: teamPage.teamLogo,
       leagueId: teamPage.leagueId,
       season:   teamPage.season,
-      onClose:  () => setTeamPage(null)
+      onClose:  () => setTeamPage(null),
+      onTeam:   openTeam
     }) : null
   );
 }
