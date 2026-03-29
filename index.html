@@ -48,7 +48,7 @@
     <script>
         if ("serviceWorker" in navigator) {
             const sw = `
-    const C='wf-pro-v229';
+    const C='wf-pro-v231';
     const API_KEY='3a14b1347c177458e2f23bea7899e9cf';
     const BASE='https://v3.football.api-sports.io';
     let prevScores = {};
@@ -3021,6 +3021,7 @@ function PlayerPage({ playerId, playerName, playerPhoto, playerPos, playerNumber
   const [career, setCareer] = React.useState([]);
   const [transfers, setTransfers] = React.useState([]);
   const [fixtures, setFixtures] = React.useState([]);
+  const [fixStats, setFixStats] = React.useState({}); // {fixtureId: {rating, minutes, saves, onBench}}
   const [loading, setLoading] = React.useState(true);
   const curSeason = new Date().getMonth() >= 6 ? new Date().getFullYear() : new Date().getFullYear() - 1;
 
@@ -3028,6 +3029,93 @@ function PlayerPage({ playerId, playerName, playerPhoto, playerPos, playerNumber
     if(!playerId) return;
     let cancelled = false;
     setLoading(true);
+
+    // Étape 1 : trouver le club actuel via /players/squads?player=X
+    api(`/players/squads?player=${playerId}`, 3600000).then(squadData => {
+      if(cancelled) return;
+      const currentTeam = squadData?.[0]?.team;
+      const currentTeamId = currentTeam?.id;
+
+      // Mettre à jour le club actuel immédiatement
+      if(currentTeam) {
+        setInfo(prev => prev ? {...prev, _currentTeam: currentTeam} : {_currentTeam: currentTeam});
+      }
+
+      // Contrat depuis l'équipe actuelle
+      if(currentTeamId) {
+        api(`/players/squads?team=${currentTeamId}`, 86400000).then(sq => {
+          if(cancelled) return;
+          const found = (sq?.[0]?.players||[]).find(p => p.id === playerId);
+          if(found?.contract) {
+            setInfo(prev => prev ? {...prev, _contract: found.contract, _currentTeam: currentTeam} : {_contract: found.contract, _currentTeam: currentTeam});
+          }
+        }).catch(()=>{});
+
+        // Matchs depuis le vrai club actuel
+        Promise.allSettled([
+          api(`/fixtures?team=${currentTeamId}&season=${curSeason}`, 3600000),
+          api(`/fixtures?team=${currentTeamId}&season=${curSeason-1}`, 86400000),
+        ]).then(([rF1,rF2]) => {
+          if(cancelled) return;
+          const allFix = [
+            ...(rF1.status==="fulfilled" ? rF1.value||[] : []),
+            ...(rF2.status==="fulfilled" ? rF2.value||[] : []),
+          ].filter(f => ["FT","AET","PEN","AWD","WO"].includes(f.fixture?.status?.short))
+           .sort((a,b) => new Date(b.fixture.date) - new Date(a.fixture.date))
+           .slice(0,30);
+          setFixtures(allFix);
+          // Charger stats joueur + lineups pour chaque fixture (API Pro)
+          const statsMap = {};
+          const batchSize = 5;
+          const loadBatch = async (fixtures) => {
+            for(let i=0; i<fixtures.length; i+=batchSize) {
+              if(cancelled) break;
+              const batch = fixtures.slice(i, i+batchSize);
+              await Promise.allSettled(batch.map(async f => {
+                const fid = f.fixture?.id;
+                if(!fid) return;
+                try {
+                  const [players, lineups] = await Promise.allSettled([
+                    api(`/fixtures/players?fixture=${fid}`, 86400000),
+                    api(`/fixtures/lineups?fixture=${fid}`, 86400000),
+                  ]);
+                  const pData = players.status==="fulfilled" ? players.value : [];
+                  const lData = lineups.status==="fulfilled" ? lineups.value : [];
+                  // Trouver les stats du joueur
+                  let pStats = null;
+                  (pData||[]).forEach(team => {
+                    (team.players||[]).forEach(p => {
+                      if(p.player?.id === playerId) pStats = p.statistics?.[0];
+                    });
+                  });
+                  // Déterminer si sur le banc
+                  let onBench = true, inSquad = false;
+                  (lData||[]).forEach(team => {
+                    (team.startXI||[]).forEach(p => {
+                      if(p.player?.id === playerId) { onBench = false; inSquad = true; }
+                    });
+                    (team.substitutes||[]).forEach(p => {
+                      if(p.player?.id === playerId) { onBench = true; inSquad = true; }
+                    });
+                  });
+                  statsMap[fid] = {
+                    rating: pStats?.games?.rating ? parseFloat(pStats.games.rating).toFixed(1) : null,
+                    minutes: pStats?.games?.minutes || null,
+                    saves: pStats?.goalkeeper?.saves ?? null,
+                    goals: pStats?.goals?.total ?? null,
+                    assists: pStats?.goals?.assists ?? null,
+                    onBench: inSquad && onBench,
+                    notInSquad: !inSquad,
+                  };
+                  if(!cancelled) setFixStats({...statsMap});
+                } catch(e) {}
+              }));
+            }
+          };
+          loadBatch(allFix);
+        });
+      }
+    }).catch(()=>{});
 
     Promise.allSettled([
       api(`/players?id=${playerId}&season=${curSeason}`, 3600000),
@@ -3039,55 +3127,15 @@ function PlayerPage({ playerId, playerName, playerPhoto, playerPos, playerNumber
     ]).then(([r0,r1,r2,r3,r4,rTr]) => {
       if(cancelled) return;
 
-      // Info joueur depuis saison courante ou précédente
       const p0 = r0.status==="fulfilled" ? r0.value?.[0] : null;
       const p1 = r1.status==="fulfilled" ? r1.value?.[0] : null;
       const pInfo = p0 || p1;
-      setInfo(pInfo);
-
-      // Trouver le VRAI club (priorité: League > Cup > National)
-      const stats = pInfo?.statistics || [];
-      // Trier: d'abord les ligues nationales, puis coupes, puis sélections
-      const sortedStats = [...stats].sort((a,b) => {
-        const typeScore = s => {
-          const t = (s.league?.type||"").toLowerCase();
-          const n = (s.league?.name||"").toLowerCase();
-          if(t==="league") return 3;
-          if(t==="cup") return 2;
-          if(n.includes("nation") || n.includes("world") || n.includes("euro") || n.includes("africa") || n.includes("friendly")) return 0;
-          return 1;
-        };
-        return typeScore(b) - typeScore(a);
-      });
-      const clubStat = sortedStats[0];
-      const teamId = clubStat?.team?.id;
-      const leagueId = clubStat?.league?.id;
-      const leagueSeason = clubStat?.league?.season;
-      if(teamId) {
-        // Contrat
-        api(`/players/squads?team=${teamId}`, 86400000).then(sq => {
-          if(cancelled) return;
-          const found = (sq?.[0]?.players||[]).find(p => p.id === playerId);
-          if(found?.contract) {
-            setInfo(prev => prev ? {...prev, _contract: found.contract} : prev);
-          }
-        }).catch(()=>{});
-        // Matchs récents depuis l'équipe
-        const seas = leagueSeason || curSeason;
-        Promise.allSettled([
-          api(`/fixtures?team=${teamId}&season=${seas}`, 3600000),
-          api(`/fixtures?team=${teamId}&season=${seas-1}`, 86400000),
-        ]).then(([rF1,rF2]) => {
-          if(cancelled) return;
-          const allFix = [
-            ...(rF1.status==="fulfilled" ? rF1.value||[] : []),
-            ...(rF2.status==="fulfilled" ? rF2.value||[] : []),
-          ].filter(f => ["FT","AET","PEN","AWD","WO"].includes(f.fixture?.status?.short))
-           .sort((a,b) => new Date(b.fixture.date) - new Date(a.fixture.date))
-           .slice(0,30);
-          setFixtures(allFix);
-        });
-      }
+      // Merger avec les données déjà chargées (_currentTeam, _contract)
+      setInfo(prev => pInfo ? {...pInfo, _currentTeam: prev?._currentTeam, _contract: prev?._contract} : prev);
+      
+      // teamId et leagueSeason pour fallback
+      const teamId = null; // Déjà géré via /players/squads
+      const leagueSeason = curSeason;
 
       // Carrière : agréger toutes les saisons — clubs seulement
       const allSeasons = [r0,r1,r2,r3,r4]
@@ -3170,22 +3218,24 @@ function PlayerPage({ playerId, playerName, playerPhoto, playerPos, playerNumber
     return m[nat] || null;
   };
 
-  // Club actuel = première stat de type League (pas sélection nationale)
-  const currentClub = (() => {
-    const stats = info?.statistics || [];
-    const sorted = [...stats].sort((a,b) => {
-      const score = s => {
-        const t = (s.league?.type||"").toLowerCase();
-        const n = (s.league?.name||"").toLowerCase();
-        if(t==="league") return 3;
-        if(t==="cup") return 2;
-        if(n.includes("nation")||n.includes("world")||n.includes("euro")||n.includes("africa")||n.includes("friendly")) return 0;
-        return 1;
-      };
-      return score(b) - score(a);
-    });
-    return sorted[0];
-  })();
+  // Club actuel depuis /players/squads (source certaine)
+  const currentClub = info?._currentTeam
+    ? { team: info._currentTeam, league: info?.statistics?.find(s => s.league?.type==="League")?.league }
+    : (() => {
+        const stats = info?.statistics || [];
+        const sorted = [...stats].sort((a,b) => {
+          const score = s => {
+            const t = (s.league?.type||"").toLowerCase();
+            const n = (s.league?.name||"").toLowerCase();
+            if(t==="league") return 3;
+            if(t==="cup") return 2;
+            if(n.includes("nation")||n.includes("world")||n.includes("euro")||n.includes("africa")||n.includes("friendly")) return 0;
+            return 1;
+          };
+          return score(b) - score(a);
+        });
+        return sorted[0];
+      })();
 
   const TABS = ["matchs","carriere","transferts"];
   const TABS_LABEL = {matchs:"MATCHS", carriere:"CARRIÈRE", transferts:"TRANSFERTS"};
@@ -3298,9 +3348,12 @@ function PlayerPage({ playerId, playerName, playerPhoto, playerPos, playerNumber
               const playerTeam = isPlayerTeamHome ? home : isPlayerTeamAway ? away : null;
               const oppTeam = isPlayerTeamHome ? away : isPlayerTeamAway ? home : null;
               
+              const fStats = fixtureStats[f.fixture?.id];
+              const hasFStats = !!fStats;
+              
               return React.createElement("div", {key:f.fixture?.id, style:{
                 display:"flex",alignItems:"center",gap:0,
-                padding:"0 16px",borderBottom:"1px solid #f1f5f9",background:"#fff",minHeight:52
+                padding:"0 16px",borderBottom:"1px solid #f1f5f9",background:"#fff",minHeight:56
               }},
                 React.createElement("div",{style:{width:42,fontSize:11,color:"#94a3b8",fontWeight:500,flexShrink:0}},ddmm(f.fixture?.date)),
                 React.createElement("div",{style:{flex:1,display:"flex",flexDirection:"column",gap:3,padding:"10px 0"}},
@@ -3313,6 +3366,26 @@ function PlayerPage({ playerId, playerName, playerPhoto, playerPos, playerNumber
                     React.createElement("span",{style:{fontSize:13,fontWeight:away?.id===playerTeamId?700:400,color:away?.id===playerTeamId?"#0f172a":"#64748b",overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap"}},away?.name)
                   )
                 ),
+                // Stats du joueur dans ce match
+                React.createElement("div",{style:{display:"flex",flexDirection:"column",alignItems:"center",gap:2,marginRight:8,minWidth:60}},
+                  hasFStats && fStats.onBench
+                    ? React.createElement("span",{style:{fontSize:11,color:"#94a3b8",fontStyle:"italic"}},"Sur le banc")
+                    : hasFStats && fStats.played
+                    ? React.createElement(React.Fragment,null,
+                        React.createElement("div",{style:{display:"flex",alignItems:"center",gap:4}},
+                          fStats.minutes && React.createElement("span",{style:{fontSize:10,color:"#94a3b8"}},fStats.minutes+"'"),
+                          fStats.saves!=null && React.createElement("span",{style:{fontSize:10,color:"#64748b"}},"✋"+fStats.saves+(fStats.totalShots?("/"+fStats.totalShots):""))
+                        ),
+                        fStats.rating && React.createElement("div",{style:{
+                          background:ratingColor(fStats.rating),color:"#fff",
+                          fontSize:11,fontWeight:700,borderRadius:6,padding:"2px 7px"
+                        }},fStats.rating)
+                      )
+                    : !hasFStats
+                    ? React.createElement("div",{style:{width:8,height:8,borderRadius:"50%",background:"#e2e8f0"}})
+                    : null
+                ),
+                // Score
                 done && React.createElement("div",{style:{display:"flex",flexDirection:"column",alignItems:"flex-end",gap:3,marginRight:8,minWidth:20}},
                   React.createElement("span",{style:{fontSize:13,fontWeight:hg>ag?700:400,color:"#0f172a"}},hg??"-"),
                   React.createElement("span",{style:{fontSize:13,fontWeight:ag>hg?700:400,color:"#0f172a"}},ag??"-")
