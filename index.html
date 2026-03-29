@@ -48,7 +48,7 @@
     <script>
         if ("serviceWorker" in navigator) {
             const sw = `
-    const C='wf-pro-v188';
+    const C='wf-pro-v190';
     const API_KEY='3a14b1347c177458e2f23bea7899e9cf';
     const BASE='https://v3.football.api-sports.io';
     let prevScores = {};
@@ -11098,8 +11098,14 @@ function App() {
     { id: "calendar", label: "CALENDRIER" },
     { id: "transfers", label: "TRANSFERTS" },
     { id: "actu", label: "ACTUALITÉS" },
-    { id: "jsk", label: "JSK" }
+    { id: "jsk", label: "JSK" },
+    { id: "search", label: "🔍" }
   ];
+
+  const handleTabClick = (tabId) => {
+    if(tabId === "search") { setSrchOpen(true); return; }
+    setCurrentTab(tabId);
+  };
 
   const renderContent = () => {
     switch (currentTab) {
@@ -11170,20 +11176,11 @@ function App() {
               fontSize: 8, fontWeight: 500, letterSpacing: "3px",
               textTransform: "uppercase", color: "var(--c-jade)"
             } }, "PRO · LIVE")
-          )
+          ),
+
         ),
 
         React.createElement("div", { style: { display: "flex", alignItems: "center", gap: 7 } },
-
-          React.createElement("button", {
-            onClick:()=>setSrchOpen(true),
-            style:{background:"var(--c-base)",border:"1px solid var(--c-border)",borderRadius:10,width:34,height:34,display:"flex",alignItems:"center",justifyContent:"center",cursor:"pointer",flexShrink:0}
-          },
-            React.createElement("svg",{width:16,height:16,viewBox:"0 0 24 24",fill:"none"},
-              React.createElement("circle",{cx:11,cy:11,r:7,stroke:"var(--c-ink-3)",strokeWidth:2.2}),
-              React.createElement("path",{d:"M20 20L16.65 16.65",stroke:"var(--c-ink-3)",strokeWidth:2.2,strokeLinecap:"round"})
-            )
-          ),
 
           React.createElement("div", { style: {
             display: "flex", alignItems: "center", gap: 5,
@@ -11289,7 +11286,7 @@ function App() {
         tabs.map(tab =>
           React.createElement("button", {
             key: tab.id,
-            onClick: () => setCurrentTab(tab.id),
+            onClick: () => handleTabClick(tab.id),
             style: {
               flexShrink: 0,
               padding: "7px 14px",
