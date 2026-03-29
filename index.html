@@ -3035,23 +3035,9 @@ function PlayerPage({ playerId, playerName, playerPhoto, playerPos, playerNumber
     setInfo(null);
     setCareer([]);
     setTransfers([]);
+    setMarketVal(null);
 
-    // Étape 1 : squad + fixtures/player en parallèle pour accélérer
-    // Lancer fixtures?player immédiatement sans attendre le squad
-    Promise.allSettled([
-      api(`/fixtures?player=${playerId}&season=${curSeason}`, 3600000),
-      api(`/fixtures?player=${playerId}&season=${curSeason-1}`, 86400000),
-    ]).then(function(natResults) {
-      if(cancelled) return;
-      var natFixes = [];
-      for(var ri=0;ri<natResults.length;ri++){
-        var rv=natResults[ri];
-        if(rv.status==='fulfilled'&&rv.value) natFixes=natFixes.concat(rv.value);
-      }
-      // Stocker pour fusion après squad
-      if(!cancelled) window['_natFix_'+playerId] = natFixes;
-    }).catch(function(){});
-
+    // Squad + fixtures club + fixtures national en PARALLÈLE total
     api(`/players/squads?player=${playerId}`, 21600000).then(squadData => {
       if(cancelled) return;
       const currentTeam = squadData?.[0]?.team;
@@ -3072,18 +3058,17 @@ function PlayerPage({ playerId, playerName, playerPhoto, playerPos, playerNumber
           }
         }).catch(()=>{});
 
-        // Matchs via /fixtures?player=X — inclut club + sélection nationale
-        // Club actuel (2 saisons) — fixtures?player déjà lancé en parallèle
+        // Matchs club + sélection nationale — 4 appels en parallèle
         Promise.allSettled([
           api(`/fixtures?team=${currentTeamId}&season=${curSeason}`, 3600000),
           api(`/fixtures?team=${currentTeamId}&season=${curSeason-1}`, 86400000),
+          api(`/fixtures?player=${playerId}&season=${curSeason}`, 1800000),
+          api(`/fixtures?player=${playerId}&season=${curSeason-1}`, 86400000),
         ]).then(fixResults => {
           if(cancelled) return;
           const seen = {};
           const allFix = [];
-          // Fusionner avec les matchs nationaux pré-chargés
-          var natFix = window['_natFix_'+playerId] || [];
-          var allSources = [natFix];
+          var allSources = [];
           for(var ri=0;ri<fixResults.length;ri++){
             var rv = fixResults[ri];
             if(rv.status==='fulfilled'&&rv.value) allSources.push(rv.value);
@@ -3100,7 +3085,6 @@ function PlayerPage({ playerId, playerName, playerPhoto, playerPos, playerNumber
               }
             }
           }
-          delete window['_natFix_'+playerId];
           allFix.sort(function(a,b){return new Date(b.fixture.date)-new Date(a.fixture.date);});
           var limited = allFix.slice(0,40);
           setFixtures(limited);
@@ -3271,22 +3255,27 @@ function PlayerPage({ playerId, playerName, playerPhoto, playerPos, playerNumber
   const birth = player?.birth?.date;
   const [marketVal, setMarketVal] = React.useState(null);
   
-  // Charger valeur marchande depuis Transfermarkt via API non officielle
+  // Charger valeur marchande depuis Transfermarkt
   React.useEffect(() => {
-    if(!playerId || !player?.name) return;
-    // Utiliser l'API transfermarkt-api.vercel.app (gratuite et publique)
-    const searchName = encodeURIComponent(player.name);
-    fetch(`https://transfermarkt-api.vercel.app/players/search/${searchName}`)
-      .then(r => r.json())
-      .then(data => {
-        const found = data?.results?.find(p => 
-          p.name?.toLowerCase().includes(player.name?.toLowerCase().split(" ").pop()?.toLowerCase())
-        );
-        if(found?.marketValue) {
+    if(!playerId || !playerName) return;
+    setMarketVal(null);
+    const lastName = playerName.split(" ").pop();
+    const searchName = encodeURIComponent(playerName);
+    fetch('https://transfermarkt-api.vercel.app/players/search/' + searchName)
+      .then(function(r){return r.json();})
+      .then(function(data) {
+        var results = (data && data.results) || [];
+        var found = null;
+        for(var i=0;i<results.length;i++){
+          if(results[i].name && results[i].name.toLowerCase().includes(lastName.toLowerCase())){
+            found = results[i]; break;
+          }
+        }
+        if(found && found.marketValue) {
           setMarketVal(found.marketValue);
         }
-      }).catch(()=>{});
-  }, [player?.name]);
+      }).catch(function(){});
+  }, [playerName]);
 
   // Poste traduit
   const posLabel = p => {
