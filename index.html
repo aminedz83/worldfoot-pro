@@ -3021,7 +3021,6 @@ function PlayerPage({ playerId, playerName, playerPhoto, playerPos, playerNumber
   const [career, setCareer] = React.useState([]);
   const [transfers, setTransfers] = React.useState([]);
   const [fixtures, setFixtures] = React.useState([]);
-  const [fixStats, setFixStats] = React.useState({}); // {fixtureId: {rating, minutes, saves, onBench}}
   const [loading, setLoading] = React.useState(true);
   const curSeason = new Date().getMonth() >= 6 ? new Date().getFullYear() : new Date().getFullYear() - 1;
 
@@ -3055,7 +3054,8 @@ function PlayerPage({ playerId, playerName, playerPhoto, playerPos, playerNumber
         Promise.allSettled([
           api(`/fixtures?team=${currentTeamId}&season=${curSeason}`, 3600000),
           api(`/fixtures?team=${currentTeamId}&season=${curSeason-1}`, 86400000),
-        ]).then(([rF1,rF2]) => {
+        ]).then(fixResults => {
+          const rF1=fixResults[0],rF2=fixResults[1];
           if(cancelled) return;
           const allFix = [
             ...(rF1.status==="fulfilled" ? rF1.value||[] : []),
@@ -3064,55 +3064,6 @@ function PlayerPage({ playerId, playerName, playerPhoto, playerPos, playerNumber
            .sort((a,b) => new Date(b.fixture.date) - new Date(a.fixture.date))
            .slice(0,30);
           setFixtures(allFix);
-          // Charger stats joueur + lineups pour chaque fixture (API Pro)
-          const statsMap = {};
-          const batchSize = 5;
-          const loadBatch = async (fixtures) => {
-            for(let i=0; i<fixtures.length; i+=batchSize) {
-              if(cancelled) break;
-              const batch = fixtures.slice(i, i+batchSize);
-              await Promise.allSettled(batch.map(async f => {
-                const fid = f.fixture?.id;
-                if(!fid) return;
-                try {
-                  const [players, lineups] = await Promise.allSettled([
-                    api(`/fixtures/players?fixture=${fid}`, 86400000),
-                    api(`/fixtures/lineups?fixture=${fid}`, 86400000),
-                  ]);
-                  const pData = players.status==="fulfilled" ? players.value : [];
-                  const lData = lineups.status==="fulfilled" ? lineups.value : [];
-                  // Trouver les stats du joueur
-                  let pStats = null;
-                  (pData||[]).forEach(team => {
-                    (team.players||[]).forEach(p => {
-                      if(p.player?.id === playerId) pStats = p.statistics?.[0];
-                    });
-                  });
-                  // Déterminer si sur le banc
-                  let onBench = true, inSquad = false;
-                  (lData||[]).forEach(team => {
-                    (team.startXI||[]).forEach(p => {
-                      if(p.player?.id === playerId) { onBench = false; inSquad = true; }
-                    });
-                    (team.substitutes||[]).forEach(p => {
-                      if(p.player?.id === playerId) { onBench = true; inSquad = true; }
-                    });
-                  });
-                  statsMap[fid] = {
-                    rating: pStats?.games?.rating ? parseFloat(pStats.games.rating).toFixed(1) : null,
-                    minutes: pStats?.games?.minutes || null,
-                    saves: pStats?.goalkeeper?.saves ?? null,
-                    goals: pStats?.goals?.total ?? null,
-                    assists: pStats?.goals?.assists ?? null,
-                    onBench: inSquad && onBench,
-                    notInSquad: !inSquad,
-                  };
-                  if(!cancelled) setFixStats({...statsMap});
-                } catch(e) {}
-              }));
-            }
-          };
-          loadBatch(allFix);
         });
       }
     }).catch(()=>{});
@@ -3124,7 +3075,8 @@ function PlayerPage({ playerId, playerName, playerPhoto, playerPos, playerNumber
       api(`/players?id=${playerId}&season=${curSeason-3}`, 86400000),
       api(`/players?id=${playerId}&season=${curSeason-4}`, 86400000),
       api(`/transfers?player=${playerId}`, 86400000),
-    ]).then(([r0,r1,r2,r3,r4,rTr]) => {
+    ]).then(results => {
+      const r0=results[0],r1=results[1],r2=results[2],r3=results[3],r4=results[4],rTr=results[5];
       if(cancelled) return;
 
       const p0 = r0.status==="fulfilled" ? r0.value?.[0] : null;
@@ -3348,12 +3300,9 @@ function PlayerPage({ playerId, playerName, playerPhoto, playerPos, playerNumber
               const playerTeam = isPlayerTeamHome ? home : isPlayerTeamAway ? away : null;
               const oppTeam = isPlayerTeamHome ? away : isPlayerTeamAway ? home : null;
               
-              const fStats = fixtureStats[f.fixture?.id];
-              const hasFStats = !!fStats;
-              
               return React.createElement("div", {key:f.fixture?.id, style:{
                 display:"flex",alignItems:"center",gap:0,
-                padding:"0 16px",borderBottom:"1px solid #f1f5f9",background:"#fff",minHeight:56
+                padding:"0 16px",borderBottom:"1px solid #f1f5f9",background:"#fff",minHeight:52
               }},
                 React.createElement("div",{style:{width:42,fontSize:11,color:"#94a3b8",fontWeight:500,flexShrink:0}},ddmm(f.fixture?.date)),
                 React.createElement("div",{style:{flex:1,display:"flex",flexDirection:"column",gap:3,padding:"10px 0"}},
@@ -3366,26 +3315,6 @@ function PlayerPage({ playerId, playerName, playerPhoto, playerPos, playerNumber
                     React.createElement("span",{style:{fontSize:13,fontWeight:away?.id===playerTeamId?700:400,color:away?.id===playerTeamId?"#0f172a":"#64748b",overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap"}},away?.name)
                   )
                 ),
-                // Stats du joueur dans ce match
-                React.createElement("div",{style:{display:"flex",flexDirection:"column",alignItems:"center",gap:2,marginRight:8,minWidth:60}},
-                  hasFStats && fStats.onBench
-                    ? React.createElement("span",{style:{fontSize:11,color:"#94a3b8",fontStyle:"italic"}},"Sur le banc")
-                    : hasFStats && fStats.played
-                    ? React.createElement(React.Fragment,null,
-                        React.createElement("div",{style:{display:"flex",alignItems:"center",gap:4}},
-                          fStats.minutes && React.createElement("span",{style:{fontSize:10,color:"#94a3b8"}},fStats.minutes+"'"),
-                          fStats.saves!=null && React.createElement("span",{style:{fontSize:10,color:"#64748b"}},"✋"+fStats.saves+(fStats.totalShots?("/"+fStats.totalShots):""))
-                        ),
-                        fStats.rating && React.createElement("div",{style:{
-                          background:ratingColor(fStats.rating),color:"#fff",
-                          fontSize:11,fontWeight:700,borderRadius:6,padding:"2px 7px"
-                        }},fStats.rating)
-                      )
-                    : !hasFStats
-                    ? React.createElement("div",{style:{width:8,height:8,borderRadius:"50%",background:"#e2e8f0"}})
-                    : null
-                ),
-                // Score
                 done && React.createElement("div",{style:{display:"flex",flexDirection:"column",alignItems:"flex-end",gap:3,marginRight:8,minWidth:20}},
                   React.createElement("span",{style:{fontSize:13,fontWeight:hg>ag?700:400,color:"#0f172a"}},hg??"-"),
                   React.createElement("span",{style:{fontSize:13,fontWeight:ag>hg?700:400,color:"#0f172a"}},ag??"-")
@@ -6248,7 +6177,8 @@ function MatchDetail({state,onClose,onTeam}){
     Promise.all([
       api(`/teams/statistics?team=${hid}&league=${lid}&season=${season}`,ttl).catch(()=>null),
       api(`/teams/statistics?team=${aid}&league=${lid}&season=${season}`,ttl).catch(()=>null),
-    ]).then(([h,a])=>{
+    ]).then(ha=>{
+      const h=ha[0],a=ha[1];
       if(!cancelled)setTeamStats({h:h??null,a:a??null});
     });
     return()=>{cancelled=true;};
