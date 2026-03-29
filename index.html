@@ -48,7 +48,7 @@
     <script>
         if ("serviceWorker" in navigator) {
             const sw = `
-    const C='wf-pro-v217';
+    const C='wf-pro-v218';
     const API_KEY='3a14b1347c177458e2f23bea7899e9cf';
     const BASE='https://v3.football.api-sports.io';
     let prevScores = {};
@@ -11177,10 +11177,15 @@ function TeamPage({ teamId, teamName, teamLogo, leagueId, season, onClose, onTea
         )
       ),
 
-      // Tab bar
-      React.createElement("div",{style:S.tabBar},
-        TABS.map(t=>React.createElement("button",{key:t.id,onClick:()=>setTab(t.id),style:S.tabBtn(tab===t.id)},t.label))
-      )
+    ),
+
+    // ── TAB BAR — enfant direct de page (jamais dans le scroll) ──
+    React.createElement("div",{style:{
+      display:"flex",overflowX:"auto",scrollbarWidth:"none",
+      borderBottom:"2px solid #f1f5f9",background:"#fff",
+      flexShrink:0,WebkitOverflowScrolling:"touch"
+    }},
+      TABS.map(t=>React.createElement("button",{key:t.id,onClick:()=>setTab(t.id),style:S.tabBtn(tab===t.id)},t.label))
     ),
 
     // ── CONTENT ──
