@@ -48,7 +48,7 @@
     <script>
         if ("serviceWorker" in navigator) {
             const sw = `
-    const C='wf-pro-v211';
+    const C='wf-pro-v212';
     const API_KEY='3a14b1347c177458e2f23bea7899e9cf';
     const BASE='https://v3.football.api-sports.io';
     let prevScores = {};
@@ -6187,9 +6187,95 @@ function MatchDetail({state,onClose,onTeam}){
       }, "📊 Statistiques non disponibles");
     }
 
+    // Stats par mi-temps calculées depuis les événements
+    const hid = fix.teams.home.id;
+    const aid = fix.teams.away.id;
+    const evts = events || [];
+
+    // Filtrer événements par période
+    const evts1H = evts.filter(e => (e.time?.elapsed||0) <= 45 && !e.time?.extra);
+    const evts2H = evts.filter(e => (e.time?.elapsed||0) > 45 || e.time?.extra);
+
+    const countEvt = (evtList, teamId, type, detail=null) =>
+      evtList.filter(e =>
+        e.team?.id === teamId &&
+        e.type === type &&
+        (detail===null || e.detail===detail)
+      ).length;
+
+    // Stats globales depuis l'API
     const safeStats = stats || [];
-    const hStats = safeStats.find(s => s?.team?.id === fix.teams.home?.id)?.statistics || [];
-    const aStats = safeStats.find(s => s?.team?.id === fix.teams.away?.id)?.statistics || [];
+    const hStats = (period === "all")
+      ? safeStats.find(s => s?.team?.id === hid)?.statistics || []
+      : [];
+    const aStats = (period === "all")
+      ? safeStats.find(s => s?.team?.id === aid)?.statistics || []
+      : [];
+
+    // Stats mi-temps depuis les événements
+    const periodEvts = period === "first" ? evts1H : period === "second" ? evts2H : evts;
+    const htGoalsH = countEvt(evts1H, hid, "Goal");
+    const htGoalsA = countEvt(evts1H, aid, "Goal");
+    const htYellH  = countEvt(evts1H, hid, "Card", "Yellow Card");
+    const htYellA  = countEvt(evts1H, aid, "Card", "Yellow Card");
+    const htRedH   = countEvt(evts1H, hid, "Card", "Red Card");
+    const htRedA   = countEvt(evts1H, aid, "Card", "Red Card");
+    const ftGoalsH = countEvt(evts, hid, "Goal");
+    const ftGoalsA = countEvt(evts, aid, "Goal");
+    const ftYellH  = countEvt(evts, hid, "Card", "Yellow Card");
+    const ftYellA  = countEvt(evts, aid, "Card", "Yellow Card");
+    const s2GoalsH = countEvt(evts2H, hid, "Goal");
+    const s2GoalsA = countEvt(evts2H, aid, "Goal");
+    const s2YellH  = countEvt(evts2H, hid, "Card", "Yellow Card");
+    const s2YellA  = countEvt(evts2H, aid, "Card", "Yellow Card");
+
+    // Score à la mi-temps depuis fix.score
+    const htScoreH = fix.score?.halftime?.home ?? htGoalsH;
+    const htScoreA = fix.score?.halftime?.away ?? htGoalsA;
+    const ftScoreH = fix.goals?.home ?? ftGoalsH;
+    const ftScoreA = fix.goals?.away ?? ftGoalsA;
+    const s2ScoreH = (ftScoreH??0) - (htScoreH??0);
+    const s2ScoreA = (ftScoreA??0) - (htScoreA??0);
+
+    // Si on est en mode mi-temps, afficher stats calculées depuis événements
+    if(period !== "all") {
+      const pGoalsH = period==="first" ? htScoreH : s2ScoreH;
+      const pGoalsA = period==="first" ? htScoreA : s2ScoreA;
+      const pYellH  = period==="first" ? htYellH : s2YellH;
+      const pYellA  = period==="first" ? htYellA : s2YellA;
+      const pRedH   = period==="first" ? htRedH : (countEvt(evts2H, hid, "Card", "Red Card"));
+      const pRedA   = period==="first" ? htRedA : (countEvt(evts2H, aid, "Card", "Red Card"));
+
+      const mkRow = (lbl, vH, vA) => React.createElement("div", {style:{
+        display:"flex",alignItems:"center",justifyContent:"space-between",
+        padding:"12px 16px",borderBottom:"1px solid rgba(0,0,0,0.04)",background:"#fff"
+      }},
+        React.createElement("span",{style:{fontFamily:"'JetBrains Mono',monospace",fontSize:18,fontWeight:700,color:vH>vA?"#00b86b":"#1A1F2E",minWidth:40}},vH),
+        React.createElement("span",{style:{flex:1,textAlign:"center",fontSize:11,fontWeight:600,color:"#8E96A8",textTransform:"uppercase"}},lbl),
+        React.createElement("span",{style:{fontFamily:"'JetBrains Mono',monospace",fontSize:18,fontWeight:700,color:vA>vH?"#00b86b":"#1A1F2E",minWidth:40,textAlign:"right"}},vA)
+      );
+
+      return React.createElement("div", null,
+        React.createElement("div",{style:{background:"#f8fafc",borderRadius:12,margin:"0 0 8px",overflow:"hidden"}},
+          React.createElement("div",{style:{padding:"10px 16px",fontSize:11,fontWeight:700,color:"#94a3b8",textTransform:"uppercase",letterSpacing:.5,borderBottom:"1px solid rgba(0,0,0,0.04)"}},
+            "Score "+( period==="first" ? "1re mi-temps" : "2e mi-temps")
+          ),
+          mkRow("Buts", pGoalsH, pGoalsA)
+        ),
+        React.createElement("div",{style:{background:"#f8fafc",borderRadius:12,margin:"0 0 8px",overflow:"hidden"}},
+          React.createElement("div",{style:{padding:"10px 16px",fontSize:11,fontWeight:700,color:"#94a3b8",textTransform:"uppercase",letterSpacing:.5,borderBottom:"1px solid rgba(0,0,0,0.04)"}},
+            "Cartons"
+          ),
+          mkRow("🟨 Jaunes", pYellH, pYellA),
+          mkRow("🟥 Rouges", pRedH, pRedA)
+        ),
+        React.createElement("div",{style:{
+          padding:"14px 16px",background:"#f8fafc",borderRadius:12,
+          fontSize:12,color:"#94a3b8",textAlign:"center"
+        }},"📊 Possession et tirs non disponibles par mi-temps")
+      );
+    }
+    
 
     const getStat = (arr, type) => {
       try {
