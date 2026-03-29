@@ -3108,7 +3108,8 @@ function PlayerPage({ playerId, playerName, playerPhoto, playerPos, playerNumber
                       }
                     };
                   }
-                  return null;
+                  // Joueur absent de ce match → marquer comme "vérifié, pas de données"
+                  return { fid: fid, data: { notFound: true } };
                 });
               })).then(function(results) {
                 if(cancelled) return;
@@ -3116,8 +3117,9 @@ function PlayerPage({ playerId, playerName, playerPhoto, playerPos, playerNumber
                 setFixtureStats(function(prev) {
                   var next = Object.assign({}, prev);
                   for(var i=0;i<results.length;i++){
-                    if(results[i].status==='fulfilled'&&results[i].value){
-                      next[results[i].value.fid] = results[i].value.data;
+                    var r=results[i];
+                    if(r.status==='fulfilled'&&r.value&&r.value.fid){
+                      next[r.value.fid] = r.value.data;
                     }
                   }
                   return next;
@@ -3411,7 +3413,7 @@ function PlayerPage({ playerId, playerName, playerPhoto, playerPos, playerNumber
                 React.createElement("div",{style:{display:"flex",flexDirection:"column",alignItems:"center",justifyContent:"center",gap:2,marginRight:8,minWidth:60}},
                   onBench
                     ? React.createElement("span",{style:{fontSize:11,color:"#94a3b8",fontStyle:"italic"}},"Sur le banc")
-                    : fStats
+                    : (fStats && !fStats.notFound)
                     ? React.createElement(React.Fragment,null,
                         React.createElement("div",{style:{display:"flex",alignItems:"center",gap:4}},
                           minutes && React.createElement("span",{style:{fontSize:10,color:"#94a3b8"}},minutes+"'"),
@@ -3423,6 +3425,8 @@ function PlayerPage({ playerId, playerName, playerPhoto, playerPos, playerNumber
                           borderRadius:5,padding:"2px 6px"
                         }},rating)
                       )
+                    : fStats && fStats.notFound
+                    ? null
                     : React.createElement("div",{style:{width:36,height:20,borderRadius:5,background:"#f1f5f9",animation:"pulse 1.2s ease-in-out infinite"}})
                 ),
                 done && React.createElement("div",{style:{display:"flex",flexDirection:"column",alignItems:"flex-end",gap:3,minWidth:20}},
