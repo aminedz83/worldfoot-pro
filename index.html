@@ -48,7 +48,7 @@
     <script>
         if ("serviceWorker" in navigator) {
             const sw = `
-    const C='wf-pro-v208';
+    const C='wf-pro-v210';
     const API_KEY='3a14b1347c177458e2f23bea7899e9cf';
     const BASE='https://v3.football.api-sports.io';
     let prevScores = {};
@@ -3139,7 +3139,7 @@ function LeagueSheet({fix, leagueInfo, onClose}) {
           if(!cancelled) setFixtures(fx||[]);
         } else {
           // Pas de rounds → charger tous les matchs directement
-          const fx = await api(`/fixtures?league=${targetLid}&season=${season}`, 86400000);
+          const fx = await api(`/fixtures?league=${targetLid}&season=${season}`, 3600000);
           if(!cancelled) setFixtures(fx||[]);
         }
         if(!cancelled) setLoading(false);
@@ -7628,10 +7628,40 @@ function ScoresTab({favs,onFav,onTeam}){
 
   const hasLive=useMemo(()=>data.some(f=>LIVE_ST.has(f?.fixture?.status?.short)),[data]);
 
+  const prevDataRef = useRef([]);
+
   const load=useCallback(async(silent=false)=>{
     if(!silent){setSt("load");setErr("");}else setSpin(true);
     try{
       const d=await api(`/fixtures?date=${date}&timezone=Europe/Paris`,15000);
+
+      // Détecter les matchs qui viennent de passer LIVE → FT
+      // et invalider le cache de leur compétition + fixtures league
+      if(silent && prevDataRef.current.length > 0) {
+        const prevMap = {};
+        prevDataRef.current.forEach(f => { prevMap[f.fixture?.id] = f.fixture?.status?.short; });
+        (d||[]).forEach(f => {
+          const prevStatus = prevMap[f.fixture?.id];
+          const newStatus  = f.fixture?.status?.short;
+          const justFinished = LIVE_ST.has(prevStatus) && DONE_ST.has(newStatus);
+          if(justFinished) {
+            const lid = f.league?.id;
+            const seas = f.league?.season;
+            if(lid && seas) {
+              // Invalider cache fixtures de la ligue — bracket + classement se rechargent
+              try {
+                Object.keys(localStorage).forEach(k => {
+                  if(k.includes(`fixtures?league=${lid}`) || k.includes(`standings?league=${lid}`)) {
+                    localStorage.removeItem(k);
+                  }
+                });
+              } catch(e) {}
+            }
+          }
+        });
+      }
+
+      prevDataRef.current = d || [];
       setData(d);
       if(!silent)setSt("ok");
     }
@@ -10592,14 +10622,21 @@ function TeamPage({ teamId, teamName, teamLogo, leagueId, season, onClose }) {
     let cancelled = false;
     setLoading(true);
     setResults([]); setUpcoming([]); setStandings([]); setSquad([]); setTransfers([]);
+    // Invalider le cache des fixtures pour toujours avoir les derniers résultats
+    try {
+      const cacheKey1 = `wf_api_/fixtures?team=${teamId}&season=${season || (new Date().getMonth()>=6?new Date().getFullYear():new Date().getFullYear()-1)}`;
+      const cacheKey2 = `wf_api_/fixtures?team=${teamId}&next=15`;
+      localStorage.removeItem(cacheKey1);
+      localStorage.removeItem(cacheKey2);
+    } catch(e) {}
 
     const curSeason = season || (new Date().getMonth() >= 6 ? new Date().getFullYear() : new Date().getFullYear()-1);
 
     Promise.allSettled([
       api(`/teams?id=${teamId}`, 86400000),
-      api(`/fixtures?team=${teamId}&season=${curSeason}`, TTL.DONE),
+      api(`/fixtures?team=${teamId}&season=${curSeason}`, 3600000),
       api(`/fixtures?team=${teamId}&season=${curSeason-1}`, TTL.DONE),
-      api(`/fixtures?team=${teamId}&next=15`, TTL.UPCOMING),
+      api(`/fixtures?team=${teamId}&next=15`, 3600000),
       api(`/players/squads?team=${teamId}`, 86400000),
       api(`/transfers?team=${teamId}`, 86400000),
     ]).then(async ([rInfo, rRes, rResPrev, rNext, rSquad, rTransfers]) => {
