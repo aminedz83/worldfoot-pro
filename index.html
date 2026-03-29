@@ -48,7 +48,7 @@
     <script>
         if ("serviceWorker" in navigator) {
             const sw = `
-    const C='wf-pro-v187';
+    const C='wf-pro-v188';
     const API_KEY='3a14b1347c177458e2f23bea7899e9cf';
     const BASE='https://v3.football.api-sports.io';
     let prevScores = {};
@@ -11021,46 +11021,31 @@ function App() {
   }, [currentTab]);
 
   const [teamPage, setTeamPage] = useState(null);
-
-  // === RECHERCHE GLOBALE ===
-  const [searchOpen, setSearchOpen]       = useState(false);
-  const [searchQuery, setSearchQuery]     = useState("");
-  const [searchResults, setSearchResults] = useState([]);
-  const [searchLoading, setSearchLoading] = useState(false);
-  const searchTimerRef2 = useRef(null);
-
-  const handleSearch = (q) => {
-    setSearchQuery(q);
-    if(searchTimerRef2.current) clearTimeout(searchTimerRef2.current);
-    if(!q.trim()) { setSearchResults([]); setSearchLoading(false); return; }
-    setSearchLoading(true);
-    searchTimerRef2.current = setTimeout(async () => {
-      try {
-        const [teams, leagues] = await Promise.all([
-          api(`/teams?search=${encodeURIComponent(q.trim())}`, 300000).catch(()=>[]),
-          api(`/leagues?search=${encodeURIComponent(q.trim())}`, 300000).catch(()=>[]),
+  const [srchOpen, setSrchOpen]   = useState(false);
+  const [srchQ, setSrchQ]         = useState("");
+  const [srchRes, setSrchRes]     = useState([]);
+  const [srchLoading, setSrchLoading] = useState(false);
+  const srchTimer = useRef(null);
+  const doSearch = q => {
+    setSrchQ(q);
+    if(srchTimer.current) clearTimeout(srchTimer.current);
+    if(!q.trim()){ setSrchRes([]); setSrchLoading(false); return; }
+    setSrchLoading(true);
+    srchTimer.current = setTimeout(async()=>{
+      try{
+        const [t,l] = await Promise.all([
+          api(`/teams?search=${encodeURIComponent(q.trim())}`,300000).catch(()=>[]),
+          api(`/leagues?search=${encodeURIComponent(q.trim())}`,300000).catch(()=>[]),
         ]);
-        const teamRes = (teams||[]).slice(0,6).map(t=>({
-          type:"team", id:t.team?.id, name:t.team?.name,
-          logo:t.team?.logo, sub:t.venue?.city||t.team?.country||""
-        }));
-        const leagueRes = (leagues||[]).slice(0,5).map(l=>({
-          type:"league", id:l.league?.id, name:l.league?.name,
-          logo:l.league?.logo, sub:l.country?.name||""
-        }));
-        setSearchResults([...teamRes, ...leagueRes]);
-      } catch { setSearchResults([]); }
-      setSearchLoading(false);
-    }, 400);
+        setSrchRes([
+          ...(t||[]).slice(0,5).map(x=>({type:"team",  id:x.team?.id,   name:x.team?.name,   logo:x.team?.logo,   sub:x.team?.country||""})),
+          ...(l||[]).slice(0,4).map(x=>({type:"league",id:x.league?.id, name:x.league?.name, logo:x.league?.logo, sub:x.country?.name||""})),
+        ]);
+      }catch{ setSrchRes([]); }
+      setSrchLoading(false);
+    },400);
   };
-
-  const closeSearch = () => {
-    setSearchOpen(false);
-    setSearchQuery("");
-    setSearchResults([]);
-    setSearchLoading(false);
-    if(searchTimerRef2.current) clearTimeout(searchTimerRef2.current);
-  };
+  const closeSrch = ()=>{ setSrchOpen(false); setSrchQ(""); setSrchRes([]); if(srchTimer.current) clearTimeout(srchTimer.current); };
   const openTeam = useCallback((teamId, teamName, teamLogo, leagueId, season) => {
     setTeamPage({ teamId, teamName, teamLogo, leagueId, season });
   }, []);
@@ -11190,20 +11175,13 @@ function App() {
 
         React.createElement("div", { style: { display: "flex", alignItems: "center", gap: 7 } },
 
-          // Bouton loupe — ouvre overlay recherche
           React.createElement("button", {
-            onClick: () => setSearchOpen(prev => !prev),
-            style:{
-              background: searchOpen ? "rgba(5,150,105,.1)" : "var(--c-base)",
-              border: searchOpen ? "1px solid rgba(5,150,105,.3)" : "1px solid var(--c-border)",
-              borderRadius: 10, width: 34, height: 34,
-              display:"flex", alignItems:"center", justifyContent:"center",
-              cursor:"pointer", flexShrink:0, transition:"all .15s"
-            }
+            onClick:()=>setSrchOpen(true),
+            style:{background:"var(--c-base)",border:"1px solid var(--c-border)",borderRadius:10,width:34,height:34,display:"flex",alignItems:"center",justifyContent:"center",cursor:"pointer",flexShrink:0}
           },
-            React.createElement("svg", {width:16,height:16,viewBox:"0 0 24 24",fill:"none"},
-              React.createElement("circle",{cx:11,cy:11,r:7,stroke:searchOpen?"var(--c-jade)":"var(--c-ink-3)",strokeWidth:2.2}),
-              React.createElement("path",{d:"M20 20L16.65 16.65",stroke:searchOpen?"var(--c-jade)":"var(--c-ink-3)",strokeWidth:2.2,strokeLinecap:"round"})
+            React.createElement("svg",{width:16,height:16,viewBox:"0 0 24 24",fill:"none"},
+              React.createElement("circle",{cx:11,cy:11,r:7,stroke:"var(--c-ink-3)",strokeWidth:2.2}),
+              React.createElement("path",{d:"M20 20L16.65 16.65",stroke:"var(--c-ink-3)",strokeWidth:2.2,strokeLinecap:"round"})
             )
           ),
 
@@ -11333,119 +11311,53 @@ function App() {
       )
     ),
 
-
-
     React.createElement("div", { style: { flex: 1, overflow: "hidden" } },
       renderContent()
     ),
 
-    // === OVERLAY RECHERCHE (position fixed — ne décale pas l'interface) ===
-    searchOpen && React.createElement("div", {style:{
-      position:"fixed", top:0, left:0, right:0, bottom:0, zIndex:500,
-      display:"flex", flexDirection:"column"
-    }},
-      // Zone sombre cliquable pour fermer
-      React.createElement("div", {
-        onClick: closeSearch,
-        style:{position:"absolute", inset:0, background:"rgba(0,0,0,.4)"}
-      }),
-
-      // Panel recherche — flotte sous le header
-      React.createElement("div", {style:{
-        position:"relative", zIndex:1,
+    srchOpen && React.createElement("div", {
+      style:{position:"fixed",inset:0,zIndex:9999,display:"flex",flexDirection:"column",pointerEvents:"auto"}
+    },
+      React.createElement("div",{onClick:closeSrch,style:{position:"absolute",inset:0,background:"rgba(0,0,0,.45)"}}),
+      React.createElement("div",{style:{
+        position:"relative",zIndex:1,
+        marginTop:"calc(env(safe-area-inset-top, 0px) + 56px)",
         background:"#fff",
-        paddingTop:"calc(env(safe-area-inset-top) + 60px)",
-        borderBottom:"1px solid var(--c-border)",
-        boxShadow:"0 8px 32px rgba(0,0,0,.12)"
+        borderRadius:"0 0 18px 18px",
+        boxShadow:"0 8px 32px rgba(0,0,0,.18)",
+        overflow:"hidden"
       }},
-        // Input
-        React.createElement("div", {style:{
-          display:"flex", alignItems:"center", gap:10,
-          margin:"12px 14px",
-          background:"var(--c-base)",
-          border:"1.5px solid var(--c-jade)",
-          borderRadius:24, padding:"9px 16px"
-        }},
-          React.createElement("svg", {width:16,height:16,viewBox:"0 0 24 24",fill:"none",style:{flexShrink:0}},
+        React.createElement("div",{style:{display:"flex",alignItems:"center",gap:10,padding:"10px 14px",borderBottom:"1px solid var(--c-border)"}},
+          React.createElement("svg",{width:16,height:16,viewBox:"0 0 24 24",fill:"none",style:{flexShrink:0}},
             React.createElement("circle",{cx:11,cy:11,r:7,stroke:"var(--c-jade)",strokeWidth:2.2}),
             React.createElement("path",{d:"M20 20L16.65 16.65",stroke:"var(--c-jade)",strokeWidth:2.2,strokeLinecap:"round"})
           ),
-          React.createElement("input", {
-            autoFocus:true,
-            type:"text",
-            value:searchQuery,
-            onChange:e=>handleSearch(e.target.value),
+          React.createElement("input",{
+            autoFocus:true,type:"text",value:srchQ,
+            onChange:e=>doSearch(e.target.value),
             placeholder:"Équipe, compétition, nation...",
-            style:{
-              flex:1, border:"none", outline:"none",
-              background:"transparent",
-              fontSize:15, color:"var(--c-ink)",
-              fontFamily:"'Plus Jakarta Sans', sans-serif"
-            }
+            style:{flex:1,border:"none",outline:"none",background:"transparent",fontSize:15,color:"var(--c-ink)",fontFamily:"'Plus Jakarta Sans',sans-serif"}
           }),
-          searchQuery && React.createElement("button", {
-            onClick:()=>{ setSearchQuery(""); setSearchResults([]); },
-            style:{background:"none",border:"none",cursor:"pointer",color:"var(--c-ink-3)",fontSize:18,lineHeight:1,padding:"0 2px",flexShrink:0}
-          }, "×")
+          srchQ && React.createElement("button",{onClick:()=>{setSrchQ("");setSrchRes([]);},style:{background:"none",border:"none",cursor:"pointer",color:"var(--c-ink-3)",fontSize:20,lineHeight:1,padding:"0 2px"}},"×"),
+          React.createElement("button",{onClick:closeSrch,style:{background:"none",border:"none",cursor:"pointer",color:"var(--c-ink-3)",fontSize:13,fontWeight:600,padding:"0 4px"}},"Annuler")
         ),
-
-        // Résultats
-        searchLoading && React.createElement("div", {style:{
-          display:"flex",alignItems:"center",justifyContent:"center",padding:20
-        }}, React.createElement(Spin,{s:22,c:"var(--c-jade)"})),
-
-        !searchLoading && searchQuery && searchResults.length === 0 && React.createElement("div", {
-          style:{padding:"16px",fontSize:13,color:"var(--c-ink-3)",textAlign:"center"}
-        }, "Aucun résultat pour \"" + searchQuery + "\""),
-
-        !searchLoading && searchResults.length > 0 && React.createElement("div", {style:{
-          maxHeight:"60vh", overflowY:"auto", WebkitOverflowScrolling:"touch"
-        }},
-          searchResults.map((r,i) =>
-            React.createElement("div", {
-              key:i,
-              onClick:()=>{
-                if(r.type==="team"){
-                  openTeam(r.id, r.name, r.logo, null, null);
-                  closeSearch();
-                } else { closeSearch(); }
-              },
-              style:{
-                display:"flex", alignItems:"center", gap:12,
-                padding:"11px 16px",
-                borderTop: i>0 ? "1px solid var(--c-border)" : "none",
-                cursor:"pointer", background:"#fff"
-              }
-            },
-              React.createElement("div", {style:{
-                width:36, height:36, borderRadius:9,
-                background:"var(--c-base)",
-                display:"flex", alignItems:"center", justifyContent:"center",
-                flexShrink:0, border:"1px solid var(--c-border)"
-              }},
-                React.createElement("img", {
-                  src:r.logo, style:{width:26,height:26,objectFit:"contain"},
-                  onError:e=>e.target.style.display="none"
-                })
-              ),
-              React.createElement("div", {style:{flex:1,minWidth:0}},
-                React.createElement("div", {style:{
-                  fontSize:14, fontWeight:600, color:"var(--c-ink)",
-                  overflow:"hidden", textOverflow:"ellipsis", whiteSpace:"nowrap"
-                }}, r.name),
-                r.sub && React.createElement("div", {style:{
-                  fontSize:11, color:"var(--c-ink-3)", marginTop:2
-                }}, r.sub)
-              ),
-              React.createElement("span", {style:{
-                fontSize:10, fontWeight:700, letterSpacing:".3px",
-                padding:"3px 8px", borderRadius:8,
-                background: r.type==="team" ? "rgba(5,150,105,.1)" : "rgba(37,99,235,.1)",
-                color: r.type==="team" ? "var(--c-jade)" : "#2563eb",
-                flexShrink:0
-              }}, r.type==="team" ? "Équipe" : "Compétition")
-            )
-          )
+        srchLoading && React.createElement("div",{style:{display:"flex",justifyContent:"center",padding:20}},React.createElement(Spin,{s:22,c:"var(--c-jade)"})),
+        !srchLoading && srchQ && srchRes.length===0 && React.createElement("div",{style:{padding:"16px",fontSize:13,color:"var(--c-ink-3)",textAlign:"center"}},"Aucun résultat"),
+        !srchLoading && srchRes.length>0 && React.createElement("div",{style:{maxHeight:"55vh",overflowY:"auto",WebkitOverflowScrolling:"touch"}},
+          srchRes.map((r,i)=>React.createElement("div",{
+            key:i,
+            onClick:()=>{ if(r.type==="team"){ openTeam(r.id,r.name,r.logo,null,null); } closeSrch(); },
+            style:{display:"flex",alignItems:"center",gap:12,padding:"11px 16px",borderTop:i>0?"1px solid var(--c-border)":"none",cursor:"pointer",background:"#fff"}
+          },
+            React.createElement("div",{style:{width:36,height:36,borderRadius:9,background:"var(--c-base)",display:"flex",alignItems:"center",justifyContent:"center",flexShrink:0,border:"1px solid var(--c-border)"}},
+              React.createElement("img",{src:r.logo,style:{width:26,height:26,objectFit:"contain"},onError:e=>e.target.style.display="none"})
+            ),
+            React.createElement("div",{style:{flex:1,minWidth:0}},
+              React.createElement("div",{style:{fontSize:14,fontWeight:600,color:"var(--c-ink)",overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap"}},r.name),
+              r.sub && React.createElement("div",{style:{fontSize:11,color:"var(--c-ink-3)",marginTop:2}},r.sub)
+            ),
+            React.createElement("span",{style:{fontSize:10,fontWeight:700,padding:"3px 8px",borderRadius:8,background:r.type==="team"?"rgba(5,150,105,.1)":"rgba(37,99,235,.1)",color:r.type==="team"?"var(--c-jade)":"#2563eb",flexShrink:0}},r.type==="team"?"Équipe":"Compétition")
+          ))
         )
       )
     ),
