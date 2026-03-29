@@ -48,7 +48,7 @@
     <script>
         if ("serviceWorker" in navigator) {
             const sw = `
-    const C='wf-pro-v225';
+    const C='wf-pro-v226';
     const API_KEY='3a14b1347c177458e2f23bea7899e9cf';
     const BASE='https://v3.football.api-sports.io';
     let prevScores = {};
@@ -1478,7 +1478,7 @@ const organizePlayersByLine = (players, formation) => {
   return result;
 };
 
-const renderTerrainFlash = (fix, hLu, aLu, players, events, hid, aid, has, hg, ag) => {
+const renderTerrainFlash = (fix, hLu, aLu, players, events, hid, aid, has, hg, ag, onPlayerClick) => {
   if (!hLu && !aLu) return null;
 
   const getPlayersWithRatings = (teamId, lineup) => {
@@ -1497,8 +1497,8 @@ const renderTerrainFlash = (fix, hLu, aLu, players, events, hid, aid, has, hg, a
     });
   };
 
-  const homePlayers = getPlayersWithRatings(hid, hLu);
-  const awayPlayers = getPlayersWithRatings(aid, aLu);
+  const homePlayers = getPlayersWithRatings(hid, hLu).map(p => ({...p, _teamLogo: fix?.teams?.home?.logo}));
+  const awayPlayers = getPlayersWithRatings(aid, aLu).map(p => ({...p, _teamLogo: fix?.teams?.away?.logo}));
 
   // Calculer note moyenne de l'équipe (joueurs titulaires avec note)
   const avgRating = (players) => {
@@ -1635,7 +1635,7 @@ const renderTerrainFlash = (fix, hLu, aLu, players, events, hid, aid, has, hg, a
                   id: player.id, name: player.name, photo: player.photo,
                   pos: player.pos || player.position, number: player.number,
                   nationality: player.nationality,
-                  teamLogo: homeTeam?.logo,
+                  teamLogo: fix?.teams?.home?.logo,
                   stats: players.flatMap(t=>t.players||[]).find(p=>p.player?.id===player.id)?.statistics?.[0]
                 })},
                 React.createElement(PlayerFlash, { player: player, rating: player.rating, isHome: true }),
@@ -1678,7 +1678,7 @@ const renderTerrainFlash = (fix, hLu, aLu, players, events, hid, aid, has, hg, a
                   id: player.id, name: player.name, photo: player.photo,
                   pos: player.pos || player.position, number: player.number,
                   nationality: player.nationality,
-                  teamLogo: awayTeam?.logo,
+                  teamLogo: fix?.teams?.away?.logo,
                   stats: players.flatMap(t=>t.players||[]).find(p=>p.player?.id===player.id)?.statistics?.[0]
                 })},
                 React.createElement(PlayerFlash, { player: player, rating: player.rating, isHome: false }),
@@ -2687,7 +2687,8 @@ function ComposPanel({lineups, players, homeTeam, awayTeam, isPartial, fix, even
           awayTeam?.id,
           fix?.goals?.home !== undefined && fix?.goals?.away !== undefined,
           fix?.goals?.home,
-          fix?.goals?.away
+          fix?.goals?.away,
+          onPlayerClick
         )
       : renderListeFlash(
           fix || { teams: { home: homeTeam, away: awayTeam } },
