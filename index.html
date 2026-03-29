@@ -8278,7 +8278,7 @@ function MatchDetail({state,onClose,onTeam}){
           playerSheet.stats && React.createElement("div",{style:{padding:"0 16px"}},
             React.createElement("div",{style:{display:"flex",justifyContent:"space-between",alignItems:"center",padding:"11px 0",borderBottom:"1px solid #f1f5f9"}},
               React.createElement("span",{style:{fontSize:14,color:"#374151"}},"Note"),
-              playerSheet.stats.games?.rating!=null
+              (playerSheet.stats.games&&playerSheet.stats.games.rating!=null)
                 ? React.createElement("span",{style:{
                     background:parseFloat(playerSheet.stats.games.rating)>=7.5?"#22c55e":parseFloat(playerSheet.stats.games.rating)>=6.5?"#f59e0b":"#ef4444",
                     color:"#fff",fontSize:13,fontWeight:700,borderRadius:6,padding:"2px 9px"
@@ -8287,7 +8287,21 @@ function MatchDetail({state,onClose,onTeam}){
             ),
             React.createElement("div",{style:{display:"flex",justifyContent:"space-between",alignItems:"center",padding:"11px 0",borderBottom:"1px solid #f1f5f9"}},
               React.createElement("span",{style:{fontSize:14,color:"#374151"}},"Minutes jouées"),
-              React.createElement("span",{style:{fontSize:14,fontWeight:700,color:"#0f172a"}},playerSheet.stats.games?.minutes!=null?playerSheet.stats.games.minutes:"-")
+              React.createElement("span",{style:{fontSize:14,fontWeight:700,color:"#0f172a"}},(playerSheet.stats.games&&playerSheet.stats.games.minutes!=null)?playerSheet.stats.games.minutes:"-")
+            ),
+            (playerSheet.stats.goals&&playerSheet.stats.goals.total!=null) && React.createElement("div",{style:{display:"flex",justifyContent:"space-between",alignItems:"center",padding:"11px 0",borderBottom:"1px solid #f1f5f9"}},
+              React.createElement("span",{style:{fontSize:14,color:"#374151"}},"Buts"),
+              React.createElement("span",{style:{fontSize:14,fontWeight:700,color:"#0f172a"}},playerSheet.stats.goals.total)
+            ),
+            (playerSheet.stats.goals&&playerSheet.stats.goals.assists!=null&&playerSheet.stats.goals.assists>0) && React.createElement("div",{style:{display:"flex",justifyContent:"space-between",alignItems:"center",padding:"11px 0",borderBottom:"1px solid #f1f5f9"}},
+              React.createElement("span",{style:{fontSize:14,color:"#374151"}},"Passes décisives"),
+              React.createElement("span",{style:{fontSize:14,fontWeight:700,color:"#0f172a"}},playerSheet.stats.goals.assists)
+            ),
+            (playerSheet.stats.cards&&(playerSheet.stats.cards.yellow>0||playerSheet.stats.cards.red>0)) && React.createElement("div",{style:{display:"flex",justifyContent:"space-between",alignItems:"center",padding:"11px 0",borderBottom:"1px solid #f1f5f9"}},
+              React.createElement("span",{style:{fontSize:14,color:"#374151"}},"Cartons"),
+              React.createElement("span",{style:{fontSize:14,fontWeight:700,color:"#0f172a"}},
+                (playerSheet.stats.cards.yellow>0?playerSheet.stats.cards.yellow+" 🟨":"")+(playerSheet.stats.cards.red>0?" "+playerSheet.stats.cards.red+" 🟥":"")
+              )
             )
           ),
           // helper pour une ligne stat
@@ -8314,22 +8328,22 @@ function MatchDetail({state,onClose,onTeam}){
               )})
             )
           ),
-          // ── Section Tirs ── (champs réels API confirmés)
-          playerSheet.stats && React.createElement("div",null,
+          // ── Section Tirs ── masquée pour GK (tout null)
+          playerSheet.stats && !(playerSheet.stats.games&&playerSheet.stats.games.position==="G") && React.createElement("div",null,
             React.createElement("div",{style:{padding:"14px 16px 6px",fontWeight:700,fontSize:15,color:"#0f172a"}},"Tirs"),
             React.createElement("div",{style:{padding:"0 16px"}},
               [
                 {lbl:"Tirs totaux",val:(function(){var v=playerSheet.stats.shots&&playerSheet.stats.shots.total;return v!=null?v:"-";})()},
                 {lbl:"Tirs cadrés",val:(function(){var v=playerSheet.stats.shots&&playerSheet.stats.shots.on;return v!=null?v:"-";})()},
-                {lbl:"Tirs non cadrés",val:(function(){var sh=playerSheet.stats.shots&&playerSheet.stats.shots.total;var on=playerSheet.stats.shots&&playerSheet.stats.shots.on;return (sh!=null&&on!=null)?(sh-on):"-";})()},
+                {lbl:"Tirs non cadrés",val:(function(){var sh=playerSheet.stats.shots&&playerSheet.stats.shots.total;var on=playerSheet.stats.shots&&playerSheet.stats.shots.on;if(sh==null) return "-";return sh-(on!=null?on:0);})()},
               ].map(function(item){return React.createElement("div",{key:item.lbl,style:{display:"flex",justifyContent:"space-between",alignItems:"center",padding:"11px 0",borderBottom:"1px solid #f1f5f9"}},
                 React.createElement("span",{style:{fontSize:14,color:"#374151",flex:1,paddingRight:12}},item.lbl),
                 React.createElement("span",{style:{fontSize:14,fontWeight:700,color:"#0f172a",whiteSpace:"nowrap"}},item.val)
               )})
             )
           ),
-          // ── Section Attaque ── (champs réels API confirmés)
-          playerSheet.stats && React.createElement("div",null,
+          // ── Section Attaque ── masquée pour GK
+          playerSheet.stats && !(playerSheet.stats.games&&playerSheet.stats.games.position==="G") && React.createElement("div",null,
             React.createElement("div",{style:{padding:"14px 16px 6px",fontWeight:700,fontSize:15,color:"#0f172a"}},"Attaque"),
             React.createElement("div",{style:{padding:"0 16px"}},
               [
@@ -8348,9 +8362,8 @@ function MatchDetail({state,onClose,onTeam}){
               )})
             )
           ),
-          // ── Section Passes ── (champs réels API confirmés)
-          // passes.total = total passes, passes.accuracy = nb réussies (PAS un %), passes.key = passes clés
-          playerSheet.stats && React.createElement("div",null,
+          // ── Section Passes ── masquée pour GK (déjà dans section Gardiens)
+          playerSheet.stats && !(playerSheet.stats.games&&playerSheet.stats.games.position==="G") && React.createElement("div",null,
             React.createElement("div",{style:{padding:"14px 16px 6px",fontWeight:700,fontSize:15,color:"#0f172a"}},"Passes"),
             React.createElement("div",{style:{padding:"0 16px"}},
               [
@@ -8369,8 +8382,8 @@ function MatchDetail({state,onClose,onTeam}){
               )})
             )
           ),
-          // ── Section Défense ── (champs réels API confirmés)
-          playerSheet.stats && React.createElement("div",null,
+          // ── Section Défense ── masquée pour GK
+          playerSheet.stats && !(playerSheet.stats.games&&playerSheet.stats.games.position==="G") && React.createElement("div",null,
             React.createElement("div",{style:{padding:"14px 16px 6px",fontWeight:700,fontSize:15,color:"#0f172a"}},"Défense"),
             React.createElement("div",{style:{padding:"0 16px"}},
               [
@@ -8385,6 +8398,8 @@ function MatchDetail({state,onClose,onTeam}){
                 {lbl:"Interceptions",val:(function(){var v=playerSheet.stats.tackles&&playerSheet.stats.tackles.interceptions;return v!=null?v:"-";})()},
                 {lbl:"Tirs bloqués",val:(function(){var v=playerSheet.stats.tackles&&playerSheet.stats.tackles.blocks;return v!=null?v:"-";})()},
                 {lbl:"Fautes commises",val:(function(){var v=playerSheet.stats.fouls&&playerSheet.stats.fouls.committed;return v!=null?v:"-";})()},
+                {lbl:"Cartons jaunes",val:(function(){var v=playerSheet.stats.cards&&playerSheet.stats.cards.yellow;return v!=null?v:"-";})()},
+                {lbl:"Cartons rouges",val:(function(){var v=playerSheet.stats.cards&&playerSheet.stats.cards.red;return v!=null?v:"-";})()},
                 {lbl:"Penalty provoqué",val:(function(){var v=playerSheet.stats.penalty&&playerSheet.stats.penalty.commited;return v!=null?v:"-";})()},
                 {lbl:"Penalty gagné",val:(function(){var v=playerSheet.stats.penalty&&playerSheet.stats.penalty.won;return v!=null?v:"-";})()},
               ].map(function(item){return React.createElement("div",{key:item.lbl,style:{display:"flex",justifyContent:"space-between",alignItems:"center",padding:"11px 0",borderBottom:"1px solid #f1f5f9"}},
