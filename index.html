@@ -11611,6 +11611,18 @@ function JSKTab() {
   const [status, setStatus] = useState("load");
   const [selected, setSelected] = useState(null);
   const [view, setView] = useState("actualites");
+  const [uneImage, setUneImage] = useState(null);
+  const [uneLoading, setUneLoading] = useState(true);
+
+  useEffect(() => {
+    // Charger La Une depuis Supabase
+    sbGet("competition_une").then(function(data) {
+      if(data && data.length > 0) {
+        setUneImage(data[0]);
+      }
+      setUneLoading(false);
+    }).catch(function(){ setUneLoading(false); });
+  }, []);
 
   useEffect(() => {
     let mounted = true;
@@ -11737,10 +11749,33 @@ function JSKTab() {
       ),
 
       view === "une" && React.createElement("div", { style: { padding: "12px" } },
-        React.createElement("div", { style: { background: "#fff", borderRadius: 16, padding: 20, textAlign: "center" } },
-          React.createElement("div", { style: { fontSize: 40, marginBottom: 12 } }, "📰"),
-          React.createElement("div", { style: { fontSize: 14, color: T.t2 } }, "La Une - Bientôt disponible")
-        )
+        uneLoading
+          ? React.createElement("div", { style: { textAlign: "center", padding: 40 } }, React.createElement(Spin, null))
+          : uneImage
+          ? React.createElement("div", { style: { background: "#fff", borderRadius: 16, overflow: "hidden", boxShadow: "0 2px 12px rgba(0,0,0,0.08)" } },
+              React.createElement("img", {
+                src: uneImage.image_url,
+                style: { width: "100%", display: "block" },
+                onError: function(e){ e.target.style.display="none"; }
+              }),
+              uneImage.facebook_url && React.createElement("a", {
+                href: uneImage.facebook_url,
+                target: "_blank",
+                rel: "noopener noreferrer",
+                style: {
+                  display: "block", textAlign: "center", padding: "12px",
+                  color: JSK_GREEN, fontSize: 13, fontWeight: 700,
+                  textDecoration: "none", borderTop: "1px solid #f1f5f9"
+                }
+              }, "Voir sur Facebook →"),
+              uneImage.published_at && React.createElement("div", {
+                style: { textAlign: "center", padding: "4px 12px 12px", fontSize: 11, color: "#94a3b8" }
+              }, new Date(uneImage.published_at).toLocaleDateString("fr-FR", {day:"2-digit",month:"long",year:"numeric"}))
+            )
+          : React.createElement("div", { style: { background: "#fff", borderRadius: 16, padding: 20, textAlign: "center" } },
+              React.createElement("div", { style: { fontSize: 40, marginBottom: 12 } }, "📰"),
+              React.createElement("div", { style: { fontSize: 14, color: T.t2 } }, "Aucune une disponible")
+            )
       )
     )
   );
