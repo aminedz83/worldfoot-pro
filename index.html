@@ -3028,22 +3028,37 @@ function PlayerPage({ playerId, playerName, playerPhoto, playerPos, playerNumber
   React.useEffect(() => {
     if(!playerId) return;
     let cancelled = false;
-    // Vider immédiatement les données précédentes
+
+    // Afficher immédiatement depuis le cache si disponible
+    const cachedSquad = _cache.get('/players/squads?player='+playerId);
+    const cachedTeamId = cachedSquad?.d?.[0]?.team?.id;
+    if(cachedTeamId) {
+      const cachedFix1 = _cache.get('/fixtures?team='+cachedTeamId+'&season='+curSeason);
+      const cachedFix2 = _cache.get('/fixtures?team='+cachedTeamId+'&season='+(curSeason-1));
+      if(cachedFix1 || cachedFix2) {
+        const seen = {};
+        const quick = [];
+        [(cachedFix1?.d||[]), (cachedFix2?.d||[])].forEach(function(arr){
+          arr.forEach(function(f){
+            var fid = f.fixture&&f.fixture.id;
+            if(!fid||seen[fid]) return;
+            if(["FT","AET","PEN","AWD","WO"].includes(f.fixture.status&&f.fixture.status.short)){
+              seen[fid]=true; quick.push(f);
+            }
+          });
+        });
+        quick.sort(function(a,b){return new Date(b.fixture.date)-new Date(a.fixture.date);});
+        if(quick.length>0) setFixtures(quick.slice(0,40));
+      }
+    }
+
+    // Puis reset et rechargement frais
     setLoading(true);
-    setFixtures([]);
     setFixtureStats({});
     setInfo(null);
     setCareer([]);
     setTransfers([]);
     setMarketVal(null);
-    // Vider le cache fixtures pour avoir les données fraîches
-    var keysToDelete = [];
-    _cache.forEach(function(v, k) {
-      if(k.includes('/fixtures?player='+playerId) || k.includes('/fixtures?team=')) {
-        keysToDelete.push(k);
-      }
-    });
-    keysToDelete.forEach(function(k){ _cache.delete(k); });
 
     // Squad + fixtures club + fixtures national en PARALLÈLE total
     api(`/players/squads?player=${playerId}`, 21600000).then(squadData => {
@@ -3068,7 +3083,7 @@ function PlayerPage({ playerId, playerName, playerPhoto, playerPos, playerNumber
 
         // Matchs club + sélection nationale — 4 appels en parallèle
         Promise.allSettled([
-          api(`/fixtures?team=${currentTeamId}&season=${curSeason}`, 300000),
+          api(`/fixtures?team=${currentTeamId}&season=${curSeason}`, 1800000),
           api(`/fixtures?team=${currentTeamId}&season=${curSeason-1}`, 86400000),
           api(`/fixtures?player=${playerId}&season=${curSeason}`, 300000),
           api(`/fixtures?player=${playerId}&season=${curSeason-1}`, 86400000),
@@ -3263,36 +3278,22 @@ function PlayerPage({ playerId, playerName, playerPhoto, playerPos, playerNumber
   const birth = player?.birth?.date;
   const [marketVal, setMarketVal] = React.useState(null);
   
-  // Charger valeur marchande depuis Transfermarkt API
+  // Charger valeur marchande depuis l'API football.com (/players endpoint)
   React.useEffect(() => {
-    if(!playerId || !playerName) return;
+    if(!playerId) return;
     setMarketVal(null);
-    var lastName = playerName.split(" ").pop();
-    // Chercher dans les stats du joueur (API football fournit market_value pour certains)
-    // Fallback: transfermarkt-api.vercel.app
-    fetch('https://transfermarkt-api.vercel.app/players/search/' + encodeURIComponent(playerName), {
-      headers: { 'Accept': 'application/json' }
-    })
-      .then(function(r){ if(!r.ok) throw new Error('err'); return r.json(); })
+    // L'API football.com retourne market_value dans /players?id=X&season=Y
+    api('/players?id='+playerId+'&season='+curSeason, 3600000)
       .then(function(data) {
-        var results = (data && data.results) || [];
-        var found = null;
-        // Chercher d'abord par nom complet exact, puis par nom partiel
-        for(var i=0;i<results.length;i++){
-          var rName = (results[i].name||'').toLowerCase();
-          if(rName === playerName.toLowerCase()){ found=results[i]; break; }
-        }
-        if(!found) {
-          for(var j=0;j<results.length;j++){
-            var rn = (results[j].name||'').toLowerCase();
-            if(rn.includes(lastName.toLowerCase())){ found=results[j]; break; }
-          }
-        }
-        if(found && found.marketValue) {
-          setMarketVal(found.marketValue);
-        }
+        var p = data && data[0];
+        if(!p) return;
+        // market_value est dans statistics[0].games ou dans player directement
+        var mv = null;
+        if(p.player && p.player.market_value) mv = p.player.market_value;
+        if(!mv && p.statistics && p.statistics[0] && p.statistics[0].market_value) mv = p.statistics[0].market_value;
+        if(mv) setMarketVal(mv);
       }).catch(function(){});
-  }, [playerName, playerId]);
+  }, [playerId]);
 
   // Poste traduit
   const posLabel = p => {
