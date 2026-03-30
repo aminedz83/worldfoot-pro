@@ -1,7 +1,10 @@
 name: Competition Une Scraper
 on:
   schedule:
-    - cron: '*/30 * * * *'
+    - cron: '30 17 * * *'
+    - cron: '0 18 * * *'
+    - cron: '0 19 * * *'
+    - cron: '0 22 * * *'
   workflow_dispatch:
 jobs:
   scrape:
@@ -18,7 +21,6 @@ jobs:
           import os
           import time
           from datetime import datetime
-
           APIFY_TOKEN = os.environ["APIFY_TOKEN"]
           SUPABASE_KEY = os.environ["SUPABASE_KEY"]
           SB_URL = "https://iqeqlsxjiklygywjirqs.supabase.co"
@@ -29,8 +31,6 @@ jobs:
               "Prefer": "resolution=merge-duplicates"
           }
           KEYWORDS = ["la une", "competition du", "compétition du", "edition du", "une de"]
-
-          # Lancer le run Apify
           resp = requests.post(
               f"https://api.apify.com/v2/acts/apify~facebook-posts-scraper/runs?token={APIFY_TOKEN}",
               json={
@@ -41,16 +41,11 @@ jobs:
           print(f"Apify launch status: {resp.status_code}")
           run_data = resp.json()
           print(f"Apify response: {run_data}")
-
-          # Vérifier que la réponse contient bien 'data'
           if "data" not in run_data:
               print(f"ERREUR: Réponse Apify invalide: {run_data}")
               exit(1)
-
           run_id = run_data["data"]["id"]
           print(f"Run ID: {run_id}")
-
-          # Attendre la fin du run (max 4 minutes)
           for i in range(24):
               time.sleep(10)
               status_resp = requests.get(
@@ -60,35 +55,26 @@ jobs:
               print(f"Status [{i+1}/24]: {status}")
               if status in ["SUCCEEDED", "FAILED", "ABORTED", "TIMED-OUT"]:
                   break
-
           if status != "SUCCEEDED":
               print(f"Run terminé avec status: {status}")
               exit(0)
-
-          # Récupérer les items
           items = requests.get(
               f"https://api.apify.com/v2/actor-runs/{run_id}/dataset/items?token={APIFY_TOKEN}"
           ).json()
           print(f"Posts récupérés: {len(items)}")
-
-          # Filtrer et sauvegarder
           for item in items:
               text = (item.get("text") or "").lower()
               if not any(k in text for k in KEYWORDS):
                   continue
-
               image = None
               if item.get("photo_image"):
                   image = item["photo_image"].get("uri")
               elif item.get("media") and len(item["media"]) > 0:
                   image = item["media"][0].get("thumbnail")
-
               if not image:
                   continue
-
               url = item.get("url") or item.get("postUrl") or ""
               published_at = item.get("time") or datetime.now().isoformat()
-
               res = requests.post(
                   f"{SB_URL}/rest/v1/competition_une",
                   headers=SB_HEADERS,
@@ -101,6 +87,5 @@ jobs:
               )
               print(f"Sauvegardé: {res.status_code} - {image[:60]}")
               break
-
           print("Terminé.")
           PYEOF
