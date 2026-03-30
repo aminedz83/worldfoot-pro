@@ -3029,49 +3029,50 @@ function PlayerPage({ playerId, playerName, playerPhoto, playerPos, playerNumber
     if(!playerId) return;
     let cancelled = false;
 
-    // Afficher immédiatement depuis le cache si disponible
-    const cachedSquad = _cache.get('/players/squads?player='+playerId);
-    const cachedTeamId = cachedSquad?.d?.[0]?.team?.id;
-    if(cachedTeamId) {
-      const cachedFix1 = _cache.get('/fixtures?team='+cachedTeamId+'&season='+curSeason);
-      const cachedFix2 = _cache.get('/fixtures?team='+cachedTeamId+'&season='+(curSeason-1));
-      if(cachedFix1 || cachedFix2) {
-        const seen = {};
-        const quick = [];
-        [(cachedFix1?.d||[]), (cachedFix2?.d||[])].forEach(function(arr){
-          arr.forEach(function(f){
-            var fid = f.fixture&&f.fixture.id;
-            if(!fid||seen[fid]) return;
-            if(["FT","AET","PEN","AWD","WO"].includes(f.fixture.status&&f.fixture.status.short)){
-              seen[fid]=true; quick.push(f);
-            }
-          });
-        });
-        quick.sort(function(a,b){return new Date(b.fixture.date)-new Date(a.fixture.date);});
-        if(quick.length>0) setFixtures(quick.slice(0,40));
-      }
-    }
-
-    // Puis reset et rechargement frais
     setLoading(true);
+    setFixtures([]);
     setFixtureStats({});
     setInfo(null);
     setCareer([]);
     setTransfers([]);
     setMarketVal(null);
 
-    // Squad + fixtures club + fixtures national en PARALLÈLE total
+    // ── ÉTAPE 1 : Fixtures via player endpoint — immédiat, sans attendre le squad
+    Promise.allSettled([
+      api(`/fixtures?player=${playerId}&season=${curSeason}`, 1800000),
+      api(`/fixtures?player=${playerId}&season=${curSeason-1}`, 86400000),
+    ]).then(fixResults => {
+      if(cancelled) return;
+      const seen = {};
+      const allFix = [];
+      for(var ri=0;ri<fixResults.length;ri++){
+        var rv=fixResults[ri];
+        if(rv.status!=='fulfilled'||!rv.value) continue;
+        rv.value.forEach(function(f){
+          var fid=f.fixture&&f.fixture.id;
+          if(!fid||seen[fid]) return;
+          if(["FT","AET","PEN","AWD","WO"].includes(f.fixture.status&&f.fixture.status.short)){
+            seen[fid]=true; allFix.push(f);
+          }
+        });
+      }
+      allFix.sort(function(a,b){return new Date(b.fixture.date)-new Date(a.fixture.date);});
+      if(!cancelled&&allFix.length>0) {
+        setFixtures(allFix.slice(0,40));
+        setLoading(false);
+      }
+    }).catch(function(){});
+
+    // ── ÉTAPE 2 : Squad pour club + matchs supplémentaires via team
     api(`/players/squads?player=${playerId}`, 21600000).then(squadData => {
       if(cancelled) return;
       const currentTeam = squadData?.[0]?.team;
       const currentTeamId = currentTeam?.id;
 
-      // Mettre à jour le club actuel immédiatement
       if(currentTeam) {
         setInfo(prev => prev ? {...prev, _currentTeam: currentTeam} : {_currentTeam: currentTeam});
       }
 
-      // Contrat depuis l'équipe actuelle
       if(currentTeamId) {
         api(`/players/squads?team=${currentTeamId}`, 86400000).then(sq => {
           if(cancelled) return;
@@ -3081,12 +3082,10 @@ function PlayerPage({ playerId, playerName, playerPhoto, playerPos, playerNumber
           }
         }).catch(()=>{});
 
-        // Matchs club + sélection nationale — 4 appels en parallèle
+        // Matchs club en complément
         Promise.allSettled([
           api(`/fixtures?team=${currentTeamId}&season=${curSeason}`, 1800000),
           api(`/fixtures?team=${currentTeamId}&season=${curSeason-1}`, 86400000),
-          api(`/fixtures?player=${playerId}&season=${curSeason}`, 300000),
-          api(`/fixtures?player=${playerId}&season=${curSeason-1}`, 86400000),
         ]).then(fixResults => {
           if(cancelled) return;
           const seen = {};
@@ -3096,6 +3095,11 @@ function PlayerPage({ playerId, playerName, playerPhoto, playerPos, playerNumber
             var rv = fixResults[ri];
             if(rv.status==='fulfilled'&&rv.value) allSources.push(rv.value);
           }
+          // Aussi inclure les fixtures déjà chargées via player
+          var cachedP1 = _cache.get('/fixtures?player='+playerId+'&season='+curSeason);
+          var cachedP2 = _cache.get('/fixtures?player='+playerId+'&season='+(curSeason-1));
+          if(cachedP1&&cachedP1.d) allSources.push(cachedP1.d);
+          if(cachedP2&&cachedP2.d) allSources.push(cachedP2.d);
           for(var si=0;si<allSources.length;si++){
             var src = allSources[si];
             for(var fi=0;fi<src.length;fi++){
