@@ -3015,9 +3015,11 @@ const getRefereeStats = async (refereeName) => {
   }
 };
 
-function PlayerPage({ playerId, playerName, playerPhoto, playerPos, playerNumber, playerNationality, matchStats, onClose }) {
+function PlayerPage({ playerId, playerName, playerPhoto, playerPos, playerNumber, playerNationality, matchStats, onClose, knownTeamId, knownTeam }) {
   const [tab, setTab] = React.useState("matchs");
-  const [info, setInfo] = React.useState(null);
+  const [info, setInfo] = React.useState(
+    knownTeam ? { _currentTeam: knownTeam } : null
+  );
   const [career, setCareer] = React.useState([]);
   const [transfers, setTransfers] = React.useState([]);
   const [fixtures, setFixtures] = React.useState([]);
@@ -3029,47 +3031,90 @@ function PlayerPage({ playerId, playerName, playerPhoto, playerPos, playerNumber
     if(!playerId) return;
     let cancelled = false;
 
-    setLoading(true);
-    setFixtures([]);
+    // ── AFFICHAGE INSTANTANÉ depuis le cache ──
+    var shownFromCache = false;
+    var DONE_S = ["FT","AET","PEN","AWD","WO"];
+    function buildFixList(sources) {
+      var seen = {}; var list = [];
+      sources.forEach(function(arr){
+        (arr||[]).forEach(function(f){
+          var fid=f.fixture&&f.fixture.id;
+          if(!fid||seen[fid]) return;
+          if(DONE_S.includes(f.fixture.status&&f.fixture.status.short)){seen[fid]=true;list.push(f);}
+        });
+      });
+      list.sort(function(a,b){return new Date(b.fixture.date)-new Date(a.fixture.date);});
+      return list.slice(0,40);
+    }
+    // 1. D'abord essayer avec knownTeamId (disponible immédiatement depuis bottom sheet)
+    if(knownTeamId) {
+      var c1=_cache.get('/fixtures?team='+knownTeamId+'&season='+curSeason);
+      var c2=_cache.get('/fixtures?team='+knownTeamId+'&season='+(curSeason-1));
+      if(c1||c2){
+        var q=buildFixList([c1&&c1.d||[],c2&&c2.d||[]]);
+        if(q.length>0){setFixtures(q);shownFromCache=true;}
+      }
+    }
+    // 2. Sinon chercher tout le cache fixtures
+    if(!shownFromCache) {
+      var cachedSources = [];
+      _cache.forEach(function(v,k){
+        if((k.includes('fixtures?player='+playerId)||k.includes('fixtures?team='))&&v&&v.d) cachedSources.push(v.d);
+      });
+      if(cachedSources.length>0){
+        var quick=buildFixList(cachedSources);
+        if(quick.length>0){setFixtures(quick);shownFromCache=true;}
+      }
+    }
+
+    setLoading(!shownFromCache);
+    if(!shownFromCache) setFixtures([]);
     setFixtureStats({});
     setInfo(null);
     setCareer([]);
     setTransfers([]);
     setMarketVal(null);
 
-    // ── ÉTAPE 1 : Fixtures via player endpoint — immédiat, sans attendre le squad
+    // ── Chercher dans localStorage (cache persistant entre sessions) ──
+    try {
+      var lsKey = 'wf_fix_'+playerId;
+      var lsData = localStorage.getItem(lsKey);
+      if(lsData && !shownFromCache) {
+        var parsed = JSON.parse(lsData);
+        if(parsed && parsed.list && parsed.list.length>0 && Date.now()-parsed.ts < 3600000) {
+          setFixtures(parsed.list);
+          setLoading(false);
+          shownFromCache = true;
+        }
+      }
+    } catch(e) {}
+
+    // ── ÉTAPE 1 : Fixtures via player endpoint
     Promise.allSettled([
       api(`/fixtures?player=${playerId}&season=${curSeason}`, 1800000),
       api(`/fixtures?player=${playerId}&season=${curSeason-1}`, 86400000),
     ]).then(fixResults => {
       if(cancelled) return;
-      const seen = {};
-      const allFix = [];
-      for(var ri=0;ri<fixResults.length;ri++){
-        var rv=fixResults[ri];
-        if(rv.status!=='fulfilled'||!rv.value) continue;
-        rv.value.forEach(function(f){
-          var fid=f.fixture&&f.fixture.id;
-          if(!fid||seen[fid]) return;
-          if(["FT","AET","PEN","AWD","WO"].includes(f.fixture.status&&f.fixture.status.short)){
-            seen[fid]=true; allFix.push(f);
-          }
-        });
-      }
-      allFix.sort(function(a,b){return new Date(b.fixture.date)-new Date(a.fixture.date);});
+      var allFix = buildFixList(fixResults.filter(function(r){return r.status==='fulfilled';}).map(function(r){return r.value||[];}));
       if(!cancelled&&allFix.length>0) {
-        setFixtures(allFix.slice(0,40));
+        setFixtures(allFix);
         setLoading(false);
+        // Sauvegarder dans localStorage pour prochaine ouverture instantanée
+        try { localStorage.setItem('wf_fix_'+playerId, JSON.stringify({list:allFix,ts:Date.now()})); } catch(e){}
       }
     }).catch(function(){});
 
-    // ── ÉTAPE 2 : Squad pour club + matchs supplémentaires via team
-    api(`/players/squads?player=${playerId}`, 21600000).then(squadData => {
+    // ── ÉTAPE 2 : Squad pour club (skip si knownTeamId déjà fourni)
+    const squadPromise = knownTeamId
+      ? Promise.resolve([{ team: knownTeam || { id: knownTeamId } }])
+      : api(`/players/squads?player=${playerId}`, 21600000);
+
+    squadPromise.then(squadData => {
       if(cancelled) return;
       const currentTeam = squadData?.[0]?.team;
-      const currentTeamId = currentTeam?.id;
+      const currentTeamId = currentTeam?.id || knownTeamId;
 
-      if(currentTeam) {
+      if(currentTeam && currentTeam.name) {
         setInfo(prev => prev ? {...prev, _currentTeam: currentTeam} : {_currentTeam: currentTeam});
       }
 
@@ -3427,16 +3472,28 @@ function PlayerPage({ playerId, playerName, playerPhoto, playerPos, playerNumber
     ),
 
     // ── CONTENT ──
-    loading ? React.createElement("div",{style:{flex:1,display:"flex",alignItems:"center",justifyContent:"center"}},
-      React.createElement(Spin,{s:28,c:"#ef4444"})
-    ) :
-
     React.createElement("div", {style:{flex:1,overflowY:"auto",WebkitOverflowScrolling:"touch"}},
 
       // ── MATCHS ──
       tab==="matchs" && React.createElement("div",null,
         fixtures.length===0
-          ? React.createElement("div",{style:{textAlign:"center",padding:"48px 24px",color:"#94a3b8",fontSize:14}},"Aucun match récent")
+          ? loading
+            ? React.createElement("div",null,
+                [0,1,2,3,4,5,6,7].map(function(i){
+                  return React.createElement("div",{key:i,style:{
+                    display:"flex",alignItems:"center",gap:12,
+                    padding:"12px 16px",borderBottom:"1px solid #f1f5f9"
+                  }},
+                    React.createElement("div",{style:{width:36,height:12,borderRadius:6,background:"#f1f5f9",animation:"pulse 1.2s ease-in-out infinite",flexShrink:0}}),
+                    React.createElement("div",{style:{flex:1,display:"flex",flexDirection:"column",gap:6}},
+                      React.createElement("div",{style:{width:"60%",height:12,borderRadius:6,background:"#f1f5f9",animation:"pulse 1.2s ease-in-out infinite"}}),
+                      React.createElement("div",{style:{width:"40%",height:12,borderRadius:6,background:"#f1f5f9",animation:"pulse 1.2s ease-in-out infinite"}})
+                    ),
+                    React.createElement("div",{style:{width:36,height:20,borderRadius:6,background:"#f1f5f9",animation:"pulse 1.2s ease-in-out infinite"}})
+                  );
+                })
+              )
+            : React.createElement("div",{style:{textAlign:"center",padding:"48px 24px",color:"#94a3b8",fontSize:14}},"Aucun match récent")
           : fixtures.map((f,i) => {
               const home = f.teams?.home;
               const away = f.teams?.away;
@@ -8556,7 +8613,11 @@ function MatchDetail({state,onClose,onTeam}){
                 playerPos: playerSheet.pos,
                 playerNumber: playerSheet.number,
                 playerNationality: playerSheet.nationality,
-                matchStats: playerSheet.stats
+                matchStats: playerSheet.stats,
+                knownTeamId: fix?.teams?.home?.id && fix?.teams?.away?.id ? (
+                  playerSheet.teamLogo === fix.teams.home.logo ? fix.teams.home.id : fix.teams.away.id
+                ) : null,
+                knownTeam: playerSheet.teamLogo === fix?.teams?.home?.logo ? fix?.teams?.home : fix?.teams?.away
               });
               setPlayerSheet(null);setPlayerSheetLoading(false);
             },
