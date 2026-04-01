@@ -2608,10 +2608,41 @@ const renderListeFlash = (fix, hLu, aLu, players, events, injuries, hid, aid) =>
   );
 };
 
-function ComposPanel({lineups, players, homeTeam, awayTeam, isPartial, fix, events, injuries, onPlayerClick}) {
+function ComposPanel({lineups, players, homeTeam, awayTeam, isPartial, fix, events, injuries, onPlayerClick, algeriaLineups}) {
   const [view, setView] = useState("pitch");
-  const hLu = lineups?.find(l => l.team?.id === homeTeam?.id);
-  const aLu = lineups?.find(l => l.team?.id === awayTeam?.id);
+
+  // Construire lineups depuis Supabase si match algérien
+  var hLu = lineups?.find(l => l.team?.id === homeTeam?.id);
+  var aLu = lineups?.find(l => l.team?.id === awayTeam?.id);
+
+  if(algeriaLineups && (!hLu || !hLu.startXI || hLu.startXI.length===0)) {
+    // Convertir format Supabase → format API football
+    var buildLineup = function(players, team) {
+      return {
+        team: team,
+        formation: "",
+        startXI: players.map(function(p) {
+          return {
+            player: {
+              id: null,
+              name: p.name,
+              number: parseInt(p.number)||0,
+              pos: p.is_gk?"G":"",
+              grid: null,
+              photo: "https://media.api-sports.io/football/players/0.png"
+            }
+          };
+        }),
+        substitutes: []
+      };
+    };
+    if(algeriaLineups.home_players&&algeriaLineups.home_players.length>0) {
+      hLu = buildLineup(algeriaLineups.home_players, homeTeam);
+    }
+    if(algeriaLineups.away_players&&algeriaLineups.away_players.length>0) {
+      aLu = buildLineup(algeriaLineups.away_players, awayTeam);
+    }
+  }
 
   if (!hLu && !aLu) {
     return React.createElement("div", {
@@ -6151,6 +6182,7 @@ function MatchDetail({state,onClose,onTeam}){
   const[firstLegScore,setFirstLegScore]=React.useState(null);
   const[showLeagueSheet,setShowLeagueSheet]=React.useState(false);
   const[leagueInfo,setLeagueInfo]=React.useState(null);
+  const[algeriaLineups,setAlgeriaLineups]=React.useState(null);
   const contentRef=React.useRef(null);
 
   const [refereeStats, setRefereeStats] = useState(null);
@@ -6407,6 +6439,32 @@ function MatchDetail({state,onClose,onTeam}){
       .then(d=>{if(d&&d[0])setLeagueInfo(d[0]);})
       .catch(()=>{});
   },[showLeagueSheet]);
+
+  // Fetch lineups algériennes depuis Supabase pour league 186
+  React.useEffect(function(){
+    if(tab!=="compos") return;
+    if(!fix||!fix.league||fix.league.id!==186) return;
+    var homeTeam = fix.teams&&fix.teams.home&&fix.teams.home.name;
+    var awayTeam = fix.teams&&fix.teams.away&&fix.teams.away.name;
+    var matchDate = fix.fixture&&fix.fixture.date&&fix.fixture.date.slice(0,10);
+    if(!homeTeam||!awayTeam||!matchDate) return;
+    // Chercher dans Supabase par home_team + away_team + match_date
+    fetch('https://iqeqlsxjiklygywjirqs.supabase.co/rest/v1/algeria_lineups?home_team=eq.'+encodeURIComponent(homeTeam)+'&away_team=eq.'+encodeURIComponent(awayTeam)+'&match_date=eq.'+matchDate+'&select=*', {
+      headers: { 'apikey': SB_KEY, 'Authorization': 'Bearer '+SB_KEY }
+    }).then(function(r){ return r.json(); })
+    .then(function(data){
+      if(data&&data.length>0){
+        var row = data[0];
+        setAlgeriaLineups({
+          home_players: row.home_players||[],
+          away_players: row.away_players||[]
+        });
+      } else {
+        // Essayer aussi par soccerway_mid si fixture_id connu
+        setAlgeriaLineups(null);
+      }
+    }).catch(function(){ setAlgeriaLineups(null); });
+  },[tab, fix&&fix.fixture&&fix.fixture.id]);
 
   React.useEffect(()=>{
     if(!fix?.fixture?.venue?.id)return;
@@ -8378,21 +8436,7 @@ function MatchDetail({state,onClose,onTeam}){
       ):null,
 
       tab==="compos"?React.createElement("div",{className:"md-panel"},
-        // Bouton debug fixture ID — temporaire
-        fix && fix.fixture && React.createElement("div",{
-          onClick:function(){
-            var id = fix.fixture.id;
-            var home = fix.teams&&fix.teams.home&&fix.teams.home.name||'';
-            var away = fix.teams&&fix.teams.away&&fix.teams.away.name||'';
-            alert('Fixture ID: ' + id + '\n' + home + ' vs ' + away);
-          },
-          style:{
-            margin:'8px 16px',padding:'8px 12px',
-            background:'#0f172a',color:'#fff',
-            borderRadius:8,fontSize:12,fontWeight:700,
-            textAlign:'center',cursor:'pointer'
-          }
-        },'🔍 Voir Fixture ID'),
+
         React.createElement(ComposPanel, {
           lineups: lineups,
           players: players,
@@ -8402,6 +8446,7 @@ function MatchDetail({state,onClose,onTeam}){
           fix: fix,
           events: events,
           injuries: injuries,
+          algeriaLineups: algeriaLineups,
           onPlayerClick: (player) => {
             setPlayerSheet(player);
             // Si les stats sont absentes ou incomplètes, fetch depuis /fixtures/players
