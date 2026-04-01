@@ -1,0 +1,19 @@
+name: Algeria Lineups Scraper
+on:
+  schedule:
+    - cron: '*/5 7-16 * * *'
+  workflow_dispatch:
+jobs:
+  scrape:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v3
+
+      - name: Install dependencies
+        run: pip install requests beautifulsoup4 --quiet
+
+      - name: Run scraper
+        env:
+          SUPABASE_KEY: ${{ secrets.SUPABASE_KEY }}
+        run: python3 scraper.py
