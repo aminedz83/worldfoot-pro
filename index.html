@@ -8378,6 +8378,21 @@ function MatchDetail({state,onClose,onTeam}){
       ):null,
 
       tab==="compos"?React.createElement("div",{className:"md-panel"},
+        // Bouton debug fixture ID — temporaire
+        fix && fix.fixture && React.createElement("div",{
+          onClick:function(){
+            var id = fix.fixture.id;
+            var home = fix.teams&&fix.teams.home&&fix.teams.home.name||'';
+            var away = fix.teams&&fix.teams.away&&fix.teams.away.name||'';
+            alert('Fixture ID: ' + id + '\n' + home + ' vs ' + away);
+          },
+          style:{
+            margin:'8px 16px',padding:'8px 12px',
+            background:'#0f172a',color:'#fff',
+            borderRadius:8,fontSize:12,fontWeight:700,
+            textAlign:'center',cursor:'pointer'
+          }
+        },'🔍 Voir Fixture ID'),
         React.createElement(ComposPanel, {
           lineups: lineups,
           players: players,
