@@ -1337,7 +1337,8 @@ const getRatingColor = (rating) => {
 const PlayerFlash = ({ player, rating, isHome }) => {
   const photo = player?.photo;
   const name = player?.name || "";
-  const shortName = name.split(" ").pop() || name;
+  // Si pas d'ID (joueur algérien Soccerway) → nom complet, sinon nom court
+  const shortName = (!player?.id) ? name : (name.split(" ").pop() || name);
   const number = player?.number || "?";
   const ratingValue = rating ? parseFloat(rating).toFixed(1) : null;
   const ratingColor = ratingValue ? getRatingColor(ratingValue) : "transparent";
@@ -1524,6 +1525,7 @@ const renderTerrainFlash = (fix, hLu, aLu, players, events, hid, aid, has, hg, a
   const awayLines = organizePlayersByLine(awayPlayers, awayFormation);
 
   const getPlayerEvents = (playerId) => {
+    if(!playerId) return [];
     return events.filter(e => e.player?.id === playerId || e.assist?.id === playerId);
   };
 
