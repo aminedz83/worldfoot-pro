@@ -6447,23 +6447,36 @@ function MatchDetail({state,onClose,onTeam}){
     var homeTeam = fix.teams&&fix.teams.home&&fix.teams.home.name;
     var awayTeam = fix.teams&&fix.teams.away&&fix.teams.away.name;
     var matchDate = fix.fixture&&fix.fixture.date&&fix.fixture.date.slice(0,10);
+    var fixtureId = fix.fixture&&fix.fixture.id;
     if(!homeTeam||!awayTeam||!matchDate) return;
-    // Chercher dans Supabase par home_team + away_team + match_date
-    fetch('https://iqeqlsxjiklygywjirqs.supabase.co/rest/v1/algeria_lineups?home_team=eq.'+encodeURIComponent(homeTeam)+'&away_team=eq.'+encodeURIComponent(awayTeam)+'&match_date=eq.'+matchDate+'&select=*', {
-      headers: { 'apikey': SB_KEY, 'Authorization': 'Bearer '+SB_KEY }
-    }).then(function(r){ return r.json(); })
-    .then(function(data){
+    console.log("Algeria lineups fetch:", homeTeam, "vs", awayTeam, matchDate, "fid:", fixtureId);
+    var SB = 'https://iqeqlsxjiklygywjirqs.supabase.co/rest/v1/algeria_lineups';
+    var H = { 'apikey': SB_KEY, 'Authorization': 'Bearer '+SB_KEY };
+    var tryFetch = function(url) {
+      return fetch(url, { headers: H }).then(function(r){ return r.json(); });
+    };
+    // Essayer 1: par fixture_id
+    // Essayer 2: par nom équipe + date
+    // Essayer 3: par date seule (pour trouver le bon match)
+    var url1 = fixtureId ? SB+'?fixture_id=eq.'+fixtureId+'&select=*' : null;
+    var url2 = SB+'?home_team=eq.'+encodeURIComponent(homeTeam)+'&away_team=eq.'+encodeURIComponent(awayTeam)+'&match_date=eq.'+matchDate+'&select=*';
+    var url3 = SB+'?match_date=eq.'+matchDate+'&select=*';
+    var p = url1 ? tryFetch(url1) : Promise.resolve([]);
+    p.then(function(d){
+      if(d&&d.length>0) return d;
+      return tryFetch(url2);
+    }).then(function(d){
+      if(d&&d.length>0) return d;
+      return tryFetch(url3);
+    }).then(function(data){
+      console.log("Algeria lineups result:", JSON.stringify(data));
       if(data&&data.length>0){
         var row = data[0];
-        setAlgeriaLineups({
-          home_players: row.home_players||[],
-          away_players: row.away_players||[]
-        });
+        setAlgeriaLineups({ home_players: row.home_players||[], away_players: row.away_players||[] });
       } else {
-        // Essayer aussi par soccerway_mid si fixture_id connu
         setAlgeriaLineups(null);
       }
-    }).catch(function(){ setAlgeriaLineups(null); });
+    }).catch(function(e){ console.log("Algeria error:", e); setAlgeriaLineups(null); });
   },[tab, fix&&fix.fixture&&fix.fixture.id]);
 
   React.useEffect(()=>{
