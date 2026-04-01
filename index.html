@@ -1729,7 +1729,9 @@ const renderListeFlash = (fix, hLu, aLu, players, events, injuries, hid, aid) =>
     return playerStats?.player?.photo || null;
   };
 
-  const getPlayerEvents = (playerId) => {
+  const getPlayerEvents = (playerId, playerName) => {
+    // Si pas d'ID → pas d'événements (joueur algérien Soccerway)
+    if(!playerId) return { goals:0, assists:0, yellow:0, red:0, isVar:false };
     const playerEvents = events.filter(e => e.player?.id === playerId || e.assist?.id === playerId);
     return {
       goals: playerEvents.filter(e => e.type === "Goal" && e.detail !== "Missed Penalty").length,
@@ -1754,15 +1756,15 @@ const renderListeFlash = (fix, hLu, aLu, players, events, injuries, hid, aid) =>
     const starters = (lineup.startXI || []).map(item => {
       const player = item.player;
       const rating = getPlayerRating(player.id);
-      const events = getPlayerEvents(player.id);
-      return { ...player, rating, events };
+      const evts = getPlayerEvents(player.id, player.name);
+      return { ...player, rating, events: evts };
     });
 
     const subs = (lineup.substitutes || []).map(item => {
       const player = item.player;
       const rating = getPlayerRating(player.id);
-      const events = getPlayerEvents(player.id);
-      return { ...player, rating, events };
+      const evts = getPlayerEvents(player.id, player.name);
+      return { ...player, rating, events: evts };
     });
 
     return { starters, subs };
@@ -2619,11 +2621,11 @@ function ComposPanel({lineups, players, homeTeam, awayTeam, isPartial, fix, even
 
   if(algeriaLineups && (!hLu || !hLu.startXI || hLu.startXI.length===0)) {
     // Convertir format Supabase → format API football
-    var buildLineup = function(players, team) {
+    var buildLineup = function(starters, subs, team) {
       return {
         team: team,
         formation: "",
-        startXI: players.map(function(p) {
+        startXI: starters.map(function(p) {
           return {
             player: {
               id: null,
@@ -2635,14 +2637,25 @@ function ComposPanel({lineups, players, homeTeam, awayTeam, isPartial, fix, even
             }
           };
         }),
-        substitutes: []
+        substitutes: (subs||[]).map(function(p) {
+          return {
+            player: {
+              id: null,
+              name: p.name,
+              number: parseInt(p.number)||0,
+              pos: p.is_gk?"G":"",
+              grid: null,
+              photo: "https://media.api-sports.io/football/players/0.png"
+            }
+          };
+        })
       };
     };
     if(algeriaLineups.home_players&&algeriaLineups.home_players.length>0) {
-      hLu = buildLineup(algeriaLineups.home_players, homeTeam);
+      hLu = buildLineup(algeriaLineups.home_players, algeriaLineups.home_subs||[], homeTeam);
     }
     if(algeriaLineups.away_players&&algeriaLineups.away_players.length>0) {
-      aLu = buildLineup(algeriaLineups.away_players, awayTeam);
+      aLu = buildLineup(algeriaLineups.away_players, algeriaLineups.away_subs||[], awayTeam);
     }
   }
 
@@ -6474,7 +6487,12 @@ function MatchDetail({state,onClose,onTeam}){
       console.log("Algeria lineups result:", JSON.stringify(data));
       if(data&&data.length>0){
         var row = data[0];
-        setAlgeriaLineups({ home_players: row.home_players||[], away_players: row.away_players||[] });
+        setAlgeriaLineups({
+          home_players: row.home_players||[],
+          away_players: row.away_players||[],
+          home_subs: row.home_subs||[],
+          away_subs: row.away_subs||[]
+        });
       } else {
         setAlgeriaLineups(null);
       }
