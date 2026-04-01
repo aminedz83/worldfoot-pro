@@ -1524,9 +1524,22 @@ const renderTerrainFlash = (fix, hLu, aLu, players, events, hid, aid, has, hg, a
   const homeLines = organizePlayersByLine(homePlayers, homeFormation);
   const awayLines = organizePlayersByLine(awayPlayers, awayFormation);
 
-  const getPlayerEvents = (playerId) => {
-    if(!playerId) return [];
-    return events.filter(e => e.player?.id === playerId || e.assist?.id === playerId);
+  // Helper: matcher nom Soccerway avec nom API football
+  const matchPlayerName = (soccerwayName, apiName) => {
+    if(!soccerwayName || !apiName) return false;
+    const swLast = soccerwayName.split(" ")[0].toLowerCase().replace(/[^a-z]/gi,"");
+    const api = apiName.toLowerCase().replace(/[^a-z]/gi,"");
+    return swLast.length > 2 && api.includes(swLast);
+  };
+
+  const getPlayerEvents = (playerId, playerName) => {
+    if(!playerId && !playerName) return [];
+    if(playerId) return events.filter(e => e.player?.id === playerId || e.assist?.id === playerId);
+    // Matcher par nom pour joueurs algériens
+    return events.filter(e =>
+      matchPlayerName(playerName, e.player?.name) ||
+      matchPlayerName(playerName, e.assist?.name)
+    );
   };
 
   return React.createElement("div", {
@@ -1626,13 +1639,13 @@ const renderTerrainFlash = (fix, hLu, aLu, players, events, hid, aid, has, hg, a
             style: { display: "flex", justifyContent: "space-around", alignItems: "center", marginBottom: lineIndex === homeLines.length - 1 ? 0 : 16 }
           },
             line.map(player => {
-              const playerEvents = getPlayerEvents(player.id);
+              const playerEvents = getPlayerEvents(player.id, player.name);
               const hasGoal = playerEvents.some(e => e.type === "Goal" && e.detail !== "Missed Penalty");
               const goalCount = playerEvents.filter(e => e.type === "Goal" && e.detail !== "Missed Penalty").length;
               const hasYellow = playerEvents.some(e => e.type === "Card" && e.detail === "Yellow Card");
               const hasRed = playerEvents.some(e => e.type === "Card" && (e.detail === "Red Card" || e.detail === "Second Yellow Card"));
-              const hasSub = playerEvents.some(e => e.type === "subst");
-              return React.createElement("div", { key: player.id, style: { position: "relative", cursor:"pointer" },
+              const hasSub = playerEvents.some(e => e.type === "subst" && (e.player?.id===player.id || matchPlayerName(player.name, e.player?.name)));
+              return React.createElement("div", { key: player.id||player.name, style: { position: "relative", cursor:"pointer" },
                 onClick: () => onPlayerClick && onPlayerClick({
                   id: player.id, name: player.name, photo: player.photo,
                   pos: player.pos || player.position, number: player.number,
@@ -1669,13 +1682,13 @@ const renderTerrainFlash = (fix, hLu, aLu, players, events, hid, aid, has, hg, a
             style: { display: "flex", justifyContent: "space-around", alignItems: "center", marginTop: lineIndex === 0 ? 0 : 16 }
           },
             line.map(player => {
-              const playerEvents = getPlayerEvents(player.id);
+              const playerEvents = getPlayerEvents(player.id, player.name);
               const hasGoal = playerEvents.some(e => e.type === "Goal" && e.detail !== "Missed Penalty");
               const goalCount = playerEvents.filter(e => e.type === "Goal" && e.detail !== "Missed Penalty").length;
               const hasYellow = playerEvents.some(e => e.type === "Card" && e.detail === "Yellow Card");
               const hasRed = playerEvents.some(e => e.type === "Card" && (e.detail === "Red Card" || e.detail === "Second Yellow Card"));
-              const hasSub = playerEvents.some(e => e.type === "subst");
-              return React.createElement("div", { key: player.id, style: { position: "relative", cursor:"pointer" },
+              const hasSub = playerEvents.some(e => e.type === "subst" && (e.player?.id===player.id || matchPlayerName(player.name, e.player?.name)));
+              return React.createElement("div", { key: player.id||player.name, style: { position: "relative", cursor:"pointer" },
                 onClick: () => onPlayerClick && onPlayerClick({
                   id: player.id, name: player.name, photo: player.photo,
                   pos: player.pos || player.position, number: player.number,
@@ -1729,16 +1742,34 @@ const renderListeFlash = (fix, hLu, aLu, players, events, injuries, hid, aid) =>
     return playerStats?.player?.photo || null;
   };
 
+  // Matcher nom Soccerway avec nom API
+  const matchName = (swName, apiName) => {
+    if(!swName || !apiName) return false;
+    const swLast = swName.split(" ")[0].toLowerCase().replace(/[^a-z]/gi,"");
+    const api = apiName.toLowerCase().replace(/[^a-z]/gi,"");
+    return swLast.length > 2 && api.includes(swLast);
+  };
+
   const getPlayerEvents = (playerId, playerName) => {
-    // Si pas d'ID → pas d'événements (joueur algérien Soccerway)
-    if(!playerId) return { goals:0, assists:0, yellow:0, red:0, isVar:false };
-    const playerEvents = events.filter(e => e.player?.id === playerId || e.assist?.id === playerId);
+    var playerEvents;
+    if(playerId) {
+      playerEvents = events.filter(e => e.player?.id === playerId || e.assist?.id === playerId);
+    } else if(playerName) {
+      // Matcher par nom pour joueurs algériens Soccerway
+      playerEvents = events.filter(e =>
+        matchName(playerName, e.player?.name) ||
+        matchName(playerName, e.assist?.name)
+      );
+    } else {
+      return { goals:0, assists:0, yellow:0, red:0, isVar:false, sub:false };
+    }
     return {
       goals: playerEvents.filter(e => e.type === "Goal" && e.detail !== "Missed Penalty").length,
-      assists: playerEvents.filter(e => e.assist?.id === playerId).length,
+      assists: playerEvents.filter(e => playerId ? e.assist?.id===playerId : matchName(playerName, e.assist?.name)).length,
       yellow: playerEvents.filter(e => e.detail === "Yellow Card").length,
       red: playerEvents.filter(e => e.detail === "Red Card" || e.detail === "Second Yellow Card").length,
-      isVar: playerEvents.some(e => e.type === "Var")
+      isVar: playerEvents.some(e => e.type === "Var"),
+      sub: playerEvents.some(e => e.type === "subst")
     };
   };
 
