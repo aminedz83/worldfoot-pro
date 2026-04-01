@@ -57,6 +57,28 @@ def get_today_fixtures():
         print("Erreur fixtures:", e)
         return []
 
+def parse_player(text, side):
+    """Parse un joueur depuis le texte Soccerway"""
+    if not text or len(text) < 2:
+        return None
+    text = text.strip()
+    is_gk = "(G)" in text or "(GK)" in text
+    is_cap = "(C)" in text
+    # Nettoyer les indicateurs
+    clean = re.sub(r'\(G\)|\(GK\)|\(C\)', '', text).strip()
+    
+    if side == "home":
+        # Format: "16 Merbah G."
+        m = re.match(r'^(\d{1,2})\s+(.+)$', clean)
+        if m:
+            return {"number": m.group(1), "name": m.group(2).strip(), "is_gk": is_gk, "is_captain": is_cap}
+    else:
+        # Format: "Boussouf K. 16"
+        m = re.match(r'^(.+?)\s+(\d{1,2})$', clean)
+        if m:
+            return {"number": m.group(2), "name": m.group(1).strip(), "is_gk": is_gk, "is_captain": is_cap}
+    return None
+
 def scrape_lineups(mid):
     url = "https://ca.soccerway.com/game/x/x/summary/lineups/?mid=" + mid
     try:
@@ -64,28 +86,50 @@ def scrape_lineups(mid):
         if r.status_code != 200:
             return None
         soup = BeautifulSoup(r.text, "html.parser")
+        
+        # Vérifier si lineups disponibles
         if not soup.find(string=re.compile(r"STARTING LINEUP", re.I)):
             print("Pas encore de lineups pour mid=" + mid)
             return None
-        home_players, away_players = [], []
+
+        home_starters, away_starters = [], []
+        home_subs, away_subs = [], []
+        
+        # Trouver les sections STARTING LINEUPS et SUBSTITUTES
+        in_starters = False
+        in_subs = False
+        
         for table in soup.find_all("table"):
+            # Détecter le contexte du tableau
+            prev = table.find_previous(string=re.compile(r"STARTING LINEUP|SUBSTITUTES", re.I))
+            is_sub_table = prev and "SUBSTITUTE" in prev.upper() if prev else False
+            
             for row in table.find_all("tr"):
                 cells = row.find_all("td")
                 if len(cells) < 2:
                     continue
                 lt = cells[0].get_text(strip=True)
                 rt = cells[-1].get_text(strip=True)
-                if lt and len(lt) > 2:
-                    m = re.match(r"^(\d{1,2})\s+(.+)$", lt)
-                    if m:
-                        home_players.append({"number": m.group(1), "name": m.group(2).strip(), "is_gk": "(G)" in lt})
-                if rt and len(rt) > 2 and rt != lt:
-                    m = re.match(r"^(.+?)\s+(\d{1,2})$", rt)
-                    if m:
-                        away_players.append({"number": m.group(2), "name": m.group(1).strip(), "is_gk": "(G)" in rt})
-        if home_players or away_players:
-            print("Lineups:", len(home_players), "dom,", len(away_players), "ext")
-            return {"home_players": home_players[:11], "away_players": away_players[:11]}
+                
+                hp = parse_player(lt, "home")
+                ap = parse_player(rt, "away")
+                
+                if is_sub_table:
+                    if hp: home_subs.append(hp)
+                    if ap: away_subs.append(ap)
+                else:
+                    if hp: home_starters.append(hp)
+                    if ap: away_starters.append(ap)
+
+        if home_starters or away_starters:
+            print("Titulaires:", len(home_starters), "dom,", len(away_starters), "ext")
+            print("Remplaçants:", len(home_subs), "dom,", len(away_subs), "ext")
+            return {
+                "home_players": home_starters[:11],
+                "away_players": away_starters[:11],
+                "home_subs": home_subs[:7],
+                "away_subs": away_subs[:7]
+            }
         return None
     except Exception as e:
         print("Erreur lineups:", e)
@@ -97,6 +141,7 @@ print("Matchs aujourd'hui:", len(matches))
 if not matches:
     print("Aucun match aujourd'hui - OK")
     exit(0)
+
 for match in matches:
     mid, home, away, match_date = match["mid"], match["home"], match["away"], match["date"]
     print("\n---", home, "vs", away, "---")
@@ -110,6 +155,7 @@ for match in matches:
             continue
     except:
         pass
+    
     lineups = scrape_lineups(mid)
     if lineups:
         res = requests.post(SB_URL + "/rest/v1/algeria_lineups", headers=SB_HEADERS, json={
@@ -120,9 +166,12 @@ for match in matches:
             "match_date": match_date,
             "home_players": lineups["home_players"],
             "away_players": lineups["away_players"],
+            "home_subs": lineups.get("home_subs", []),
+            "away_subs": lineups.get("away_subs", []),
             "scraped_at": datetime.now(timezone.utc).isoformat()
         })
         print("Sauvegarde:", res.status_code, "-", home, "vs", away)
     else:
         print("Pas encore disponible")
+
 print("=== Termine ===")
