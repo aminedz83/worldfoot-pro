@@ -1,7 +1,14 @@
-import requests, os, json, time
+import requests
+import os
+import json
+import time
 from datetime import datetime, timezone
 
-SUPABASE_KEY = os.environ["SUPABASE_KEY"]
+SUPABASE_KEY = os.environ.get("SUPABASE_KEY")
+if not SUPABASE_KEY:
+    print("❌ Erreur: SUPABASE_KEY non trouvée")
+    exit(1)
+
 SB_URL = "https://iqeqlsxjiklygywjirqs.supabase.co"
 SB_HEADERS = {
     "apikey": SUPABASE_KEY,
@@ -11,7 +18,7 @@ SB_HEADERS = {
 }
 
 SF_HEADERS = {
-    "User-Agent": "Mozilla/5.0 (iPhone; CPU iPhone OS 17_0 like Mac OS X) AppleWebKit/605.1.15",
+    "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36",
     "Accept": "application/json",
     "Referer": "https://www.sofascore.com/"
 }
@@ -66,9 +73,12 @@ def save_players(players, team_name, team_sofascore_id):
         # Date fin contrat
         contract_until = None
         if p.get("contractUntilTimestamp"):
-            contract_until = datetime.fromtimestamp(
-                p["contractUntilTimestamp"], tz=timezone.utc
-            ).isoformat()
+            try:
+                contract_until = datetime.fromtimestamp(
+                    p["contractUntilTimestamp"], tz=timezone.utc
+                ).isoformat()
+            except:
+                pass
         
         data = {
             "sofascore_id": p["id"],
@@ -88,13 +98,20 @@ def save_players(players, team_name, team_sofascore_id):
             "updated_at": datetime.now(timezone.utc).isoformat()
         }
         
-        res = requests.post(
-            f"{SB_URL}/rest/v1/algeria_players",
-            headers=SB_HEADERS,
-            json=data
-        )
-        if res.status_code in [200, 201]:
-            saved += 1
+        # Supprimer les champs None
+        data = {k: v for k, v in data.items() if v is not None}
+        
+        try:
+            res = requests.post(
+                f"{SB_URL}/rest/v1/algeria_players",
+                headers=SB_HEADERS,
+                json=data,
+                timeout=10
+            )
+            if res.status_code in [200, 201]:
+                saved += 1
+        except:
+            pass
         
     print(f"  → {saved} joueurs sauvegardés")
     return saved
