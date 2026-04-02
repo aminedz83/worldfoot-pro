@@ -2,31 +2,43 @@ name: Sync Algeria Players
 
 on:
   schedule:
-    - cron: '0 */6 * * *'  # Toutes les 6 heures
-  workflow_dispatch:
+    - cron: '0 */12 * * *'  # Exécution toutes les 12 heures
+  workflow_dispatch:  # Permet l'exécution manuelle
 
 jobs:
   sync:
     runs-on: ubuntu-latest
+    timeout-minutes: 10
     
     steps:
-    - uses: actions/checkout@v3
+    - name: Checkout code
+      uses: actions/checkout@v4
     
     - name: Setup Python
-      uses: actions/setup-python@v4
+      uses: actions/setup-python@v5
       with:
-        python-version: '3.10'
-    
-    - name: Install Chrome
-      run: |
-        sudo apt-get update
-        sudo apt-get install -y chromium-browser chromium-chromedriver
+        python-version: '3.11'
+        cache: 'pip'
     
     - name: Install dependencies
       run: |
-        pip install requests cloudscraper selenium webdriver-manager
+        python -m pip install --upgrade pip
+        pip install requests cloudscraper
     
     - name: Run sync script
       env:
         SUPABASE_KEY: ${{ secrets.SUPABASE_KEY }}
-      run: python3 sync-algeria-players.py
+      run: |
+        echo "Début du sync: $(date)"
+        python sync-algeria-players.py
+        echo "Fin du sync: $(date)"
+    
+    - name: Upload logs on failure
+      if: failure()
+      uses: actions/upload-artifact@v4
+      with:
+        name: sync-logs
+        retention-days: 7
+        path: |
+          *.log
+          *.txt
