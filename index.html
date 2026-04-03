@@ -12100,10 +12100,15 @@ function TeamPage({ teamId, teamName, teamLogo, leagueId, season, onClose, onTea
         };
         const sfTeamId = ALGERIA_SF_IDS[teamId];
         if(sfTeamId) {
+          console.log("SofaScore fetch pour team:", sfTeamId);
           fetch("https://api.sofascore.com/api/v1/team/"+sfTeamId+"/players", {
             headers: {"Accept":"application/json","Referer":"https://www.sofascore.com/"}
-          }).then(function(r){ return r.json(); })
+          }).then(function(r){ 
+            console.log("SofaScore status:", r.status);
+            return r.json(); 
+          })
           .then(function(sfData) {
+            console.log("SofaScore players:", sfData.players ? sfData.players.length : 0);
             const sfPlayers = sfData.players || [];
             // Matcher par nom et enrichir
             const enriched = sq.map(function(p) {
