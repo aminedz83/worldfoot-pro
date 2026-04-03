@@ -12128,27 +12128,53 @@ function TeamPage({ teamId, teamName, teamLogo, leagueId, season, onClose, onTea
             setSquad(enriched);
           };
           var sfUrl = "https://api.sofascore.com/api/v1/team/"+sfTeamId+"/players";
-          // 1. Essai direct
-          fetch(sfUrl, {headers: {"Accept":"application/json","Referer":"https://www.sofascore.com/"}})
-          .then(function(r) { window._sfStatus = r.status; return r.json(); })
-          .then(function(sfData) { enrichSquadWithSF(sfData, "direct"); })
-          .catch(function() {
-            window._sfStatus = "CORS";
-            // 2. Fallback allorigins
+
+          // Fonction fallback allorigins → corsproxy
+          var tryProxy = function() {
+            // 2. AllOrigins proxy
             fetch("https://api.allorigins.win/get?url="+encodeURIComponent(sfUrl))
-            .then(function(r) { return r.json(); })
+            .then(function(r) {
+              if(!r.ok) throw new Error("allorigins "+r.status);
+              return r.json();
+            })
             .then(function(wrapper) {
               var sfData = JSON.parse(wrapper.contents);
+              // SofaScore peut retourner une erreur JSON
+              if(!sfData.players) throw new Error("no players in allorigins response");
               window._sfStatus = 200;
               enrichSquadWithSF(sfData, "allorigins");
             })
             .catch(function() {
-              // 3. Fallback corsproxy
-              fetch("https://corsproxy.io/?"+encodeURIComponent(sfUrl))
-              .then(function(r) { window._sfStatus = r.status; return r.json(); })
-              .then(function(sfData) { enrichSquadWithSF(sfData, "corsproxy"); })
+              // 3. CorsProxy fallback
+              fetch("https://corsproxy.io/?"+encodeURIComponent(sfUrl), {
+                headers:{"Accept":"application/json","x-requested-with":"XMLHttpRequest"}
+              })
+              .then(function(r) {
+                if(!r.ok) throw new Error("corsproxy "+r.status);
+                window._sfStatus = r.status;
+                return r.json();
+              })
+              .then(function(sfData) {
+                if(!sfData.players) throw new Error("no players in corsproxy response");
+                enrichSquadWithSF(sfData, "corsproxy");
+              })
               .catch(function() { setSquad(sq); });
             });
+          };
+
+          // 1. Essai direct — si 403 ou autre erreur → proxy
+          fetch(sfUrl, {headers: {"Accept":"application/json","Referer":"https://www.sofascore.com/"}})
+          .then(function(r) {
+            window._sfStatus = r.status;
+            if(!r.ok) throw new Error("direct "+r.status); // 403 → déclenche catch → proxy
+            return r.json();
+          })
+          .then(function(sfData) {
+            if(!sfData.players) throw new Error("no players");
+            enrichSquadWithSF(sfData, "direct");
+          })
+          .catch(function() {
+            tryProxy();
           });
         } else {
           setSquad(sq);
@@ -12693,8 +12719,16 @@ function TeamPage({ teamId, teamName, teamLogo, leagueId, season, onClose, onTea
                 var proxyUrl = "https://corsproxy.io/?"+encodeURIComponent(sfUrl);
                 alert("Test corsproxy.io...\n"+proxyUrl);
                 fetch(proxyUrl,{headers:{"Accept":"application/json","x-requested-with":"XMLHttpRequest"}})
-                  .then(function(r){ return r.json(); })
-                  .then(function(d){
+                  .then(function(r){
+                    alert("corsproxy status: "+r.status+"\nok: "+r.ok);
+                    return r.text();
+                  })
+                  .then(function(txt){
+                    // Afficher les 300 premiers caractères bruts
+                    alert("RAW (300 chars):\n"+txt.substring(0,300));
+                    var d = JSON.parse(txt);
+                    // Afficher les clés de premier niveau
+                    alert("Clés JSON: "+Object.keys(d).join(", "));
                     var count = d.players ? d.players.length : 0;
                     var first = d.players && d.players[0] ? d.players[0].player.name : "?";
                     var firstMV = d.players && d.players[0] && d.players[0].player.proposedMarketValueRaw ? d.players[0].player.proposedMarketValueRaw.value : "pas de MV";
