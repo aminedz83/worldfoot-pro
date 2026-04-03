@@ -2,7 +2,7 @@
 <html lang="fr">
 <head>
     <meta charset="UTF-8" />
-    <!-- v239 -->
+    <!-- v241 -->
     <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate" />
     <meta http-equiv="Pragma" content="no-cache" />
     <meta http-equiv="Expires" content="0" />
@@ -12037,6 +12037,7 @@ function TeamPage({ teamId, teamName, teamLogo, leagueId, season, onClose, onTea
   const [upcoming,  setUpcoming]  = useState([]);
   const [standings, setStandings] = useState([]);
   const [squad,     setSquad]     = useState([]);
+  const [squadStats, setSquadStats] = useState({}); // playerId → stats saison
   const [playerPage, setPlayerPage] = useState(null);
   const [transfers, setTransfers] = useState([]);
   const [loading,   setLoading]   = useState(true);
@@ -12204,6 +12205,30 @@ function TeamPage({ teamId, teamName, teamLogo, leagueId, season, onClose, onTea
       }
 
       if(!cancelled) setLoading(false);
+
+      // Charger stats saison des joueurs (en arrière-plan, pas bloquant)
+      var curSeas = new Date().getMonth() >= 6 ? new Date().getFullYear() : new Date().getFullYear() - 1;
+      api("/players?team="+teamId+"&season="+curSeas, 3600000).then(function(playersData) {
+        if(cancelled || !playersData) return;
+        var statsMap = {};
+        playersData.forEach(function(entry) {
+          if(entry.player && entry.statistics && entry.statistics[0]) {
+            var s = entry.statistics[0];
+            statsMap[entry.player.id] = {
+              minutes:    s.games && s.games.minutes,
+              goals:      s.goals && s.goals.total,
+              assists:    s.goals && s.goals.assists,
+              saves:      s.goals && s.goals.saves,
+              conceded:   s.goals && s.goals.conceded,
+              yellow:     s.cards && s.cards.yellow,
+              red:        s.cards && s.cards.red,
+              rating:     s.games && s.games.rating ? parseFloat(s.games.rating).toFixed(1) : null,
+              appearences: s.games && s.games.appearences,
+            };
+          }
+        });
+        if(!cancelled) setSquadStats(statsMap);
+      }).catch(function(){});
     });
     return ()=>{ cancelled=true; };
   }, [teamId, leagueId, season]);
@@ -12700,52 +12725,116 @@ function TeamPage({ teamId, teamName, teamLogo, leagueId, season, onClose, onTea
                     background:"#f2f3f5"
                   }},pos+"s"),
                   React.createElement("div",{style:{background:"#fff"}},
-                    grouped[pos].map(function(p,i){ return React.createElement("div",{
+                    grouped[pos].map(function(p,i){
+                      var pStats = squadStats[p.id] || null;
+                      var pIsGK = (p.position||"").toLowerCase().includes("goalkeeper") || p.position === "G";
+                      return React.createElement("div",{
                       key:p.id||i,
                       onClick: function(){ if(p.id) setPlayerPage({ id: p.id, name: p.name, photo: p.photo, pos: p.position, number: p.number, nationality: p.nationality, teamLogo: teamLogo, market_value: p.market_value, contract_until: p.contract_until }); },
                       style:{
-                        display:"flex",alignItems:"center",gap:12,
-                        padding:"10px 16px",
+                        display:"flex",alignItems:"center",gap:8,
+                        padding:"8px 16px",
                         borderBottom:"1px solid #f1f5f9",
                         background:"#fff",
                         cursor: p.id ? "pointer" : "default"
                       }
                     },
+                      // Photo petite
                       React.createElement("div",{style:{position:"relative",flexShrink:0}},
                         React.createElement("img",{
                           src:p.photo,
-                          style:{width:46,height:46,borderRadius:"50%",objectFit:"cover",background:"#f1f5f9",border:"1px solid #f1f5f9"},
+                          style:{width:36,height:36,borderRadius:"50%",objectFit:"cover",background:"#f1f5f9",border:"1px solid #f1f5f9"},
                           onError:function(e){ e.target.src="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 44 44'%3E%3Ccircle cx='22' cy='22' r='22' fill='%23e2e8f0'/%3E%3Ccircle cx='22' cy='16' r='7' fill='%23cbd5e1'/%3E%3Cellipse cx='22' cy='36' rx='11' ry='7' fill='%23cbd5e1'/%3E%3C/svg%3E"; }
                         }),
                         p.number!=null && React.createElement("div",{style:{
-                          position:"absolute",bottom:0,right:-2,
+                          position:"absolute",bottom:-1,right:-3,
                           background:"#334155",color:"#fff",
-                          fontSize:9,fontWeight:800,borderRadius:4,
-                          padding:"1px 4px",lineHeight:"13px",
-                          border:"1.5px solid #fff"
+                          fontSize:8,fontWeight:800,borderRadius:3,
+                          padding:"1px 3px",lineHeight:"12px",
+                          border:"1px solid #fff"
                         }},p.number)
                       ),
+                      // Nom + âge
                       React.createElement("div",{style:{flex:1,minWidth:0}},
                         React.createElement("div",{style:{
-                          fontSize:14,fontWeight:600,color:"#0f172a",
+                          fontSize:13,fontWeight:600,color:"#0f172a",
                           overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap"
                         }},p.name),
-                        React.createElement("div",{style:{
-                          fontSize:12,color:"#64748b",marginTop:3,
-                          display:"flex",alignItems:"center",gap:5
-                        }},
-                          natFlag(p.nationality) && React.createElement("img",{
-                            src:"https://flagcdn.com/w20/"+natFlag(p.nationality)+".png",
-                            style:{width:16,height:11,objectFit:"cover",borderRadius:2,flexShrink:0}
-                          }),
-                          p.age && React.createElement("span",null,"· "+p.age+" ans")
+                        React.createElement("div",{style:{fontSize:11,color:"#94a3b8",marginTop:1}},
+                          p.age ? p.age+" ans" : ""
                         )
                       ),
-                      p.market_value && React.createElement("div",{style:{
-                        fontSize:12,fontWeight:700,color:"#16a34a",
-                        background:"#f0fdf4",borderRadius:6,
-                        padding:"3px 8px",flexShrink:0,whiteSpace:"nowrap"
-                      }},fmtMV(p.market_value))
+                      // Stats compactes — exactement comme Soccerway: AGE | 👕 | MIN | ⚽ | A | 🟨 | 🟥
+                      pStats
+                        ? React.createElement("div",{style:{display:"flex",alignItems:"center",gap:5,flexShrink:0}},
+                            // Note
+                            pStats.rating && React.createElement("div",{style:{
+                              background: parseFloat(pStats.rating)>=7.5?"#22c55e":parseFloat(pStats.rating)>=6.5?"#f59e0b":"#ef4444",
+                              color:"#fff",fontSize:9,fontWeight:700,borderRadius:4,
+                              padding:"1px 4px",minWidth:24,textAlign:"center"
+                            }},pStats.rating),
+                            // AGE
+                            React.createElement("div",{style:{display:"flex",flexDirection:"column",alignItems:"center",minWidth:20}},
+                              React.createElement("span",{style:{fontSize:8,color:"#94a3b8",fontWeight:700}},"AGE"),
+                              React.createElement("span",{style:{fontSize:11,color:"#0f172a",fontWeight:600}},p.age??"-")
+                            ),
+                            // 👕 Numéro
+                            React.createElement("div",{style:{display:"flex",flexDirection:"column",alignItems:"center",minWidth:20}},
+                              React.createElement("span",{style:{fontSize:8,color:"#94a3b8",fontWeight:700}},"👕"),
+                              React.createElement("span",{style:{fontSize:11,color:"#0f172a",fontWeight:600}},p.number??"-")
+                            ),
+                            // MIN
+                            React.createElement("div",{style:{display:"flex",flexDirection:"column",alignItems:"center",minWidth:28}},
+                              React.createElement("span",{style:{fontSize:8,color:"#94a3b8",fontWeight:700}},"MIN"),
+                              React.createElement("span",{style:{fontSize:11,color:"#0f172a",fontWeight:600}},pStats.minutes??"-")
+                            ),
+                            pIsGK
+                              ? React.createElement(React.Fragment,null,
+                                  // AR%
+                                  React.createElement("div",{style:{display:"flex",flexDirection:"column",alignItems:"center",minWidth:28}},
+                                    React.createElement("span",{style:{fontSize:8,color:"#94a3b8",fontWeight:700}},"AR%"),
+                                    React.createElement("span",{style:{fontSize:11,color:"#0f172a",fontWeight:600}},
+                                      pStats.saves!=null && pStats.conceded!=null && (pStats.saves+pStats.conceded)>0
+                                        ? Math.round(pStats.saves/(pStats.saves+pStats.conceded)*100)+"%"
+                                        : "-"
+                                    )
+                                  ),
+                                  // BLA (arrêts)
+                                  React.createElement("div",{style:{display:"flex",flexDirection:"column",alignItems:"center",minWidth:20}},
+                                    React.createElement("span",{style:{fontSize:8,color:"#94a3b8",fontWeight:700}},"BLA"),
+                                    React.createElement("span",{style:{fontSize:11,color:"#0f172a",fontWeight:600}},pStats.saves??"-")
+                                  )
+                                )
+                              : React.createElement(React.Fragment,null,
+                                  // ⚽ Buts
+                                  React.createElement("div",{style:{display:"flex",flexDirection:"column",alignItems:"center",minWidth:20}},
+                                    React.createElement("span",{style:{fontSize:8,color:"#94a3b8",fontWeight:700}},"⚽"),
+                                    React.createElement("span",{style:{fontSize:11,color:"#0f172a",fontWeight:600}},pStats.goals??"-")
+                                  ),
+                                  // A Assists
+                                  React.createElement("div",{style:{display:"flex",flexDirection:"column",alignItems:"center",minWidth:20}},
+                                    React.createElement("span",{style:{fontSize:8,color:"#94a3b8",fontWeight:700}},"A"),
+                                    React.createElement("span",{style:{fontSize:11,color:"#64748b",fontWeight:600}},pStats.assists??"-")
+                                  )
+                                ),
+                            // 🟨
+                            React.createElement("div",{style:{display:"flex",flexDirection:"column",alignItems:"center",minWidth:20}},
+                              React.createElement("span",{style:{fontSize:8,color:"#94a3b8",fontWeight:700}},"🟨"),
+                              React.createElement("span",{style:{fontSize:11,color:"#f59e0b",fontWeight:600}},pStats.yellow??"-")
+                            ),
+                            // 🟥
+                            React.createElement("div",{style:{display:"flex",flexDirection:"column",alignItems:"center",minWidth:20}},
+                              React.createElement("span",{style:{fontSize:8,color:"#94a3b8",fontWeight:700}},"🟥"),
+                              React.createElement("span",{style:{fontSize:11,color:"#ef4444",fontWeight:600}},pStats.red??"-")
+                            )
+                          )
+                        : p.market_value
+                          ? React.createElement("div",{style:{
+                              fontSize:11,fontWeight:700,color:"#16a34a",
+                              background:"#f0fdf4",borderRadius:6,
+                              padding:"2px 6px",flexShrink:0,whiteSpace:"nowrap"
+                            }},fmtMV(p.market_value))
+                          : null
                     );})
                   )
                 )
