@@ -34,7 +34,7 @@ CLUBS = [
 def run_apify(url):
     """Lancer SofaScore Scraper PRO sur Apify"""
     resp = requests.post(
-        f"https://api.apify.com/v2/acts/azzouzana~sofascore-scraper-pro/runs?token={APIFY_TOKEN}",
+        f"https://api.apify.com/v2/acts/VzKtdb1t0Qnc07X8V/runs?token={APIFY_TOKEN}",
         json={"startUrls": [{"url": url}]},
         timeout=30
     )
