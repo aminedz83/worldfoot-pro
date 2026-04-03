@@ -6583,14 +6583,10 @@ function MatchDetail({state,onClose,onTeam}){
     // Essayer 3: par date seule (pour trouver le bon match)
     var url1 = fixtureId ? SB+'?fixture_id=eq.'+fixtureId+'&select=*' : null;
     var url2 = SB+'?home_team=eq.'+encodeURIComponent(homeTeam)+'&away_team=eq.'+encodeURIComponent(awayTeam)+'&match_date=eq.'+matchDate+'&select=*';
-    var url3 = SB+'?match_date=eq.'+matchDate+'&select=*';
     var p = url1 ? tryFetch(url1) : Promise.resolve([]);
     p.then(function(d){
       if(d&&d.length>0) return d;
       return tryFetch(url2);
-    }).then(function(d){
-      if(d&&d.length>0) return d;
-      return tryFetch(url3);
     }).then(function(data){
       console.log("Algeria lineups result:", JSON.stringify(data));
       if(data&&data.length>0){
