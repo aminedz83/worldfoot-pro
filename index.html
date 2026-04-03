@@ -2,7 +2,7 @@
 <html lang="fr">
 <head>
     <meta charset="UTF-8" />
-    <!-- v234 -->
+    <!-- v236 -->
     <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate" />
     <meta http-equiv="Pragma" content="no-cache" />
     <meta http-equiv="Expires" content="0" />
@@ -12336,7 +12336,7 @@ function TeamPage({ teamId, teamName, teamLogo, leagueId, season, onClose, onTea
 
   const S = {
     // Layout
-    page:  {position:"fixed",inset:0,zIndex:500,background:"#f2f3f5",display:"flex",flexDirection:"column",overflow:"hidden"},
+    page:  {position:"fixed",inset:0,zIndex:700,background:"#f2f3f5",display:"flex",flexDirection:"column",overflow:"hidden"},
     // Header
     hdr:   {background:"#fff",flexShrink:0,paddingTop:0},
     fixedBack:{position:"sticky",top:0,zIndex:10,background:"#fff",paddingTop:"calc(env(safe-area-inset-top,0px) + 8px)",paddingBottom:4,paddingLeft:10,paddingRight:10,borderBottom:"none"},
@@ -12624,99 +12624,7 @@ function TeamPage({ teamId, teamName, teamLogo, leagueId, season, onClose, onTea
 
       // ── EFFECTIF ──
       tab==="effectif" && React.createElement("div",{style:{background:"#f2f3f5"}},
-        // ── DEBUG VALEUR MARCHANDE ──
-        React.createElement("div",{style:{margin:"8px 16px",borderRadius:10,overflow:"hidden",border:"1px solid #334155"}},
-          // Header debug
-          React.createElement("div",{style:{background:"#0f172a",color:"#94a3b8",fontSize:11,fontWeight:700,padding:"6px 12px",letterSpacing:1}},
-            "🔬 DEBUG VALEUR MARCHANDE — JSK #"+teamId
-          ),
-          // Etat du chargement initial
-          React.createElement("div",{style:{background:"#1e293b",padding:"8px 12px",fontSize:11,color:"#cbd5e1",fontFamily:"monospace"}},
-            "SofaScore ID: ", React.createElement("span",{style:{color:"#fbbf24",fontWeight:700}}, window._sfTeamId||"non mappé"),
-            React.createElement("br",null),
-            "Status HTTP: ", React.createElement("span",{style:{color: window._sfStatus===200?"#4ade80":window._sfStatus?"#f87171":"#94a3b8",fontWeight:700}}, window._sfStatus||"—"),
-            React.createElement("span",{style:{color:"#475569"}}," via "),
-            React.createElement("span",{style:{color:"#38bdf8",fontWeight:700}}, window._sfMethod||"—"),
-            React.createElement("br",null),
-            "Joueurs reçus: ", React.createElement("span",{style:{color: window._sfPlayers>0?"#4ade80":"#f87171",fontWeight:700}}, window._sfPlayers!=null?window._sfPlayers:"—"),
-            React.createElement("br",null),
-            "Exemple: ", React.createElement("span",{style:{color:"#e2e8f0"}}, window._sfSample||"aucun"),
-            React.createElement("br",null),
-            "Squad enrichi: ", React.createElement("span",{style:{color: squad.some(function(p){return p.market_value;})?"#4ade80":"#f87171",fontWeight:700}},
-              (window._sfMatched||squad.filter(function(p){return p.market_value;}).length) + "/" + squad.length + " joueurs avec MV"
-            )
-          ),
-          // Boutons test
-          React.createElement("div",{style:{display:"flex",gap:6,padding:"8px 12px",background:"#0f172a"}},
-            // Test direct SofaScore
-            React.createElement("div",{
-              onClick: function(){
-                var sfId = {918:42202,904:42207,906:42204,910:42206,908:41756,916:55393,907:45001,905:42201,917:79565,919:133444,920:238384,921:238383,922:212197,923:186100,924:133466,925:306567}[teamId];
-                if(!sfId){ alert("Club non algérien"); return; }
-                var url = "https://api.sofascore.com/api/v1/team/"+sfId+"/players";
-                alert("Test DIRECT\n"+url+"\n\nSi bloqué → erreur CORS = pas de status");
-                fetch(url,{headers:{"Accept":"application/json","Referer":"https://www.sofascore.com/"}})
-                  .then(function(r){ alert("✅ DIRECT OK!\nStatus: "+r.status); return r.json(); })
-                  .then(function(d){ alert("Joueurs: "+(d.players?d.players.length:0)+"\nPremier: "+(d.players&&d.players[0]?d.players[0].player.name:"?")); })
-                  .catch(function(e){ alert("❌ DIRECT bloqué (CORS)\n"+e.message); });
-              },
-              style:{flex:1,background:"#3b82f6",color:"#fff",borderRadius:6,padding:"7px 4px",fontSize:10,fontWeight:700,textAlign:"center",cursor:"pointer"}
-            },"🌐 Direct"),
-            // Test allorigins proxy
-            React.createElement("div",{
-              onClick: function(){
-                var sfId = {918:42202,904:42207,906:42204,910:42206,908:41756,916:55393,907:45001,905:42201,917:79565,919:133444,920:238384,921:238383,922:212197,923:186100,924:133466,925:306567}[teamId];
-                if(!sfId){ alert("Club non algérien"); return; }
-                var sfUrl = "https://api.sofascore.com/api/v1/team/"+sfId+"/players";
-                var proxyUrl = "https://api.allorigins.win/get?url="+encodeURIComponent(sfUrl);
-                alert("Test AllOrigins proxy...\n"+proxyUrl);
-                fetch(proxyUrl)
-                  .then(function(r){ return r.json(); })
-                  .then(function(wrapper){
-                    var d = JSON.parse(wrapper.contents);
-                    var count = d.players ? d.players.length : 0;
-                    var first = d.players && d.players[0] ? d.players[0].player.name : "?";
-                    var firstMV = d.players && d.players[0] && d.players[0].player.proposedMarketValueRaw ? d.players[0].player.proposedMarketValueRaw.value : "pas de MV";
-                    alert("✅ AllOrigins OK!\nJoueurs: "+count+"\nPremier: "+first+"\nValeur: "+firstMV);
-                  })
-                  .catch(function(e){ alert("❌ AllOrigins échoué\n"+e.message); });
-              },
-              style:{flex:1,background:"#8b5cf6",color:"#fff",borderRadius:6,padding:"7px 4px",fontSize:10,fontWeight:700,textAlign:"center",cursor:"pointer"}
-            },"🔀 AllOrigins"),
-            // Test corsproxy.io
-            React.createElement("div",{
-              onClick: function(){
-                var sfId = {918:42202,904:42207,906:42204,910:42206,908:41756,916:55393,907:45001,905:42201,917:79565,919:133444,920:238384,921:238383,922:212197,923:186100,924:133466,925:306567}[teamId];
-                if(!sfId){ alert("Club non algérien"); return; }
-                var sfUrl = "https://api.sofascore.com/api/v1/team/"+sfId+"/players";
-                var proxyUrl = "https://corsproxy.io/?"+encodeURIComponent(sfUrl);
-                alert("Test corsproxy.io...\n"+proxyUrl);
-                fetch(proxyUrl,{headers:{"Accept":"application/json","x-requested-with":"XMLHttpRequest"}})
-                  .then(function(r){
-                    alert("corsproxy status: "+r.status+"\nok: "+r.ok);
-                    return r.text();
-                  })
-                  .then(function(txt){
-                    // Afficher les 300 premiers caractères bruts
-                    alert("RAW (300 chars):\n"+txt.substring(0,300));
-                    var d = JSON.parse(txt);
-                    // Afficher les clés de premier niveau
-                    alert("Clés JSON: "+Object.keys(d).join(", "));
-                    var count = d.players ? d.players.length : 0;
-                    var first = d.players && d.players[0] ? d.players[0].player.name : "?";
-                    var firstMV = d.players && d.players[0] && d.players[0].player.proposedMarketValueRaw ? d.players[0].player.proposedMarketValueRaw.value : "pas de MV";
-                    alert("✅ corsproxy OK!\nJoueurs: "+count+"\nPremier: "+first+"\nValeur: "+firstMV);
-                  })
-                  .catch(function(e){ alert("❌ corsproxy échoué\n"+e.message); });
-              },
-              style:{flex:1,background:"#10b981",color:"#fff",borderRadius:6,padding:"7px 4px",fontSize:10,fontWeight:700,textAlign:"center",cursor:"pointer"}
-            },"🔀 CorsProxy")
-          ),
-          // Explication
-          React.createElement("div",{style:{background:"#1e293b",padding:"6px 12px",fontSize:10,color:"#64748b"}},
-            "Si DIRECT bloqué → teste AllOrigins ou CorsProxy. Celui qui marche → on l'intègre dans le fetch automatique."
-          )
-        ),
+
 
         squad.length===0
           ? React.createElement("div",{style:{textAlign:"center",padding:"48px 24px",color:"#94a3b8",fontSize:14}},"Effectif indisponible")
