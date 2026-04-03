@@ -11,9 +11,10 @@ jobs:
         uses: actions/checkout@v3
 
       - name: Install dependencies
-        run: pip install requests beautifulsoup4 --quiet
+        run: pip install requests --quiet
 
       - name: Run sync
         env:
           SUPABASE_KEY: ${{ secrets.SUPABASE_KEY }}
+          APIFY_TOKEN: ${{ secrets.APIFY_KEY }}
         run: python3 sync-algeria-players.py
