@@ -64,7 +64,7 @@ def get_today_fixtures():
     """
     Stratégie: scraper la page de chaque club Soccerway pour trouver
     les matchs du jour. On utilise les IDs Soccerway qu'on connaît déjà.
-    URL format: https://fr.soccerway.com/teams/algeria/{slug}/{sw_id}/matches/
+    URL format: https://fr.soccerway.com/equipe/{slug}/{sw_id}/matches/
     """
     today_str = date.today().strftime("%Y-%m-%d")
     matches = []
@@ -76,7 +76,8 @@ def get_today_fixtures():
         sw_id = info["sw_id"]
         slug = info["slug"]
         # URL page matchs du club sur Soccerway
-        url = f"https://fr.soccerway.com/teams/algeria/{slug}/{sw_id}/matches/"
+        # Soccerway accepte n'importe quel slug tant que sw_id est correct
+        url = f"https://fr.soccerway.com/equipe/x/{sw_id}/matches/"
         try:
             r = requests.get(url, headers=HEADERS, timeout=15)
             if r.status_code != 200:
