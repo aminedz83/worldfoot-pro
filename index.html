@@ -2,7 +2,7 @@
 <html lang="fr">
 <head>
     <meta charset="UTF-8" />
-    <!-- v244 -->
+    <!-- v245 -->
     <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate" />
     <meta http-equiv="Pragma" content="no-cache" />
     <meta http-equiv="Expires" content="0" />
@@ -8744,20 +8744,38 @@ function MatchDetail({state,onClose,onTeam}){
           // goals.saves = arrêts, goals.conceded = buts encaissés, penalty.saved = penalty arrêtés
           // PAS de section "goalkeeper" dans l'API — tout est dans goals/penalty
           playerSheet.stats && (playerSheet.pos==="G"||playerSheet.pos==="GK"||(playerSheet.stats.games&&playerSheet.stats.games.position==="G")) && React.createElement("div",null,
-            React.createElement("div",{style:{padding:"14px 16px 6px",fontWeight:700,fontSize:15,color:"#0f172a"}},"Gardiens"),
+            React.createElement("div",{style:{padding:"14px 16px 6px",fontWeight:700,fontSize:15,color:"#0f172a"}},"Gardien"),
             React.createElement("div",{style:{padding:"0 16px"}},
               [
-                {lbl:"Arrêts du gardien",val:(function(){var v=playerSheet.stats.goals&&playerSheet.stats.goals.saves;return v!=null?v:"-";})()},
-                {lbl:"Buts encaissés",val:(function(){var v=playerSheet.stats.goals&&playerSheet.stats.goals.conceded;return v!=null?v:"-";})()},
-                {lbl:"Passes réussies",val:(function(){
+                {lbl:"Arrêts du gardien",    val:(function(){var v=playerSheet.stats.goals&&playerSheet.stats.goals.saves;return v!=null?v:"-";})()},
+                {lbl:"Buts encaissés",       val:(function(){var v=playerSheet.stats.goals&&playerSheet.stats.goals.conceded;return v!=null?v:"-";})()},
+                {lbl:"% arrêts",             val:(function(){
+                  var s=playerSheet.stats.goals&&playerSheet.stats.goals.saves;
+                  var c=playerSheet.stats.goals&&playerSheet.stats.goals.conceded;
+                  if(s!=null&&c!=null&&(s+c)>0) return Math.round(s/(s+c)*100)+"%";
+                  return "-";
+                })()},
+                {lbl:"Penalty arrêté",       val:(function(){var v=playerSheet.stats.penalty&&playerSheet.stats.penalty.saved;return v!=null?v:"-";})()},
+                {lbl:"Penalty encaissé",     val:(function(){var v=playerSheet.stats.penalty&&playerSheet.stats.penalty.conceded;return v!=null?v:"-";})()},
+                {lbl:"Passes réussies",      val:(function(){
                   var total=playerSheet.stats.passes&&playerSheet.stats.passes.total;
                   var accurate=playerSheet.stats.passes&&playerSheet.stats.passes.accuracy;
                   if(total!=null&&accurate!=null&&total>0) return accurate+"/"+total+" ("+Math.round(accurate/total*100)+"%)";
                   if(total!=null) return total;
                   return "-";
                 })()},
-                {lbl:"Penalty arrêté",val:(function(){var v=playerSheet.stats.penalty&&playerSheet.stats.penalty.saved;return v!=null?v:"-";})()},
-              ].map(function(item){return React.createElement("div",{key:item.lbl,style:{display:"flex",justifyContent:"space-between",alignItems:"center",padding:"11px 0",borderBottom:"1px solid #f1f5f9"}},
+                {lbl:"Passes clés",          val:(function(){var v=playerSheet.stats.passes&&playerSheet.stats.passes.key;return v!=null?v:"-";})()},
+                {lbl:"Duels aériens gagnés", val:(function(){
+                  var won=playerSheet.stats.duels&&playerSheet.stats.duels.won;
+                  var total=playerSheet.stats.duels&&playerSheet.stats.duels.total;
+                  if(won!=null&&total!=null&&total>0) return won+"/"+total+" ("+Math.round(won/total*100)+"%)";
+                  return "-";
+                })()},
+                {lbl:"Fautes commises",      val:(function(){var v=playerSheet.stats.fouls&&playerSheet.stats.fouls.committed;return v!=null?v:"-";})()},
+                {lbl:"Cartons jaunes",       val:(function(){var v=playerSheet.stats.cards&&playerSheet.stats.cards.yellow;return v!=null&&v>0?v:"-";})()},
+                {lbl:"Cartons rouges",       val:(function(){var v=playerSheet.stats.cards&&playerSheet.stats.cards.red;return v!=null&&v>0?v:"-";})()},
+              ].filter(function(item){ return item.val !== "-"; })
+              .map(function(item){return React.createElement("div",{key:item.lbl,style:{display:"flex",justifyContent:"space-between",alignItems:"center",padding:"11px 0",borderBottom:"1px solid #f1f5f9"}},
                 React.createElement("span",{style:{fontSize:14,color:"#374151",flex:1,paddingRight:12}},item.lbl),
                 React.createElement("span",{style:{fontSize:14,fontWeight:700,color:"#0f172a",whiteSpace:"nowrap"}},item.val)
               )})
