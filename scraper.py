@@ -14,8 +14,29 @@ HEADERS = {
     "User-Agent": "Mozilla/5.0 (iPhone; CPU iPhone OS 17_0 like Mac OS X) AppleWebKit/605.1.15",
     "Accept": "text/html,application/xhtml+xml,*/*",
     "Accept-Language": "fr-FR,fr;q=0.9",
-    "X-Requested-With": "XMLHttpRequest",
-    "Referer": "https://ca.soccerway.com/national/algeria/ligue-professionnelle-1/2025-2026/regular-season/r76219/matches/",
+}
+
+API_KEY = "3a14b1347c177458e2f23bea7899e9cf"
+LEAGUE_ID = 186  # Ligue 1 Algérie
+
+# IDs Soccerway des clubs — slug exact depuis les vraies URLs
+SW_CLUBS = {
+    "JS Kabylie":      {"sw_id": "Wfaskwf0", "slug": "kabylie"},
+    "CR Belouizdad":   {"sw_id": "vNJLB2jP", "slug": "belouizdad"},
+    "MC Alger":        {"sw_id": "tnY2Lfcp", "slug": "mc-alger"},
+    "USM Alger":       {"sw_id": "zXBidj5t", "slug": "usm-alger"},
+    "CS Constantine":  {"sw_id": "nBionu2l", "slug": "constantine"},
+    "ES Setif":        {"sw_id": "EDgC6qYp", "slug": "setif"},
+    "MC Oran":         {"sw_id": "CrCmB35M", "slug": "mc-oran"},
+    "ASO Chlef":       {"sw_id": "Aobolc96", "slug": "chlef"},
+    "JS Saoura":       {"sw_id": "nimcBvel", "slug": "saoura"},
+    "ES Ben Aknoun":   {"sw_id": "QmvZvxCB", "slug": "es-ben-aknoun"},
+    "USM Khenchela":   {"sw_id": "lYuJtBj9", "slug": "khenchela"},
+    "MB Rouissat":     {"sw_id": "hGHHy7Am", "slug": "rouisset"},
+    "Paradou AC":      {"sw_id": "WIyffF3J", "slug": "paradou"},
+    "ES Mostaganem":   {"sw_id": "j9T7TM2E", "slug": "mostaganem"},
+    "MC El Bayadh":    {"sw_id": "S6H5xCS1", "slug": "el-bayadh"},
+    "Olympique Akbou": {"sw_id": "dhMQsMOh", "slug": "olympique-akbou"},
 }
 
 TEAM_NAME_MAP = {
@@ -38,86 +59,84 @@ def normalize_team_name(sw_name):
             return val
     return sw_name
 
-def get_today_fixtures():
+def get_today_fixtures_from_api():
+    """Récupère les matchs du jour depuis l'API football.com"""
     today_str = date.today().strftime("%Y-%m-%d")
-    matches = []
+    url = f"https://v3.football.api-sports.io/fixtures?league={LEAGUE_ID}&season=2024&date={today_str}"
+    try:
+        r = requests.get(url, headers={"x-apisports-key": API_KEY}, timeout=15)
+        print(f"API football status: {r.status_code}")
+        data = r.json()
+        fixtures = data.get("response", [])
+        print(f"Matchs API football aujourd'hui: {len(fixtures)}")
+        matches = []
+        for f in fixtures:
+            home = f["teams"]["home"]["name"]
+            away = f["teams"]["away"]["name"]
+            fid  = f["fixture"]["id"]
+            print(f"  {home} vs {away} (fixture_id={fid})")
+            matches.append({
+                "home": home, "away": away,
+                "fixture_id": fid, "date": today_str
+            })
+        return matches
+    except Exception as e:
+        print(f"Erreur API football: {e}")
+        return []
 
-    # Soccerway AJAX endpoint pour les matchs de la journée
-    # round_id=76219 = saison 2025-2026 Ligue 1 Algérie
-    # page=0 = journée courante
-    ajax_urls = [
-        # Page courante (matchs du jour/semaine)
-        "https://ca.soccerway.com/a/block_competition_matches_summary?block_id=page_competition_1_block_competition_matches_summary_5&callback_params=%7B%22page%22%3A0%2C%22block_service_id%22%3A%22competition_summary_block_competitionmatchessummary%22%2C%22round_id%22%3A76219%2C%22outgroup%22%3Afalse%2C%22view%22%3A2%7D&action=changePage&params=%7B%22page%22%3A0%7D",
-        # Variante sans callback_params
-        "https://ca.soccerway.com/a/block_competition_matches_summary?block_id=page_competition_1_block_competition_matches_summary_5&action=changePage&params=%7B%22page%22%3A0%7D",
-    ]
+def get_mid_from_soccerway(home_name, away_name):
+    """
+    Construit l'URL Soccerway depuis les IDs clubs et récupère le mid.
+    Format URL: /match/{away-slug}-{away-id}/{home-slug}-{home-id}/
+    Le mid est dans le HTML de la page ou dans l'URL après redirection.
+    """
+    home_info = SW_CLUBS.get(home_name)
+    away_info = SW_CLUBS.get(away_name)
 
-    for url in ajax_urls:
-        try:
-            r = requests.get(url, headers=HEADERS, timeout=20)
-            print(f"AJAX status: {r.status_code}")
-            print(f"Content-Type: {r.headers.get('content-type','?')}")
-            print(f"Body (300 chars): {r.text[:300]}")
+    if not home_info or not away_info:
+        print(f"  IDs Soccerway manquants pour {home_name} ou {away_name}")
+        return None
 
-            if r.status_code != 200:
-                continue
+    # Format exact des vraies URLs Soccerway
+    url = f"https://fr.soccerway.com/match/{away_info['slug']}-{away_info['sw_id']}/{home_info['slug']}-{home_info['sw_id']}/"
+    print(f"  URL Soccerway: {url}")
 
-            # Soccerway retourne du JSON avec un champ "html"
-            try:
-                data = r.json()
-                html = data.get("html", data.get("content", r.text))
-            except:
-                html = r.text
+    try:
+        r = requests.get(url, headers=HEADERS, timeout=15, allow_redirects=True)
+        print(f"  Status: {r.status_code} — URL finale: {r.url[:100]}")
 
-            soup = BeautifulSoup(html, "html.parser")
-            mid_links = soup.find_all("a", href=re.compile(r"mid="))
-            print(f"Liens mid= dans réponse AJAX: {len(mid_links)}")
-            for lnk in mid_links[:5]:
-                print(f"  {lnk.get('href','')[:100]}")
+        if r.status_code != 200:
+            return None
 
-            for link in mid_links:
-                href = link.get("href", "")
-                mid_m = re.search(r"mid=([A-Za-z0-9]+)", href)
-                if not mid_m:
-                    continue
-                mid = mid_m.group(1)
+        # Chercher le mid dans l'URL finale ou dans le HTML
+        mid_in_url = re.search(r"mid=([A-Za-z0-9]+)", r.url)
+        if mid_in_url:
+            return mid_in_url.group(1)
 
-                row = link.find_parent("tr")
-                if not row:
-                    continue
+        # Chercher dans le HTML
+        soup = BeautifulSoup(r.text, "html.parser")
+        mid_links = soup.find_all("a", href=re.compile(r"mid="))
+        if mid_links:
+            m = re.search(r"mid=([A-Za-z0-9]+)", mid_links[0]["href"])
+            if m:
+                return m.group(1)
 
-                # Date
-                match_date = None
-                dc = row.find("td", class_=re.compile(r"date"))
-                if dc:
-                    for fmt in ["%d/%m/%Y", "%d/%m/%y"]:
-                        try:
-                            match_date = datetime.strptime(dc.get_text(strip=True), fmt).strftime("%Y-%m-%d")
-                            break
-                        except:
-                            pass
-                if not match_date:
-                    match_date = today_str
+        # Chercher dans les scripts JS
+        mid_in_js = re.search(r"['\"]mid['\"]:\s*['\"]([A-Za-z0-9]+)['\"]", r.text)
+        if mid_in_js:
+            return mid_in_js.group(1)
 
-                if match_date != today_str:
-                    continue
+        # Chercher dans data attributes
+        mid_in_data = re.search(r'data-mid="([A-Za-z0-9]+)"', r.text)
+        if mid_in_data:
+            return mid_in_data.group(1)
 
-                team_links = row.find_all("a", href=re.compile(r"/teams/"))
-                if len(team_links) < 2:
-                    continue
-                home_api = normalize_team_name(team_links[0].get_text(strip=True))
-                away_api = normalize_team_name(team_links[1].get_text(strip=True))
+        print(f"  Mid non trouvé dans la page — sample HTML: {r.text[1000:1300]}")
+        return None
 
-                print(f"  ✅ {home_api} vs {away_api} | mid={mid}")
-                matches.append({"mid": mid, "home": home_api, "away": away_api, "date": match_date})
-
-            if matches:
-                break
-
-        except Exception as e:
-            print(f"Erreur AJAX: {e}")
-
-    return matches
+    except Exception as e:
+        print(f"  Erreur: {e}")
+        return None
 
 def parse_player(text, side):
     if not text or len(text) < 2:
@@ -137,11 +156,11 @@ def parse_player(text, side):
     return None
 
 def scrape_lineups(mid):
-    url = "https://ca.soccerway.com/game/x/x/summary/lineups/?mid=" + mid
+    url = "https://fr.soccerway.com/game/x/x/summary/lineups/?mid=" + mid
     try:
         r = requests.get(url, headers=HEADERS, timeout=20)
+        print(f"  Lineups status: {r.status_code}")
         if r.status_code != 200:
-            print(f"  Lineups status: {r.status_code}")
             return None
         soup = BeautifulSoup(r.text, "html.parser")
         if not soup.find(string=re.compile(r"STARTING LINEUP", re.I)):
@@ -174,51 +193,60 @@ def scrape_lineups(mid):
         print(f"  Erreur lineups: {e}")
         return None
 
-def get_fixture_id(home_api, away_api, match_date):
-    try:
-        check = requests.get(
-            SB_URL + "/rest/v1/algeria_lineups?home_team=eq." + requests.utils.quote(home_api) +
-            "&away_team=eq." + requests.utils.quote(away_api) +
-            "&match_date=eq." + match_date + "&select=fixture_id",
-            headers=SB_HEADERS
-        ).json()
-        if check and check[0].get("fixture_id") and check[0]["fixture_id"] != 0:
-            return check[0]["fixture_id"]
-    except:
-        pass
-    return 0
-
 print("=== Algeria Lineups", datetime.now().strftime("%H:%M:%S"), "===")
-matches = get_today_fixtures()
-print("Matchs aujourd'hui:", len(matches))
-if not matches:
+today_str = date.today().strftime("%Y-%m-%d")
+
+# Étape 1: matchs du jour depuis API football.com
+api_matches = get_today_fixtures_from_api()
+
+if not api_matches:
     print("Aucun match aujourd'hui - OK")
     exit(0)
 
-for match in matches:
-    mid, home, away, match_date = match["mid"], match["home"], match["away"], match["date"]
+# Étape 2: pour chaque match, trouver le mid Soccerway
+for match in api_matches:
+    home = match["home"]
+    away = match["away"]
+    fixture_id = match["fixture_id"]
     print(f"\n--- {home} vs {away} ---")
+
+    # Vérifier si déjà scraped
     try:
         check = requests.get(
-            SB_URL + "/rest/v1/algeria_lineups?soccerway_mid=eq." + mid + "&select=id,home_players",
+            SB_URL + "/rest/v1/algeria_lineups?fixture_id=eq." + str(fixture_id) + "&select=id,home_players",
             headers=SB_HEADERS
         ).json()
         if check and check[0].get("home_players") and len(check[0]["home_players"]) > 0:
-            print("  Deja scraped")
+            print("  Déjà scraped")
             continue
     except:
         pass
+
+    # Trouver le mid Soccerway
+    mid = get_mid_from_soccerway(home, away)
+    if not mid:
+        print(f"  Mid Soccerway introuvable pour {home} vs {away}")
+        continue
+
+    print(f"  Mid trouvé: {mid}")
+
+    # Scraper les lineups
     lineups = scrape_lineups(mid)
     if lineups:
-        fixture_id = get_fixture_id(home, away, match_date)
         res = requests.post(SB_URL + "/rest/v1/algeria_lineups", headers=SB_HEADERS, json={
-            "fixture_id": fixture_id, "soccerway_mid": mid,
-            "home_team": home, "away_team": away, "match_date": match_date,
-            "home_players": lineups["home_players"], "away_players": lineups["away_players"],
-            "home_subs": lineups.get("home_subs", []), "away_subs": lineups.get("away_subs", []),
+            "fixture_id": fixture_id,
+            "soccerway_mid": mid,
+            "home_team": home,
+            "away_team": away,
+            "match_date": today_str,
+            "home_players": lineups["home_players"],
+            "away_players": lineups["away_players"],
+            "home_subs": lineups.get("home_subs", []),
+            "away_subs": lineups.get("away_subs", []),
             "scraped_at": datetime.now(timezone.utc).isoformat()
         })
         print(f"  Sauvegarde: {res.status_code}")
     else:
-        print("  Pas encore disponible")
+        print("  Lineups pas encore disponibles")
+
 print("=== Termine ===")
