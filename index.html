@@ -2,7 +2,7 @@
 <html lang="fr">
 <head>
     <meta charset="UTF-8" />
-    <!-- v250 -->
+    <!-- v251 -->
     <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate" />
     <meta http-equiv="Pragma" content="no-cache" />
     <meta http-equiv="Expires" content="0" />
@@ -8304,7 +8304,7 @@ function MatchDetail({state,onClose,onTeam}){
 
         // Équipe domicile
         React.createElement("div", {
-          onClick: () => onTeam && onTeam(fix.teams.home.id, fix.teams.home.name, fix.teams.home.logo, fix.league.id, fix.league.season),
+          onClick: (e) => { e.stopPropagation(); onTeam && onTeam(fix.teams.home.id, fix.teams.home.name, fix.teams.home.logo, fix.league.id, fix.league.season); },
           style: { flex:1, display:"flex", flexDirection:"column", alignItems:"center", gap:10, cursor: onTeam?"pointer":"default" }
         },
           React.createElement("div", {style:{
@@ -8362,7 +8362,7 @@ function MatchDetail({state,onClose,onTeam}){
 
         // Équipe extérieure
         React.createElement("div", {
-          onClick: () => onTeam && onTeam(fix.teams.away.id, fix.teams.away.name, fix.teams.away.logo, fix.league.id, fix.league.season),
+          onClick: (e) => { e.stopPropagation(); onTeam && onTeam(fix.teams.away.id, fix.teams.away.name, fix.teams.away.logo, fix.league.id, fix.league.season); },
           style: { flex:1, display:"flex", flexDirection:"column", alignItems:"center", gap:10, cursor: onTeam?"pointer":"default" }
         },
           React.createElement("div", {style:{
@@ -13087,7 +13087,11 @@ function App() {
   }, [currentTab]);
 
   const [teamPageStack, setTeamPageStack] = useState([]);
+  const lastOpenTeamRef = useRef(0);
   const openTeam = useCallback((teamId, teamName, teamLogo, leagueId, season) => {
+    const now = Date.now();
+    if(now - lastOpenTeamRef.current < 600) return; // ignorer si appelé < 600ms après
+    lastOpenTeamRef.current = now;
     setTeamPageStack(prev => [...prev, { teamId, teamName, teamLogo, leagueId, season }]);
   }, []);
   const closeTeam = useCallback(() => {
