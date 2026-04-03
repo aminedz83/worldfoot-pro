@@ -2,7 +2,7 @@
 <html lang="fr">
 <head>
     <meta charset="UTF-8" />
-    <!-- v237 -->
+    <!-- v238 -->
     <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate" />
     <meta http-equiv="Pragma" content="no-cache" />
     <meta http-equiv="Expires" content="0" />
@@ -3355,6 +3355,7 @@ function PlayerPage({ playerId, playerName, playerPhoto, playerPos, playerNumber
                         rating: pStats && pStats.games && pStats.games.rating ? parseFloat(pStats.games.rating).toFixed(1) : null,
                         minutes: playedMinutes || null,
                         saves: pStats && pStats.goals && pStats.goals.saves || null,
+                        conceded: pStats && pStats.goals && pStats.goals.conceded != null ? pStats.goals.conceded : null,
                         goals: (pStats && pStats.goals && pStats.goals.total>0) ? pStats.goals.total : null,
                         assists: (pStats && pStats.goals && pStats.goals.assists>0) ? pStats.goals.assists : null,
                         yellowCard: pStats && pStats.cards && pStats.cards.yellow>0 || false,
@@ -3681,10 +3682,12 @@ function PlayerPage({ playerId, playerName, playerPhoto, playerPos, playerNumber
               const rating = fStats && fStats.rating;
               const minutes = fStats && fStats.minutes;
               const saves = fStats && fStats.saves;
+              const conceded = fStats && fStats.conceded;
               const goals = fStats && fStats.goals;
               const assists = fStats && fStats.assists;
               const yellowCard = fStats && fStats.yellowCard;
               const redCard = fStats && fStats.redCard;
+              const isGK = (playerPos||"").toLowerCase().includes("goalkeeper") || (playerPos||"").toLowerCase() === "g" || pos === "Gardien de but";
               
               return React.createElement("div", {key:f.fixture?.id, style:{
                 display:"flex",alignItems:"center",gap:0,
@@ -3710,6 +3713,13 @@ function PlayerPage({ playerId, playerName, playerPhoto, playerPos, playerNumber
                         // Ligne 1 : minutes + icônes événements
                         React.createElement("div",{style:{display:"flex",alignItems:"center",gap:3,marginBottom:2,flexWrap:"wrap",justifyContent:"center"}},
                           minutes && React.createElement("span",{style:{fontSize:10,color:"#94a3b8",marginRight:1}},minutes+"'"),
+                          // 🧤 Gants + parades pour gardien
+                          isGK && saves != null && React.createElement("span",{style:{fontSize:10,color:"#64748b",fontWeight:600,display:"flex",alignItems:"center",gap:2}},
+                            "🧤",
+                            conceded != null
+                              ? React.createElement("span",null, saves+"/"+(saves+conceded))
+                              : React.createElement("span",null, saves)
+                          ),
                           // Ballon avec nb buts
                           goals>0 && React.createElement("div",{style:{position:"relative",display:"inline-flex"}},
                             React.createElement("span",{style:{fontSize:12}},"⚽"),
