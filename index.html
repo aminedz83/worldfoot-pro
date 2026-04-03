@@ -2,7 +2,7 @@
 <html lang="fr">
 <head>
     <meta charset="UTF-8" />
-    <!-- v238 -->
+    <!-- v239 -->
     <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate" />
     <meta http-equiv="Pragma" content="no-cache" />
     <meta http-equiv="Expires" content="0" />
@@ -3477,6 +3477,7 @@ function PlayerPage({ playerId, playerName, playerPhoto, playerPos, playerNumber
     (player?.firstname && player?.lastname ? player.firstname+" "+player.lastname : null) ||
     player?.name || "—";
   const pos = playerPos || info?.statistics?.[0]?.games?.position || "—";
+  const isGK = (pos||"").toLowerCase().includes("goalkeeper") || (pos||"").toLowerCase() === "g" || pos === "Gardien de but" || (playerPos||"").toLowerCase().includes("goalkeeper");
   const nat = playerNationality || player?.nationality;
   const age = player?.age;
   const birth = player?.birth?.date;
@@ -3687,7 +3688,7 @@ function PlayerPage({ playerId, playerName, playerPhoto, playerPos, playerNumber
               const assists = fStats && fStats.assists;
               const yellowCard = fStats && fStats.yellowCard;
               const redCard = fStats && fStats.redCard;
-              const isGK = (playerPos||"").toLowerCase().includes("goalkeeper") || (playerPos||"").toLowerCase() === "g" || pos === "Gardien de but";
+              const isGKMatch = isGK; // défini au niveau composant
               
               return React.createElement("div", {key:f.fixture?.id, style:{
                 display:"flex",alignItems:"center",gap:0,
@@ -3714,7 +3715,7 @@ function PlayerPage({ playerId, playerName, playerPhoto, playerPos, playerNumber
                         React.createElement("div",{style:{display:"flex",alignItems:"center",gap:3,marginBottom:2,flexWrap:"wrap",justifyContent:"center"}},
                           minutes && React.createElement("span",{style:{fontSize:10,color:"#94a3b8",marginRight:1}},minutes+"'"),
                           // 🧤 Gants + parades pour gardien
-                          isGK && saves != null && React.createElement("span",{style:{fontSize:10,color:"#64748b",fontWeight:600,display:"flex",alignItems:"center",gap:2}},
+                          isGKMatch && saves != null && React.createElement("span",{style:{fontSize:10,color:"#64748b",fontWeight:600,display:"flex",alignItems:"center",gap:2}},
                             "🧤",
                             conceded != null
                               ? React.createElement("span",null, saves+"/"+(saves+conceded))
@@ -3779,6 +3780,7 @@ function PlayerPage({ playerId, playerName, playerPhoto, playerPos, playerNumber
         career.length===0
           ? React.createElement("div",{style:{textAlign:"center",padding:"48px 24px",color:"#94a3b8",fontSize:14}},"Carrière indisponible")
           : React.createElement("div",null,
+              // En-tête colonnes — différent selon gardien ou joueur
               React.createElement("div",{style:{
                 display:"flex",padding:"8px 16px",
                 background:"#f8fafc",borderBottom:"1px solid #f1f5f9",
@@ -3788,14 +3790,33 @@ function PlayerPage({ playerId, playerName, playerPhoto, playerPos, playerNumber
                 React.createElement("span",{style:{flex:1}},"CLUB"),
                 React.createElement("span",{style:{width:36,textAlign:"center"}},"ØR"),
                 React.createElement("span",{style:{width:28,textAlign:"center"}},"MJ"),
-                React.createElement("span",{style:{width:36,textAlign:"center"}},"BUT"),
+                isGK
+                  ? React.createElement(React.Fragment,null,
+                      React.createElement("span",{style:{width:36,textAlign:"center"}},"AR%"),
+                      React.createElement("span",{style:{width:32,textAlign:"center"}},"BLA")
+                    )
+                  : React.createElement(React.Fragment,null,
+                      React.createElement("span",{style:{width:28,textAlign:"center"}},"G"),
+                      React.createElement("span",{style:{width:28,textAlign:"center"}},"A")
+                    ),
                 React.createElement("span",{style:{width:28,textAlign:"center"}},"🟨"),
                 React.createElement("span",{style:{width:28,textAlign:"center"}},"🟥")
               ),
               career.map((c,i) => {
                 const s = c.stats;
                 const rating = s?.games?.rating ? parseFloat(s.games.rating).toFixed(1) : null;
-                const played = s?.games?.appearences ?? s?.games?.minutes ? "—" : 0;
+                // Stats gardien
+                const saves = s?.goals?.saves ?? null;
+                const concededCareer = s?.goals?.conceded ?? null;
+                const cleanSheets = s?.goals?.conceded === 0 ? null : s?.goals?.saves != null ? null : null; // API retourne pas clean sheets directement
+                // AR% = saves / (saves + conceded) * 100
+                var savesPct = null;
+                if(saves != null && concededCareer != null && (saves + concededCareer) > 0) {
+                  savesPct = Math.round(saves / (saves + concededCareer) * 100);
+                }
+                // BLA = matchs sans buts encaissés — pas dans API directement, on affiche saves
+                const gkSaves = saves != null ? saves : null;
+
                 return React.createElement("div",{key:i,style:{
                   display:"flex",alignItems:"center",
                   padding:"10px 16px",borderBottom:"1px solid #f1f5f9",background:"#fff"
@@ -3814,7 +3835,19 @@ function PlayerPage({ playerId, playerName, playerPhoto, playerPos, playerNumber
                     }},rating) : React.createElement("span",{style:{fontSize:11,color:"#94a3b8"}},"-")
                   ),
                   React.createElement("span",{style:{width:28,fontSize:12,color:"#0f172a",textAlign:"center",fontWeight:600}},s?.games?.appearences??"-"),
-                  React.createElement("span",{style:{width:36,fontSize:12,color:"#0f172a",textAlign:"center"}},s?.goals?.total??"-"),
+                  isGK
+                    ? React.createElement(React.Fragment,null,
+                        React.createElement("span",{style:{width:36,fontSize:12,color:"#0f172a",textAlign:"center"}},
+                          savesPct != null ? savesPct+"%" : "-"
+                        ),
+                        React.createElement("span",{style:{width:32,fontSize:12,color:"#0f172a",textAlign:"center"}},
+                          gkSaves != null ? gkSaves : "-"
+                        )
+                      )
+                    : React.createElement(React.Fragment,null,
+                        React.createElement("span",{style:{width:28,fontSize:12,color:"#0f172a",textAlign:"center"}},s?.goals?.total??"-"),
+                        React.createElement("span",{style:{width:28,fontSize:12,color:"#64748b",textAlign:"center"}},s?.goals?.assists??"-")
+                      ),
                   React.createElement("span",{style:{width:28,fontSize:12,color:"#f59e0b",textAlign:"center"}},s?.cards?.yellow??"-"),
                   React.createElement("span",{style:{width:28,fontSize:12,color:"#ef4444",textAlign:"center"}},s?.cards?.red??"-")
                 );
