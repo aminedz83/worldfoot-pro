@@ -11993,6 +11993,7 @@ function TeamPage({ teamId, teamName, teamLogo, leagueId, season, onClose, onTea
   const [upcoming,  setUpcoming]  = useState([]);
   const [standings, setStandings] = useState([]);
   const [squad,     setSquad]     = useState([]);
+  const [playerPage, setPlayerPage] = useState(null);
   const [transfers, setTransfers] = useState([]);
   const [loading,   setLoading]   = useState(true);
   const [tab,       setTab]       = useState("resultats");
@@ -12633,7 +12634,7 @@ function TeamPage({ teamId, teamName, teamLogo, leagueId, season, onClose, onTea
                   React.createElement("div",{style:{background:"#fff"}},
                     grouped[pos].map(function(p,i){ return React.createElement("div",{
                       key:p.id||i,
-                      onClick: function(){ if(p.id) setPlayerPage(p.id); },
+                      onClick: function(){ if(p.id) setPlayerPage({ id: p.id, name: p.name, photo: p.photo, pos: p.position, number: p.number, nationality: p.nationality, teamLogo: teamLogo }); },
                       style:{
                         display:"flex",alignItems:"center",gap:12,
                         padding:"10px 16px",
@@ -12736,6 +12737,19 @@ function TeamPage({ teamId, teamName, teamLogo, leagueId, season, onClose, onTea
     detailMatch && React.createElement(MatchDetailWrapper, {
       state: detailMatch,
       onClose: () => setDetailMatch(null),
+      onTeam: onTeam
+    }),
+
+    // ── PLAYER PAGE depuis effectif ──
+    playerPage && React.createElement(PlayerPage, {
+      id: playerPage.id,
+      name: playerPage.name,
+      photo: playerPage.photo,
+      pos: playerPage.pos,
+      number: playerPage.number,
+      nationality: playerPage.nationality,
+      teamLogo: playerPage.teamLogo,
+      onClose: function(){ setPlayerPage(null); },
       onTeam: onTeam
     })
   ); // fin page
