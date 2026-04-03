@@ -3169,7 +3169,7 @@ const getRefereeStats = async (refereeName) => {
   }
 };
 
-function PlayerPage({ playerId, playerName, playerPhoto, playerPos, playerNumber, playerNationality, matchStats, onClose, knownTeamId, knownTeam }) {
+function PlayerPage({ playerId, playerName, playerPhoto, playerPos, playerNumber, playerNationality, matchStats, onClose, knownTeamId, knownTeam, marketValueOverride, contractUntilOverride }) {
   const [tab, setTab] = React.useState("matchs");
   const [info, setInfo] = React.useState(
     knownTeam ? { _currentTeam: knownTeam } : null
@@ -3494,6 +3494,7 @@ function PlayerPage({ playerId, playerName, playerPhoto, playerPos, playerNumber
         var mv = null;
         if(p.player && p.player.market_value) mv = p.player.market_value;
         if(!mv && p.statistics && p.statistics[0] && p.statistics[0].market_value) mv = p.statistics[0].market_value;
+        if(!mv && marketValueOverride) mv = marketValueOverride;
         if(mv) setMarketVal(mv);
       }).catch(function(){});
   }, [playerId]);
@@ -12634,7 +12635,7 @@ function TeamPage({ teamId, teamName, teamLogo, leagueId, season, onClose, onTea
                   React.createElement("div",{style:{background:"#fff"}},
                     grouped[pos].map(function(p,i){ return React.createElement("div",{
                       key:p.id||i,
-                      onClick: function(){ if(p.id) setPlayerPage({ id: p.id, name: p.name, photo: p.photo, pos: p.position, number: p.number, nationality: p.nationality, teamLogo: teamLogo }); },
+                      onClick: function(){ if(p.id) setPlayerPage({ id: p.id, name: p.name, photo: p.photo, pos: p.position, number: p.number, nationality: p.nationality, teamLogo: teamLogo, market_value: p.market_value, contract_until: p.contract_until }); },
                       style:{
                         display:"flex",alignItems:"center",gap:12,
                         padding:"10px 16px",
@@ -12749,6 +12750,8 @@ function TeamPage({ teamId, teamName, teamLogo, leagueId, season, onClose, onTea
       playerNumber: playerPage.number,
       playerNationality: playerPage.nationality,
       knownTeamId: teamId,
+      marketValueOverride: playerPage.market_value,
+      contractUntilOverride: playerPage.contract_until,
       onClose: function(){ setPlayerPage(null); },
       onTeam: onTeam
     })
