@@ -2,7 +2,7 @@
 <html lang="fr">
 <head>
     <meta charset="UTF-8" />
-    <!-- v241 -->
+    <!-- v242 -->
     <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate" />
     <meta http-equiv="Pragma" content="no-cache" />
     <meta http-equiv="Expires" content="0" />
@@ -12692,8 +12692,6 @@ function TeamPage({ teamId, teamName, teamLogo, leagueId, season, onClose, onTea
 
       // ── EFFECTIF ──
       tab==="effectif" && React.createElement("div",{style:{background:"#f2f3f5"}},
-
-
         squad.length===0
           ? React.createElement("div",{style:{textAlign:"center",padding:"48px 24px",color:"#94a3b8",fontSize:14}},"Effectif indisponible")
           : (() => {
@@ -12703,142 +12701,95 @@ function TeamPage({ teamId, teamName, teamLogo, leagueId, season, onClose, onTea
                 if(!grouped[pos]) grouped[pos]=[];
                 grouped[pos].push(p);
               });
-              const natFlag = nat => {
-                const m = {"Algeria":"dz","France":"fr","Morocco":"ma","Tunisia":"tn","Senegal":"sn",
-                  "Mali":"ml","Cameroon":"cm","Nigeria":"ng","Ivory Coast":"ci","Ghana":"gh",
-                  "Egypt":"eg","Spain":"es","Portugal":"pt","Brazil":"br","Argentina":"ar"};
-                return m[nat]||null;
-              };
-              // Formatter la valeur marchande
               const fmtMV = function(v) {
                 if(!v) return null;
                 if(v >= 1000000) return (v/1000000).toFixed(1).replace(".0","") + "M €";
                 if(v >= 1000) return Math.round(v/1000) + "k €";
                 return v + " €";
               };
+              const W = { num:28, age:32, shirt:28, min:36, stat:28, card:22 };
+              const colHdr = function(label, w) {
+                return React.createElement("span",{style:{width:w,fontSize:9,fontWeight:700,color:"#94a3b8",textAlign:"center",flexShrink:0}},label);
+              };
+              const colVal = function(val, w, color) {
+                return React.createElement("span",{style:{width:w,fontSize:12,fontWeight:600,color:color||"#0f172a",textAlign:"center",flexShrink:0}},val??"-");
+              };
 
-              return posOrder.filter(pos=>grouped[pos]).map(pos=>
-                React.createElement("div",{key:pos,style:{marginBottom:0}},
+              return posOrder.filter(pos=>grouped[pos]).map(pos=>{
+                var isGKGroup = pos === "Gardien";
+                return React.createElement("div",{key:pos,style:{marginBottom:8}},
+                  // Titre groupe
+                  React.createElement("div",{style:{padding:"12px 16px 6px",fontSize:15,fontWeight:700,color:"#0f172a",background:"#f2f3f5"}},pos+"s"),
+                  // Header colonnes
                   React.createElement("div",{style:{
-                    padding:"14px 16px 10px",
-                    fontSize:16,fontWeight:700,color:"#0f172a",
-                    background:"#f2f3f5"
-                  }},pos+"s"),
+                    display:"flex",alignItems:"center",padding:"6px 16px",
+                    background:"#f8fafc",borderBottom:"1px solid #e2e8f0"
+                  }},
+                    colHdr("#", W.num),
+                    React.createElement("span",{style:{width:36,flexShrink:0}}),  // photo
+                    React.createElement("span",{style:{flex:1,fontSize:9,fontWeight:700,color:"#94a3b8"}},"NOM"),
+                    colHdr("AGE", W.age),
+                    colHdr("👕", W.shirt),
+                    colHdr("MIN", W.min),
+                    isGKGroup
+                      ? React.createElement(React.Fragment,null, colHdr("AR%", W.stat), colHdr("BLA", W.stat))
+                      : React.createElement(React.Fragment,null, colHdr("⚽", W.stat), colHdr("A", W.stat)),
+                    colHdr("🟨", W.card),
+                    colHdr("🟥", W.card)
+                  ),
+                  // Lignes joueurs
                   React.createElement("div",{style:{background:"#fff"}},
                     grouped[pos].map(function(p,i){
                       var pStats = squadStats[p.id] || null;
-                      var pIsGK = (p.position||"").toLowerCase().includes("goalkeeper") || p.position === "G";
+                      var savesPct = pStats && pStats.saves!=null && pStats.conceded!=null && (pStats.saves+pStats.conceded)>0
+                        ? Math.round(pStats.saves/(pStats.saves+pStats.conceded)*100)+"%"
+                        : "-";
                       return React.createElement("div",{
-                      key:p.id||i,
-                      onClick: function(){ if(p.id) setPlayerPage({ id: p.id, name: p.name, photo: p.photo, pos: p.position, number: p.number, nationality: p.nationality, teamLogo: teamLogo, market_value: p.market_value, contract_until: p.contract_until }); },
-                      style:{
-                        display:"flex",alignItems:"center",gap:8,
-                        padding:"8px 16px",
-                        borderBottom:"1px solid #f1f5f9",
-                        background:"#fff",
-                        cursor: p.id ? "pointer" : "default"
-                      }
-                    },
-                      // Photo petite
-                      React.createElement("div",{style:{position:"relative",flexShrink:0}},
-                        React.createElement("img",{
-                          src:p.photo,
-                          style:{width:36,height:36,borderRadius:"50%",objectFit:"cover",background:"#f1f5f9",border:"1px solid #f1f5f9"},
-                          onError:function(e){ e.target.src="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 44 44'%3E%3Ccircle cx='22' cy='22' r='22' fill='%23e2e8f0'/%3E%3Ccircle cx='22' cy='16' r='7' fill='%23cbd5e1'/%3E%3Cellipse cx='22' cy='36' rx='11' ry='7' fill='%23cbd5e1'/%3E%3C/svg%3E"; }
-                        }),
-                        p.number!=null && React.createElement("div",{style:{
-                          position:"absolute",bottom:-1,right:-3,
-                          background:"#334155",color:"#fff",
-                          fontSize:8,fontWeight:800,borderRadius:3,
-                          padding:"1px 3px",lineHeight:"12px",
-                          border:"1px solid #fff"
-                        }},p.number)
-                      ),
-                      // Nom + âge
-                      React.createElement("div",{style:{flex:1,minWidth:0}},
-                        React.createElement("div",{style:{
-                          fontSize:13,fontWeight:600,color:"#0f172a",
-                          overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap"
-                        }},p.name),
-                        React.createElement("div",{style:{fontSize:11,color:"#94a3b8",marginTop:1}},
-                          p.age ? p.age+" ans" : ""
-                        )
-                      ),
-                      // Stats compactes — exactement comme Soccerway: AGE | 👕 | MIN | ⚽ | A | 🟨 | 🟥
-                      pStats
-                        ? React.createElement("div",{style:{display:"flex",alignItems:"center",gap:5,flexShrink:0}},
-                            // Note
-                            pStats.rating && React.createElement("div",{style:{
-                              background: parseFloat(pStats.rating)>=7.5?"#22c55e":parseFloat(pStats.rating)>=6.5?"#f59e0b":"#ef4444",
-                              color:"#fff",fontSize:9,fontWeight:700,borderRadius:4,
-                              padding:"1px 4px",minWidth:24,textAlign:"center"
-                            }},pStats.rating),
-                            // AGE
-                            React.createElement("div",{style:{display:"flex",flexDirection:"column",alignItems:"center",minWidth:20}},
-                              React.createElement("span",{style:{fontSize:8,color:"#94a3b8",fontWeight:700}},"AGE"),
-                              React.createElement("span",{style:{fontSize:11,color:"#0f172a",fontWeight:600}},p.age??"-")
-                            ),
-                            // 👕 Numéro
-                            React.createElement("div",{style:{display:"flex",flexDirection:"column",alignItems:"center",minWidth:20}},
-                              React.createElement("span",{style:{fontSize:8,color:"#94a3b8",fontWeight:700}},"👕"),
-                              React.createElement("span",{style:{fontSize:11,color:"#0f172a",fontWeight:600}},p.number??"-")
-                            ),
-                            // MIN
-                            React.createElement("div",{style:{display:"flex",flexDirection:"column",alignItems:"center",minWidth:28}},
-                              React.createElement("span",{style:{fontSize:8,color:"#94a3b8",fontWeight:700}},"MIN"),
-                              React.createElement("span",{style:{fontSize:11,color:"#0f172a",fontWeight:600}},pStats.minutes??"-")
-                            ),
-                            pIsGK
-                              ? React.createElement(React.Fragment,null,
-                                  // AR%
-                                  React.createElement("div",{style:{display:"flex",flexDirection:"column",alignItems:"center",minWidth:28}},
-                                    React.createElement("span",{style:{fontSize:8,color:"#94a3b8",fontWeight:700}},"AR%"),
-                                    React.createElement("span",{style:{fontSize:11,color:"#0f172a",fontWeight:600}},
-                                      pStats.saves!=null && pStats.conceded!=null && (pStats.saves+pStats.conceded)>0
-                                        ? Math.round(pStats.saves/(pStats.saves+pStats.conceded)*100)+"%"
-                                        : "-"
-                                    )
-                                  ),
-                                  // BLA (arrêts)
-                                  React.createElement("div",{style:{display:"flex",flexDirection:"column",alignItems:"center",minWidth:20}},
-                                    React.createElement("span",{style:{fontSize:8,color:"#94a3b8",fontWeight:700}},"BLA"),
-                                    React.createElement("span",{style:{fontSize:11,color:"#0f172a",fontWeight:600}},pStats.saves??"-")
-                                  )
-                                )
-                              : React.createElement(React.Fragment,null,
-                                  // ⚽ Buts
-                                  React.createElement("div",{style:{display:"flex",flexDirection:"column",alignItems:"center",minWidth:20}},
-                                    React.createElement("span",{style:{fontSize:8,color:"#94a3b8",fontWeight:700}},"⚽"),
-                                    React.createElement("span",{style:{fontSize:11,color:"#0f172a",fontWeight:600}},pStats.goals??"-")
-                                  ),
-                                  // A Assists
-                                  React.createElement("div",{style:{display:"flex",flexDirection:"column",alignItems:"center",minWidth:20}},
-                                    React.createElement("span",{style:{fontSize:8,color:"#94a3b8",fontWeight:700}},"A"),
-                                    React.createElement("span",{style:{fontSize:11,color:"#64748b",fontWeight:600}},pStats.assists??"-")
-                                  )
-                                ),
-                            // 🟨
-                            React.createElement("div",{style:{display:"flex",flexDirection:"column",alignItems:"center",minWidth:20}},
-                              React.createElement("span",{style:{fontSize:8,color:"#94a3b8",fontWeight:700}},"🟨"),
-                              React.createElement("span",{style:{fontSize:11,color:"#f59e0b",fontWeight:600}},pStats.yellow??"-")
-                            ),
-                            // 🟥
-                            React.createElement("div",{style:{display:"flex",flexDirection:"column",alignItems:"center",minWidth:20}},
-                              React.createElement("span",{style:{fontSize:8,color:"#94a3b8",fontWeight:700}},"🟥"),
-                              React.createElement("span",{style:{fontSize:11,color:"#ef4444",fontWeight:600}},pStats.red??"-")
+                        key:p.id||i,
+                        onClick: function(){ if(p.id) setPlayerPage({ id: p.id, name: p.name, photo: p.photo, pos: p.position, number: p.number, nationality: p.nationality, teamLogo: teamLogo, market_value: p.market_value, contract_until: p.contract_until }); },
+                        style:{
+                          display:"flex",alignItems:"center",
+                          padding:"7px 16px",
+                          borderBottom:"1px solid #f1f5f9",
+                          cursor: p.id ? "pointer" : "default"
+                        }
+                      },
+                        // #
+                        React.createElement("span",{style:{width:W.num,fontSize:11,fontWeight:700,color:"#64748b",textAlign:"center",flexShrink:0}},p.number??"-"),
+                        // Photo
+                        React.createElement("div",{style:{width:36,flexShrink:0,marginRight:8}},
+                          React.createElement("img",{
+                            src:p.photo,
+                            style:{width:32,height:32,borderRadius:"50%",objectFit:"cover",background:"#f1f5f9",border:"1px solid #f1f5f9"},
+                            onError:function(e){ e.target.src="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 44 44'%3E%3Ccircle cx='22' cy='22' r='22' fill='%23e2e8f0'/%3E%3Ccircle cx='22' cy='16' r='7' fill='%23cbd5e1'/%3E%3Cellipse cx='22' cy='36' rx='11' ry='7' fill='%23cbd5e1'/%3E%3C/svg%3E"; }
+                          })
+                        ),
+                        // Nom
+                        React.createElement("span",{style:{flex:1,fontSize:13,fontWeight:600,color:"#0f172a",overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap"}},p.name),
+                        // AGE
+                        colVal(p.age, W.age, "#64748b"),
+                        // 👕 matchs joués
+                        colVal(pStats?pStats.appearences:"-", W.shirt, "#64748b"),
+                        // MIN
+                        colVal(pStats?pStats.minutes:"-", W.min),
+                        // Stats position
+                        isGKGroup
+                          ? React.createElement(React.Fragment,null,
+                              colVal(pStats?savesPct:"-", W.stat),
+                              colVal(pStats?pStats.saves:"-", W.stat)
                             )
-                          )
-                        : p.market_value
-                          ? React.createElement("div",{style:{
-                              fontSize:11,fontWeight:700,color:"#16a34a",
-                              background:"#f0fdf4",borderRadius:6,
-                              padding:"2px 6px",flexShrink:0,whiteSpace:"nowrap"
-                            }},fmtMV(p.market_value))
-                          : null
-                    );})
+                          : React.createElement(React.Fragment,null,
+                              colVal(pStats?pStats.goals:"-", W.stat),
+                              colVal(pStats?pStats.assists:"-", W.stat, "#64748b")
+                            ),
+                        // Cartons
+                        colVal(pStats?pStats.yellow:"-", W.card, "#f59e0b"),
+                        colVal(pStats?pStats.red:"-", W.card, "#ef4444")
+                      );
+                    })
                   )
-                )
-              );
+                );
+              });
             })()
       ),
 
