@@ -16,7 +16,6 @@ HEADERS = {
     "Accept-Language": "fr-FR,fr;q=0.9"
 }
 
-# Correspondance noms Soccerway → noms API football.com
 TEAM_NAME_MAP = {
     "Kabylie":          "JS Kabylie",
     "Belouizdad":       "CR Belouizdad",
@@ -30,6 +29,7 @@ TEAM_NAME_MAP = {
     "Ben Aknoun":       "ES Ben Aknoun",
     "Khenchela":        "USM Khenchela",
     "Rouisset":         "MB Rouissat",
+    "Rouissat":         "MB Rouissat",
     "Paradou":          "Paradou AC",
     "Mostaganem":       "ES Mostaganem",
     "El Bayadh":        "MC El Bayadh",
@@ -38,65 +38,108 @@ TEAM_NAME_MAP = {
 }
 
 def normalize_team_name(sw_name):
-    """Convertir nom Soccerway → nom API football.com"""
     if sw_name in TEAM_NAME_MAP:
         return TEAM_NAME_MAP[sw_name]
-    # Chercher correspondance partielle
     for sw_key, api_name in TEAM_NAME_MAP.items():
         if sw_key.lower() in sw_name.lower() or sw_name.lower() in sw_key.lower():
             return api_name
     return sw_name
 
 def get_today_fixtures():
-    url = "https://ca.soccerway.com/algeria/ligue-1/fixtures/"
-    try:
-        r = requests.get(url, headers=HEADERS, timeout=20)
-        print("Soccerway status:", r.status_code)
-        soup = BeautifulSoup(r.text, "html.parser")
-        matches = []
-        today_str = date.today().strftime("%Y-%m-%d")
-        for row in soup.find_all("tr", class_=re.compile(r"match")):
-            try:
-                mid = None
-                for link in row.find_all("a", href=re.compile(r"/game/|/matches/")):
-                    href = link.get("href", "")
-                    s = re.search(r"mid=([A-Za-z0-9]+)", href)
-                    if s:
-                        mid = s.group(1)
-                        break
-                if not mid:
-                    continue
-                team_links = row.find_all("a", href=re.compile(r"/teams/"))
-                home_sw, away_sw = "", ""
-                if len(team_links) >= 2:
+    today = date.today()
+    today_str = today.strftime("%Y-%m-%d")
+    
+    # URLs à essayer dans l'ordre — la page du jour est plus fiable que /fixtures/
+    urls_to_try = [
+        # URL avec date du jour explicite
+        f"https://ca.soccerway.com/matches/{today.year}/{today.month:02d}/{today.day:02d}/algeria/ligue-professionnelle-1/",
+        f"https://ca.soccerway.com/matches/{today.year}/{today.month:02d}/{today.day:02d}/algeria/ligue-1/",
+        # Page fixtures classique
+        "https://ca.soccerway.com/algeria/ligue-1/fixtures/",
+        # Page résultats du jour
+        "https://ca.soccerway.com/algeria/ligue-1/results/",
+    ]
+    
+    matches = []
+    
+    for url in urls_to_try:
+        print(f"Essai URL: {url}")
+        try:
+            r = requests.get(url, headers=HEADERS, timeout=20)
+            print(f"  Status: {r.status_code} — taille: {len(r.text)}")
+            
+            if r.status_code != 200:
+                continue
+                
+            soup = BeautifulSoup(r.text, "html.parser")
+            
+            # Debug: afficher les matchs trouvés avec leurs dates
+            rows_found = soup.find_all("tr", class_=re.compile(r"match"))
+            print(f"  Lignes 'match' trouvées: {len(rows_found)}")
+            
+            for row in rows_found:
+                try:
+                    # Chercher le mid
+                    mid = None
+                    for link in row.find_all("a", href=True):
+                        href = link.get("href", "")
+                        s = re.search(r"mid=([A-Za-z0-9]+)", href)
+                        if not s:
+                            # Format alternatif /game/xxx/
+                            s = re.search(r"/game/[^/]+/[^/]+/([A-Za-z0-9]+)/", href)
+                        if s:
+                            mid = s.group(1)
+                            break
+                    
+                    if not mid:
+                        continue
+                    
+                    # Équipes
+                    team_links = row.find_all("a", href=re.compile(r"/teams/"))
+                    if len(team_links) < 2:
+                        continue
                     home_sw = team_links[0].get_text(strip=True)
                     away_sw = team_links[1].get_text(strip=True)
-                match_date = today_str
-                dc = row.find("td", class_=re.compile(r"date"))
-                if dc:
-                    try:
-                        match_date = datetime.strptime(dc.get_text(strip=True), "%d/%m/%Y").strftime("%Y-%m-%d")
-                    except:
-                        pass
-                if match_date == today_str and mid and home_sw:
-                    # Normaliser les noms
-                    home_api = normalize_team_name(home_sw)
-                    away_api = normalize_team_name(away_sw)
-                    matches.append({
-                        "mid": mid,
-                        "home": home_api,
-                        "away": away_api,
-                        "home_sw": home_sw,
-                        "away_sw": away_sw,
-                        "date": match_date
-                    })
-                    print("Match:", home_sw, "→", home_api, "vs", away_sw, "→", away_api)
-            except:
-                continue
-        return matches
-    except Exception as e:
-        print("Erreur fixtures:", e)
-        return []
+                    
+                    # Date du match
+                    match_date = today_str  # Par défaut aujourd'hui
+                    dc = row.find("td", class_=re.compile(r"date"))
+                    if dc:
+                        dt = dc.get_text(strip=True)
+                        for fmt in ["%d/%m/%Y", "%d/%m/%y", "%Y-%m-%d"]:
+                            try:
+                                match_date = datetime.strptime(dt, fmt).strftime("%Y-%m-%d")
+                                break
+                            except:
+                                pass
+                    
+                    print(f"  Trouvé: {home_sw} vs {away_sw} — date={match_date} mid={mid}")
+                    
+                    if match_date == today_str and mid and home_sw:
+                        home_api = normalize_team_name(home_sw)
+                        away_api = normalize_team_name(away_sw)
+                        matches.append({
+                            "mid": mid,
+                            "home": home_api,
+                            "away": away_api,
+                            "home_sw": home_sw,
+                            "away_sw": away_sw,
+                            "date": match_date
+                        })
+                        print(f"  ✅ Match ajouté: {home_api} vs {away_api}")
+                except Exception as e:
+                    print(f"  Erreur ligne: {e}")
+                    continue
+            
+            if matches:
+                print(f"  {len(matches)} matchs trouvés sur cette URL — stop")
+                break
+                
+        except Exception as e:
+            print(f"  Erreur: {e}")
+            continue
+    
+    return matches
 
 def parse_player(text, side):
     if not text or len(text) < 2:
@@ -120,6 +163,7 @@ def scrape_lineups(mid):
     try:
         r = requests.get(url, headers=HEADERS, timeout=20)
         if r.status_code != 200:
+            print(f"  Lineups status: {r.status_code}")
             return None
         soup = BeautifulSoup(r.text, "html.parser")
         if not soup.find(string=re.compile(r"STARTING LINEUP", re.I)):
@@ -159,9 +203,7 @@ def scrape_lineups(mid):
         return None
 
 def get_fixture_id(home_api, away_api, match_date):
-    """Chercher le fixture_id depuis l'API football.com via Supabase cache"""
     try:
-        # Chercher dans les matchs déjà en cache Supabase
         check = requests.get(
             SB_URL + "/rest/v1/algeria_lineups?home_team=eq." + requests.utils.quote(home_api) +
             "&away_team=eq." + requests.utils.quote(away_api) +
