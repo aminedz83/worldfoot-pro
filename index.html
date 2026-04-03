@@ -2,7 +2,7 @@
 <html lang="fr">
 <head>
     <meta charset="UTF-8" />
-    <!-- v248 -->
+    <!-- v249 -->
     <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate" />
     <meta http-equiv="Pragma" content="no-cache" />
     <meta http-equiv="Expires" content="0" />
@@ -13086,9 +13086,12 @@ function App() {
     catch {}
   }, [currentTab]);
 
-  const [teamPage, setTeamPage] = useState(null);
+  const [teamPageStack, setTeamPageStack] = useState([]);
   const openTeam = useCallback((teamId, teamName, teamLogo, leagueId, season) => {
-    setTeamPage({ teamId, teamName, teamLogo, leagueId, season });
+    setTeamPageStack(prev => [...prev, { teamId, teamName, teamLogo, leagueId, season }]);
+  }, []);
+  const closeTeam = useCallback(() => {
+    setTeamPageStack(prev => prev.slice(0, -1));
   }, []);
 
   const [favs, setFavs] = useState(() => {
@@ -13346,14 +13349,14 @@ function App() {
       renderContent()
     ),
 
-    teamPage ? React.createElement(TeamPage, {
-      key: teamPage.teamId,
-      teamId:   teamPage.teamId,
-      teamName: teamPage.teamName,
-      teamLogo: teamPage.teamLogo,
-      leagueId: teamPage.leagueId,
-      season:   teamPage.season,
-      onClose:  () => setTeamPage(null),
+    teamPageStack.length > 0 ? React.createElement(TeamPage, {
+      key: teamPageStack[teamPageStack.length-1].teamId,
+      teamId:   teamPageStack[teamPageStack.length-1].teamId,
+      teamName: teamPageStack[teamPageStack.length-1].teamName,
+      teamLogo: teamPageStack[teamPageStack.length-1].teamLogo,
+      leagueId: teamPageStack[teamPageStack.length-1].leagueId,
+      season:   teamPageStack[teamPageStack.length-1].season,
+      onClose:  closeTeam,
       onTeam:   openTeam
     }) : null
   );
