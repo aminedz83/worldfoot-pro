@@ -1,4 +1,4 @@
-import requests, os, re
+import requests, os, re, json
 from datetime import datetime, timezone, date
 from bs4 import BeautifulSoup
 
@@ -12,8 +12,10 @@ SB_HEADERS = {
 }
 HEADERS = {
     "User-Agent": "Mozilla/5.0 (iPhone; CPU iPhone OS 17_0 like Mac OS X) AppleWebKit/605.1.15",
-    "Accept": "text/html,application/xhtml+xml",
-    "Accept-Language": "fr-FR,fr;q=0.9"
+    "Accept": "text/html,application/xhtml+xml,*/*",
+    "Accept-Language": "fr-FR,fr;q=0.9",
+    "X-Requested-With": "XMLHttpRequest",
+    "Referer": "https://ca.soccerway.com/national/algeria/ligue-professionnelle-1/2025-2026/regular-season/r76219/matches/",
 }
 
 TEAM_NAME_MAP = {
@@ -37,45 +39,41 @@ def normalize_team_name(sw_name):
     return sw_name
 
 def get_today_fixtures():
-    """
-    Scrape la page /algeria/ligue-1/ sur ca.soccerway.com
-    qui retourne 200 et contient les matchs du jour ET les résultats
-    """
     today_str = date.today().strftime("%Y-%m-%d")
     matches = []
 
-    # Cette URL retourne 200 depuis GitHub Actions
-    urls = [
-        "https://ca.soccerway.com/algeria/ligue-1/fixtures/",
-        "https://ca.soccerway.com/algeria/ligue-1/results/",
-        "https://ca.soccerway.com/national/algeria/ligue-professionnelle-1/2025-2026/regular-season/matches/",
+    # Soccerway AJAX endpoint pour les matchs de la journée
+    # round_id=76219 = saison 2025-2026 Ligue 1 Algérie
+    # page=0 = journée courante
+    ajax_urls = [
+        # Page courante (matchs du jour/semaine)
+        "https://ca.soccerway.com/a/block_competition_matches_summary?block_id=page_competition_1_block_competition_matches_summary_5&callback_params=%7B%22page%22%3A0%2C%22block_service_id%22%3A%22competition_summary_block_competitionmatchessummary%22%2C%22round_id%22%3A76219%2C%22outgroup%22%3Afalse%2C%22view%22%3A2%7D&action=changePage&params=%7B%22page%22%3A0%7D",
+        # Variante sans callback_params
+        "https://ca.soccerway.com/a/block_competition_matches_summary?block_id=page_competition_1_block_competition_matches_summary_5&action=changePage&params=%7B%22page%22%3A0%7D",
     ]
 
-    seen_mids = set()
-
-    for url in urls:
+    for url in ajax_urls:
         try:
             r = requests.get(url, headers=HEADERS, timeout=20)
-            print(f"URL: {url[:60]} → {r.status_code}")
+            print(f"AJAX status: {r.status_code}")
+            print(f"Content-Type: {r.headers.get('content-type','?')}")
+            print(f"Body (300 chars): {r.text[:300]}")
+
             if r.status_code != 200:
                 continue
 
-            soup = BeautifulSoup(r.text, "html.parser")
+            # Soccerway retourne du JSON avec un champ "html"
+            try:
+                data = r.json()
+                html = data.get("html", data.get("content", r.text))
+            except:
+                html = r.text
 
-            # Debug: combien de liens avec mid= ?
+            soup = BeautifulSoup(html, "html.parser")
             mid_links = soup.find_all("a", href=re.compile(r"mid="))
-            print(f"  Liens mid= trouvés: {len(mid_links)}")
-
-            # Debug: afficher les 3 premiers liens mid=
-            for lnk in mid_links[:3]:
-                print(f"  ex: {lnk.get('href','')[:80]}")
-
-            # Debug: toutes les dates trouvées dans les td
-            date_tds = soup.find_all("td", class_=re.compile(r"date"))
-            dates_found = set()
-            for td in date_tds[:10]:
-                dates_found.add(td.get_text(strip=True))
-            print(f"  Dates dans page: {dates_found}")
+            print(f"Liens mid= dans réponse AJAX: {len(mid_links)}")
+            for lnk in mid_links[:5]:
+                print(f"  {lnk.get('href','')[:100]}")
 
             for link in mid_links:
                 href = link.get("href", "")
@@ -83,8 +81,6 @@ def get_today_fixtures():
                 if not mid_m:
                     continue
                 mid = mid_m.group(1)
-                if mid in seen_mids:
-                    continue
 
                 row = link.find_parent("tr")
                 if not row:
@@ -100,8 +96,6 @@ def get_today_fixtures():
                             break
                         except:
                             pass
-
-                # Si pas de date dans la ligne → supposer aujourd'hui
                 if not match_date:
                     match_date = today_str
 
@@ -111,19 +105,17 @@ def get_today_fixtures():
                 team_links = row.find_all("a", href=re.compile(r"/teams/"))
                 if len(team_links) < 2:
                     continue
-                home_sw = team_links[0].get_text(strip=True)
-                away_sw = team_links[1].get_text(strip=True)
-                home_api = normalize_team_name(home_sw)
-                away_api = normalize_team_name(away_sw)
+                home_api = normalize_team_name(team_links[0].get_text(strip=True))
+                away_api = normalize_team_name(team_links[1].get_text(strip=True))
 
-                seen_mids.add(mid)
                 print(f"  ✅ {home_api} vs {away_api} | mid={mid}")
-                matches.append({
-                    "mid": mid, "home": home_api, "away": away_api, "date": match_date
-                })
+                matches.append({"mid": mid, "home": home_api, "away": away_api, "date": match_date})
+
+            if matches:
+                break
 
         except Exception as e:
-            print(f"  Erreur: {e}")
+            print(f"Erreur AJAX: {e}")
 
     return matches
 
