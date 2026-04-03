@@ -1,9 +1,9 @@
-name: Sync Market Values (SofaScore)
+name: Sync Market Values (Transfermarkt)
 
 on:
   schedule:
-    - cron: '0 4 * * 1'   # Chaque lundi à 4h UTC
-  workflow_dispatch:       # Déclenchement manuel possible
+    - cron: '0 4 * * 1'   # Chaque lundi 4h UTC
+  workflow_dispatch:
 
 jobs:
   sync:
@@ -17,7 +17,7 @@ jobs:
           python-version: '3.11'
 
       - name: Install deps
-        run: pip install requests
+        run: pip install requests beautifulsoup4
 
       - name: Sync market values
         env:
