@@ -2654,11 +2654,15 @@ function ComposPanel({lineups, players, homeTeam, awayTeam, isPartial, fix, even
     // Matcher un joueur Soccerway avec les données API football via le squad
     var matchWithSquad = function(swPlayer, squadPlayers) {
       if(!squadPlayers || !squadPlayers.length) return null;
-      var swLast = (swPlayer.name||"").split(" ")[0].toLowerCase().replace(/[^a-z]/gi,"");
-      if(swLast.length < 3) return null;
+      // Soccerway: "Merbah G." → nom de famille = premier mot
+      var swFirst = (swPlayer.name||"").split(" ")[0].toLowerCase().replace(/[^a-z]/gi,"");
+      if(swFirst.length < 3) return null;
       return squadPlayers.find(function(sp) {
+        // API football: "G. Merbah" → nom de famille = dernier mot
         var spName = (sp.name||"").toLowerCase().replace(/[^a-z]/gi,"");
-        return spName.includes(swLast);
+        var spParts = (sp.name||"").split(" ");
+        var spLast = spParts[spParts.length-1].toLowerCase().replace(/[^a-z]/gi,"");
+        return spLast.includes(swFirst) || swFirst.includes(spLast) || spName.includes(swFirst);
       }) || null;
     };
 
