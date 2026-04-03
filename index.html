@@ -2,7 +2,7 @@
 <html lang="fr">
 <head>
     <meta charset="UTF-8" />
-    <!-- v242 -->
+    <!-- v243 -->
     <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate" />
     <meta http-equiv="Pragma" content="no-cache" />
     <meta http-equiv="Expires" content="0" />
@@ -12206,27 +12206,89 @@ function TeamPage({ teamId, teamName, teamLogo, leagueId, season, onClose, onTea
 
       if(!cancelled) setLoading(false);
 
-      // Charger stats saison des joueurs (en arrière-plan, pas bloquant)
+      // Charger stats saison — toutes compétitions mergées
       var curSeas = new Date().getMonth() >= 6 ? new Date().getFullYear() : new Date().getFullYear() - 1;
-      api("/players?team="+teamId+"&season="+curSeas, 3600000).then(function(playersData) {
-        if(cancelled || !playersData) return;
+
+      // Récupérer les ligues jouées par l'équipe depuis les fixtures déjà chargés
+      var allFix2 = rRes.status==="fulfilled" ? rRes.value||[] : [];
+      var leagueIds = [];
+      var seenLg = {};
+      allFix2.forEach(function(f) {
+        var lid = f.league && f.league.id;
+        if(lid && !seenLg[lid]) { seenLg[lid]=true; leagueIds.push(lid); }
+      });
+      // Toujours inclure la ligue principale passée en prop
+      if(leagueId && !seenLg[leagueId]) leagueIds.unshift(leagueId);
+      // Limiter à 4 ligues max pour ne pas surcharger l'API
+      leagueIds = leagueIds.slice(0, 4);
+
+      // Appels en parallèle pour chaque ligue
+      var fetchPromises = leagueIds.map(function(lid) {
+        return api("/players?team="+teamId+"&season="+curSeas+"&league="+lid, 3600000).catch(function(){ return []; });
+      });
+      // Si pas de ligues connues, appel générique
+      if(fetchPromises.length === 0) {
+        fetchPromises = [api("/players?team="+teamId+"&season="+curSeas, 3600000).catch(function(){ return []; })];
+      }
+
+      Promise.all(fetchPromises).then(function(results) {
+        if(cancelled) return;
         var statsMap = {};
-        playersData.forEach(function(entry) {
-          if(entry.player && entry.statistics && entry.statistics[0]) {
-            var s = entry.statistics[0];
-            statsMap[entry.player.id] = {
-              minutes:    s.games && s.games.minutes,
-              goals:      s.goals && s.goals.total,
-              assists:    s.goals && s.goals.assists,
-              saves:      s.goals && s.goals.saves,
-              conceded:   s.goals && s.goals.conceded,
-              yellow:     s.cards && s.cards.yellow,
-              red:        s.cards && s.cards.red,
-              rating:     s.games && s.games.rating ? parseFloat(s.games.rating).toFixed(1) : null,
-              appearences: s.games && s.games.appearences,
-            };
-          }
+
+        results.forEach(function(playersData) {
+          if(!playersData) return;
+          playersData.forEach(function(entry) {
+            if(!entry.player || !entry.statistics) return;
+            var pid = entry.player.id;
+            entry.statistics.forEach(function(s) {
+              if(!statsMap[pid]) {
+                // Premier enregistrement
+                statsMap[pid] = {
+                  minutes:     (s.games && s.games.minutes) || 0,
+                  goals:       (s.goals && s.goals.total) || 0,
+                  assists:     (s.goals && s.goals.assists) || 0,
+                  saves:       (s.goals && s.goals.saves) || 0,
+                  conceded:    (s.goals && s.goals.conceded) || 0,
+                  yellow:      (s.cards && s.cards.yellow) || 0,
+                  red:         (s.cards && s.cards.red) || 0,
+                  appearences: (s.games && s.games.appearences) || 0,
+                  // Note = moyenne pondérée par minutes
+                  ratingSum:   s.games && s.games.rating ? parseFloat(s.games.rating) * ((s.games.minutes)||1) : 0,
+                  ratingMin:   s.games && s.games.rating ? ((s.games.minutes)||1) : 0,
+                };
+              } else {
+                // Additionner toutes les compétitions
+                statsMap[pid].minutes     += (s.games && s.games.minutes) || 0;
+                statsMap[pid].goals       += (s.goals && s.goals.total) || 0;
+                statsMap[pid].assists     += (s.goals && s.goals.assists) || 0;
+                statsMap[pid].saves       += (s.goals && s.goals.saves) || 0;
+                statsMap[pid].conceded    += (s.goals && s.goals.conceded) || 0;
+                statsMap[pid].yellow      += (s.cards && s.cards.yellow) || 0;
+                statsMap[pid].red         += (s.cards && s.cards.red) || 0;
+                statsMap[pid].appearences += (s.games && s.games.appearences) || 0;
+                if(s.games && s.games.rating) {
+                  statsMap[pid].ratingSum += parseFloat(s.games.rating) * ((s.games.minutes)||1);
+                  statsMap[pid].ratingMin += (s.games.minutes)||1;
+                }
+              }
+            });
+          });
         });
+
+        // Calculer la note moyenne pondérée finale
+        Object.keys(statsMap).forEach(function(pid) {
+          var st = statsMap[pid];
+          if(st.ratingMin > 0) {
+            st.rating = (st.ratingSum / st.ratingMin).toFixed(1);
+          } else {
+            st.rating = null;
+          }
+          // Mettre null si 0 pour afficher "-"
+          if(!st.minutes) st.minutes = null;
+          if(!st.appearences) st.appearences = null;
+          if(st.goals === 0) st.goals = 0; // garder 0 pour buts/assists/cartons
+        });
+
         if(!cancelled) setSquadStats(statsMap);
       }).catch(function(){});
     });
