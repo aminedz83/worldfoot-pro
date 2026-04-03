@@ -28,28 +28,60 @@ const crawler = new PuppeteerCrawler({
     launchContext: {
         launchOptions: {
             headless: true,
-            args: ['--no-sandbox', '--disable-setuid-sandbox']
+            args: [
+                '--no-sandbox',
+                '--disable-setuid-sandbox',
+                '--disable-blink-features=AutomationControlled'
+            ]
         }
     },
-    requestHandlerTimeoutSecs: 60,
+    requestHandlerTimeoutSecs: 120,
+    navigationTimeoutSecs: 90,
     async requestHandler({ page, request }) {
         const club = request.userData.club;
+        
+        // Masquer que c'est un bot
+        await page.evaluateOnNewDocument(() => {
+            Object.defineProperty(navigator, 'webdriver', { get: () => false });
+        });
+
+        // Aller sur la page squad SofaScore
+        const url = `https://www.sofascore.com/team/football/${club.slug}/${club.sfId}#tab:squad`;
+        await page.goto(url, { waitUntil: 'networkidle2', timeout: 60000 });
+        
+        // Attendre que les joueurs se chargent
+        await page.waitForTimeout(5000);
+        
+        // Intercepter les réponses API de SofaScore
         const apiUrl = `https://api.sofascore.com/api/v1/team/${club.sfId}/players`;
         
-        const response = await page.evaluate(async (url) => {
-            const res = await fetch(url, {
-                headers: {
-                    'Accept': 'application/json',
-                    'Referer': 'https://www.sofascore.com/'
-                }
-            });
-            return res.json();
+        // Faire le fetch depuis la page (même domaine = pas de blocage CORS)
+        const data = await page.evaluate(async (url) => {
+            try {
+                const r = await fetch(url, {
+                    headers: {
+                        'Accept': 'application/json',
+                        'Accept-Language': 'fr-FR,fr;q=0.9',
+                        'Referer': window.location.href,
+                        'Origin': 'https://www.sofascore.com'
+                    },
+                    credentials: 'include'
+                });
+                if (!r.ok) return null;
+                return r.json();
+            } catch(e) {
+                return null;
+            }
         }, apiUrl);
         
-        const players = response.players || [];
-        console.log(`${club.name}: ${players.length} joueurs`);
+        if (!data || !data.players) {
+            console.log(`${club.name}: pas de données`);
+            return;
+        }
         
-        for (const item of players) {
+        console.log(`${club.name}: ${data.players.length} joueurs`);
+        
+        for (const item of data.players) {
             const p = item.player || item;
             if (!p.id) continue;
             
@@ -79,7 +111,7 @@ const crawler = new PuppeteerCrawler({
         }
     },
     failedRequestHandler({ request, error }) {
-        console.error(`Erreur: ${error.message}`);
+        console.error(`Erreur ${request.url}: ${error.message}`);
     }
 });
 
