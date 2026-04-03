@@ -2651,42 +2651,115 @@ function ComposPanel({lineups, players, homeTeam, awayTeam, isPartial, fix, even
   var aLu = lineups?.find(l => l.team?.id === awayTeam?.id);
 
   if(algeriaLineups && (!hLu || !hLu.startXI || hLu.startXI.length===0)) {
-    // Convertir format Supabase → format API football
-    var buildLineup = function(starters, subs, team) {
+    // Matcher un joueur Soccerway avec les données API football via le squad
+    var matchWithSquad = function(swPlayer, squadPlayers) {
+      if(!squadPlayers || !squadPlayers.length) return null;
+      var swLast = (swPlayer.name||"").split(" ")[0].toLowerCase().replace(/[^a-z]/gi,"");
+      if(swLast.length < 3) return null;
+      return squadPlayers.find(function(sp) {
+        var spName = (sp.name||"").toLowerCase().replace(/[^a-z]/gi,"");
+        return spName.includes(swLast);
+      }) || null;
+    };
+
+    // Convertir format Supabase → format API football avec vraies positions
+    var buildLineup = function(starters, subs, team, squadPlayers) {
+      // Déduire la formation depuis les positions
+      var posCount = {D:0, M:0, F:0};
+      starters.forEach(function(p) {
+        var matched = matchWithSquad(p, squadPlayers);
+        var pos = p.is_gk ? "G" : (matched ? matched.position : p.pos || "");
+        if(posCount[pos] !== undefined) posCount[pos]++;
+      });
+      var formation = posCount.D + "-" + posCount.M + "-" + posCount.F;
+
+      // Construire la grid pour le terrain
+      var posLines = {G:[], D:[], M:[], F:[]};
+      starters.forEach(function(p) {
+        var matched = matchWithSquad(p, squadPlayers);
+        var pos = p.is_gk ? "G" : (matched ? matched.position : (p.is_gk ? "G" : "M"));
+        if(!posLines[pos]) pos = "M";
+        posLines[pos].push(p);
+      });
+
+      // Assigner les grilles
+      var gridAssign = function(players, line, total) {
+        return players.map(function(p, i) {
+          return line + ":" + (i+1);
+        });
+      };
+
+      var lineMap = {G:1, D:2, M:3, F:4};
+      var grids = {};
+      ["G","D","M","F"].forEach(function(pos) {
+        var ps = posLines[pos] || [];
+        ps.forEach(function(p, i) {
+          grids[p.name] = lineMap[pos] + ":" + (i+1);
+        });
+      });
+
       return {
         team: team,
-        formation: "",
+        formation: formation,
         startXI: starters.map(function(p) {
+          var matched = matchWithSquad(p, squadPlayers);
+          var pos = p.is_gk ? "G" : (matched ? matched.position : "M");
           return {
             player: {
-              id: null,
+              id: matched ? matched.id : null,
               name: p.name,
               number: parseInt(p.number)||0,
-              pos: p.is_gk?"G":"",
-              grid: null,
-              photo: "https://media.api-sports.io/football/players/0.png"
+              pos: pos,
+              grid: grids[p.name] || null,
+              photo: matched ? matched.photo : "https://media.api-sports.io/football/players/0.png"
             }
           };
         }),
         substitutes: (subs||[]).map(function(p) {
+          var matched = matchWithSquad(p, squadPlayers);
           return {
             player: {
-              id: null,
+              id: matched ? matched.id : null,
               name: p.name,
               number: parseInt(p.number)||0,
-              pos: p.is_gk?"G":"",
+              pos: p.is_gk ? "G" : (matched ? matched.position : "M"),
               grid: null,
-              photo: "https://media.api-sports.io/football/players/0.png"
+              photo: matched ? matched.photo : "https://media.api-sports.io/football/players/0.png"
             }
           };
         })
       };
     };
+
+    // Récupérer les squads des deux équipes pour matcher les positions
+    var homeId = fix&&fix.teams&&fix.teams.home&&fix.teams.home.id;
+    var awayId = fix&&fix.teams&&fix.teams.away&&fix.teams.away.id;
+
+    var getSquad = function(teamId) {
+      if(!teamId) return Promise.resolve([]);
+      return api("/players/squads?team="+teamId, 86400000)
+        .then(function(d){ return (d&&d[0]&&d[0].players)||[]; })
+        .catch(function(){ return []; });
+    };
+
+    Promise.all([getSquad(homeId), getSquad(awayId)]).then(function(results) {
+      var homeSquad = results[0];
+      var awaySquad = results[1];
+
+      if(algeriaLineups.home_players&&algeriaLineups.home_players.length>0) {
+        hLu = buildLineup(algeriaLineups.home_players, algeriaLineups.home_subs||[], homeTeam, homeSquad);
+      }
+      if(algeriaLineups.away_players&&algeriaLineups.away_players.length>0) {
+        aLu = buildLineup(algeriaLineups.away_players, algeriaLineups.away_subs||[], awayTeam, awaySquad);
+      }
+    });
+
+    // En attendant le fetch, construire avec positions basiques
     if(algeriaLineups.home_players&&algeriaLineups.home_players.length>0) {
-      hLu = buildLineup(algeriaLineups.home_players, algeriaLineups.home_subs||[], homeTeam);
+      hLu = buildLineup(algeriaLineups.home_players, algeriaLineups.home_subs||[], homeTeam, []);
     }
     if(algeriaLineups.away_players&&algeriaLineups.away_players.length>0) {
-      aLu = buildLineup(algeriaLineups.away_players, algeriaLineups.away_subs||[], awayTeam);
+      aLu = buildLineup(algeriaLineups.away_players, algeriaLineups.away_subs||[], awayTeam, []);
     }
   }
 
