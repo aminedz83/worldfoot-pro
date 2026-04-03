@@ -2,7 +2,7 @@
 <html lang="fr">
 <head>
     <meta charset="UTF-8" />
-    <!-- v246 -->
+    <!-- v247 -->
     <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate" />
     <meta http-equiv="Pragma" content="no-cache" />
     <meta http-equiv="Expires" content="0" />
@@ -8708,6 +8708,70 @@ function MatchDetail({state,onClose,onTeam}){
           playerSheetLoading && React.createElement("div",{style:{display:"flex",alignItems:"center",gap:8,margin:"14px 16px",padding:"10px 14px",background:"#f1f5f9",borderRadius:12}},
             React.createElement("div",{style:{width:16,height:16,border:"2px solid #94a3b8",borderTopColor:"#0f172a",borderRadius:"50%",animation:"spin 0.7s linear infinite",flexShrink:0}}),
             React.createElement("span",{style:{fontSize:13,color:"#64748b"}},playerSheet.stats?"Mise à jour...":"Chargement des stats...")
+          ),
+          // ── Bannière résumé — style Soccerway ──
+          playerSheet.stats && React.createElement("div",{style:{
+            display:"flex",alignItems:"center",justifyContent:"space-around",
+            margin:"14px 16px",padding:"14px 12px",
+            background:"#f8fafc",borderRadius:14,
+            border:"1px solid #f1f5f9"
+          }},
+            // Minutes
+            React.createElement("div",{style:{display:"flex",flexDirection:"column",alignItems:"center",gap:2}},
+              React.createElement("span",{style:{fontSize:22,fontWeight:800,color:"#0f172a"}},
+                (playerSheet.stats.games&&playerSheet.stats.games.minutes!=null) ? playerSheet.stats.games.minutes+"'" : "-"
+              ),
+              React.createElement("span",{style:{fontSize:11,color:"#94a3b8",fontWeight:500}},"Min.")
+            ),
+            // Séparateur
+            React.createElement("div",{style:{width:1,height:40,background:"#e2e8f0"}}),
+            // Faits marquants — gardien: 🧤 arrêts/tirs | joueur: ⚽ buts ou A assists
+            React.createElement("div",{style:{display:"flex",flexDirection:"column",alignItems:"center",gap:2}},
+              (function(){
+                var isGKSheet = playerSheet.pos==="G"||playerSheet.pos==="GK"||(playerSheet.stats.games&&playerSheet.stats.games.position==="G");
+                if(isGKSheet) {
+                  var saves = playerSheet.stats.goals&&playerSheet.stats.goals.saves;
+                  var conceded = playerSheet.stats.goals&&playerSheet.stats.goals.conceded;
+                  var total = saves!=null&&conceded!=null ? saves+conceded : null;
+                  return React.createElement(React.Fragment,null,
+                    React.createElement("div",{style:{
+                      display:"flex",alignItems:"center",gap:5,
+                      background:"#fff",border:"1px solid #e2e8f0",
+                      borderRadius:8,padding:"4px 10px",fontSize:15,fontWeight:700,color:"#0f172a"
+                    }},
+                      "🧤 ",
+                      total!=null ? saves+"/"+total : saves!=null ? saves : "-"
+                    ),
+                    React.createElement("span",{style:{fontSize:11,color:"#94a3b8",fontWeight:500}},"Arrêts")
+                  );
+                } else {
+                  var goals = playerSheet.stats.goals&&playerSheet.stats.goals.total;
+                  var assists = playerSheet.stats.goals&&playerSheet.stats.goals.assists;
+                  var txt = [];
+                  if(goals>0) txt.push("⚽ "+goals);
+                  if(assists>0) txt.push("🅰️ "+assists);
+                  return React.createElement(React.Fragment,null,
+                    React.createElement("div",{style:{
+                      fontSize:15,fontWeight:700,color:"#0f172a",
+                      textAlign:"center"
+                    }}, txt.length>0 ? txt.join("  ") : "—"),
+                    React.createElement("span",{style:{fontSize:11,color:"#94a3b8",fontWeight:500}},"Faits marquants")
+                  );
+                }
+              })()
+            ),
+            // Séparateur
+            React.createElement("div",{style:{width:1,height:40,background:"#e2e8f0"}}),
+            // Note
+            React.createElement("div",{style:{display:"flex",flexDirection:"column",alignItems:"center",gap:2}},
+              playerSheet.stats.games&&playerSheet.stats.games.rating!=null
+                ? React.createElement("span",{style:{
+                    background:parseFloat(playerSheet.stats.games.rating)>=7.5?"#22c55e":parseFloat(playerSheet.stats.games.rating)>=6.5?"#f59e0b":"#ef4444",
+                    color:"#fff",fontSize:20,fontWeight:800,borderRadius:8,padding:"3px 10px"
+                  }},parseFloat(playerSheet.stats.games.rating).toFixed(1))
+                : React.createElement("span",{style:{fontSize:20,fontWeight:800,color:"#94a3b8"}},"-"),
+              React.createElement("span",{style:{fontSize:11,color:"#94a3b8",fontWeight:500}},"Note")
+            )
           ),
           // ── Note + Minutes ──
           playerSheet.stats && React.createElement("div",{style:{padding:"0 16px"}},
