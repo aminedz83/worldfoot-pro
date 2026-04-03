@@ -2,7 +2,7 @@
 <html lang="fr">
 <head>
     <meta charset="UTF-8" />
-    <!-- v252 -->
+    <!-- v254 -->
     <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate" />
     <meta http-equiv="Pragma" content="no-cache" />
     <meta http-equiv="Expires" content="0" />
@@ -426,7 +426,6 @@
 
         /* ── MATCH DETAIL HEADER (sombre conservé pour contraste score) ── */
         .md-header {
-            flex-shrink: 0;
             background: linear-gradient(170deg, #111827 0%, #0C1220 100%);
             padding: 18px 16px 16px;
             position: relative; overflow: hidden;
@@ -478,6 +477,9 @@
             display: flex;
             background: var(--c-surface);
             flex-shrink: 0;
+            position: sticky;
+            top: 0;
+            z-index: 10;
             overflow-x: auto;
             scrollbar-width: none;
             -webkit-overflow-scrolling: touch;
@@ -8243,15 +8245,16 @@ function MatchDetail({state,onClose,onTeam}){
       React.createElement("div",{style:{width:36}})
     ),
 
-    React.createElement("div",{className:"md-header",
-      style:{
-        background: "#ffffff",
-        borderBottom: "1px solid #f1f5f9",
-        position: "relative",
-        overflow: "hidden",
-        padding: "0 0 16px"
-      }
-    },
+    React.createElement("div",{className:"md-content",ref:contentRef},
+      React.createElement("div",{className:"md-header",
+        style:{
+          background: "#ffffff",
+          borderBottom: "1px solid #f1f5f9",
+          position: "relative",
+          overflow: "hidden",
+          padding: "0 0 16px"
+        }
+      },
 
       // Barre ligue : drapeau + pays + compétition + journée
       (() => {
@@ -8426,13 +8429,13 @@ function MatchDetail({state,onClose,onTeam}){
         );
       })()
 
-    ),
+    ), // fin md-header
 
-    React.createElement("div",{className:"md-tabs"},
+    React.createElement("div",{className:"md-tabs",style:{position:"sticky",top:0,zIndex:10}},
       TABS2.map(t=>React.createElement("button",{key:t.id,className:`md-tab-btn${tab===t.id?" active":""}`,onClick:()=>{setTab(t.id);if(contentRef.current)contentRef.current.scrollTop=0;}},[t.label]))
     ),
 
-    React.createElement("div",{className:"md-content",ref:contentRef},
+    React.createElement("div",{style:{flex:1}},
       tab==="resume"?React.createElement("div",{className:"md-panel"},
         renderTimeline(),
 
@@ -8686,7 +8689,8 @@ function MatchDetail({state,onClose,onTeam}){
         standings.length?renderStandings():
           React.createElement("div",{style:{display:"flex",flexDirection:"column",alignItems:"center",padding:"40px 20px",gap:10,color:"#8E96A8",fontSize:14}},"📊 Chargement classement...")
       ):null
-    ),
+    ) // fin wrapper tab content
+    ), // fin md-content
 
     playerSheet ? React.createElement("div",{
       style:{position:"fixed",inset:0,zIndex:550,display:"flex",flexDirection:"column",justifyContent:"flex-end",background:"rgba(0,0,0,.5)"},
