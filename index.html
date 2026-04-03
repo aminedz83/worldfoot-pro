@@ -2,7 +2,7 @@
 <html lang="fr">
 <head>
     <meta charset="UTF-8" />
-    <!-- v249 -->
+    <!-- v250 -->
     <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate" />
     <meta http-equiv="Pragma" content="no-cache" />
     <meta http-equiv="Expires" content="0" />
@@ -13147,14 +13147,14 @@ function App() {
 
   const renderContent = () => {
     switch (currentTab) {
-      case "scores": return React.createElement(ScoresTab, { favs, onFav: toggleFav, onTeam: openTeam });
-      case "standings": return React.createElement(StandingsTab, { onTeam: openTeam });
-      case "scorers": return React.createElement(ScorersTab, null);
-      case "calendar": return React.createElement(CalendarTab, { favs, onFav: toggleFav, onTeam: openTeam });
-      case "transfers": return React.createElement(TransfersTab, { onTeam: openTeam });
-      case "actu": return React.createElement(ActuTab, null);
-      case "jsk": return React.createElement(JSKTab, null);
-      default: return React.createElement(ScoresTab, { favs, onFav: toggleFav });
+      case "scores": return React.createElement(ScoresTab, { key:"scores", favs, onFav: toggleFav, onTeam: openTeam });
+      case "standings": return React.createElement(StandingsTab, { key:"standings", onTeam: openTeam });
+      case "scorers": return React.createElement(ScorersTab, { key:"scorers" });
+      case "calendar": return React.createElement(CalendarTab, { key:"calendar", favs, onFav: toggleFav, onTeam: openTeam });
+      case "transfers": return React.createElement(TransfersTab, { key:"transfers", onTeam: openTeam });
+      case "actu": return React.createElement(ActuTab, { key:"actu" });
+      case "jsk": return React.createElement(JSKTab, { key:"jsk" });
+      default: return React.createElement(ScoresTab, { key:"scores", favs, onFav: toggleFav });
     }
   };
 
@@ -13345,7 +13345,7 @@ function App() {
       )
     ),
 
-    React.createElement("div", { style: { flex: 1, overflow: "hidden", position: "relative" } },
+    React.createElement("div", { style: { flex: 1, overflow: "hidden" } },
       renderContent()
     ),
 
