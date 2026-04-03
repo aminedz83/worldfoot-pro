@@ -12079,103 +12079,76 @@ function TeamPage({ teamId, teamName, teamLogo, leagueId, season, onClose, onTea
       if(rSquad.status==="fulfilled") {
         const sq = rSquad.value?.[0]?.players||[];
         
-        // Pour clubs algériens → enrichir avec SofaScore (valeur marchande)
-        const ALGERIA_SF_IDS = {
-          918: 42202, // JS Kabylie
-          904: 42207, // CR Belouizdad
-          906: 42204, // MC Alger
-          910: 42206, // USM Alger
-          908: 41756, // ES Setif
-          916: 55393, // CS Constantine
-          907: 45001, // MC Oran
-          905: 42201, // ASO Chlef
-          917: 79565, // JS Saoura
-          919: 133444,// ES Ben Aknoun
-          920: 238384,// USM Khenchela
-          921: 238383,// MB Rouissat
-          922: 212197,// Paradou AC
-          923: 186100,// ES Mostaganem
-          924: 133466,// MC El Bayadh
-          925: 306567,// Olympique Akbou
-        };
-        const sfTeamId = ALGERIA_SF_IDS[teamId];
-        window._sfTeamId = sfTeamId;
-        if(sfTeamId) {
-          var enrichSquadWithSF = function(sfData, method) {
-            window._sfPlayers = sfData.players ? sfData.players.length : 0;
-            window._sfSample = sfData.players && sfData.players[0] ? sfData.players[0].player.name : "aucun";
-            window._sfMethod = method||"?";
-            var sfPlayers = sfData.players || [];
+        // Pour clubs algériens → enrichir depuis Supabase (valeurs marchandes sync chaque lundi)
+        const ALGERIA_API_IDS = [918,904,906,910,908,916,907,905,917,919,920,921,922,923,924,925];
+        window._sfTeamId = teamId;
+        if(ALGERIA_API_IDS.indexOf(teamId) !== -1) {
+          var sbUrl = "https://iqeqlsxjiklygywjirqs.supabase.co/rest/v1/algeria_market_values?api_team_id=eq."+teamId+"&select=name,short_name,market_value,contract_until,tm_id";
+          fetch(sbUrl, {
+            headers: {
+              "apikey": SB_KEY,
+              "Authorization": "Bearer "+SB_KEY
+            }
+          })
+          .then(function(r) { window._sfStatus = r.status; return r.json(); })
+          .then(function(mvRows) {
+            window._sfPlayers = mvRows.length;
+            window._sfSample = mvRows.length ? mvRows[0].name : "aucun";
+            window._sfMethod = "supabase";
+
+            // Normaliser un nom : minuscules, sans accents, sans espaces
+            var normName = function(s) {
+              if(!s) return "";
+              var r = (s||"").toLowerCase().trim();
+              // Supprimer accents basiques
+              r = r.replace(/[àáâã]/g,"a").replace(/[éèêë]/g,"e").replace(/[îï]/g,"i")
+                   .replace(/[ôõ]/g,"o").replace(/[ùûü]/g,"u").replace(/ç/g,"c")
+                   .replace(/ñ/g,"n").replace(/ï/g,"i").replace(/['']/g,"");
+              return r;
+            };
+            // Version compacte sans espaces (gère "Ben Mebarek" vs "Benmebarek")
+            var compact = function(s) { return normName(s).replace(/\s+/g,""); };
+
+            // Matcher par nom avec les joueurs du squad API football
             var enriched = sq.map(function(p) {
-              var pName = (p.name||"").toLowerCase();
-              var sfMatch = sfPlayers.find(function(sp) {
-                var spName = (sp.player.name||"").toLowerCase();
-                var spShort = (sp.player.shortName||"").toLowerCase();
-                return spName.includes(pName.split(" ")[0]) || 
-                       pName.includes(spName.split(" ")[0]) ||
-                       spShort.includes(pName.split(" ")[0]);
+              var pNorm = normName(p.name);
+              var pCompact = compact(p.name);
+              var pParts = pNorm.split(" ");
+
+              var mvMatch = mvRows.find(function(mv) {
+                var mNorm = normName(mv.name);
+                var mCompact = compact(mv.name);
+                var mParts = mNorm.split(" ");
+
+                // 1. Exact normalisé
+                if(pNorm === mNorm) return true;
+                // 2. Compact sans espaces (Benmebarek = Ben Mebarek)
+                if(pCompact === mCompact) return true;
+                // 3. Premier + dernier mot matchent
+                if(pParts.length >= 2 && mParts.length >= 2) {
+                  if(pParts[0] === mParts[0] && pParts[pParts.length-1] === mParts[mParts.length-1]) return true;
+                }
+                // 4. Un nom contient l'autre (au moins 5 chars)
+                if(pCompact.length >= 5 && mCompact.length >= 5) {
+                  if(pCompact.includes(mCompact) || mCompact.includes(pCompact)) return true;
+                }
+                return false;
               });
-              if(sfMatch) {
+
+              if(mvMatch) {
                 return Object.assign({}, p, {
-                  market_value: sfMatch.player.proposedMarketValueRaw ? sfMatch.player.proposedMarketValueRaw.value : null,
-                  contract_until: sfMatch.player.contractUntilTimestamp ? new Date(sfMatch.player.contractUntilTimestamp*1000).getFullYear() : null,
-                  sofascore_id: sfMatch.player.id,
-                  sf_slug: sfMatch.player.slug
+                  market_value: mvMatch.market_value || null,
+                  contract_until: mvMatch.contract_until || null,
+                  tm_id: mvMatch.tm_id || null
                 });
               }
               return p;
             });
+
+            window._sfMatched = enriched.filter(function(p){ return p.market_value; }).length;
             setSquad(enriched);
-          };
-          var sfUrl = "https://api.sofascore.com/api/v1/team/"+sfTeamId+"/players";
-
-          // Fonction fallback allorigins → corsproxy
-          var tryProxy = function() {
-            // 2. AllOrigins proxy
-            fetch("https://api.allorigins.win/get?url="+encodeURIComponent(sfUrl))
-            .then(function(r) {
-              if(!r.ok) throw new Error("allorigins "+r.status);
-              return r.json();
-            })
-            .then(function(wrapper) {
-              var sfData = JSON.parse(wrapper.contents);
-              // SofaScore peut retourner une erreur JSON
-              if(!sfData.players) throw new Error("no players in allorigins response");
-              window._sfStatus = 200;
-              enrichSquadWithSF(sfData, "allorigins");
-            })
-            .catch(function() {
-              // 3. CorsProxy fallback
-              fetch("https://corsproxy.io/?"+encodeURIComponent(sfUrl), {
-                headers:{"Accept":"application/json","x-requested-with":"XMLHttpRequest"}
-              })
-              .then(function(r) {
-                if(!r.ok) throw new Error("corsproxy "+r.status);
-                window._sfStatus = r.status;
-                return r.json();
-              })
-              .then(function(sfData) {
-                if(!sfData.players) throw new Error("no players in corsproxy response");
-                enrichSquadWithSF(sfData, "corsproxy");
-              })
-              .catch(function() { setSquad(sq); });
-            });
-          };
-
-          // 1. Essai direct — si 403 ou autre erreur → proxy
-          fetch(sfUrl, {headers: {"Accept":"application/json","Referer":"https://www.sofascore.com/"}})
-          .then(function(r) {
-            window._sfStatus = r.status;
-            if(!r.ok) throw new Error("direct "+r.status); // 403 → déclenche catch → proxy
-            return r.json();
           })
-          .then(function(sfData) {
-            if(!sfData.players) throw new Error("no players");
-            enrichSquadWithSF(sfData, "direct");
-          })
-          .catch(function() {
-            tryProxy();
-          });
+          .catch(function() { setSquad(sq); });
         } else {
           setSquad(sq);
         }
@@ -12670,7 +12643,7 @@ function TeamPage({ teamId, teamName, teamLogo, leagueId, season, onClose, onTea
             "Exemple: ", React.createElement("span",{style:{color:"#e2e8f0"}}, window._sfSample||"aucun"),
             React.createElement("br",null),
             "Squad enrichi: ", React.createElement("span",{style:{color: squad.some(function(p){return p.market_value;})?"#4ade80":"#f87171",fontWeight:700}},
-              squad.filter(function(p){return p.market_value;}).length + "/" + squad.length + " joueurs avec MV"
+              (window._sfMatched||squad.filter(function(p){return p.market_value;}).length) + "/" + squad.length + " joueurs avec MV"
             )
           ),
           // Boutons test
