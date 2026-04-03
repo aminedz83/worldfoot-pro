@@ -3481,23 +3481,23 @@ function PlayerPage({ playerId, playerName, playerPhoto, playerPos, playerNumber
   const birth = player?.birth?.date;
   const [marketVal, setMarketVal] = React.useState(null);
   
-  // Charger valeur marchande depuis l'API football.com (/players endpoint)
+  // Charger valeur marchande
   React.useEffect(() => {
     if(!playerId) return;
+    // Utiliser immédiatement l'override si disponible (SofaScore via squad)
+    if(marketValueOverride) { setMarketVal(marketValueOverride); return; }
     setMarketVal(null);
-    // L'API football.com retourne market_value dans /players?id=X&season=Y
+    // Sinon charger depuis l'API football.com
     api('/players?id='+playerId+'&season='+curSeason, 3600000)
       .then(function(data) {
         var p = data && data[0];
         if(!p) return;
-        // market_value est dans statistics[0].games ou dans player directement
         var mv = null;
         if(p.player && p.player.market_value) mv = p.player.market_value;
         if(!mv && p.statistics && p.statistics[0] && p.statistics[0].market_value) mv = p.statistics[0].market_value;
-        if(!mv && marketValueOverride) mv = marketValueOverride;
         if(mv) setMarketVal(mv);
       }).catch(function(){});
-  }, [playerId]);
+  }, [playerId, marketValueOverride]);
 
   // Poste traduit
   const posLabel = p => {
