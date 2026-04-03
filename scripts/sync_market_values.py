@@ -26,32 +26,23 @@ CLUBS = {
 
 HEADERS = {"User-Agent": "Mozilla/5.0 (compatible; WorldFootPro/1.0)"}
 TM_API = "https://transfermarkt-api.fly.dev"
+SEASON = "2024"  # saison 2024/2025
 
 def fetch_club_players(tm_id, club_name):
-    url = f"{TM_API}/clubs/{tm_id}/players"
+    # L'API exige season_id explicite
+    url = f"{TM_API}/clubs/{tm_id}/players?season_id={SEASON}"
     try:
         r = requests.get(url, headers=HEADERS, timeout=20)
         print(f"  TM {tm_id} ({club_name}): status={r.status_code}")
         if r.status_code == 200:
-            return r.json().get("players", [])
-        print(f"  Body: {r.text[:200]}")
+            data = r.json()
+            print(f"  Clés JSON: {list(data.keys())}")
+            return data.get("players", [])
+        print(f"  Body: {r.text[:300]}")
         return []
     except Exception as e:
         print(f"  Erreur: {e}")
         return []
-
-def find_tm_id(club_name):
-    url = f"{TM_API}/clubs/search/{requests.utils.quote(club_name)}"
-    try:
-        r = requests.get(url, headers=HEADERS, timeout=15)
-        if r.status_code == 200:
-            results = r.json().get("results", [])
-            if results:
-                print(f"  Search trouvé: {results[0]}")
-                return str(results[0].get("id",""))
-    except Exception as e:
-        print(f"  Search error: {e}")
-    return None
 
 def parse_mv(mv_str):
     if not mv_str:
@@ -84,13 +75,15 @@ def upsert_supabase(rows):
 def main():
     print("=== Sync Market Values Transfermarkt → Supabase ===\n")
 
-    # Test API
-    print("Test API...")
+    # Test avec JSK seulement d'abord
+    print("Test JSK avec season_id=2024...")
+    test_url = f"{TM_API}/clubs/3455/players?season_id={SEASON}"
     try:
-        r = requests.get(f"{TM_API}/clubs/search/JS%20Kabylie", headers=HEADERS, timeout=15)
-        print(f"Search JSK: {r.status_code} → {r.text[:300]}\n")
+        r = requests.get(test_url, headers=HEADERS, timeout=20)
+        print(f"Status: {r.status_code}")
+        print(f"Body: {r.text[:500]}\n")
     except Exception as e:
-        print(f"Test échoué: {e}\n")
+        print(f"Erreur: {e}\n")
 
     total = 0
     for api_id, info in CLUBS.items():
@@ -98,23 +91,24 @@ def main():
         players = fetch_club_players(info["tm_id"], info["name"])
 
         if not players:
-            real_id = find_tm_id(info["name"])
-            if real_id:
-                players = fetch_club_players(real_id, info["name"])
-
-        if not players:
-            time.sleep(2)
+            time.sleep(1)
             continue
 
-        print(f"  {len(players)} joueurs")
+        print(f"  {len(players)} joueurs — premier: {players[0]}")
+
         rows = []
         for p in players:
+            # Afficher structure du premier joueur pour debug
+            if not rows:
+                print(f"  Structure joueur: {list(p.keys())}")
+
             contract = p.get("contract") or {}
             until = contract.get("until") or p.get("contractExpiry") or ""
             cy = None
             if until:
                 try: cy = int(str(until)[:4])
                 except: pass
+
             rows.append({
                 "tm_id":          str(p.get("id","")),
                 "api_team_id":    api_id,
@@ -127,6 +121,7 @@ def main():
                 "nationality":    p.get("nationality") or (p.get("nationalities",[None])[0] if p.get("nationalities") else None),
                 "age":            p.get("age"),
             })
+
         upsert_supabase(rows)
         total += len(rows)
         time.sleep(2)
