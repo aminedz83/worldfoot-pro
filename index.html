@@ -12604,11 +12604,17 @@ function TeamPage({ teamId, teamName, teamLogo, leagueId, season, onClose, onTea
         }
       });
       var leaguesList = Object.values(leagueMap).sort(function(a,b) {
-        // Mettre la ligue principale en premier
         if(a.id === lid) return -1;
         if(b.id === lid) return 1;
         return 0;
       });
+      // Si aucune ligue trouvée depuis fixtures, créer une entrée par défaut
+      if(leaguesList.length === 0) {
+        var defaultFix = allFixStand.find(function(f){return f.league&&f.league.id;});
+        if(defaultFix) {
+          leaguesList = [{id:defaultFix.league.id, name:defaultFix.league.name, logo:defaultFix.league.logo, season:seas}];
+        }
+      }
       if(!cancelled) setTeamLeagues(leaguesList);
 
       // Charger standings de la ligue principale
@@ -12619,7 +12625,6 @@ function TeamPage({ teamId, teamName, teamLogo, leagueId, season, onClose, onTea
         setStandingsFiltered(rows);
         setSelLeagueId(lid);
         setSelSeason(seas);
-        console.log("Init standings:", rows.length, "lid:", lid, "seas:", seas);
       }
 
       if(rSquad.status==="fulfilled") {
@@ -13312,8 +13317,6 @@ function TeamPage({ teamId, teamName, teamLogo, leagueId, season, onClose, onTea
           ? React.createElement("div",{style:{textAlign:"center",padding:"32px",color:"#94a3b8",fontSize:13}},"Chargement...")
           : (function(){
               var rows = standingsFiltered.length > 0 ? standingsFiltered : standings;
-              // Debug
-              console.log("CLASSEMENT rows:", rows.length, "filtered:", standingsFiltered.length, "standings:", standings.length, "selLeague:", selLeagueId);
               if(rows.length === 0) {
                 // Coupe / élimination directe → afficher les matchs
                 var cupMatches = results.filter(function(f){ return f.league && f.league.id === selLeagueId; });
