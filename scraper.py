@@ -85,68 +85,72 @@ def get_today_fixtures():
 
             soup = BeautifulSoup(r.text, "html.parser")
 
-            # Debug — chercher toutes occurrences de "mid" dans le HTML
+            # Les URLs /match/ sont dans le HTML mais sans mid
+            # On les récupère et on visite chaque URL pour obtenir le mid
             import re as re2
-            all_mids = re2.findall(r'mid[=:\s"\']+([A-Za-z0-9]{6,10})', r.text)
-            print(f"  'mid' dans HTML: {all_mids[:5]}")
-            
-            # Chercher URLs de matchs
-            match_urls = re2.findall(r'/match/[^\s"\'<>]{10,80}', r.text)
-            print(f"  URLs /match/: {match_urls[:3]}")
-            
-            # Chercher data-id ou data-match
-            data_attrs = re2.findall(r'data-(?:mid|id|match)[="\s:]+([A-Za-z0-9]+)', r.text)
-            print(f"  data-*: {data_attrs[:5]}")
+            match_urls = list(set(re2.findall(r'/match/[^\s"\'<>?]{10,80}/', r.text)))
+            print(f"  URLs /match/ trouvées: {len(match_urls)}")
 
-            # Chercher liens avec mid=
-            mid_links = soup.find_all("a", href=re.compile(r"mid="))
-            print(f"  Liens mid= : {len(mid_links)}")
+            # Filtrer pour garder seulement les matchs Ligue 1 algérienne
+            # (les URLs contiennent les sw_ids qu'on connaît)
+            sw_ids = set(info["sw_id"] for info in SW_CLUBS.values())
+            alg_urls = []
+            for url_path in match_urls:
+                ids_in_url = re2.findall(r'-([A-Za-z0-9]{8})', url_path)
+                if any(cid in sw_ids for cid in ids_in_url):
+                    alg_urls.append(url_path)
 
-            for link in mid_links[:3]:
-                print(f"  ex: {link.get('href','')[:80]}")
+            print(f"  URLs algériennes: {len(alg_urls)}")
+            for u in alg_urls[:5]:
+                print(f"    {u}")
 
-            for link in mid_links:
-                href = link.get("href", "")
-                mid_m = re.search(r"mid=([A-Za-z0-9]+)", href)
-                if not mid_m:
-                    continue
-                mid = mid_m.group(1)
-                if mid in seen_mids:
-                    continue
+            # Pour chaque URL de match algérien, récupérer le mid
+            for url_path in alg_urls:
+                full_url = "https://fr.soccerway.com" + url_path
+                try:
+                    mr = scraper.get(full_url, timeout=15)
+                    if mr.status_code != 200:
+                        continue
 
-                row = link.find_parent("tr")
-                if not row:
-                    continue
+                    # Chercher le mid dans l'URL finale ou le HTML
+                    mid_m = re2.search(r'mid=([A-Za-z0-9]+)', mr.url + mr.text[:5000])
+                    if not mid_m:
+                        continue
+                    mid = mid_m.group(1)
+                    if mid in seen_mids:
+                        continue
 
-                # Date
-                match_date = None
-                for td in row.find_all("td"):
-                    txt = td.get_text(strip=True)
-                    for fmt in ["%d/%m/%Y", "%d/%m/%y"]:
+                    # Identifier les équipes depuis les sw_ids dans l'URL
+                    ids_in_url = re2.findall(r'-([A-Za-z0-9]{8})', url_path)
+                    home_api, away_api = None, None
+                    for cid in ids_in_url:
+                        if cid in SW_ID_TO_NAME:
+                            if home_api is None:
+                                home_api = SW_ID_TO_NAME[cid]
+                            else:
+                                away_api = SW_ID_TO_NAME[cid]
+
+                    if not home_api or not away_api:
+                        continue
+
+                    # Vérifier la date du match
+                    date_m = re2.search(r'(\d{2}/\d{2}/\d{4})', mr.text[:3000])
+                    match_date = today_str
+                    if date_m:
                         try:
-                            match_date = datetime.strptime(txt, fmt).strftime("%Y-%m-%d")
-                            break
+                            match_date = datetime.strptime(date_m.group(1), "%d/%m/%Y").strftime("%Y-%m-%d")
                         except:
                             pass
-                    if match_date:
-                        break
 
-                if not match_date:
-                    match_date = today_str
+                    if match_date != today_str:
+                        continue
 
-                if match_date != today_str:
-                    continue
+                    seen_mids.add(mid)
+                    print(f"  ✅ {home_api} vs {away_api} | mid={mid}")
+                    matches.append({"mid": mid, "home": home_api, "away": away_api, "date": today_str})
 
-                # Équipes
-                team_links = row.find_all("a", href=re.compile(r"/teams/"))
-                if len(team_links) < 2:
-                    continue
-                home_api = normalize_team_name(team_links[0].get_text(strip=True))
-                away_api = normalize_team_name(team_links[1].get_text(strip=True))
-
-                seen_mids.add(mid)
-                print(f"  ✅ {home_api} vs {away_api} | mid={mid}")
-                matches.append({"mid": mid, "home": home_api, "away": away_api, "date": today_str})
+                except Exception as e:
+                    print(f"  Erreur {url_path}: {e}")
 
             if matches:
                 break
