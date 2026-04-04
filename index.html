@@ -12195,298 +12195,237 @@ const VENUE_OVERRIDE = {
 };
 
 
-// ══════════════════════════════════════════════════════
-// PROGRESSION PANEL — Graphique classement journée/journée
-// ══════════════════════════════════════════════════════
-function ProgressionPanel({ teamId, teamName, teamLogo, season }) {
-  const [data, setData] = React.useState(null);
-  const [loading, setLoading] = React.useState(true);
+// PROGRESSION PANEL
+function ProgressionPanel(props) {
+  var teamId = props.teamId;
+  var teamName = props.teamName;
+  var teamLogo = props.teamLogo;
+  var season = props.season;
+  var _s = season || (new Date().getMonth() >= 6 ? new Date().getFullYear() : new Date().getFullYear() - 1);
+
+  var [loading, setLoading] = React.useState(true);
+  var [prog, setProg] = React.useState([]);
+  var [total, setTotal] = React.useState(16);
+  var [currentPos, setCurrentPos] = React.useState(null);
+  var [currentPts, setCurrentPts] = React.useState(0);
+  var [error, setError] = React.useState(null);
 
   React.useEffect(function() {
     if(!teamId) return;
     setLoading(true);
+    setError(null);
 
-    // Récupérer tous les matchs de la saison pour cette équipe
     Promise.all([
-      api('/fixtures?league=186&season='+(season||curSeason)+'&status=FT', 3600000),
-      api('/standings?league=186&season='+(season||curSeason), 3600000)
+      api('/fixtures?league=186&season='+_s+'&status=FT', 3600000),
+      api('/standings?league=186&season='+_s, 3600000)
     ]).then(function(results) {
       var fixtures = results[0] || [];
       var standingsData = results[1] || [];
-      var allTeams = (standingsData[0] && standingsData[0].league && standingsData[0].league.standings && standingsData[0].league.standings[0]) || [];
+      var allTeams = [];
+      try {
+        allTeams = standingsData[0].league.standings[0] || [];
+      } catch(e) {}
 
-      // Trier les matchs par date
+      setTotal(allTeams.length || 16);
+
+      // Trier matchs par date
       var sorted = fixtures.slice().sort(function(a, b) {
         return new Date(a.fixture.date) - new Date(b.fixture.date);
       });
 
-      // Pour chaque journée calculer les points de toutes les équipes
-      var teamPoints = {}; // teamId -> points cumulés
-      var teamGoals = {};  // teamId -> {for, against}
-      allTeams.forEach(function(t) {
-        teamPoints[t.team.id] = 0;
-        teamGoals[t.team.id] = { for: 0, against: 0 };
-      });
-
-      var progression = []; // [{journee, position, points}]
-      var journeeMap = {};  // journee -> [fixtures]
-
+      // Grouper par journée
+      var journeeMap = {};
       sorted.forEach(function(f) {
-        var round = f.league && f.league.round;
-        var jNum = round ? parseInt((round.match(/\d+/) || [0])[0]) : 0;
-        if(!jNum) return;
+        var round = f.league && f.league.round || '';
+        var nums = round.match(/\d+/);
+        var jNum = nums ? parseInt(nums[0]) : 0;
+        if(!jNum || jNum > 30) return;
         if(!journeeMap[jNum]) journeeMap[jNum] = [];
         journeeMap[jNum].push(f);
       });
 
+      // Points cumulés de toutes les équipes
+      var teamPoints = {};
+      var teamGD = {};
+      var teamGF = {};
+      allTeams.forEach(function(t) {
+        teamPoints[t.team.id] = 0;
+        teamGD[t.team.id] = 0;
+        teamGF[t.team.id] = 0;
+      });
+
       var journees = Object.keys(journeeMap).map(Number).sort(function(a,b){return a-b;});
+      var progression = [];
 
       journees.forEach(function(jNum) {
-        var matches = journeeMap[jNum];
-        // Calculer points pour cette journée
-        matches.forEach(function(f) {
+        journeeMap[jNum].forEach(function(f) {
           var hId = f.teams.home.id;
           var aId = f.teams.away.id;
           var hG = f.goals.home;
           var aG = f.goals.away;
           if(hG === null || aG === null) return;
-
           if(!teamPoints[hId]) teamPoints[hId] = 0;
           if(!teamPoints[aId]) teamPoints[aId] = 0;
-          if(!teamGoals[hId]) teamGoals[hId] = {for:0, against:0};
-          if(!teamGoals[aId]) teamGoals[aId] = {for:0, against:0};
-
-          teamGoals[hId].for += hG;
-          teamGoals[hId].against += aG;
-          teamGoals[aId].for += aG;
-          teamGoals[aId].against += hG;
-
-          if(hG > aG) { teamPoints[hId] += 3; }
-          else if(hG < aG) { teamPoints[aId] += 3; }
+          if(!teamGD[hId]) teamGD[hId] = 0;
+          if(!teamGD[aId]) teamGD[aId] = 0;
+          if(!teamGF[hId]) teamGF[hId] = 0;
+          if(!teamGF[aId]) teamGF[aId] = 0;
+          teamGD[hId] += hG - aG;
+          teamGD[aId] += aG - hG;
+          teamGF[hId] += hG;
+          teamGF[aId] += aG;
+          if(hG > aG) teamPoints[hId] += 3;
+          else if(hG < aG) teamPoints[aId] += 3;
           else { teamPoints[hId] += 1; teamPoints[aId] += 1; }
         });
 
-        // Calculer classement après cette journée
+        // Classement après cette journée
         var ranking = Object.keys(teamPoints).map(function(tid) {
-          return {
-            id: parseInt(tid),
-            pts: teamPoints[tid],
-            gd: (teamGoals[tid] ? teamGoals[tid].for - teamGoals[tid].against : 0),
-            gf: (teamGoals[tid] ? teamGoals[tid].for : 0)
-          };
-        }).sort(function(a, b) {
+          return { id: parseInt(tid), pts: teamPoints[tid], gd: teamGD[tid]||0, gf: teamGF[tid]||0 };
+        }).sort(function(a,b) {
           if(b.pts !== a.pts) return b.pts - a.pts;
           if(b.gd !== a.gd) return b.gd - a.gd;
           return b.gf - a.gf;
         });
 
-        var pos = ranking.findIndex(function(r) { return r.id === teamId; });
+        var pos = -1;
+        for(var i=0;i<ranking.length;i++) { if(ranking[i].id===teamId){pos=i;break;} }
         if(pos !== -1) {
-          progression.push({
-            j: jNum,
-            position: pos + 1,
-            points: teamPoints[teamId] || 0
-          });
+          progression.push({ j:jNum, position:pos+1, points:teamPoints[teamId]||0 });
         }
       });
 
-      // Logos de toutes les équipes pour affichage sur graphique
-      var teamLogos = {};
-      allTeams.forEach(function(t) {
-        teamLogos[t.team.id] = t.team.logo;
-      });
-
-      setData({ progression: progression, total: allTeams.length, teamLogos: teamLogos });
+      if(progression.length > 0) {
+        var last = progression[progression.length-1];
+        setCurrentPos(last.position);
+        setCurrentPts(last.points);
+      }
+      setProg(progression);
       setLoading(false);
-    }).catch(function() { setLoading(false); });
-  }, [teamId, season]);
+    }).catch(function(e) {
+      setError("Erreur chargement: "+e.message);
+      setLoading(false);
+    });
+  }, [teamId]);
 
-  if(loading) return React.createElement("div", {style:{textAlign:"center",padding:"48px",color:"#94a3b8"}},
-    React.createElement("div", {style:{fontSize:14}}, "Chargement progression...")
+  if(loading) return React.createElement("div", {style:{textAlign:"center",padding:"60px 20px",color:"#94a3b8"}},
+    React.createElement("div", {style:{fontSize:14,marginTop:8}}, "Chargement progression...")
   );
 
-  if(!data || !data.progression || data.progression.length === 0) {
-    return React.createElement("div", {style:{textAlign:"center",padding:"48px",color:"#94a3b8"}},
-      React.createElement("div", {style:{fontSize:32,marginBottom:8}}, "📈"),
-      React.createElement("div", {style:{fontSize:14}}, "Données non disponibles")
-    );
-  }
+  if(error) return React.createElement("div", {style:{textAlign:"center",padding:"48px",color:"#ef4444",fontSize:13}}, error);
 
-  var prog = data.progression;
-  var total = data.total || 16;
+  if(prog.length === 0) return React.createElement("div", {style:{textAlign:"center",padding:"48px",color:"#94a3b8"}},
+    React.createElement("div", {style:{fontSize:32,marginBottom:8}}, "📈"),
+    React.createElement("div", {style:{fontSize:14}}, "Données non disponibles")
+  );
+
+  // SVG Graphique
+  var W = 340, H = 260;
+  var PL = 30, PR = 16, PT = 16, PB = 32;
+  var CW = W - PL - PR;
+  var CH = H - PT - PB;
   var maxJ = prog[prog.length-1].j;
-  var minPos = Math.min.apply(null, prog.map(function(p){return p.position;}));
-  var maxPos = Math.max.apply(null, prog.map(function(p){return p.position;}));
-  var currentPos = prog[prog.length-1].position;
-  var currentPts = prog[prog.length-1].points;
+  var xS = function(j) { return PL + ((j-1)/(Math.max(maxJ-1,1)))*CW; };
+  var yS = function(p) { return PT + ((p-1)/(total-1))*CH; };
 
-  // Dimensions SVG
-  var W = 340, H = 280;
-  var PAD_L = 32, PAD_R = 20, PAD_T = 20, PAD_B = 36;
-  var chartW = W - PAD_L - PAD_R;
-  var chartH = H - PAD_T - PAD_B;
-
-  // Échelle
-  var xScale = function(j) { return PAD_L + ((j-1) / (maxJ-1)) * chartW; };
-  var yScale = function(pos) { return PAD_T + ((pos-1) / (total-1)) * chartH; };
-
-  // Zones colorées (vert=top2, bleu=top4, rouge=relégation)
-  var zones = [
-    { from:1, to:2, color:"rgba(134,239,172,0.3)", label:"Champ." },
-    { from:3, to:4, color:"rgba(147,197,253,0.3)", label:"Coupe" },
-    { from:total-2, to:total, color:"rgba(252,165,165,0.3)", label:"Relégation" }
-  ];
-
-  // Construire le path SVG
-  var pathD = prog.map(function(p, i) {
-    var x = xScale(p.j);
-    var y = yScale(p.position);
-    return (i===0?"M":"L") + x.toFixed(1) + " " + y.toFixed(1);
+  var pathD = prog.map(function(p,i) {
+    return (i===0?"M":"L")+xS(p.j).toFixed(1)+" "+yS(p.position).toFixed(1);
   }).join(" ");
 
-  return React.createElement("div", {style:{background:"#f2f3f5",minHeight:"100%"}},
+  var posColor = function(p) {
+    if(p<=2) return "#16a34a";
+    if(p<=4) return "#2563eb";
+    if(p>total-3) return "#dc2626";
+    return "#0f172a";
+  };
 
-    // Header stats
-    React.createElement("div", {style:{
-      background:"#fff", padding:"16px", display:"flex", alignItems:"center",
-      gap:16, borderBottom:"1px solid #f1f5f9"
-    }},
-      React.createElement("img", {src:teamLogo, style:{width:40,height:40,objectFit:"contain"}}),
-      React.createElement("div", null,
+  return React.createElement("div", {style:{background:"#f2f3f5",minHeight:"100%",paddingBottom:24}},
+
+    // Header
+    React.createElement("div", {style:{background:"#fff",padding:"16px",display:"flex",alignItems:"center",gap:12,borderBottom:"1px solid #f1f5f9",marginBottom:12}},
+      React.createElement("img", {src:teamLogo,style:{width:44,height:44,objectFit:"contain"}}),
+      React.createElement("div", {style:{flex:1}},
         React.createElement("div", {style:{fontSize:16,fontWeight:800,color:"#0f172a"}}, teamName),
-        React.createElement("div", {style:{fontSize:13,color:"#64748b",marginTop:2}},
-          currentPos+"e position · "+currentPts+" pts · J"+prog[prog.length-1].j
-        )
+        React.createElement("div", {style:{fontSize:12,color:"#64748b",marginTop:2}}, "Saison "+_s+"/"+(_s+1).toString().slice(2)+" · "+prog.length+" journées jouées")
       ),
-      React.createElement("div", {style:{marginLeft:"auto",textAlign:"center"}},
-        React.createElement("div", {style:{
-          fontSize:28,fontWeight:900,
-          color:currentPos<=2?"#16a34a":currentPos<=4?"#2563eb":currentPos>total-3?"#dc2626":"#0f172a"
-        }}, currentPos),
-        React.createElement("div", {style:{fontSize:10,color:"#94a3b8"}}, "/"+total)
+      currentPos && React.createElement("div", {style:{textAlign:"center",background:"#f8fafc",borderRadius:10,padding:"8px 12px"}},
+        React.createElement("div", {style:{fontSize:26,fontWeight:900,color:posColor(currentPos)}}, currentPos+"e"),
+        React.createElement("div", {style:{fontSize:11,color:"#94a3b8"}}, currentPts+" pts")
       )
     ),
 
-    // Titre graphique
-    React.createElement("div", {style:{padding:"16px 16px 8px",fontSize:12,fontWeight:700,color:"#64748b",textTransform:"uppercase",letterSpacing:1}},
-      "Progression saison 25/26"
-    ),
-
-    // SVG Graphique
-    React.createElement("div", {style:{background:"#fff",margin:"0 12px",borderRadius:12,padding:"12px 8px",boxShadow:"0 1px 4px rgba(0,0,0,0.06)"}},
-      React.createElement("svg", {
-        viewBox:"0 0 "+W+" "+H,
-        style:{width:"100%",height:"auto",display:"block"}
-      },
-        // Zones colorées
-        zones.map(function(zone, zi) {
-          var y1 = yScale(zone.from) - chartH/(total-1)*0.5;
-          var y2 = yScale(zone.to) + chartH/(total-1)*0.5;
-          return React.createElement("rect", {
-            key:"zone"+zi,
-            x:PAD_L, y:Math.min(y1,PAD_T),
-            width:chartW, height:Math.abs(y2-y1)+chartH/(total-1),
-            fill:zone.color
-          });
-        }),
-
-        // Lignes horizontales (positions)
-        Array.from({length:total}, function(_, i) {
-          var pos = i+1;
-          var y = yScale(pos);
-          return React.createElement("g", {key:"hline"+pos},
-            React.createElement("line", {x1:PAD_L,y1:y,x2:W-PAD_R,y2:y,stroke:"#f1f5f9",strokeWidth:1}),
-            React.createElement("text", {x:PAD_L-6,y:y+4,fontSize:9,fill:"#94a3b8",textAnchor:"end"}, pos)
+    // Graphique
+    React.createElement("div", {style:{background:"#fff",margin:"0 12px 12px",borderRadius:12,padding:"12px 8px",boxShadow:"0 1px 4px rgba(0,0,0,.06)"}},
+      React.createElement("div", {style:{fontSize:11,fontWeight:700,color:"#64748b",padding:"0 8px 8px",textTransform:"uppercase",letterSpacing:.5}},
+        "Évolution au classement"
+      ),
+      React.createElement("svg", {viewBox:"0 0 "+W+" "+H, style:{width:"100%",height:"auto",display:"block"}},
+        // Zone verte top2
+        React.createElement("rect", {x:PL,y:PT,width:CW,height:CH/(total-1)*2,fill:"rgba(134,239,172,0.25)"}),
+        // Zone bleue top4
+        React.createElement("rect", {x:PL,y:PT+CH/(total-1)*2,width:CW,height:CH/(total-1)*2,fill:"rgba(147,197,253,0.25)"}),
+        // Zone rouge relégation
+        React.createElement("rect", {x:PL,y:yS(total-2),width:CW,height:CH/(total-1)*3,fill:"rgba(252,165,165,0.25)"}),
+        // Lignes horizontales
+        Array.from({length:total},function(_,i){
+          var p=i+1, y=yS(p);
+          return React.createElement("g",{key:"h"+p},
+            React.createElement("line",{x1:PL,y1:y,x2:W-PR,y2:y,stroke:"#f1f5f9",strokeWidth:1}),
+            React.createElement("text",{x:PL-4,y:y+3.5,fontSize:8,fill:"#94a3b8",textAnchor:"end"},p)
           );
         }),
-
-        // Axes journées (bas)
-        prog.filter(function(p,i){return i===0||i===prog.length-1||p.j%3===0;}).map(function(p) {
-          return React.createElement("text", {
-            key:"jlabel"+p.j,
-            x:xScale(p.j), y:H-8,
-            fontSize:9, fill:"#94a3b8", textAnchor:"middle"
-          }, "J"+p.j);
+        // Labels journées
+        prog.filter(function(p,i){return i===0||i===prog.length-1||p.j%5===0;}).map(function(p){
+          return React.createElement("text",{key:"j"+p.j,x:xS(p.j),y:H-6,fontSize:8,fill:"#94a3b8",textAnchor:"middle"},"J"+p.j);
         }),
-
-        // Ligne de progression
-        React.createElement("path", {
-          d:pathD,
-          fill:"none",stroke:"#1e293b",strokeWidth:2.5,
-          strokeLinejoin:"round",strokeLinecap:"round"
-        }),
-
-        // Points + logos sur chaque journée
-        prog.map(function(p, i) {
-          var x = xScale(p.j);
-          var y = yScale(p.position);
-          var isLast = i === prog.length-1;
-          var showLogo = isLast || i===0 || i%4===3;
-          var logoSize = 18;
-
-          return React.createElement("g", {key:"point"+p.j},
-            // Cercle de fond blanc
-            React.createElement("circle", {cx:x,cy:y,r:isLast?10:7,fill:"#fff",stroke:"#1e293b",strokeWidth:isLast?2.5:1.5}),
-            // Logo de l'équipe
-            showLogo && React.createElement("image", {
-              href:teamLogo,
-              x:x-logoSize/2, y:y-logoSize/2,
-              width:logoSize, height:logoSize,
-              style:{clipPath:"circle(45%)"}
-            }),
-            // Petite position si pas de logo
-            !showLogo && React.createElement("text", {
-              x:x,y:y+3,fontSize:7,fill:"#1e293b",textAnchor:"middle",fontWeight:"700"
-            }, p.position)
+        // Ligne courbe
+        React.createElement("path",{d:pathD,fill:"none",stroke:"#1e293b",strokeWidth:2.5,strokeLinejoin:"round",strokeLinecap:"round"}),
+        // Points
+        prog.map(function(p,i){
+          var x=xS(p.j), y=yS(p.position);
+          var isLast=i===prog.length-1;
+          var show=isLast||i===0||i%5===4;
+          return React.createElement("g",{key:"pt"+p.j},
+            React.createElement("circle",{cx:x,cy:y,r:isLast?9:5,fill:"#fff",stroke:posColor(p.position),strokeWidth:isLast?2.5:1.5}),
+            show && React.createElement("image",{href:teamLogo,x:x-7,y:y-7,width:14,height:14})
           );
         })
+      ),
+      // Légende
+      React.createElement("div",{style:{display:"flex",gap:16,justifyContent:"center",padding:"8px 0 0",flexWrap:"wrap"}},
+        React.createElement("div",{style:{display:"flex",alignItems:"center",gap:4}},
+          React.createElement("div",{style:{width:10,height:10,background:"rgba(134,239,172,0.6)",borderRadius:2}}),
+          React.createElement("span",{style:{fontSize:10,color:"#64748b"}},"Champion")
+        ),
+        React.createElement("div",{style:{display:"flex",alignItems:"center",gap:4}},
+          React.createElement("div",{style:{width:10,height:10,background:"rgba(147,197,253,0.6)",borderRadius:2}}),
+          React.createElement("span",{style:{fontSize:10,color:"#64748b"}},"Coupe")
+        ),
+        React.createElement("div",{style:{display:"flex",alignItems:"center",gap:4}},
+          React.createElement("div",{style:{width:10,height:10,background:"rgba(252,165,165,0.6)",borderRadius:2}}),
+          React.createElement("span",{style:{fontSize:10,color:"#64748b"}},"Relégation")
+        )
       )
     ),
 
-    // Légende
-    React.createElement("div", {style:{
-      display:"flex",gap:12,padding:"12px 16px",
-      justifyContent:"center",flexWrap:"wrap"
-    }},
-      React.createElement("div", {style:{display:"flex",alignItems:"center",gap:4}},
-        React.createElement("div", {style:{width:12,height:12,background:"rgba(134,239,172,0.6)",borderRadius:2}}),
-        React.createElement("span", {style:{fontSize:11,color:"#64748b"}}, "Champion")
+    // Tableau journées
+    React.createElement("div",{style:{background:"#fff",margin:"0 12px",borderRadius:12,overflow:"hidden",boxShadow:"0 1px 4px rgba(0,0,0,.06)"}},
+      React.createElement("div",{style:{padding:"10px 16px",borderBottom:"1px solid #f1f5f9",fontSize:11,fontWeight:700,color:"#64748b",textTransform:"uppercase"}},
+        "Détail par journée"
       ),
-      React.createElement("div", {style:{display:"flex",alignItems:"center",gap:4}},
-        React.createElement("div", {style:{width:12,height:12,background:"rgba(147,197,253,0.6)",borderRadius:2}}),
-        React.createElement("span", {style:{fontSize:11,color:"#64748b"}}, "Coupe d'Algérie")
-      ),
-      React.createElement("div", {style:{display:"flex",alignItems:"center",gap:4}},
-        React.createElement("div", {style:{width:12,height:12,background:"rgba(252,165,165,0.6)",borderRadius:2}}),
-        React.createElement("span", {style:{fontSize:11,color:"#64748b"}}, "Relégation")
-      )
-    ),
-
-    // Tableau résumé journée par journée
-    React.createElement("div", {style:{margin:"0 12px 16px",background:"#fff",borderRadius:12,overflow:"hidden",boxShadow:"0 1px 4px rgba(0,0,0,0.06)"}},
-      React.createElement("div", {style:{padding:"12px 16px",borderBottom:"1px solid #f1f5f9",fontSize:12,fontWeight:700,color:"#64748b"}},
-        "DÉTAIL PAR JOURNÉE"
-      ),
-      React.createElement("div", {style:{display:"flex",flexWrap:"wrap",gap:1,background:"#f1f5f9"}},
-        prog.map(function(p) {
-          var color = p.position<=2?"#16a34a":p.position<=4?"#2563eb":p.position>total-3?"#dc2626":"#0f172a";
-          return React.createElement("div", {
-            key:"detail"+p.j,
-            style:{
-              background:"#fff", padding:"8px 12px",
-              display:"flex",flexDirection:"column",alignItems:"center",
-              minWidth:48,flex:1
-            }
-          },
-            React.createElement("div", {style:{fontSize:9,color:"#94a3b8",marginBottom:2}}, "J"+p.j),
-            React.createElement("div", {style:{fontSize:15,fontWeight:800,color:color}}, p.position),
-            React.createElement("div", {style:{fontSize:9,color:"#94a3b8"}}, p.points+"pts")
+      React.createElement("div",{style:{display:"flex",flexWrap:"wrap",gap:1,background:"#f1f5f9"}},
+        prog.map(function(p){
+          return React.createElement("div",{key:"d"+p.j,style:{background:"#fff",padding:"8px 6px",display:"flex",flexDirection:"column",alignItems:"center",minWidth:44,flex:1}},
+            React.createElement("div",{style:{fontSize:9,color:"#94a3b8",marginBottom:1}},"J"+p.j),
+            React.createElement("div",{style:{fontSize:14,fontWeight:800,color:posColor(p.position)}},p.position+"e"),
+            React.createElement("div",{style:{fontSize:9,color:"#94a3b8"}},p.points+"pts")
           );
         })
       )
     )
   );
 }
+
 
 function TeamPage({ teamId, teamName, teamLogo, leagueId, season, onClose, onTeam }) {
   const [info,      setInfo]      = useState(null);
