@@ -13391,30 +13391,94 @@ function TeamPage({ teamId, teamName, teamLogo, leagueId, season, onClose, onTea
                 );
               }
 
-              // ── Mode classement normal (Ligue 1, etc.) ──
-              return React.createElement("div",null,
-                React.createElement("div",{style:S.standHdr},
-                  React.createElement("span",{style:{width:28,fontSize:10,fontWeight:700,color:"#94a3b8",textAlign:"center"}},"#"),
-                  React.createElement("span",{style:{flex:1,fontSize:10,fontWeight:700,color:"#94a3b8",marginLeft:8}},"ÉQUIPE"),
-                  React.createElement("span",{style:{width:32,fontSize:10,fontWeight:700,color:"#94a3b8",textAlign:"center"}},"MJ"),
-                  React.createElement("span",{style:{width:40,fontSize:10,fontWeight:700,color:"#94a3b8",textAlign:"center"}},"B"),
-                  React.createElement("span",{style:{width:32,fontSize:10,fontWeight:800,color:"#0f172a",textAlign:"center"}},"PTS")
+              // ── Mode classement normal — même design que l'onglet Classement ──
+              var getZone = function(rank, total) {
+                if(selLeagueId === 186) {
+                  if(rank <= 2) return {bg:"rgba(37,99,235,.07)",bar:"#2563eb",label:"CAF"};
+                  if(rank >= total-2) return {bg:"rgba(239,68,68,.07)",bar:"#ef4444",label:"REL"};
+                }
+                if([39,140,135,78,61].indexOf(selLeagueId)!==-1) {
+                  if(rank <= 4) return {bg:"rgba(37,99,235,.07)",bar:"#2563eb",label:"LDC"};
+                  if(rank === 5) return {bg:"rgba(234,179,8,.07)",bar:"#eab308",label:"LEL"};
+                  if(rank >= total-2) return {bg:"rgba(239,68,68,.07)",bar:"#ef4444",label:"REL"};
+                }
+                return null;
+              };
+              var total = rows.length;
+              return React.createElement("div",{style:{background:"#fff",borderRadius:16,overflow:"hidden",margin:"0 12px 12px",boxShadow:"0 1px 8px rgba(15,23,42,.07)"}},
+                // Header colonnes
+                React.createElement("div",{style:{display:"flex",alignItems:"center",padding:"6px 12px",background:"#f8fafc",borderBottom:"1px solid #f1f5f9"}},
+                  React.createElement("div",{style:{width:24,fontSize:9,fontWeight:700,color:"#94a3b8",textAlign:"center"}},"#"),
+                  React.createElement("div",{style:{flex:1,fontSize:9,fontWeight:700,color:"#94a3b8",paddingLeft:8}},"ÉQUIPE"),
+                  React.createElement("div",{style:{width:26,fontSize:9,fontWeight:700,color:"#94a3b8",textAlign:"center"}},"MJ"),
+                  React.createElement("div",{style:{width:26,fontSize:9,fontWeight:700,color:"#22c55e",textAlign:"center"}},"V"),
+                  React.createElement("div",{style:{width:26,fontSize:9,fontWeight:700,color:"#94a3b8",textAlign:"center"}},"N"),
+                  React.createElement("div",{style:{width:26,fontSize:9,fontWeight:700,color:"#ef4444",textAlign:"center"}},"D"),
+                  React.createElement("div",{style:{width:26,fontSize:9,fontWeight:700,color:"#94a3b8",textAlign:"center"}},"DB"),
+                  React.createElement("div",{style:{width:32,fontSize:9,fontWeight:700,color:"#0f172a",textAlign:"center"}},"PTS")
                 ),
+                // Lignes
                 rows.map(function(r,i){
-                  var active=r.team&&r.team.id===teamId;
-                  return React.createElement("div",{key:i,style:S.standRow(active)},
-                    React.createElement("div",{style:{width:28,height:28,borderRadius:8,background:active?"#ef4444":"transparent",display:"flex",alignItems:"center",justifyContent:"center",flexShrink:0}},
-                      React.createElement("span",{style:{fontSize:12,fontWeight:700,color:active?"#fff":"#64748b"}},r.rank)
+                  var active = r.team && r.team.id === teamId;
+                  var isFirst = r.rank === 1;
+                  var zone = getZone(r.rank, total);
+                  var form = r.form || "";
+                  var gd = ((r.all&&r.all.goals&&r.all.goals.for)||0) - ((r.all&&r.all.goals&&r.all.goals.against)||0);
+                  return React.createElement("div",{
+                    key:i,
+                    style:{
+                      display:"flex",alignItems:"center",padding:"9px 12px",
+                      borderBottom:i<rows.length-1?"1px solid #f8fafc":"none",
+                      background:isFirst?"rgba(0,193,112,.05)":zone?zone.bg:active?"rgba(239,68,68,.05)":"#fff",
+                      borderLeft:zone?("3px solid "+zone.bar):isFirst?"3px solid #00c170":active?"3px solid #ef4444":"3px solid transparent",
+                      cursor:"pointer"
+                    },
+                    onClick:function(){onTeam&&onTeam(r.team&&r.team.id,r.team&&r.team.name,r.team&&r.team.logo,selLeagueId,selSeason);}
+                  },
+                    // Rang
+                    React.createElement("div",{style:{width:24,textAlign:"center",flexShrink:0}},
+                      isFirst
+                        ? React.createElement("span",{style:{fontSize:14}},"🥇")
+                        : React.createElement("span",{style:{fontSize:12,fontWeight:700,color:zone?zone.bar:active?"#ef4444":"#64748b"}},r.rank)
                     ),
-                    React.createElement("div",{style:{flex:1,display:"flex",alignItems:"center",gap:8,marginLeft:4,minWidth:0}},
-                      React.createElement("img",{src:r.team&&r.team.logo,style:{width:22,height:22,objectFit:"contain",flexShrink:0},onError:function(e){e.target.style.display="none";}}),
-                      React.createElement("span",{style:{fontSize:13,fontWeight:active?700:400,color:"#0f172a",overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap"}},r.team&&r.team.name)
+                    // Equipe + forme
+                    React.createElement("div",{style:{flex:1,display:"flex",alignItems:"center",gap:8,minWidth:0,paddingLeft:4}},
+                      React.createElement(Logo,{src:r.team&&r.team.logo,size:20}),
+                      React.createElement("div",{style:{minWidth:0}},
+                        React.createElement("div",{style:{fontSize:13,fontWeight:active||isFirst?700:500,color:"#0f172a",overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap"}},r.team&&r.team.name),
+                        form && React.createElement("div",{style:{display:"flex",gap:2,marginTop:2}},
+                          form.slice(-5).split("").map(function(fc,fi){
+                            return React.createElement("div",{key:fi,style:{width:10,height:10,borderRadius:3,background:fc==="W"?"#22c55e":fc==="D"?"#f59e0b":"#ef4444",flexShrink:0}});
+                          })
+                        )
+                      )
                     ),
-                    React.createElement("span",{style:{width:32,fontSize:12,color:"#64748b",textAlign:"center"}},r.all&&r.all.played),
-                    React.createElement("span",{style:{width:40,fontSize:12,color:"#64748b",textAlign:"center"}},(r.all&&r.all.goals)?r.all.goals.for+":"+r.all.goals.against:""),
-                    React.createElement("span",{style:{width:32,fontSize:13,fontWeight:700,color:active?"#ef4444":"#0f172a",textAlign:"center"}},r.points)
+                    React.createElement("div",{style:{width:26,textAlign:"center",fontSize:12,color:"#64748b",flexShrink:0}},r.all&&r.all.played||0),
+                    React.createElement("div",{style:{width:26,textAlign:"center",fontSize:12,fontWeight:600,color:"#22c55e",flexShrink:0}},r.all&&r.all.win||0),
+                    React.createElement("div",{style:{width:26,textAlign:"center",fontSize:12,color:"#64748b",flexShrink:0}},r.all&&r.all.draw||0),
+                    React.createElement("div",{style:{width:26,textAlign:"center",fontSize:12,fontWeight:600,color:"#ef4444",flexShrink:0}},r.all&&r.all.lose||0),
+                    React.createElement("div",{style:{width:26,textAlign:"center",fontSize:11,color:"#64748b",flexShrink:0}},(gd>=0?"+":"")+gd),
+                    React.createElement("div",{style:{width:32,textAlign:"center",flexShrink:0}},
+                      React.createElement("div",{style:{background:isFirst?"#00c170":zone?zone.bar:active?"#ef4444":"#f1f5f9",color:isFirst||zone||active?"#fff":"#0f172a",borderRadius:8,padding:"3px 0",fontSize:13,fontWeight:900,minWidth:28,display:"inline-block"}},r.points)
+                    )
                   );
-                })
+                }),
+                // Légende zones
+                React.createElement("div",{style:{display:"flex",gap:12,padding:"8px 14px",borderTop:"1px solid #f1f5f9",flexWrap:"wrap"}},
+                  selLeagueId===186
+                    ? [["#2563eb","CAF"],["#ef4444","Relégation"]].map(function(z){
+                        return React.createElement("div",{key:z[1],style:{display:"flex",alignItems:"center",gap:4}},
+                          React.createElement("div",{style:{width:8,height:8,borderRadius:2,background:z[0]}}),
+                          React.createElement("span",{style:{fontSize:9,color:"#94a3b8",fontWeight:600}},z[1])
+                        );
+                      })
+                    : [["#2563eb","LDC"],["#eab308","LEL"],["#ef4444","Relégation"]].map(function(z){
+                        return React.createElement("div",{key:z[1],style:{display:"flex",alignItems:"center",gap:4}},
+                          React.createElement("div",{style:{width:8,height:8,borderRadius:2,background:z[0]}}),
+                          React.createElement("span",{style:{fontSize:9,color:"#94a3b8",fontWeight:600}},z[1])
+                        );
+                      })
+                )
               );
             })()
       ),
