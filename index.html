@@ -3415,6 +3415,86 @@ function PlayerPage({ playerId, playerName, playerPhoto, playerPos, playerNumber
             runBatch();
           };
           loadMatchStats(allFixForStats);
+
+          // ── Pour les matchs Ligue 1 Algérie: charger depuis Supabase ──
+          var algFixtures = allFixForStats.filter(function(f) {
+            return f.league && f.league.id === 186;
+          });
+          var _pName = playerName || '';
+          if(algFixtures.length > 0 && _pName) {
+            var SB = 'https://iqeqlsxjiklygywjirqs.supabase.co/rest/v1/algeria_lineups';
+            var SBH = { 'apikey': SB_KEY, 'Authorization': 'Bearer '+SB_KEY };
+            // Chercher par nom du joueur dans les lineups
+            // On cherche tous les matchs de la saison
+            fetch(SB+'?select=fixture_id,home_players,away_players,home_subs,away_subs,home_team,away_team,match_date&order=match_date.desc&limit=50', { headers: SBH })
+              .then(function(r){ return r.json(); })
+              .then(function(lineupRows) {
+                if(!lineupRows || !lineupRows.length) return;
+                // Normaliser le nom du joueur pour matching
+                var pNameLower = (_pName||"").toLowerCase().replace(/[^a-z]/gi,"");
+                var pParts = (_pName||"").toLowerCase().split(" ");
+                var pLast = pParts[pParts.length-1].replace(/[^a-z]/gi,"");
+
+                var matchName = function(playerObj) {
+                  if(!playerObj || !playerObj.name) return false;
+                  var n = playerObj.name.toLowerCase().replace(/[^a-z]/gi,"");
+                  var nParts = playerObj.name.toLowerCase().split(" ");
+                  var nFirst = nParts[0].replace(/[^a-z]/gi,"");
+                  // Matching: nom de famille ou nom complet
+                  return n.includes(pLast) || pNameLower.includes(nFirst) || n.includes(pNameLower) || pNameLower.includes(n);
+                };
+
+                setFixtureStats(function(prev) {
+                  var next = Object.assign({}, prev);
+                  lineupRows.forEach(function(row) {
+                    // Trouver le fixture_id correspondant
+                    var fid = row.fixture_id;
+                    if(!fid) {
+                      // Chercher par date+équipe dans allFixForStats
+                      var matchedFix = algFixtures.find(function(f) {
+                        return f.fixture && f.fixture.date && f.fixture.date.slice(0,10) === row.match_date;
+                      });
+                      if(matchedFix) fid = matchedFix.fixture.id;
+                    }
+                    if(!fid) return;
+
+                    var hp = row.home_players || [];
+                    var ap = row.away_players || [];
+                    var hs = row.home_subs || [];
+                    var as_ = row.away_subs || [];
+
+                    var isStarter = hp.some(matchName) || ap.some(matchName);
+                    var isOnBench = !isStarter && (hs.some(matchName) || as_.some(matchName));
+                    var isAbsent = !isStarter && !isOnBench;
+
+                    // Trouver les stats du joueur (minutes, buts, cartons)
+                    var allPlayers = hp.concat(ap).concat(hs).concat(as_);
+                    var pData = allPlayers.find(matchName);
+
+                    if(isStarter || isOnBench) {
+                      next[fid] = {
+                        minutes: isStarter ? (pData && pData.minutes) || 90 : null,
+                        goals: pData && pData.goals || null,
+                        yellowCard: pData && pData.yellow || false,
+                        redCard: pData && pData.red || false,
+                        onBench: isOnBench,
+                        rating: null,
+                        saves: null,
+                        conceded: null,
+                        assists: null,
+                        notFound: false
+                      };
+                    } else {
+                      // Absent seulement si on a des données dans la table (lineup disponible)
+                      if(hp.length > 0 || ap.length > 0) {
+                        next[fid] = { notFound: true, injured: false, algerian: true };
+                      }
+                    }
+                  });
+                  return next;
+                });
+              }).catch(function(){});
+          }
         });
       }
     }).catch(()=>{});
@@ -3832,7 +3912,9 @@ function PlayerPage({ playerId, playerName, playerPhoto, playerPos, playerNumber
                     : fStats && fStats.notFound
                     ? (fStats.injured
                         ? React.createElement("span",{style:{fontSize:10,color:"#f97316",fontStyle:"italic"}}, "🤕 Blessé")
-                        : null)
+                        : (fStats.algerian
+                            ? null
+                            : React.createElement("span",{style:{fontSize:10,color:"#cbd5e1",fontStyle:"italic"}}, "Absent")))
                     : React.createElement("div",{style:{width:36,height:20,borderRadius:5,background:"#f1f5f9",animation:"pulse 1.2s ease-in-out infinite"}})
                 ),
                 done && React.createElement("div",{style:{display:"flex",flexDirection:"column",alignItems:"flex-end",gap:3,minWidth:20}},
