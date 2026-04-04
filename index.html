@@ -12619,6 +12619,7 @@ function TeamPage({ teamId, teamName, teamLogo, leagueId, season, onClose, onTea
         setStandingsFiltered(rows);
         setSelLeagueId(lid);
         setSelSeason(seas);
+        console.log("Init standings:", rows.length, "lid:", lid, "seas:", seas);
       }
 
       if(rSquad.status==="fulfilled") {
@@ -13311,6 +13312,8 @@ function TeamPage({ teamId, teamName, teamLogo, leagueId, season, onClose, onTea
           ? React.createElement("div",{style:{textAlign:"center",padding:"32px",color:"#94a3b8",fontSize:13}},"Chargement...")
           : (function(){
               var rows = standingsFiltered.length > 0 ? standingsFiltered : standings;
+              // Debug
+              console.log("CLASSEMENT rows:", rows.length, "filtered:", standingsFiltered.length, "standings:", standings.length, "selLeague:", selLeagueId);
               if(rows.length === 0) {
                 // Coupe / élimination directe → afficher les matchs
                 var cupMatches = results.filter(function(f){ return f.league && f.league.id === selLeagueId; });
