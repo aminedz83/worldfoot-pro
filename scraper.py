@@ -85,6 +85,19 @@ def get_today_fixtures():
 
             soup = BeautifulSoup(r.text, "html.parser")
 
+            # Debug — chercher toutes occurrences de "mid" dans le HTML
+            import re as re2
+            all_mids = re2.findall(r'mid[=:\s"\']+([A-Za-z0-9]{6,10})', r.text)
+            print(f"  'mid' dans HTML: {all_mids[:5]}")
+            
+            # Chercher URLs de matchs
+            match_urls = re2.findall(r'/match/[^\s"\'<>]{10,80}', r.text)
+            print(f"  URLs /match/: {match_urls[:3]}")
+            
+            # Chercher data-id ou data-match
+            data_attrs = re2.findall(r'data-(?:mid|id|match)[="\s:]+([A-Za-z0-9]+)', r.text)
+            print(f"  data-*: {data_attrs[:5]}")
+
             # Chercher liens avec mid=
             mid_links = soup.find_all("a", href=re.compile(r"mid="))
             print(f"  Liens mid= : {len(mid_links)}")
