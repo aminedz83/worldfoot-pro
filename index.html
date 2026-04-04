@@ -3497,6 +3497,7 @@ function PlayerPage({ playerId, playerName, playerPhoto, playerPos, playerNumber
   const age = player?.age;
   const birth = player?.birth?.date;
   const [marketVal, setMarketVal] = React.useState(null);
+  const [contractUntil, setContractUntil] = React.useState(null);
   
   // Charger valeur marchande
   React.useEffect(() => {
@@ -3542,7 +3543,10 @@ function PlayerPage({ playerId, playerName, playerPhoto, playerPos, playerNumber
           }
           return false;
         });
-        if(match && match.market_value) setMarketVal(match.market_value);
+        if(match) {
+          if(match.market_value) setMarketVal(match.market_value);
+          if(match.contract_until) setContractUntil(match.contract_until);
+        }
       }).catch(function(){});
       return;
     }
@@ -3632,18 +3636,28 @@ function PlayerPage({ playerId, playerName, playerPhoto, playerPos, playerNumber
         React.createElement("div", {style:{flex:1,minWidth:0}},
           React.createElement("div", {style:{fontSize:22,fontWeight:800,color:"#0f172a",lineHeight:1.1}}, name),
           React.createElement("div", {style:{fontSize:13,color:"#64748b",marginTop:4}},
-            [age && `${age} ans`, birth && `(${yyyymm(birth)})`].filter(Boolean).join(" ")
+            [age && ("Age: "+age), birth && ("("+yyyymm(birth)+")")].filter(Boolean).join(" ")
           ),
           marketVal && React.createElement("div", {style:{
-            fontSize:12,color:"#059669",fontWeight:700,marginTop:3
-          }}, "💰 " + (marketVal >= 1000000 ? (marketVal/1000000).toFixed(1).replace(".0","")+"M €" : marketVal >= 1000 ? Math.round(marketVal/1000)+"k €" : marketVal+" €")),
+            fontSize:13,color:"#0f172a",fontWeight:600,marginTop:4
+          }}, "Valeur marchande: €" + (marketVal >= 1000000 ? (marketVal/1000000).toFixed(1).replace(".0","")+"M" : marketVal >= 1000 ? Math.round(marketVal/1000)+"k" : marketVal)),
           currentClub && React.createElement("div", {style:{marginTop:8}},
             React.createElement("div",{style:{display:"flex",alignItems:"center",gap:8,padding:"8px 12px",background:"#f8fafc",borderRadius:10,border:"1px solid #f1f5f9"}},
-              React.createElement("img",{src:currentClub.team?.logo,style:{width:28,height:28,objectFit:"contain",flexShrink:0},onError:e=>e.target.style.display="none"}),
+              React.createElement("img",{src:currentClub.team?.logo,style:{width:28,height:28,objectFit:"contain",flexShrink:0},onError:function(e){e.target.style.display="none"}}),
               React.createElement("div",{style:{flex:1,minWidth:0}},
                 React.createElement("div",{style:{fontSize:13,fontWeight:700,color:"#0f172a"}},currentClub.team?.name),
-                info?._contract?.end && React.createElement("div",{style:{fontSize:11,color:"#94a3b8",marginTop:1}},
-                  "Contrat jusqu'au: "+new Date(info._contract.end).toLocaleDateString("fr-FR",{day:"2-digit",month:"2-digit",year:"numeric"})
+                React.createElement("div",{style:{fontSize:11,color:"#64748b",marginTop:1}},
+                  (function() {
+                    var contractDate = null;
+                    if(info && info._contract && info._contract.end) contractDate = info._contract.end;
+                    if(!contractDate && contractUntil) contractDate = contractUntil;
+                    if(!contractDate) return null;
+                    try {
+                      var d = new Date(contractDate);
+                      if(isNaN(d.getTime())) return null;
+                      return "Contrat jusqu'au: " + d.toLocaleDateString("fr-FR",{day:"2-digit",month:"2-digit",year:"numeric"});
+                    } catch(e) { return null; }
+                  })()
                 )
               ),
               React.createElement("span",{style:{fontSize:12,color:"#64748b",flexShrink:0}},posLabel(pos))
