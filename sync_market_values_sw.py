@@ -74,24 +74,28 @@ def scrape_player_page(player_url):
         if mv_pattern:
             result["market_value"] = parse_market_value(mv_pattern.group())
 
-        # Date de contrat — plusieurs patterns possibles
-        # Pattern 1: "Contrat jusqu'au: 30.06.2026"
+        # Date de contrat — chercher spécifiquement après "contract" ou "contrat"
+        # IMPORTANT: filtrer les dates de naissance (avant 2020)
+        # Un contrat doit être >= 2020
+        contract_found = None
         for pat in [
-            r"[Cc]ontrat[^\d]{0,30}(\d{2}[./]\d{2}[./]\d{4})",
-            r"[Cc]ontract[^\d]{0,30}(\d{2}[./]\d{2}[./]\d{4})",
-            r"[Ee]xpires?[^\d]{0,30}(\d{2}[./]\d{2}[./]\d{4})",
-            r"[Jj]usqu.au[^\d]{0,20}(\d{2}[./]\d{2}[./]\d{4})",
-            # Pattern dans les spans wcl
-            r"wcl-scores-simple-text[^>]+>([^<]*\d{4}[^<]*)<",
-            # Date seule après "Contrat"
-            r"[Cc]ontrat.*?(\d{1,2}[./]\d{1,2}[./]20\d{2})",
+            r"[Cc]ontrat[^<]{0,50}?(\d{2}[./]\d{2}[./]\d{4})",
+            r"[Cc]ontract[^<]{0,50}?(\d{2}[./]\d{2}[./]\d{4})",
+            r"[Jj]usqu.au[^<]{0,30}?(\d{2}[./]\d{2}[./]\d{4})",
+            r"[Ee]xpires?[^<]{0,30}?(\d{2}[./]\d{2}[./]\d{4})",
+            r"contract.until[^<]{0,30}?(\d{2}[./]\d{2}[./]\d{4})",
         ]:
-            m = re.search(pat, html, re.DOTALL)
+            m = re.search(pat, html, re.IGNORECASE)
             if m:
                 d = parse_contract_date(m.group(1).strip())
                 if d:
-                    result["contract_until"] = d
-                    break
+                    # Vérifier que c'est bien une date de contrat (>= 2020)
+                    year = int(d[:4])
+                    if year >= 2020:
+                        contract_found = d
+                        break
+        if contract_found:
+            result["contract_until"] = contract_found
 
         return result
     except Exception as e:
