@@ -74,26 +74,40 @@ def scrape_player_page(player_url):
         if mv_pattern:
             result["market_value"] = parse_market_value(mv_pattern.group())
 
-        # Date de contrat — chercher spécifiquement après "contract" ou "contrat"
-        # IMPORTANT: filtrer les dates de naissance (avant 2020)
-        # Un contrat doit être >= 2020
+        # Date de contrat
+        # Stratégie: chercher TOUTES les dates >= 2020 sur la page
+        # et prendre celle qui suit "contrat" ou "contract"
         contract_found = None
+
+        # D'abord chercher avec mot-clé contrat (permet balises HTML entre les mots)
         for pat in [
-            r"[Cc]ontrat[^<]{0,50}?(\d{2}[./]\d{2}[./]\d{4})",
-            r"[Cc]ontract[^<]{0,50}?(\d{2}[./]\d{2}[./]\d{4})",
-            r"[Jj]usqu.au[^<]{0,30}?(\d{2}[./]\d{2}[./]\d{4})",
-            r"[Ee]xpires?[^<]{0,30}?(\d{2}[./]\d{2}[./]\d{4})",
-            r"contract.until[^<]{0,30}?(\d{2}[./]\d{2}[./]\d{4})",
+            r"[Cc]ontrat.{0,200}?(\d{2}[./]\d{2}[./]\d{4})",
+            r"[Cc]ontract.{0,200}?(\d{2}[./]\d{2}[./]\d{4})",
+            r"[Jj]usqu.au.{0,100}?(\d{2}[./]\d{2}[./]\d{4})",
+            r"[Ee]xpir.{0,100}?(\d{2}[./]\d{2}[./]\d{4})",
         ]:
-            m = re.search(pat, html, re.IGNORECASE)
-            if m:
+            for m in re.finditer(pat, html, re.IGNORECASE | re.DOTALL):
                 d = parse_contract_date(m.group(1).strip())
                 if d:
-                    # Vérifier que c'est bien une date de contrat (>= 2020)
                     year = int(d[:4])
+                    # Contrat = date >= 2020, pas une date de naissance
                     if year >= 2020:
                         contract_found = d
                         break
+            if contract_found:
+                break
+
+        # Fallback: chercher toutes les dates >= 2025 sur la page
+        # (une date de contrat est forcément dans le futur proche)
+        if not contract_found:
+            for m in re.finditer(r"(\d{2}[./]\d{2}[./]\d{4})", html):
+                d = parse_contract_date(m.group(1).strip())
+                if d:
+                    year = int(d[:4])
+                    if year >= 2025:
+                        contract_found = d
+                        break
+
         if contract_found:
             result["contract_until"] = contract_found
 
