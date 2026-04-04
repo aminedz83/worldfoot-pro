@@ -139,6 +139,7 @@ for club_name, info in SW_CLUBS.items():
             time.sleep(0.3)
 
             record = {
+                "tm_id": p["sw_player_id"],
                 "sw_player_id": p["sw_player_id"],
                 "sw_url": p["sw_url"],
                 "name": p["name"],
