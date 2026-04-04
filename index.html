@@ -12281,6 +12281,17 @@ function ProgressionPanel(props) {
         }
       });
       if(progression.length>0){var last=progression[progression.length-1];setCurrentPos(last.position);setCurrentPts(last.points);}
+      // Debug: afficher dans console
+      console.log("=== PROGRESSION DEBUG ===");
+      console.log("Total fixtures FT:", fixtures.length);
+      console.log("Journées trouvées:", journees);
+      console.log("Progression:", progression.map(function(p){return "J"+p.j+":"+p.position+"e("+p.points+"pts) vs "+p.opponentName+" "+p.scoreStr;}));
+      // Journées manquantes (pas de match trouvé)
+      var allJournees = [];
+      for(var jj=1;jj<=journees[journees.length-1];jj++) allJournees.push(jj);
+      var progJournees = progression.map(function(p){return p.j;});
+      var missing = allJournees.filter(function(j){return progJournees.indexOf(j)===-1;});
+      console.log("Journées MANQUANTES:", missing);
       setProg(progression); setLoading(false);
     }).catch(function(e){setError("Erreur: "+e.message);setLoading(false);});
   }, [teamId]);
