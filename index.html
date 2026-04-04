@@ -12202,19 +12202,17 @@ function ProgressionPanel(props) {
   var teamLogo = props.teamLogo;
   var season = props.season;
   var _s = season || (new Date().getMonth() >= 6 ? new Date().getFullYear() : new Date().getFullYear() - 1);
-
   var [loading, setLoading] = React.useState(true);
   var [prog, setProg] = React.useState([]);
   var [total, setTotal] = React.useState(16);
   var [currentPos, setCurrentPos] = React.useState(null);
   var [currentPts, setCurrentPts] = React.useState(0);
+  var [tooltip, setTooltip] = React.useState(null);
   var [error, setError] = React.useState(null);
 
   React.useEffect(function() {
     if(!teamId) return;
-    setLoading(true);
-    setError(null);
-
+    setLoading(true); setError(null);
     Promise.all([
       api('/fixtures?league=186&season='+_s+'&status=FT', 3600000),
       api('/standings?league=186&season='+_s, 3600000)
@@ -12222,202 +12220,164 @@ function ProgressionPanel(props) {
       var fixtures = results[0] || [];
       var standingsData = results[1] || [];
       var allTeams = [];
-      try {
-        allTeams = standingsData[0].league.standings[0] || [];
-      } catch(e) {}
-
+      try { allTeams = standingsData[0].league.standings[0] || []; } catch(e) {}
       setTotal(allTeams.length || 16);
-
-      // Trier matchs par date
-      var sorted = fixtures.slice().sort(function(a, b) {
-        return new Date(a.fixture.date) - new Date(b.fixture.date);
-      });
-
-      // Grouper par journée
+      var teamInfo = {};
+      allTeams.forEach(function(t) { teamInfo[t.team.id] = {logo:t.team.logo, name:t.team.name}; });
+      var sorted = fixtures.slice().sort(function(a,b){return new Date(a.fixture.date)-new Date(b.fixture.date);});
       var journeeMap = {};
       sorted.forEach(function(f) {
         var round = f.league && f.league.round || '';
-        var nums = round.match(/\d+/);
+        var nums = round.match(/[0-9]+/);
         var jNum = nums ? parseInt(nums[0]) : 0;
         if(!jNum || jNum > 30) return;
         if(!journeeMap[jNum]) journeeMap[jNum] = [];
         journeeMap[jNum].push(f);
       });
-
-      // Points cumulés de toutes les équipes
-      var teamPoints = {};
-      var teamGD = {};
-      var teamGF = {};
-      allTeams.forEach(function(t) {
-        teamPoints[t.team.id] = 0;
-        teamGD[t.team.id] = 0;
-        teamGF[t.team.id] = 0;
-      });
-
+      var teamPoints={}, teamGD={}, teamGF={};
+      allTeams.forEach(function(t){teamPoints[t.team.id]=0;teamGD[t.team.id]=0;teamGF[t.team.id]=0;});
       var journees = Object.keys(journeeMap).map(Number).sort(function(a,b){return a-b;});
       var progression = [];
-
       journees.forEach(function(jNum) {
+        var ourMatch = null;
+        journeeMap[jNum].forEach(function(f){
+          if(f.teams.home.id===teamId||f.teams.away.id===teamId) ourMatch=f;
+        });
         journeeMap[jNum].forEach(function(f) {
-          var hId = f.teams.home.id;
-          var aId = f.teams.away.id;
-          var hG = f.goals.home;
-          var aG = f.goals.away;
-          if(hG === null || aG === null) return;
-          if(!teamPoints[hId]) teamPoints[hId] = 0;
-          if(!teamPoints[aId]) teamPoints[aId] = 0;
-          if(!teamGD[hId]) teamGD[hId] = 0;
-          if(!teamGD[aId]) teamGD[aId] = 0;
-          if(!teamGF[hId]) teamGF[hId] = 0;
-          if(!teamGF[aId]) teamGF[aId] = 0;
-          teamGD[hId] += hG - aG;
-          teamGD[aId] += aG - hG;
-          teamGF[hId] += hG;
-          teamGF[aId] += aG;
-          if(hG > aG) teamPoints[hId] += 3;
-          else if(hG < aG) teamPoints[aId] += 3;
-          else { teamPoints[hId] += 1; teamPoints[aId] += 1; }
+          var hId=f.teams.home.id, aId=f.teams.away.id;
+          var hG=f.goals.home, aG=f.goals.away;
+          if(hG===null||aG===null) return;
+          if(!teamPoints[hId]) teamPoints[hId]=0;
+          if(!teamPoints[aId]) teamPoints[aId]=0;
+          if(!teamGD[hId]) teamGD[hId]=0; if(!teamGD[aId]) teamGD[aId]=0;
+          if(!teamGF[hId]) teamGF[hId]=0; if(!teamGF[aId]) teamGF[aId]=0;
+          teamGD[hId]+=hG-aG; teamGD[aId]+=aG-hG;
+          teamGF[hId]+=hG; teamGF[aId]+=aG;
+          if(hG>aG) teamPoints[hId]+=3;
+          else if(hG<aG) teamPoints[aId]+=3;
+          else {teamPoints[hId]+=1;teamPoints[aId]+=1;}
         });
-
-        // Classement après cette journée
-        var ranking = Object.keys(teamPoints).map(function(tid) {
-          return { id: parseInt(tid), pts: teamPoints[tid], gd: teamGD[tid]||0, gf: teamGF[tid]||0 };
-        }).sort(function(a,b) {
-          if(b.pts !== a.pts) return b.pts - a.pts;
-          if(b.gd !== a.gd) return b.gd - a.gd;
-          return b.gf - a.gf;
+        var ranking = Object.keys(teamPoints).map(function(tid){
+          return {id:parseInt(tid),pts:teamPoints[tid],gd:teamGD[tid]||0,gf:teamGF[tid]||0};
+        }).sort(function(a,b){
+          if(b.pts!==a.pts) return b.pts-a.pts;
+          if(b.gd!==a.gd) return b.gd-a.gd;
+          return b.gf-a.gf;
         });
-
-        var pos = -1;
-        for(var i=0;i<ranking.length;i++) { if(ranking[i].id===teamId){pos=i;break;} }
-        if(pos !== -1) {
-          progression.push({ j:jNum, position:pos+1, points:teamPoints[teamId]||0 });
+        var pos=-1;
+        for(var i=0;i<ranking.length;i++){if(ranking[i].id===teamId){pos=i;break;}}
+        if(pos!==-1) {
+          var opponentLogo="",opponentName="",scoreStr="",isHome=false;
+          if(ourMatch) {
+            isHome=ourMatch.teams.home.id===teamId;
+            var oppId=isHome?ourMatch.teams.away.id:ourMatch.teams.home.id;
+            opponentName=isHome?ourMatch.teams.away.name:ourMatch.teams.home.name;
+            var oppInfo=teamInfo[oppId];
+            opponentLogo=oppInfo?oppInfo.logo:"";
+            var hG2=ourMatch.goals.home, aG2=ourMatch.goals.away;
+            scoreStr=isHome?(teamName+" "+hG2+":"+aG2+" "+opponentName):(opponentName+" "+hG2+":"+aG2+" "+teamName);
+          }
+          progression.push({j:jNum,position:pos+1,points:teamPoints[teamId]||0,opponentLogo:opponentLogo,opponentName:opponentName,scoreStr:scoreStr,isHome:isHome});
         }
       });
-
-      if(progression.length > 0) {
-        var last = progression[progression.length-1];
-        setCurrentPos(last.position);
-        setCurrentPts(last.points);
-      }
-      setProg(progression);
-      setLoading(false);
-    }).catch(function(e) {
-      setError("Erreur chargement: "+e.message);
-      setLoading(false);
-    });
+      if(progression.length>0){var last=progression[progression.length-1];setCurrentPos(last.position);setCurrentPts(last.points);}
+      setProg(progression); setLoading(false);
+    }).catch(function(e){setError("Erreur: "+e.message);setLoading(false);});
   }, [teamId]);
 
-  if(loading) return React.createElement("div", {style:{textAlign:"center",padding:"60px 20px",color:"#94a3b8"}},
-    React.createElement("div", {style:{fontSize:14,marginTop:8}}, "Chargement progression...")
+  if(loading) return React.createElement("div",{style:{textAlign:"center",padding:"60px",color:"#94a3b8",fontSize:14}},"Chargement...");
+  if(error) return React.createElement("div",{style:{textAlign:"center",padding:"48px",color:"#ef4444",fontSize:13}},error);
+  if(prog.length===0) return React.createElement("div",{style:{textAlign:"center",padding:"48px",color:"#94a3b8"}},
+    React.createElement("div",{style:{fontSize:32}},"📈"),
+    React.createElement("div",{style:{fontSize:14,marginTop:8}},"Données non disponibles")
   );
 
-  if(error) return React.createElement("div", {style:{textAlign:"center",padding:"48px",color:"#ef4444",fontSize:13}}, error);
-
-  if(prog.length === 0) return React.createElement("div", {style:{textAlign:"center",padding:"48px",color:"#94a3b8"}},
-    React.createElement("div", {style:{fontSize:32,marginBottom:8}}, "📈"),
-    React.createElement("div", {style:{fontSize:14}}, "Données non disponibles")
-  );
-
-  // SVG Graphique
-  var W = 340, H = 260;
-  var PL = 30, PR = 16, PT = 16, PB = 32;
-  var CW = W - PL - PR;
-  var CH = H - PT - PB;
-  var maxJ = prog[prog.length-1].j;
-  var xS = function(j) { return PL + ((j-1)/(Math.max(maxJ-1,1)))*CW; };
-  var yS = function(p) { return PT + ((p-1)/(total-1))*CH; };
-
-  var pathD = prog.map(function(p,i) {
-    return (i===0?"M":"L")+xS(p.j).toFixed(1)+" "+yS(p.position).toFixed(1);
-  }).join(" ");
-
-  var posColor = function(p) {
+  var W=340,H=260,PL=28,PR=14,PT=14,PB=30;
+  var CW=W-PL-PR, CH=H-PT-PB;
+  var maxJ=prog[prog.length-1].j;
+  var xS=function(j){return PL+((j-1)/(Math.max(maxJ-1,1)))*CW;};
+  var yS=function(p){return PT+((p-1)/(total-1))*CH;};
+  var posColor=function(p){
     if(p<=2) return "#16a34a";
     if(p<=4) return "#2563eb";
     if(p>total-3) return "#dc2626";
     return "#0f172a";
   };
+  var pathD=prog.map(function(p,i){return (i===0?"M":"L")+xS(p.j).toFixed(1)+" "+yS(p.position).toFixed(1);}).join(" ");
 
-  return React.createElement("div", {style:{background:"#f2f3f5",minHeight:"100%",paddingBottom:24}},
-
-    // Header
-    React.createElement("div", {style:{background:"#fff",padding:"16px",display:"flex",alignItems:"center",gap:12,borderBottom:"1px solid #f1f5f9",marginBottom:12}},
-      React.createElement("img", {src:teamLogo,style:{width:44,height:44,objectFit:"contain"}}),
-      React.createElement("div", {style:{flex:1}},
-        React.createElement("div", {style:{fontSize:16,fontWeight:800,color:"#0f172a"}}, teamName),
-        React.createElement("div", {style:{fontSize:12,color:"#64748b",marginTop:2}}, "Saison "+_s+"/"+(_s+1).toString().slice(2)+" · "+prog.length+" journées jouées")
+  return React.createElement("div",{style:{background:"#f2f3f5",minHeight:"100%",paddingBottom:24},onClick:function(){setTooltip(null);}},
+    React.createElement("div",{style:{background:"#fff",padding:"14px 16px",display:"flex",alignItems:"center",gap:12,borderBottom:"1px solid #f1f5f9",marginBottom:12}},
+      React.createElement("img",{src:teamLogo,style:{width:40,height:40,objectFit:"contain"}}),
+      React.createElement("div",{style:{flex:1}},
+        React.createElement("div",{style:{fontSize:15,fontWeight:800,color:"#0f172a"}},teamName),
+        React.createElement("div",{style:{fontSize:12,color:"#64748b",marginTop:2}},"Saison "+_s+"/"+(_s+1).toString().slice(2)+" · "+prog.length+" journées")
       ),
-      currentPos && React.createElement("div", {style:{textAlign:"center",background:"#f8fafc",borderRadius:10,padding:"8px 12px"}},
-        React.createElement("div", {style:{fontSize:26,fontWeight:900,color:posColor(currentPos)}}, currentPos+"e"),
-        React.createElement("div", {style:{fontSize:11,color:"#94a3b8"}}, currentPts+" pts")
+      currentPos && React.createElement("div",{style:{textAlign:"center",background:"#f8fafc",borderRadius:10,padding:"8px 14px"}},
+        React.createElement("div",{style:{fontSize:24,fontWeight:900,color:posColor(currentPos)}},currentPos+"e"),
+        React.createElement("div",{style:{fontSize:11,color:"#94a3b8"}},currentPts+" pts")
       )
     ),
-
-    // Graphique
-    React.createElement("div", {style:{background:"#fff",margin:"0 12px 12px",borderRadius:12,padding:"12px 8px",boxShadow:"0 1px 4px rgba(0,0,0,.06)"}},
-      React.createElement("div", {style:{fontSize:11,fontWeight:700,color:"#64748b",padding:"0 8px 8px",textTransform:"uppercase",letterSpacing:.5}},
-        "Évolution au classement"
+    React.createElement("div",{style:{background:"#fff",margin:"0 12px 12px",borderRadius:12,padding:"10px 6px 6px",boxShadow:"0 1px 4px rgba(0,0,0,.06)",position:"relative"},onClick:function(e){e.stopPropagation();}},
+      React.createElement("div",{style:{fontSize:11,fontWeight:700,color:"#64748b",padding:"0 6px 6px",textTransform:"uppercase",letterSpacing:.5}},"Évolution — cliquez sur un logo"),
+      tooltip && React.createElement("div",{style:{
+        position:"absolute",left:Math.min(tooltip.x+8,160),top:Math.max(tooltip.y-90,8),
+        background:"#fff",borderRadius:10,padding:"10px 14px",
+        boxShadow:"0 4px 20px rgba(0,0,0,.18)",zIndex:100,minWidth:180,
+        border:"1px solid #e2e8f0",pointerEvents:"none"
+      }},
+        React.createElement("div",{style:{fontSize:12,fontWeight:800,color:"#0f172a",marginBottom:4}},tooltip.j+". Journée"),
+        React.createElement("div",{style:{fontSize:11,color:"#334155",marginBottom:3}},tooltip.scoreStr),
+        React.createElement("div",{style:{fontSize:11,color:"#64748b",marginBottom:2}},tooltip.position+". Classement"),
+        React.createElement("div",{style:{fontSize:11,color:"#64748b"}},tooltip.points+" points cumulés")
       ),
-      React.createElement("svg", {viewBox:"0 0 "+W+" "+H, style:{width:"100%",height:"auto",display:"block"}},
-        // Zone verte top2
-        React.createElement("rect", {x:PL,y:PT,width:CW,height:CH/(total-1)*2,fill:"rgba(134,239,172,0.25)"}),
-        // Zone bleue top4
-        React.createElement("rect", {x:PL,y:PT+CH/(total-1)*2,width:CW,height:CH/(total-1)*2,fill:"rgba(147,197,253,0.25)"}),
-        // Zone rouge relégation
-        React.createElement("rect", {x:PL,y:yS(total-2),width:CW,height:CH/(total-1)*3,fill:"rgba(252,165,165,0.25)"}),
-        // Lignes horizontales
+      React.createElement("svg",{viewBox:"0 0 "+W+" "+H,style:{width:"100%",height:"auto",display:"block",overflow:"visible"}},
+        React.createElement("rect",{x:PL,y:PT,width:CW,height:CH/(total-1)*2,fill:"rgba(134,239,172,0.25)"}),
+        React.createElement("rect",{x:PL,y:PT+CH/(total-1)*2,width:CW,height:CH/(total-1)*2,fill:"rgba(147,197,253,0.25)"}),
+        React.createElement("rect",{x:PL,y:yS(total-2),width:CW,height:CH/(total-1)*3,fill:"rgba(252,165,165,0.25)"}),
         Array.from({length:total},function(_,i){
-          var p=i+1, y=yS(p);
+          var p=i+1,y=yS(p);
           return React.createElement("g",{key:"h"+p},
             React.createElement("line",{x1:PL,y1:y,x2:W-PR,y2:y,stroke:"#f1f5f9",strokeWidth:1}),
             React.createElement("text",{x:PL-4,y:y+3.5,fontSize:8,fill:"#94a3b8",textAnchor:"end"},p)
           );
         }),
-        // Labels journées
-        prog.filter(function(p,i){return i===0||i===prog.length-1||p.j%5===0;}).map(function(p){
-          return React.createElement("text",{key:"j"+p.j,x:xS(p.j),y:H-6,fontSize:8,fill:"#94a3b8",textAnchor:"middle"},"J"+p.j);
+        prog.filter(function(p,i){return i===0||i===prog.length-1||p.j%4===0;}).map(function(p){
+          return React.createElement("text",{key:"j"+p.j,x:xS(p.j),y:H-4,fontSize:8,fill:"#94a3b8",textAnchor:"middle"},"J"+p.j);
         }),
-        // Ligne courbe
-        React.createElement("path",{d:pathD,fill:"none",stroke:"#1e293b",strokeWidth:2.5,strokeLinejoin:"round",strokeLinecap:"round"}),
-        // Points
+        React.createElement("path",{d:pathD,fill:"none",stroke:"#1e293b",strokeWidth:2,strokeLinejoin:"round",strokeLinecap:"round"}),
         prog.map(function(p,i){
           var x=xS(p.j), y=yS(p.position);
           var isLast=i===prog.length-1;
-          var show=isLast||i===0||i%5===4;
-          return React.createElement("g",{key:"pt"+p.j},
-            React.createElement("circle",{cx:x,cy:y,r:isLast?9:5,fill:"#fff",stroke:posColor(p.position),strokeWidth:isLast?2.5:1.5}),
-            show && React.createElement("image",{href:teamLogo,x:x-7,y:y-7,width:14,height:14})
+          var logoSrc=p.opponentLogo||teamLogo;
+          var sz=isLast?22:18;
+          return React.createElement("g",{key:"pt"+p.j,style:{cursor:"pointer"},
+            onClick:function(e){
+              e.stopPropagation();
+              setTooltip({j:p.j,x:x,y:y,scoreStr:p.scoreStr||"—",position:p.position,points:p.points});
+            }
+          },
+            React.createElement("circle",{cx:x,cy:y,r:sz/2+3,fill:"#fff",stroke:posColor(p.position),strokeWidth:isLast?2:1.5}),
+            React.createElement("image",{href:logoSrc,x:x-sz/2,y:y-sz/2,width:sz,height:sz,style:{clipPath:"circle(48%)"}})
           );
         })
       ),
-      // Légende
-      React.createElement("div",{style:{display:"flex",gap:16,justifyContent:"center",padding:"8px 0 0",flexWrap:"wrap"}},
-        React.createElement("div",{style:{display:"flex",alignItems:"center",gap:4}},
-          React.createElement("div",{style:{width:10,height:10,background:"rgba(134,239,172,0.6)",borderRadius:2}}),
-          React.createElement("span",{style:{fontSize:10,color:"#64748b"}},"Champion")
-        ),
-        React.createElement("div",{style:{display:"flex",alignItems:"center",gap:4}},
-          React.createElement("div",{style:{width:10,height:10,background:"rgba(147,197,253,0.6)",borderRadius:2}}),
-          React.createElement("span",{style:{fontSize:10,color:"#64748b"}},"Coupe")
-        ),
-        React.createElement("div",{style:{display:"flex",alignItems:"center",gap:4}},
-          React.createElement("div",{style:{width:10,height:10,background:"rgba(252,165,165,0.6)",borderRadius:2}}),
-          React.createElement("span",{style:{fontSize:10,color:"#64748b"}},"Relégation")
-        )
+      React.createElement("div",{style:{display:"flex",gap:12,justifyContent:"center",padding:"8px 0 2px",flexWrap:"wrap"}},
+        React.createElement("div",{style:{display:"flex",alignItems:"center",gap:4}},React.createElement("div",{style:{width:10,height:10,background:"rgba(134,239,172,0.6)",borderRadius:2}}),React.createElement("span",{style:{fontSize:10,color:"#64748b"}},"Champion")),
+        React.createElement("div",{style:{display:"flex",alignItems:"center",gap:4}},React.createElement("div",{style:{width:10,height:10,background:"rgba(147,197,253,0.6)",borderRadius:2}}),React.createElement("span",{style:{fontSize:10,color:"#64748b"}},"Coupe")),
+        React.createElement("div",{style:{display:"flex",alignItems:"center",gap:4}},React.createElement("div",{style:{width:10,height:10,background:"rgba(252,165,165,0.6)",borderRadius:2}}),React.createElement("span",{style:{fontSize:10,color:"#64748b"}},"Relégation"))
       )
     ),
-
-    // Tableau journées
     React.createElement("div",{style:{background:"#fff",margin:"0 12px",borderRadius:12,overflow:"hidden",boxShadow:"0 1px 4px rgba(0,0,0,.06)"}},
-      React.createElement("div",{style:{padding:"10px 16px",borderBottom:"1px solid #f1f5f9",fontSize:11,fontWeight:700,color:"#64748b",textTransform:"uppercase"}},
-        "Détail par journée"
-      ),
+      React.createElement("div",{style:{padding:"10px 16px",borderBottom:"1px solid #f1f5f9",fontSize:11,fontWeight:700,color:"#64748b",textTransform:"uppercase"}},"Détail par journée"),
       React.createElement("div",{style:{display:"flex",flexWrap:"wrap",gap:1,background:"#f1f5f9"}},
         prog.map(function(p){
-          return React.createElement("div",{key:"d"+p.j,style:{background:"#fff",padding:"8px 6px",display:"flex",flexDirection:"column",alignItems:"center",minWidth:44,flex:1}},
-            React.createElement("div",{style:{fontSize:9,color:"#94a3b8",marginBottom:1}},"J"+p.j),
-            React.createElement("div",{style:{fontSize:14,fontWeight:800,color:posColor(p.position)}},p.position+"e"),
+          return React.createElement("div",{key:"d"+p.j,
+            style:{background:"#fff",padding:"6px 4px",display:"flex",flexDirection:"column",alignItems:"center",minWidth:42,flex:1,cursor:"pointer"},
+            onClick:function(e){e.stopPropagation();setTooltip({j:p.j,x:100,y:100,scoreStr:p.scoreStr||"—",position:p.position,points:p.points});}
+          },
+            p.opponentLogo && React.createElement("img",{src:p.opponentLogo,style:{width:16,height:16,objectFit:"contain",marginBottom:2},onError:function(e){e.target.style.display="none";}}),
+            React.createElement("div",{style:{fontSize:9,color:"#94a3b8"}},"J"+p.j),
+            React.createElement("div",{style:{fontSize:13,fontWeight:800,color:posColor(p.position)}},p.position+"e"),
             React.createElement("div",{style:{fontSize:9,color:"#94a3b8"}},p.points+"pts")
           );
         })
