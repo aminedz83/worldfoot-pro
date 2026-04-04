@@ -12784,7 +12784,8 @@ function TeamPage({ teamId, teamName, teamLogo, leagueId, season, onClose, onTea
     {id:"classement", label:"CLASSEMENT"},
     {id:"effectif",   label:"EFFECTIF"},
     {id:"transferts", label:"TRANSFERTS"},
-    ...(leagueId===186 ? [{id:"progression", label:"PROGRESSION"}] : []),
+    ...([918,904,906,910,908,916,907,905,917,919,920,921,922,923,924,925].indexOf(teamId)!==-1 || leagueId===186
+      ? [{id:"progression", label:"📈 PROGRESSION"}] : []),
   ];
 
   // ── GROUP fixtures by league ───────────────────────────────
@@ -13369,7 +13370,7 @@ function TeamPage({ teamId, teamName, teamLogo, leagueId, season, onClose, onTea
 
       ,
       // ── PROGRESSION ──
-      tab==="progression" && leagueId===186 && React.createElement(ProgressionPanel, {
+      tab==="progression" && React.createElement(ProgressionPanel, {
         teamId: teamId,
         teamName: teamName,
         teamLogo: teamLogo,
