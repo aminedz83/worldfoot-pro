@@ -2,7 +2,7 @@
 <html lang="fr">
 <head>
     <meta charset="UTF-8" />
-    <!-- v255 -->
+    <!-- v257 -->
     <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate" />
     <meta http-equiv="Pragma" content="no-cache" />
     <meta http-equiv="Expires" content="0" />
@@ -13411,7 +13411,15 @@ function TeamPage({ teamId, teamName, teamLogo, leagueId, season, onClose, onTea
                 return null;
               };
               var total = rows.length;
+              // Trouver le nom de la ligue sélectionnée
+              var selLeagueName = "";
+              teamLeagues.forEach(function(l){ if(l.id === selLeagueId) selLeagueName = l.name; });
               return React.createElement("div",{style:{background:"#fff",borderRadius:16,overflow:"hidden",margin:"0 12px 12px",boxShadow:"0 1px 8px rgba(15,23,42,.07)"}},
+                // Titre ligue style screenshot
+                React.createElement("div",{style:{display:"flex",alignItems:"center",gap:8,padding:"8px 12px",background:"rgba(0,193,112,.06)",borderBottom:"1px solid rgba(0,193,112,.12)"}},
+                  React.createElement("div",{style:{width:3,height:16,borderRadius:2,background:"#00c170",flexShrink:0}}),
+                  React.createElement("span",{style:{fontSize:12,fontWeight:700,color:"#0f172a"}},[selLeagueName||"Classement"])
+                ),
                 // Header colonnes
                 React.createElement("div",{style:{display:"flex",alignItems:"center",padding:"6px 12px",background:"#f8fafc",borderBottom:"1px solid #f1f5f9"}},
                   React.createElement("div",{style:{width:24,fontSize:9,fontWeight:700,color:"#94a3b8",textAlign:"center"}},"#"),
@@ -13427,16 +13435,23 @@ function TeamPage({ teamId, teamName, teamLogo, leagueId, season, onClose, onTea
                 rows.map(function(r,i){
                   var active = r.team && r.team.id === teamId;
                   var isFirst = r.rank === 1;
+                  var isSecond = r.rank === 2;
                   var zone = getZone(r.rank, total);
                   var form = r.form || "";
                   var gd = ((r.all&&r.all.goals&&r.all.goals.for)||0) - ((r.all&&r.all.goals&&r.all.goals.against)||0);
+                  // Couleur badge PTS : 1er=vert, 2ème=bleu, zone=couleur zone, actif sans zone=bleu clair, sinon gris
+                  var ptsBg = isFirst ? "#00c170" : isSecond ? "#2563eb" : zone ? zone.bar : active ? "#2563eb" : "#f1f5f9";
+                  var ptsColor = (isFirst||isSecond||zone||active) ? "#fff" : "#0f172a";
+                  // Fond ligne
+                  var rowBg = isFirst ? "rgba(0,193,112,.05)" : active ? "rgba(37,99,235,.06)" : zone ? zone.bg : "#fff";
+                  var rowBar = isFirst ? "#00c170" : active ? "#2563eb" : zone ? zone.bar : "transparent";
                   return React.createElement("div",{
                     key:i,
                     style:{
                       display:"flex",alignItems:"center",padding:"9px 12px",
                       borderBottom:i<rows.length-1?"1px solid #f8fafc":"none",
-                      background:isFirst?"rgba(0,193,112,.05)":zone?zone.bg:active?"rgba(239,68,68,.05)":"#fff",
-                      borderLeft:zone?("3px solid "+zone.bar):isFirst?"3px solid #00c170":active?"3px solid #ef4444":"3px solid transparent",
+                      background:rowBg,
+                      borderLeft:"3px solid "+rowBar,
                       cursor:"pointer"
                     },
                     onClick:function(){onTeam&&onTeam(r.team&&r.team.id,r.team&&r.team.name,r.team&&r.team.logo,selLeagueId,selSeason);}
@@ -13445,7 +13460,7 @@ function TeamPage({ teamId, teamName, teamLogo, leagueId, season, onClose, onTea
                     React.createElement("div",{style:{width:24,textAlign:"center",flexShrink:0}},
                       isFirst
                         ? React.createElement("span",{style:{fontSize:14}},"🥇")
-                        : React.createElement("span",{style:{fontSize:12,fontWeight:700,color:zone?zone.bar:active?"#ef4444":"#64748b"}},r.rank)
+                        : React.createElement("span",{style:{fontSize:12,fontWeight:700,color:zone?zone.bar:active?"#2563eb":"#64748b"}},r.rank)
                     ),
                     // Equipe + forme
                     React.createElement("div",{style:{flex:1,display:"flex",alignItems:"center",gap:8,minWidth:0,paddingLeft:4}},
@@ -13465,7 +13480,7 @@ function TeamPage({ teamId, teamName, teamLogo, leagueId, season, onClose, onTea
                     React.createElement("div",{style:{width:26,textAlign:"center",fontSize:12,fontWeight:600,color:"#ef4444",flexShrink:0}},r.all&&r.all.lose||0),
                     React.createElement("div",{style:{width:26,textAlign:"center",fontSize:11,color:"#64748b",flexShrink:0}},(gd>=0?"+":"")+gd),
                     React.createElement("div",{style:{width:32,textAlign:"center",flexShrink:0}},
-                      React.createElement("div",{style:{background:isFirst?"#00c170":zone?zone.bar:active?"#ef4444":"#f1f5f9",color:isFirst||zone||active?"#fff":"#0f172a",borderRadius:8,padding:"3px 0",fontSize:13,fontWeight:900,minWidth:28,display:"inline-block"}},r.points)
+                      React.createElement("div",{style:{background:ptsBg,color:ptsColor,borderRadius:8,padding:"3px 0",fontSize:13,fontWeight:900,minWidth:28,display:"inline-block",textAlign:"center"}},r.points)
                     )
                   );
                 }),
