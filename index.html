@@ -3526,9 +3526,17 @@ function PlayerPage({ playerId, playerName, playerPhoto, playerPos, playerNumber
           var mParts = mNorm.split(" ");
           if(pNorm === mNorm) return true;
           if(pCompact === mCompact) return true;
+          // Premier + dernier mot matchent
           if(pParts.length >= 2 && mParts.length >= 2) {
             if(pParts[0] === mParts[0] && pParts[pParts.length-1] === mParts[mParts.length-1]) return true;
           }
+          // Cas "M. Hadid" → chercher "hadid" dans le nom Supabase
+          if(pParts.length >= 1 && mParts.length >= 1) {
+            var pLast = pParts[pParts.length-1];
+            var mLast = mParts[mParts.length-1];
+            if(pLast.length >= 4 && (mNorm.includes(pLast) || pNorm.includes(mLast))) return true;
+          }
+          // Compact contient
           if(pCompact.length >= 5 && mCompact.length >= 5) {
             if(pCompact.includes(mCompact) || mCompact.includes(pCompact)) return true;
           }
@@ -3628,7 +3636,7 @@ function PlayerPage({ playerId, playerName, playerPhoto, playerPos, playerNumber
           ),
           marketVal && React.createElement("div", {style:{
             fontSize:12,color:"#059669",fontWeight:700,marginTop:3
-          }}, `Valeur marchande: ${marketVal}`),
+          }}, "💰 " + (marketVal >= 1000000 ? (marketVal/1000000).toFixed(1).replace(".0","")+"M €" : marketVal >= 1000 ? Math.round(marketVal/1000)+"k €" : marketVal+" €")),
           currentClub && React.createElement("div", {style:{marginTop:8}},
             React.createElement("div",{style:{display:"flex",alignItems:"center",gap:8,padding:"8px 12px",background:"#f8fafc",borderRadius:10,border:"1px solid #f1f5f9"}},
               React.createElement("img",{src:currentClub.team?.logo,style:{width:28,height:28,objectFit:"contain",flexShrink:0},onError:e=>e.target.style.display="none"}),
