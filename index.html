@@ -12589,16 +12589,17 @@ function TeamPage({ teamId, teamName, teamLogo, leagueId, season, onClose, onTea
       const seas = season   || det?.league?.season || curSeason;
 
       // Construire liste des compétitions de l'équipe (depuis les fixtures)
+      // Dédupliquer par league.id uniquement (éviter doublons entre saisons)
       var leagueMap = {};
       allFixStand.forEach(function(f) {
         if(!f.league || !f.league.id) return;
-        var key = f.league.id + '_' + (f.league.season || seas);
+        var key = f.league.id; // clé = ID uniquement, pas saison
         if(!leagueMap[key]) {
           leagueMap[key] = {
             id: f.league.id,
             name: f.league.name,
             logo: f.league.logo,
-            season: f.league.season || seas
+            season: seas // utiliser la saison courante
           };
         }
       });
@@ -13238,41 +13239,44 @@ function TeamPage({ teamId, teamName, teamLogo, leagueId, season, onClose, onTea
         // ── Sélecteurs compétition + saison ──
         teamLeagues.length > 0 && React.createElement("div",{style:{
           display:"flex",gap:8,padding:"12px 16px",background:"#fff",
-          borderBottom:"1px solid #f1f5f9",flexWrap:"wrap"
+          borderBottom:"1px solid #f1f5f9",alignItems:"center"
         }},
-          // Sélecteur compétition
-          React.createElement("div",{style:{position:"relative",flex:1,minWidth:140}},
-            React.createElement("select",{
-              value:selLeagueId||"",
-              onChange:function(e){
-                var newLid = parseInt(e.target.value);
-                setSelLeagueId(newLid);
-                setLoadingStand(true);
-                var found = teamLeagues.find(function(l){return l.id===newLid;});
-                var newSeas = found ? found.season : selSeason;
-                setSelSeason(newSeas);
-                api('/standings?league='+newLid+'&season='+newSeas, 3600000)
-                  .then(function(d){
-                    var rows=(d||[]).flatMap(function(g){return Array.isArray(g)?g:(g&&g.league&&g.league.standings?g.league.standings.flat():[]);});
-                    setStandingsFiltered(rows);
-                    setLoadingStand(false);
-                  }).catch(function(){setLoadingStand(false);});
+          // Sélecteur compétition avec logo — scrollable horizontalement
+          React.createElement("div",{style:{display:"flex",gap:6,flex:1,overflowX:"auto",paddingBottom:2}},
+            teamLeagues.map(function(l){
+              var isActive = selLeagueId === l.id;
+              return React.createElement("button",{
+                key:l.id,
+                onClick:function(){
+                  if(isActive) return;
+                  setSelLeagueId(l.id);
+                  setLoadingStand(true);
+                  api('/standings?league='+l.id+'&season='+(selSeason||l.season), 3600000)
+                    .then(function(d){
+                      var rows=(d||[]).flatMap(function(g){return Array.isArray(g)?g:(g&&g.league&&g.league.standings?g.league.standings.flat():[]);});
+                      setStandingsFiltered(rows);
+                      setLoadingStand(false);
+                    }).catch(function(){setLoadingStand(false);});
+                },
+                style:{
+                  display:"flex",alignItems:"center",gap:6,
+                  padding:"6px 10px",borderRadius:20,border:"none",
+                  cursor:"pointer",flexShrink:0,
+                  background:isActive?"#0f172a":"#f1f5f9",
+                  color:isActive?"#fff":"#64748b"
+                }
               },
-              style:{
-                width:"100%",padding:"8px 10px",borderRadius:8,
-                border:"1px solid #e2e8f0",fontSize:12,fontWeight:600,
-                color:"#0f172a",background:"#f8fafc",cursor:"pointer",
-                appearance:"none",WebkitAppearance:"none"
-              }
-            },
-              teamLeagues.map(function(l){
-                return React.createElement("option",{key:l.id+"_"+l.season,value:l.id},l.name);
-              })
-            ),
-            React.createElement("span",{style:{position:"absolute",right:10,top:"50%",transform:"translateY(-50%)",pointerEvents:"none",fontSize:10,color:"#64748b"}},"▼")
+                React.createElement("img",{
+                  src:l.logo,
+                  style:{width:16,height:16,objectFit:"contain"},
+                  onError:function(e){e.target.style.display="none";}
+                }),
+                React.createElement("span",{style:{fontSize:11,fontWeight:isActive?700:500,whiteSpace:"nowrap"}},l.name)
+              );
+            })
           ),
           // Sélecteur saison
-          React.createElement("div",{style:{position:"relative",minWidth:90}},
+          React.createElement("div",{style:{position:"relative",flexShrink:0}},
             React.createElement("select",{
               value:selSeason||"",
               onChange:function(e){
@@ -13287,18 +13291,18 @@ function TeamPage({ teamId, teamName, teamLogo, leagueId, season, onClose, onTea
                   }).catch(function(){setLoadingStand(false);});
               },
               style:{
-                width:"100%",padding:"8px 10px",borderRadius:8,
+                padding:"6px 24px 6px 10px",borderRadius:8,
                 border:"1px solid #e2e8f0",fontSize:12,fontWeight:600,
                 color:"#0f172a",background:"#f8fafc",cursor:"pointer",
                 appearance:"none",WebkitAppearance:"none"
               }
             },
               [0,1,2,3,4].map(function(i){
-                var yr = (new Date().getMonth()>=6?new Date().getFullYear():new Date().getFullYear()-1) - i;
-                return React.createElement("option",{key:yr,value:yr},(yr).toString().slice(2)+"/"+(yr+1).toString().slice(2));
+                var yr=(new Date().getMonth()>=6?new Date().getFullYear():new Date().getFullYear()-1)-i;
+                return React.createElement("option",{key:yr,value:yr},yr.toString().slice(2)+"/"+(yr+1).toString().slice(2));
               })
             ),
-            React.createElement("span",{style:{position:"absolute",right:10,top:"50%",transform:"translateY(-50%)",pointerEvents:"none",fontSize:10,color:"#64748b"}},"▼")
+            React.createElement("span",{style:{position:"absolute",right:8,top:"50%",transform:"translateY(-50%)",pointerEvents:"none",fontSize:9,color:"#64748b"}},"▼")
           )
         ),
 
