@@ -12303,7 +12303,7 @@ function ProgressionPanel(props) {
     React.createElement("div",{style:{fontSize:14,marginTop:8}},"Données non disponibles")
   );
 
-  var W=340,H=260,PL=28,PR=14,PT=14,PB=30;
+  var W=340,H=320,PL=28,PR=14,PT=16,PB=30;
   var CW=W-PL-PR, CH=H-PT-PB;
   var maxJ=prog[prog.length-1].j;
   var xS=function(j){return PL+((j-1)/(Math.max(maxJ-1,1)))*CW;};
@@ -12334,10 +12334,16 @@ function ProgressionPanel(props) {
         position:"absolute",left:Math.min(tooltip.x+8,160),top:Math.max(tooltip.y-90,8),
         background:"#fff",borderRadius:10,padding:"10px 14px",
         boxShadow:"0 4px 20px rgba(0,0,0,.18)",zIndex:100,minWidth:180,
-        border:"1px solid #e2e8f0",pointerEvents:"none"
+        border:"1px solid #e2e8f0",pointerEvents:"all"
       }},
-        React.createElement("div",{style:{fontSize:12,fontWeight:800,color:"#0f172a",marginBottom:4}},tooltip.j+". Journée"),
-        React.createElement("div",{style:{fontSize:11,color:"#334155",marginBottom:3}},tooltip.scoreStr),
+        React.createElement("div",{style:{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:4}},
+          React.createElement("div",{style:{fontSize:12,fontWeight:800,color:"#0f172a"}},tooltip.j+". Journée"),
+          React.createElement("button",{
+            onClick:function(e){e.stopPropagation();setTooltip(null);},
+            style:{background:"none",border:"none",fontSize:16,cursor:"pointer",color:"#94a3b8",padding:"0 0 0 12px",lineHeight:1}
+          },"✕")
+        ),
+        React.createElement("div",{style:{fontSize:11,color:"#334155",marginBottom:3}},tooltip.scoreStr||"—"),
         React.createElement("div",{style:{fontSize:11,color:"#64748b",marginBottom:2}},tooltip.position+". Classement"),
         React.createElement("div",{style:{fontSize:11,color:"#64748b"}},tooltip.points+" points cumulés")
       ),
@@ -12360,7 +12366,7 @@ function ProgressionPanel(props) {
           var x=xS(p.j), y=yS(p.position);
           var isLast=i===prog.length-1;
           var logoSrc=p.opponentLogo||teamLogo;
-          var sz=isLast?22:18;
+          var sz=isLast?24:20;
           return React.createElement("g",{key:"pt"+p.j,style:{cursor:"pointer"},
             onClick:function(e){
               e.stopPropagation();
