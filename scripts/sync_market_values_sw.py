@@ -36,7 +36,6 @@ SW_CLUBS = {
 }
 
 def parse_market_value(text):
-    """Convertit '€309k' ou '€1.2m' en entier"""
     if not text:
         return None
     text = text.strip().replace(" ", "").replace(",", ".")
@@ -52,7 +51,6 @@ def parse_market_value(text):
     return int(val)
 
 def parse_contract_date(text):
-    """Convertit '20.08.2028' ou '20/08/2028' en YYYY-MM-DD"""
     if not text:
         return None
     text = text.strip()
@@ -64,61 +62,34 @@ def parse_contract_date(text):
     return None
 
 def scrape_player_page(player_url):
-    """
-    Scrape la page joueur Soccerway et retourne
-    {market_value, contract_until, position, nationality}
-    """
     try:
         r = scraper.get("https://fr.soccerway.com" + player_url, timeout=15)
         if r.status_code != 200:
             return {}
-
-        soup = BeautifulSoup(r.text, "html.parser")
         result = {}
-
-        # Chercher la valeur marchande — span avec €
-        mv_pattern = re.search(r'€\s*[\d,.]+\s*[kKmMmM]?', r.text)
+        mv_pattern = re.search(r'€\s*[\d,.]+\s*[kKmM]?', r.text)
         if mv_pattern:
             result["market_value"] = parse_market_value(mv_pattern.group())
-
-        # Chercher le contrat — pattern date après "Contrat"
         contract_pattern = re.search(
             r'[Cc]ontrat[^:]*?:?\s*(?:jusqu[^\d]*)?(\d{2}[./]\d{2}[./]\d{4})',
             r.text
         )
         if contract_pattern:
             result["contract_until"] = parse_contract_date(contract_pattern.group(1))
-
-        # Chercher aussi dans les spans wcl-scores
-        for span in soup.find_all("span", {"data-testid": "wcl-scores-simple-text-01"}):
-            txt = span.get_text(strip=True)
-            if "€" in txt and "market_value" not in result:
-                result["market_value"] = parse_market_value(txt)
-
-        # Position
-        pos_m = re.search(r'"type":"player_page"[^}]*"country":"([A-Z]+)"', r.text)
-        if pos_m:
-            result["nationality_code"] = pos_m.group(1)
-
         return result
-
     except Exception as e:
-        print(f"    Erreur scrape_player_page: {e}")
+        print(f"    Erreur scrape: {e}")
         return {}
 
 def get_squad_links(club_name, info):
-    """Récupère tous les liens joueurs depuis la page effectif du club"""
     url = f"https://fr.soccerway.com/equipe/{info['slug']}/{info['sw_id']}/"
     try:
         r = scraper.get(url, timeout=20)
         if r.status_code != 200:
             print(f"  ❌ {club_name}: status {r.status_code}")
             return []
-
         soup = BeautifulSoup(r.text, "html.parser")
         links = soup.find_all("a", href=re.compile(r"^/joueur/"))
-
-        # Dédupliquer
         seen = set()
         players = []
         for lnk in links:
@@ -126,18 +97,15 @@ def get_squad_links(club_name, info):
             name = lnk.get_text(strip=True)
             if href and href not in seen and name:
                 seen.add(href)
-                # Extraire sw_player_id depuis l'URL /joueur/slug/ID/
                 parts = href.strip("/").split("/")
                 if len(parts) >= 3:
                     players.append({
                         "name": name,
                         "sw_url": href,
-                        "sw_player_id": parts[2]  # ex: As8Cxr8H
+                        "sw_player_id": parts[2]
                     })
-
-        print(f"  ✅ {club_name}: {len(players)} joueurs trouvés")
+        print(f"  ✅ {club_name}: {len(players)} joueurs")
         return players
-
     except Exception as e:
         print(f"  ❌ {club_name}: {e}")
         return []
@@ -145,42 +113,30 @@ def get_squad_links(club_name, info):
 print("=== Sync Valeurs Marchandes (Soccerway) ===")
 print(datetime.now().strftime("%Y-%m-%d %H:%M:%S"))
 
+# Test Supabase connection
+print("\n🔌 Test connexion Supabase...")
+test = requests.get(
+    SB_URL + "/rest/v1/algeria_market_values?limit=1&select=id,sw_player_id",
+    headers=SB_HEADERS
+)
+print(f"  Status: {test.status_code}, Body: {test.text[:200]}")
+
 total_updated = 0
 total_errors = 0
 
 for club_name, info in SW_CLUBS.items():
     print(f"\n📋 {club_name}")
     players = get_squad_links(club_name, info)
-
     if not players:
         continue
 
     for p in players:
         try:
-            print(f"  👤 {p['name']} ({p['sw_player_id']})", end=" ")
-
-            # Vérifier si déjà à jour (scraped < 7 jours)
-            check = requests.get(
-                SB_URL + "/rest/v1/algeria_market_values"
-                + "?sw_player_id=eq." + p["sw_player_id"]
-                + "&select=id,scraped_at,market_value",
-                headers=SB_HEADERS
-            ).json()
-
-            if check:
-                scraped_at = check[0].get("scraped_at", "")
-                if scraped_at:
-                    age_days = (datetime.now(timezone.utc) -
-                                datetime.fromisoformat(scraped_at.replace("Z", "+00:00"))
-                               ).days
-                    if age_days < 7:
-                        mv = check[0].get("market_value")
-                        print(f"→ skip (scraped il y a {age_days}j, MV={mv})")
-                        continue
+            print(f"  👤 {p['name']} ({p['sw_player_id']})", end=" ", flush=True)
 
             # Scraper la page joueur
             data = scrape_player_page(p["sw_url"])
-            time.sleep(0.5)  # pause pour ne pas surcharger
+            time.sleep(0.3)
 
             record = {
                 "sw_player_id": p["sw_player_id"],
@@ -204,11 +160,11 @@ for club_name, info in SW_CLUBS.items():
                 print(f"→ ✅ MV={mv} | contrat={ct}")
                 total_updated += 1
             else:
-                print(f"→ ❌ Supabase {res.status_code}: {res.text[:80]}")
+                print(f"→ ❌ {res.status_code}: {res.text[:300]}")
                 total_errors += 1
 
         except Exception as e:
-            print(f"→ ❌ {e}")
+            print(f"→ ❌ EXCEPTION: {e}")
             total_errors += 1
 
 print(f"\n=== Terminé: {total_updated} mis à jour, {total_errors} erreurs ===")
