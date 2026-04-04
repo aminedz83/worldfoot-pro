@@ -3501,10 +3501,44 @@ function PlayerPage({ playerId, playerName, playerPhoto, playerPos, playerNumber
   // Charger valeur marchande
   React.useEffect(() => {
     if(!playerId) return;
-    // Utiliser immédiatement l'override si disponible (SofaScore via squad)
+    // 1. Utiliser immédiatement l'override si disponible (depuis onglet EFFECTIF)
     if(marketValueOverride) { setMarketVal(marketValueOverride); return; }
     setMarketVal(null);
-    // Sinon charger depuis l'API football.com
+    // 2. Essayer Supabase par nom du joueur (joueurs algériens)
+    if(playerName) {
+      var normName = function(s) {
+        if(!s) return "";
+        return (s||"").toLowerCase().trim()
+          .replace(/[àáâã]/g,"a").replace(/[éèêë]/g,"e").replace(/[îï]/g,"i")
+          .replace(/[ôõ]/g,"o").replace(/[ùûü]/g,"u").replace(/ç/g,"c")
+          .replace(/ñ/g,"n").replace(/['']/g,"");
+      };
+      var compact = function(s) { return normName(s).replace(/\s+/g,""); };
+      var pCompact = compact(playerName);
+      fetch("https://iqeqlsxjiklygywjirqs.supabase.co/rest/v1/algeria_market_values?select=name,market_value,contract_until&limit=1000", {
+        headers: { "apikey": SB_KEY, "Authorization": "Bearer "+SB_KEY }
+      }).then(function(r){ return r.json(); }).then(function(rows) {
+        var match = rows.find(function(mv) {
+          var mNorm = normName(mv.name);
+          var mCompact = compact(mv.name);
+          var pNorm = normName(playerName);
+          var pParts = pNorm.split(" ");
+          var mParts = mNorm.split(" ");
+          if(pNorm === mNorm) return true;
+          if(pCompact === mCompact) return true;
+          if(pParts.length >= 2 && mParts.length >= 2) {
+            if(pParts[0] === mParts[0] && pParts[pParts.length-1] === mParts[mParts.length-1]) return true;
+          }
+          if(pCompact.length >= 5 && mCompact.length >= 5) {
+            if(pCompact.includes(mCompact) || mCompact.includes(pCompact)) return true;
+          }
+          return false;
+        });
+        if(match && match.market_value) setMarketVal(match.market_value);
+      }).catch(function(){});
+      return;
+    }
+    // 3. Sinon charger depuis l'API football.com
     api('/players?id='+playerId+'&season='+curSeason, 3600000)
       .then(function(data) {
         var p = data && data[0];
