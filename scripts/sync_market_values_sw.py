@@ -67,15 +67,32 @@ def scrape_player_page(player_url):
         if r.status_code != 200:
             return {}
         result = {}
-        mv_pattern = re.search(r'€\s*[\d,.]+\s*[kKmM]?', r.text)
+        html = r.text
+
+        # Valeur marchande
+        mv_pattern = re.search(r'€\s*[\d,.]+\s*[kKmM]?', html)
         if mv_pattern:
             result["market_value"] = parse_market_value(mv_pattern.group())
-        contract_pattern = re.search(
-            r'[Cc]ontrat[^:]*?:?\s*(?:jusqu[^\d]*)?(\d{2}[./]\d{2}[./]\d{4})',
-            r.text
-        )
-        if contract_pattern:
-            result["contract_until"] = parse_contract_date(contract_pattern.group(1))
+
+        # Date de contrat — plusieurs patterns possibles
+        # Pattern 1: "Contrat jusqu'au: 30.06.2026"
+        for pat in [
+            r"[Cc]ontrat[^\d]{0,30}(\d{2}[./]\d{2}[./]\d{4})",
+            r"[Cc]ontract[^\d]{0,30}(\d{2}[./]\d{2}[./]\d{4})",
+            r"[Ee]xpires?[^\d]{0,30}(\d{2}[./]\d{2}[./]\d{4})",
+            r"[Jj]usqu.au[^\d]{0,20}(\d{2}[./]\d{2}[./]\d{4})",
+            # Pattern dans les spans wcl
+            r"wcl-scores-simple-text[^>]+>([^<]*\d{4}[^<]*)<",
+            # Date seule après "Contrat"
+            r"[Cc]ontrat.*?(\d{1,2}[./]\d{1,2}[./]20\d{2})",
+        ]:
+            m = re.search(pat, html, re.DOTALL)
+            if m:
+                d = parse_contract_date(m.group(1).strip())
+                if d:
+                    result["contract_until"] = d
+                    break
+
         return result
     except Exception as e:
         print(f"    Erreur scrape: {e}")
