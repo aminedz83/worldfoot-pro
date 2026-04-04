@@ -13309,32 +13309,114 @@ function TeamPage({ teamId, teamName, teamLogo, leagueId, season, onClose, onTea
         // ── Tableau classement ──
         loadingStand
           ? React.createElement("div",{style:{textAlign:"center",padding:"32px",color:"#94a3b8",fontSize:13}},"Chargement...")
-          : (standingsFiltered.length===0 ? standings : standingsFiltered).length===0
-          ? React.createElement("div",{style:{textAlign:"center",padding:"48px 24px",color:"#94a3b8",fontSize:14}},"Classement indisponible")
-          : React.createElement("div",null,
-              React.createElement("div",{style:S.standHdr},
-                React.createElement("span",{style:{width:28,fontSize:10,fontWeight:700,color:"#94a3b8",textAlign:"center"}},"#"),
-                React.createElement("span",{style:{flex:1,fontSize:10,fontWeight:700,color:"#94a3b8",marginLeft:8}},"ÉQUIPE"),
-                React.createElement("span",{style:{width:32,fontSize:10,fontWeight:700,color:"#94a3b8",textAlign:"center"}},"MJ"),
-                React.createElement("span",{style:{width:40,fontSize:10,fontWeight:700,color:"#94a3b8",textAlign:"center"}},"B"),
-                React.createElement("span",{style:{width:32,fontSize:10,fontWeight:800,color:"#0f172a",textAlign:"center"}},"PTS")
-              ),
-              (standingsFiltered.length===0 ? standings : standingsFiltered).map(function(r,i){
-                var active=r.team&&r.team.id===teamId;
-                return React.createElement("div",{key:i,style:S.standRow(active)},
-                  React.createElement("div",{style:{width:28,height:28,borderRadius:8,background:active?"#ef4444":"transparent",display:"flex",alignItems:"center",justifyContent:"center",flexShrink:0}},
-                    React.createElement("span",{style:{fontSize:12,fontWeight:700,color:active?"#fff":"#64748b"}},r.rank)
-                  ),
-                  React.createElement("div",{style:{flex:1,display:"flex",alignItems:"center",gap:8,marginLeft:4,minWidth:0}},
-                    React.createElement("img",{src:r.team&&r.team.logo,style:{width:22,height:22,objectFit:"contain",flexShrink:0},onError:function(e){e.target.style.display="none";}}),
-                    React.createElement("span",{style:{fontSize:13,fontWeight:active?700:400,color:"#0f172a",overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap"}},r.team&&r.team.name)
-                  ),
-                  React.createElement("span",{style:{width:32,fontSize:12,color:"#64748b",textAlign:"center"}},r.all&&r.all.played),
-                  React.createElement("span",{style:{width:40,fontSize:12,color:"#64748b",textAlign:"center"}},(r.all&&r.all.goals)?r.all.goals.for+":"+r.all.goals.against:""),
-                  React.createElement("span",{style:{width:32,fontSize:13,fontWeight:700,color:active?"#ef4444":"#0f172a",textAlign:"center"}},r.points)
+          : (function(){
+              var rows = standingsFiltered.length > 0 ? standingsFiltered : standings;
+              if(rows.length === 0) {
+                // Coupe / élimination directe → afficher les matchs
+                var cupMatches = results.filter(function(f){ return f.league && f.league.id === selLeagueId; });
+                if(cupMatches.length === 0) return React.createElement("div",{style:{textAlign:"center",padding:"48px 24px",color:"#94a3b8",fontSize:14}},"Aucune donnée disponible");
+                return React.createElement("div",{style:{padding:"8px 0"}},
+                  React.createElement("div",{style:{padding:"8px 16px",fontSize:11,fontWeight:700,color:"#64748b",textTransform:"uppercase",letterSpacing:.5}},"Parcours en coupe"),
+                  cupMatches.map(function(f,i){
+                    var home=f.teams&&f.teams.home, away=f.teams&&f.teams.away;
+                    var hg=f.goals&&f.goals.home, ag=f.goals&&f.goals.away;
+                    var isHome=home&&home.id===teamId;
+                    var opp=isHome?away:home;
+                    var round=(f.league&&f.league.round)||"";
+                    return React.createElement("div",{key:i,style:{
+                      display:"flex",alignItems:"center",gap:8,
+                      padding:"10px 16px",borderBottom:"1px solid #f1f5f9",
+                      background:"#fff"
+                    }},
+                      React.createElement("div",{style:{fontSize:10,color:"#94a3b8",minWidth:50}},round.replace("Round of ","1/").replace("Quarter-finals","1/4").replace("Semi-finals","1/2").replace("Final","Finale")),
+                      React.createElement("img",{src:opp&&opp.logo,style:{width:24,height:24,objectFit:"contain"},onError:function(e){e.target.style.display="none";}}),
+                      React.createElement("span",{style:{flex:1,fontSize:13,fontWeight:600,color:"#0f172a"}},opp&&opp.name),
+                      hg!==null&&ag!==null && React.createElement("span",{style:{fontSize:13,fontWeight:700,color:"#0f172a"}},isHome?(hg+"-"+ag):(ag+"-"+hg))
+                    );
+                  })
                 );
-              })
-            )
+              }
+
+              // Détecter si c'est des groupes (plusieurs groupes dans standings)
+              // L'API retourne group dans chaque row
+              var hasGroups = rows.some(function(r){ return r.group && r.group !== ""; });
+
+              // Détecter si c'est élimination directe (pas de standings = coupe)
+              var isKnockout = rows.length === 0 && selLeagueId;
+
+              if(hasGroups) {
+                // ── Mode groupes (CAF CL, etc.) ──
+                var groupMap = {};
+                rows.forEach(function(r) {
+                  var g = r.group || "Groupe";
+                  if(!groupMap[g]) groupMap[g] = [];
+                  groupMap[g].push(r);
+                });
+                return React.createElement("div",{style:{padding:"8px 0"}},
+                  Object.keys(groupMap).sort().map(function(grpName) {
+                    var grpRows = groupMap[grpName];
+                    return React.createElement("div",{key:grpName,style:{marginBottom:16,padding:"0 12px"}},
+                      React.createElement("div",{style:{fontSize:13,fontWeight:800,color:"#0f172a",padding:"8px 4px 6px"}},grpName),
+                      React.createElement("div",{style:{background:"#fff",borderRadius:10,overflow:"hidden",boxShadow:"0 1px 4px rgba(0,0,0,.06)"}},
+                        React.createElement("div",{style:{display:"flex",padding:"6px 10px",background:"#f8fafc",borderBottom:"1px solid #f1f5f9"}},
+                          React.createElement("span",{style:{width:24,fontSize:9,fontWeight:700,color:"#94a3b8",textAlign:"center"}},"#"),
+                          React.createElement("span",{style:{flex:1,fontSize:9,fontWeight:700,color:"#94a3b8",marginLeft:4}},"ÉQUIPE"),
+                          React.createElement("span",{style:{width:28,fontSize:9,fontWeight:700,color:"#94a3b8",textAlign:"center"}},"MJ"),
+                          React.createElement("span",{style:{width:38,fontSize:9,fontWeight:700,color:"#94a3b8",textAlign:"center"}},"B"),
+                          React.createElement("span",{style:{width:28,fontSize:9,fontWeight:800,color:"#0f172a",textAlign:"center"}},"PTS")
+                        ),
+                        grpRows.map(function(r,i) {
+                          var active = r.team && r.team.id === teamId;
+                          var qualify = r.rank <= 2;
+                          return React.createElement("div",{key:i,style:{
+                            display:"flex",alignItems:"center",padding:"8px 10px",
+                            borderBottom:i<grpRows.length-1?"1px solid #f5f7fa":"none",
+                            background:active?"#fef2f2":"#fff"
+                          }},
+                            React.createElement("div",{style:{width:24,height:24,borderRadius:6,background:qualify?"#1e293b":"transparent",display:"flex",alignItems:"center",justifyContent:"center",flexShrink:0}},
+                              React.createElement("span",{style:{fontSize:11,fontWeight:700,color:qualify?"#fff":"#94a3b8"}},r.rank)
+                            ),
+                            React.createElement("div",{style:{flex:1,display:"flex",alignItems:"center",gap:6,marginLeft:4,minWidth:0}},
+                              React.createElement("img",{src:r.team&&r.team.logo,style:{width:20,height:20,objectFit:"contain",flexShrink:0},onError:function(e){e.target.style.display="none";}}),
+                              React.createElement("span",{style:{fontSize:12,fontWeight:active?700:400,color:"#0f172a",overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap"}},r.team&&r.team.name)
+                            ),
+                            React.createElement("span",{style:{width:28,fontSize:11,color:"#64748b",textAlign:"center"}},r.all&&r.all.played),
+                            React.createElement("span",{style:{width:38,fontSize:11,color:"#64748b",textAlign:"center"}},(r.all&&r.all.goals)?r.all.goals.for+":"+r.all.goals.against:""),
+                            React.createElement("span",{style:{width:28,fontSize:12,fontWeight:700,color:active?"#ef4444":"#0f172a",textAlign:"center"}},r.points)
+                          );
+                        })
+                      )
+                    );
+                  })
+                );
+              }
+
+              // ── Mode classement normal (Ligue 1, etc.) ──
+              return React.createElement("div",null,
+                React.createElement("div",{style:S.standHdr},
+                  React.createElement("span",{style:{width:28,fontSize:10,fontWeight:700,color:"#94a3b8",textAlign:"center"}},"#"),
+                  React.createElement("span",{style:{flex:1,fontSize:10,fontWeight:700,color:"#94a3b8",marginLeft:8}},"ÉQUIPE"),
+                  React.createElement("span",{style:{width:32,fontSize:10,fontWeight:700,color:"#94a3b8",textAlign:"center"}},"MJ"),
+                  React.createElement("span",{style:{width:40,fontSize:10,fontWeight:700,color:"#94a3b8",textAlign:"center"}},"B"),
+                  React.createElement("span",{style:{width:32,fontSize:10,fontWeight:800,color:"#0f172a",textAlign:"center"}},"PTS")
+                ),
+                rows.map(function(r,i){
+                  var active=r.team&&r.team.id===teamId;
+                  return React.createElement("div",{key:i,style:S.standRow(active)},
+                    React.createElement("div",{style:{width:28,height:28,borderRadius:8,background:active?"#ef4444":"transparent",display:"flex",alignItems:"center",justifyContent:"center",flexShrink:0}},
+                      React.createElement("span",{style:{fontSize:12,fontWeight:700,color:active?"#fff":"#64748b"}},r.rank)
+                    ),
+                    React.createElement("div",{style:{flex:1,display:"flex",alignItems:"center",gap:8,marginLeft:4,minWidth:0}},
+                      React.createElement("img",{src:r.team&&r.team.logo,style:{width:22,height:22,objectFit:"contain",flexShrink:0},onError:function(e){e.target.style.display="none";}}),
+                      React.createElement("span",{style:{fontSize:13,fontWeight:active?700:400,color:"#0f172a",overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap"}},r.team&&r.team.name)
+                    ),
+                    React.createElement("span",{style:{width:32,fontSize:12,color:"#64748b",textAlign:"center"}},r.all&&r.all.played),
+                    React.createElement("span",{style:{width:40,fontSize:12,color:"#64748b",textAlign:"center"}},(r.all&&r.all.goals)?r.all.goals.for+":"+r.all.goals.against:""),
+                    React.createElement("span",{style:{width:32,fontSize:13,fontWeight:700,color:active?"#ef4444":"#0f172a",textAlign:"center"}},r.points)
+                  );
+                })
+              );
+            })()
       ),
 
       // ── EFFECTIF ──
