@@ -12277,7 +12277,10 @@ function ProgressionPanel(props) {
             var hG2=ourMatch.goals.home, aG2=ourMatch.goals.away;
             scoreStr=isHome?(teamName+" "+hG2+":"+aG2+" "+opponentName):(opponentName+" "+hG2+":"+aG2+" "+teamName);
           }
-          progression.push({j:jNum,position:pos+1,points:teamPoints[teamId]||0,opponentLogo:opponentLogo,opponentName:opponentName,scoreStr:scoreStr,isHome:isHome});
+          // Ne pas afficher si match reporté (pas d'adversaire trouvé)
+          if(ourMatch) {
+            progression.push({j:jNum,position:pos+1,points:teamPoints[teamId]||0,opponentLogo:opponentLogo,opponentName:opponentName,scoreStr:scoreStr,isHome:isHome});
+          }
         }
       });
       if(progression.length>0){var last=progression[progression.length-1];setCurrentPos(last.position);setCurrentPts(last.points);}
@@ -12365,7 +12368,7 @@ function ProgressionPanel(props) {
         prog.map(function(p,i){
           var x=xS(p.j), y=yS(p.position);
           var isLast=i===prog.length-1;
-          var logoSrc=p.opponentLogo||teamLogo;
+          var logoSrc=p.opponentLogo;
           var sz=isLast?24:20;
           return React.createElement("g",{key:"pt"+p.j,style:{cursor:"pointer"},
             onClick:function(e){
