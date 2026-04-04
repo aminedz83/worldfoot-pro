@@ -1,5 +1,4 @@
-import os, re
-import cloudscraper
+import requests, os, re
 from datetime import datetime, timezone, date
 from bs4 import BeautifulSoup
 
@@ -11,212 +10,182 @@ SB_HEADERS = {
     "Content-Type": "application/json",
     "Prefer": "resolution=merge-duplicates"
 }
-
-# Cloudscraper contourne Cloudflare/anti-bot de Soccerway
-scraper = cloudscraper.create_scraper(
-    browser={"browser": "chrome", "platform": "windows", "mobile": False}
-)
-
-SW_CLUBS = {
-    "JS Kabylie":      {"sw_id": "Wfaskwf0", "slug": "kabylie"},
-    "CR Belouizdad":   {"sw_id": "vNJLB2jP", "slug": "belouizdad"},
-    "MC Alger":        {"sw_id": "tnY2Lfcp", "slug": "mc-alger"},
-    "USM Alger":       {"sw_id": "zXBidj5t", "slug": "usm-alger"},
-    "CS Constantine":  {"sw_id": "nBionu2l", "slug": "constantine"},
-    "ES Setif":        {"sw_id": "EDgC6qYp", "slug": "setif"},
-    "MC Oran":         {"sw_id": "CrCmB35M", "slug": "oran"},
-    "ASO Chlef":       {"sw_id": "Aobolc96", "slug": "chlef"},
-    "JS Saoura":       {"sw_id": "nimcBvel", "slug": "saoura"},
-    "ES Ben Aknoun":   {"sw_id": "QmvZvxCB", "slug": "es-ben-aknoun"},
-    "USM Khenchela":   {"sw_id": "lYuJtBj9", "slug": "khenchela"},
-    "MB Rouissat":     {"sw_id": "hGHHy7Am", "slug": "rouisset"},
-    "Paradou AC":      {"sw_id": "WIyffF3J", "slug": "paradou"},
-    "ES Mostaganem":   {"sw_id": "j9T7TM2E", "slug": "mostaganem"},
-    "MC El Bayadh":    {"sw_id": "S6H5xCS1", "slug": "el-bayadh"},
-    "Olympique Akbou": {"sw_id": "dhMQsMOh", "slug": "olympique-akbou"},
+HEADERS = {
+    "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36",
+    "Accept": "text/html,application/xhtml+xml,application/xhtml+xml;q=0.9,*/*;q=0.8",
+    "Accept-Language": "fr-FR,fr;q=0.9,en;q=0.8",
+    "Referer": "https://fr.soccerway.com/"
 }
 
-SW_ID_TO_NAME = {v["sw_id"]: k for k, v in SW_CLUBS.items()}
-
 TEAM_NAME_MAP = {
-    "Kabylie": "JS Kabylie", "Belouizdad": "CR Belouizdad",
-    "MC Alger": "MC Alger", "USM Alger": "USM Alger",
-    "Constantine": "CS Constantine", "Setif": "ES Setif",
-    "Oran": "MC Oran", "Chlef": "ASO Chlef", "Saoura": "JS Saoura",
-    "Ben Aknoun": "ES Ben Aknoun", "Khenchela": "USM Khenchela",
-    "Rouisset": "MB Rouissat", "Rouissat": "MB Rouissat",
-    "Paradou": "Paradou AC", "Mostaganem": "ES Mostaganem",
-    "El Bayadh": "MC El Bayadh", "Olympique Akbou": "Olympique Akbou",
-    "Akbou": "Olympique Akbou",
+    "Kabylie":          "JS Kabylie",
+    "Belouizdad":       "CR Belouizdad",
+    "MC Alger":         "MC Alger",
+    "USM Alger":        "USM Alger",
+    "Constantine":      "CS Constantine",
+    "Setif":            "ES Setif",
+    "Oran":             "MC Oran",
+    "Chlef":            "ASO Chlef",
+    "Saoura":           "JS Saoura",
+    "Ben Aknoun":       "ES Ben Aknoun",
+    "Khenchela":        "USM Khenchela",
+    "Rouissat":         "MB Rouissat",
+    "Paradou":          "Paradou AC",
+    "Mostaganem":       "ES Mostaganem",
+    "El Bayadh":        "MC El Bayadh",
+    "Akbou":            "Olympique Akbou",
+    "Olympique Akbou":  "Olympique Akbou",
 }
 
 def normalize_team_name(sw_name):
     if sw_name in TEAM_NAME_MAP:
         return TEAM_NAME_MAP[sw_name]
-    for key, val in TEAM_NAME_MAP.items():
-        if key.lower() in sw_name.lower():
-            return val
+    for sw_key, api_name in TEAM_NAME_MAP.items():
+        if sw_key.lower() in sw_name.lower() or sw_name.lower() in sw_key.lower():
+            return api_name
     return sw_name
 
 def get_today_fixtures():
     """
-    Cherche les matchs du jour en scrapant la page Soccerway
-    de la Ligue 1 algérienne avec cloudscraper
+    Cherche les matchs du jour sur Soccerway Ligue 1 Algérie.
+    Essaie plusieurs URLs pour trouver les bons mid.
     """
     today_str = date.today().strftime("%Y-%m-%d")
     matches = []
-    seen_mids = set()
 
-    # URLs à essayer
-    urls = [
-        "https://fr.soccerway.com/algeria/ligue-professionnelle-1/2025-2026/regular-season/matches/",
+    # URL principale fixtures Ligue 1 Algérie
+    urls_to_try = [
+        "https://fr.soccerway.com/national/algeria/ligue-professionnelle-1/2025-2026/regular-season/r76191/matches/",
         "https://fr.soccerway.com/algeria/ligue-1/fixtures/",
-        "https://fr.soccerway.com/algeria/ligue-1/results/",
+        "https://ca.soccerway.com/national/algeria/ligue-professionnelle-1/2025-2026/regular-season/r76191/matches/",
     ]
 
-    for url in urls:
+    for url in urls_to_try:
         try:
-            print(f"Essai: {url}")
-            r = scraper.get(url, timeout=20)
-            print(f"  Status: {r.status_code} — {len(r.text)} chars")
-
+            print(f"Essai URL: {url}")
+            r = requests.get(url, headers=HEADERS, timeout=20)
+            print(f"Status: {r.status_code}")
             if r.status_code != 200:
                 continue
 
             soup = BeautifulSoup(r.text, "html.parser")
 
-            # Les URLs /match/ sont dans le HTML mais sans mid
-            # On les récupère et on visite chaque URL pour obtenir le mid
-            import re as re2
-            match_urls = list(set(re2.findall(r'/match/[^\s"\'<>?]{10,80}/', r.text)))
-            print(f"  URLs /match/ trouvées: {len(match_urls)}")
-
-            # Filtrer pour garder seulement les matchs Ligue 1 algérienne
-            # (les URLs contiennent les sw_ids qu'on connaît)
-            sw_ids = set(info["sw_id"] for info in SW_CLUBS.values())
-            alg_urls = []
-            for url_path in match_urls:
-                ids_in_url = re2.findall(r'-([A-Za-z0-9]{8})', url_path)
-                if any(cid in sw_ids for cid in ids_in_url):
-                    alg_urls.append(url_path)
-
-            print(f"  URLs algériennes: {len(alg_urls)}")
-            for u in alg_urls[:5]:
-                print(f"    {u}")
-
-            # Pour chaque URL de match algérien, récupérer le mid
-            for url_path in alg_urls:
-                full_url = "https://fr.soccerway.com" + url_path
-                try:
-                    mr = scraper.get(full_url, timeout=15)
-                    if mr.status_code != 200:
-                        continue
-
-                    # Chercher le mid dans l'URL finale ou le HTML
-                    mid_m = re2.search(r'mid=([A-Za-z0-9]+)', mr.url + mr.text[:5000])
-                    if not mid_m:
-                        continue
-                    mid = mid_m.group(1)
-                    if mid in seen_mids:
-                        continue
-
-                    # Identifier les équipes depuis les sw_ids dans l'URL
-                    ids_in_url = re2.findall(r'-([A-Za-z0-9]{8})', url_path)
-                    home_api, away_api = None, None
-                    for cid in ids_in_url:
-                        if cid in SW_ID_TO_NAME:
-                            if home_api is None:
-                                home_api = SW_ID_TO_NAME[cid]
-                            else:
-                                away_api = SW_ID_TO_NAME[cid]
-
-                    if not home_api or not away_api:
-                        continue
-
-                    # Vérifier la date du match
-                    date_m = re2.search(r'(\d{2}/\d{2}/\d{4})', mr.text[:3000])
-                    match_date = today_str
-                    if date_m:
-                        try:
-                            match_date = datetime.strptime(date_m.group(1), "%d/%m/%Y").strftime("%Y-%m-%d")
-                        except:
-                            pass
-
-                    if match_date != today_str:
-                        continue
-
-                    seen_mids.add(mid)
-                    print(f"  ✅ {home_api} vs {away_api} | mid={mid}")
-                    matches.append({"mid": mid, "home": home_api, "away": away_api, "date": today_str})
-
-                except Exception as e:
-                    print(f"  Erreur {url_path}: {e}")
-
-            if matches:
-                break
-
-        except Exception as e:
-            print(f"  Erreur: {e}")
-
-    # Fallback: construire URL directement depuis les IDs clubs
-    if not matches:
-        print("\nFallback: construction URL depuis IDs clubs...")
-        matches = get_fixtures_via_club_urls(today_str, seen_mids)
-
-    return matches
-
-def get_fixtures_via_club_urls(today_str, seen_mids):
-    """Scrape la page de chaque club pour trouver les matchs du jour"""
-    matches = []
-
-    for team_name, info in list(SW_CLUBS.items())[:8]:  # Limiter à 8 clubs pour économiser les requêtes
-        url = f"https://fr.soccerway.com/equipe/{info['slug']}/{info['sw_id']}/matches/"
-        try:
-            r = scraper.get(url, timeout=15)
-            if r.status_code != 200:
-                continue
-
-            soup = BeautifulSoup(r.text, "html.parser")
-            for link in soup.find_all("a", href=re.compile(r"mid=")):
+            # Chercher tous les liens de match
+            # Soccerway: /matches/2026/04/05/algeria/ligue-1/xxx/xxx/1234567/
+            for link in soup.find_all("a", href=re.compile(r"/matches/\d{4}/\d{2}/\d{2}/")):
                 href = link.get("href", "")
-                mid_m = re.search(r"mid=([A-Za-z0-9]+)", href)
-                if not mid_m:
+
+                # Extraire le mid numérique à la fin de l'URL
+                mid_match = re.search(r"/(\d{5,8})/?$", href)
+                if not mid_match:
                     continue
-                mid = mid_m.group(1)
-                if mid in seen_mids:
+                mid = mid_match.group(1)
+
+                # Extraire la date du lien
+                date_match = re.search(r"/matches/(\d{4})/(\d{2})/(\d{2})/", href)
+                if not date_match:
+                    continue
+                match_date = f"{date_match.group(1)}-{date_match.group(2)}-{date_match.group(3)}"
+
+                # Seulement les matchs d'aujourd'hui
+                if match_date != today_str:
                     continue
 
+                # Trouver les noms des équipes dans la ligne du tableau
                 row = link.find_parent("tr")
                 if not row:
-                    continue
-
-                match_date = None
-                for td in row.find_all("td"):
-                    txt = td.get_text(strip=True)
-                    for fmt in ["%d/%m/%Y", "%d/%m/%y"]:
-                        try:
-                            match_date = datetime.strptime(txt, fmt).strftime("%Y-%m-%d")
-                            break
-                        except:
-                            pass
-                    if match_date:
-                        break
-
-                if match_date != today_str:
                     continue
 
                 team_links = row.find_all("a", href=re.compile(r"/teams/"))
                 if len(team_links) < 2:
                     continue
-                home_api = normalize_team_name(team_links[0].get_text(strip=True))
-                away_api = normalize_team_name(team_links[1].get_text(strip=True))
 
-                seen_mids.add(mid)
-                print(f"  ✅ {home_api} vs {away_api} | mid={mid}")
-                matches.append({"mid": mid, "home": home_api, "away": away_api, "date": today_str})
+                home_sw = team_links[0].get_text(strip=True)
+                away_sw = team_links[1].get_text(strip=True)
+
+                if not home_sw or not away_sw:
+                    continue
+
+                home_api = normalize_team_name(home_sw)
+                away_api = normalize_team_name(away_sw)
+
+                # Éviter les doublons
+                if any(m["mid"] == mid for m in matches):
+                    continue
+
+                matches.append({
+                    "mid": mid,
+                    "home": home_api,
+                    "away": away_api,
+                    "home_sw": home_sw,
+                    "away_sw": away_sw,
+                    "date": match_date
+                })
+                print(f"  ✅ Match trouvé: {home_sw} vs {away_sw} | mid={mid}")
+
+            if matches:
+                print(f"Total: {len(matches)} matchs trouvés")
+                return matches
 
         except Exception as e:
-            print(f"  Erreur {team_name}: {e}")
+            print(f"Erreur URL {url}: {e}")
+            continue
+
+    # Fallback: ancienne méthode avec mid= dans les paramètres
+    if not matches:
+        print("Fallback: ancienne méthode...")
+        try:
+            r = requests.get("https://fr.soccerway.com/algeria/ligue-1/fixtures/", headers=HEADERS, timeout=20)
+            soup = BeautifulSoup(r.text, "html.parser")
+            for row in soup.find_all("tr", class_=re.compile(r"match")):
+                try:
+                    mid = None
+                    for link in row.find_all("a", href=True):
+                        href = link.get("href", "")
+                        # Chercher mid= dans l'URL
+                        s = re.search(r"mid=([A-Za-z0-9]+)", href)
+                        if s:
+                            mid = s.group(1)
+                            break
+                        # Ou mid numérique à la fin
+                        s2 = re.search(r"/(\d{5,8})/?$", href)
+                        if s2:
+                            mid = s2.group(1)
+                            break
+                    if not mid:
+                        continue
+
+                    team_links = row.find_all("a", href=re.compile(r"/teams/"))
+                    if len(team_links) < 2:
+                        continue
+                    home_sw = team_links[0].get_text(strip=True)
+                    away_sw = team_links[1].get_text(strip=True)
+
+                    match_date = today_str
+                    dc = row.find("td", class_=re.compile(r"date"))
+                    if dc:
+                        try:
+                            match_date = datetime.strptime(dc.get_text(strip=True), "%d/%m/%Y").strftime("%Y-%m-%d")
+                        except:
+                            pass
+
+                    if match_date == today_str and mid and home_sw:
+                        home_api = normalize_team_name(home_sw)
+                        away_api = normalize_team_name(away_sw)
+                        if not any(m["mid"] == mid for m in matches):
+                            matches.append({
+                                "mid": mid,
+                                "home": home_api,
+                                "away": away_api,
+                                "home_sw": home_sw,
+                                "away_sw": away_sw,
+                                "date": match_date
+                            })
+                            print(f"  ✅ Fallback match: {home_sw} vs {away_sw} | mid={mid}")
+                except:
+                    continue
+        except Exception as e:
+            print(f"Erreur fallback: {e}")
 
     return matches
 
@@ -238,101 +207,112 @@ def parse_player(text, side):
     return None
 
 def scrape_lineups(mid):
-    url = f"https://fr.soccerway.com/game/x/x/summary/lineups/?mid={mid}"
-    try:
-        r = scraper.get(url, timeout=20)
-        print(f"  Lineups status: {r.status_code}")
-        if r.status_code != 200:
-            return None
+    url = "https://fr.soccerway.com/matches/" + mid + "/?ICID=PL_3N_06"
+    # Essayer aussi avec l'URL directe
+    urls = [
+        f"https://fr.soccerway.com/game/x/x/summary/lineups/?mid={mid}",
+        f"https://ca.soccerway.com/game/x/x/summary/lineups/?mid={mid}",
+    ]
+    for url in urls:
+        try:
+            r = requests.get(url, headers=HEADERS, timeout=20)
+            if r.status_code != 200:
+                continue
+            soup = BeautifulSoup(r.text, "html.parser")
+            if not soup.find(string=re.compile(r"STARTING LINEUP|TITULAIRES", re.I)):
+                print(f"  Pas encore de lineups pour mid={mid}")
+                continue
 
-        soup = BeautifulSoup(r.text, "html.parser")
-        if not soup.find(string=re.compile(r"STARTING LINEUP", re.I)):
-            print(f"  Pas encore de lineups pour mid={mid}")
-            return None
+            home_starters, away_starters = [], []
+            home_subs, away_subs = [], []
 
-        home_starters, away_starters, home_subs, away_subs = [], [], [], []
-        for table in soup.find_all("table"):
-            prev = table.find_previous(string=re.compile(r"STARTING LINEUP|SUBSTITUTES", re.I))
-            is_sub = prev and "SUBSTITUTE" in prev.upper() if prev else False
-            for row in table.find_all("tr"):
-                cells = row.find_all("td")
-                if len(cells) < 2:
-                    continue
-                hp = parse_player(cells[0].get_text(strip=True), "home")
-                ap = parse_player(cells[-1].get_text(strip=True), "away")
-                if is_sub:
-                    if hp: home_subs.append(hp)
-                    if ap: away_subs.append(ap)
-                else:
-                    if hp: home_starters.append(hp)
-                    if ap: away_starters.append(ap)
+            for table in soup.find_all("table"):
+                prev = table.find_previous(string=re.compile(r"STARTING LINEUP|SUBSTITUTES|TITULAIRES|REMPLAÇANTS", re.I))
+                is_sub_table = prev and any(x in prev.upper() for x in ["SUBSTITUTE", "REMPLAÇ"]) if prev else False
+                for row in table.find_all("tr"):
+                    cells = row.find_all("td")
+                    if len(cells) < 2:
+                        continue
+                    lt = cells[0].get_text(strip=True)
+                    rt = cells[-1].get_text(strip=True)
+                    hp = parse_player(lt, "home")
+                    ap = parse_player(rt, "away")
+                    if is_sub_table:
+                        if hp: home_subs.append(hp)
+                        if ap: away_subs.append(ap)
+                    else:
+                        if hp: home_starters.append(hp)
+                        if ap: away_starters.append(ap)
 
-        if home_starters or away_starters:
-            print(f"  ✅ Titulaires: {len(home_starters)} dom, {len(away_starters)} ext")
-            return {
-                "home_players": home_starters[:11], "away_players": away_starters[:11],
-                "home_subs": home_subs[:9], "away_subs": away_subs[:9]
-            }
-        return None
-    except Exception as e:
-        print(f"  Erreur lineups: {e}")
-        return None
+            if home_starters or away_starters:
+                print(f"  Titulaires: {len(home_starters)} dom, {len(away_starters)} ext")
+                print(f"  Remplaçants: {len(home_subs)} dom, {len(away_subs)} ext")
+                return {
+                    "home_players": home_starters[:11],
+                    "away_players": away_starters[:11],
+                    "home_subs": home_subs[:9],
+                    "away_subs": away_subs[:9]
+                }
+        except Exception as e:
+            print(f"  Erreur lineups: {e}")
+            continue
+    return None
 
 def get_fixture_id(home_api, away_api, match_date):
     try:
-        import requests
         check = requests.get(
             SB_URL + "/rest/v1/algeria_lineups?home_team=eq." + requests.utils.quote(home_api) +
             "&away_team=eq." + requests.utils.quote(away_api) +
             "&match_date=eq." + match_date + "&select=fixture_id",
             headers=SB_HEADERS
         ).json()
-        if check and check[0].get("fixture_id") and check[0]["fixture_id"] != 0:
+        if check and len(check) > 0 and check[0].get("fixture_id") and check[0]["fixture_id"] != 0:
             return check[0]["fixture_id"]
     except:
         pass
     return 0
 
 print("=== Algeria Lineups", datetime.now().strftime("%H:%M:%S"), "===")
-print("Utilisation de cloudscraper pour contourner Cloudflare")
-today_str = date.today().strftime("%Y-%m-%d")
-
 matches = get_today_fixtures()
-print(f"\nMatchs aujourd'hui: {len(matches)}")
-
+print("Matchs aujourd'hui:", len(matches))
 if not matches:
     print("Aucun match aujourd'hui - OK")
     exit(0)
 
-import requests as req
-
 for match in matches:
-    mid, home, away = match["mid"], match["home"], match["away"]
-    print(f"\n--- {home} vs {away} (mid={mid}) ---")
-
+    mid = match["mid"]
+    home = match["home"]
+    away = match["away"]
+    match_date = match["date"]
+    print(f"\n--- {home} vs {away} ---")
     try:
-        check = req.get(
+        check = requests.get(
             SB_URL + "/rest/v1/algeria_lineups?soccerway_mid=eq." + mid + "&select=id,home_players",
             headers=SB_HEADERS
         ).json()
-        if check and check[0].get("home_players") and len(check[0]["home_players"]) > 0:
-            print("  Déjà scraped")
+        if check and len(check) > 0 and check[0].get("home_players") and len(check[0]["home_players"]) > 0:
+            print("Deja scraped")
             continue
     except:
         pass
 
     lineups = scrape_lineups(mid)
     if lineups:
-        fixture_id = get_fixture_id(home, away, today_str)
-        res = req.post(SB_URL + "/rest/v1/algeria_lineups", headers=SB_HEADERS, json={
-            "fixture_id": fixture_id, "soccerway_mid": mid,
-            "home_team": home, "away_team": away, "match_date": today_str,
-            "home_players": lineups["home_players"], "away_players": lineups["away_players"],
-            "home_subs": lineups.get("home_subs", []), "away_subs": lineups.get("away_subs", []),
+        fixture_id = get_fixture_id(home, away, match_date)
+        res = requests.post(SB_URL + "/rest/v1/algeria_lineups", headers=SB_HEADERS, json={
+            "fixture_id": fixture_id,
+            "soccerway_mid": mid,
+            "home_team": home,
+            "away_team": away,
+            "match_date": match_date,
+            "home_players": lineups["home_players"],
+            "away_players": lineups["away_players"],
+            "home_subs": lineups.get("home_subs", []),
+            "away_subs": lineups.get("away_subs", []),
             "scraped_at": datetime.now(timezone.utc).isoformat()
         })
-        print(f"  Sauvegarde: {res.status_code}")
+        print(f"Sauvegarde: {res.status_code} - {home} vs {away}")
     else:
-        print("  Lineups pas encore disponibles")
+        print("Pas encore disponible")
 
 print("=== Termine ===")
