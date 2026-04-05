@@ -15,219 +15,151 @@ scraper = cloudscraper.create_scraper(
     browser={"browser": "chrome", "platform": "windows", "mobile": False}
 )
 
+PROJECT = "2043"
 FS_HEADERS = {
     "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36",
     "Accept": "*/*",
-    "Referer": "https://fr.soccerway.com/",
+    "Referer": "https://www.flashscore.ca/",
     "x-fsign": "SW9D1eZo",
 }
 
-PROJECT = "2043"
-
-# IDs Soccerway/Flashscore des clubs Ligue 1 Algérie
-ALGERIA_SW_IDS = [
-    "Wfaskwf0",  # JSK
-    "vNJLB2jP",  # Belouizdad
-    "tnY2Lfcp",  # MC Alger
-    "zXBidj5t",  # USM Alger
-    "nBionu2l",  # Constantine
-    "EDgC6qYp",  # Setif
-    "CrCmB35M",  # Oran
-    "Aobolc96",  # Chlef
-    "nimcBvel",  # Saoura
-    "QmvZvxCB",  # Ben Aknoun
-    "lYuJtBj9",  # Khenchela
-    "hGHHy7Am",  # Rouissat
-    "WIyffF3J",  # Paradou
-    "j9T7TM2E",  # Mostaganem
-    "S6H5xCS1",  # El Bayadh
-    "dhMQsMOh",  # Akbou
-]
-
 TEAM_NAME_MAP = {
-    "Kabylie":          "JS Kabylie",
-    "Belouizdad":       "CR Belouizdad",
-    "MC Alger":         "MC Alger",
-    "USM Alger":        "USM Alger",
-    "Constantine":      "CS Constantine",
-    "Setif":            "ES Setif",
-    "Oran":             "MC Oran",
-    "Chlef":            "ASO Chlef",
-    "Saoura":           "JS Saoura",
-    "Ben-Aknoun":       "ES Ben Aknoun",
-    "Ben Aknoun":       "ES Ben Aknoun",
-    "Khenchela":        "USM Khenchela",
-    "Rouissat":         "MB Rouissat",
-    "Paradou":          "Paradou AC",
-    "Mostaganem":       "ES Mostaganem",
-    "El-Bayadh":        "MC El Bayadh",
-    "El Bayadh":        "MC El Bayadh",
-    "Akbou":            "Olympique Akbou",
+    "Kabylie": "JS Kabylie", "CR Belouizdad": "CR Belouizdad",
+    "Belouizdad": "CR Belouizdad", "MC Alger": "MC Alger",
+    "USM Alger": "USM Alger", "Constantine": "CS Constantine",
+    "CS Constantine": "CS Constantine", "ES Setif": "ES Setif",
+    "Setif": "ES Setif", "Oran": "MC Oran", "MC Oran": "MC Oran",
+    "ASO Chlef": "ASO Chlef", "Chlef": "ASO Chlef",
+    "Saoura": "JS Saoura", "JS Saoura": "JS Saoura",
+    "Ben Aknoun": "ES Ben Aknoun", "ES Ben Aknoun": "ES Ben Aknoun",
+    "Khenchela": "USM Khenchela", "USM Khenchela": "USM Khenchela",
+    "Rouisset": "MB Rouissat", "Rouissat": "MB Rouissat",
+    "Paradou": "Paradou AC", "Paradou AC": "Paradou AC",
+    "Mostaganem": "ES Mostaganem", "ES Mostaganem": "ES Mostaganem",
+    "El Bayadh": "MC El Bayadh", "MC El Bayadh": "MC El Bayadh",
+    "Olympique Akbou": "Olympique Akbou",
 }
 
-def normalize_team_name(name):
+def normalize(name):
     if name in TEAM_NAME_MAP:
         return TEAM_NAME_MAP[name]
     for k, v in TEAM_NAME_MAP.items():
-        if k.lower() in name.lower() or name.lower() in k.lower():
+        if k.lower() in name.lower():
             return v
     return name
 
-def parse_feed(text):
-    """Parse le format Flashscore: KEY÷VALUE¬KEY÷VALUE~"""
-    blocks = text.split("~")
-    result = []
-    for block in blocks:
-        if not block.strip():
-            continue
-        fields = {}
-        for field in block.split("¬"):
-            if "÷" in field:
-                key, _, val = field.partition("÷")
-                fields[key.strip()] = val.strip()
-        if fields:
-            result.append(fields)
-    return result
+def lh_to_pos(lh):
+    """Déduire la position depuis l'index LH"""
+    if lh == 0: return "G"
+    if lh <= 4:  return "D"
+    if lh <= 7:  return "M"
+    return "A"
 
-def get_today_matches():
+def parse_events(mid):
     """
-    Récupère les matchs Ligue 1 Algérie du jour depuis Flashscore.
-    URL page du jour → chercher les IDs des clubs algériens.
+    Récupère buts et cartons depuis df_sui.
+    IE=3 → But, IE=1 → Carton jaune, IE=6 → Carton rouge
+    IM = player_id, IB = minute, IA = équipe (1=dom, 2=ext)
     """
-    today = date.today()
-    today_str = today.strftime("%Y-%m-%d")
-    matches = []
-
-    url = "https://fr.soccerway.com/matches/{}/{}/{}/".format(
-        today.strftime("%Y"), today.strftime("%m"), today.strftime("%d")
-    )
-    print("URL:", url)
-
+    url = f"https://{PROJECT}.flashscore.ninja/46/x/feed/df_sui_1_{mid}_1_fr_1"
+    events = {"goals": {}, "yellow": {}, "red": {}}
     try:
-        r = scraper.get(url, timeout=20)
-        print("Status:", r.status_code, "| Taille:", len(r.text))
-        html = r.text
+        r = scraper.get(url, headers=FS_HEADERS, timeout=10)
+        if r.status_code != 200 or len(r.text) < 5:
+            return events
 
-        # Chercher les liens /match/ avec IDs algériens
-        for a_match in re.findall(r'/match/([^"\'<>\s/]+)/([^"\'<>\s/]+)/', html):
-            home_slug, away_slug = a_match
-            home_is_algeria = any(sw_id in home_slug for sw_id in ALGERIA_SW_IDS)
-            away_is_algeria = any(sw_id in away_slug for sw_id in ALGERIA_SW_IDS)
+        for block in r.text.split("~"):
+            fields = {}
+            for field in block.split("¬"):
+                if "÷" in field:
+                    k, _, v = field.partition("÷")
+                    fields[k.strip()] = v.strip()
 
-            if not home_is_algeria and not away_is_algeria:
+            event_type = fields.get("IE", "")
+            player_id = fields.get("IM", "")
+            minute = fields.get("IB", "")
+
+            if not player_id:
                 continue
 
-            # Extraire mid depuis le HTML (chercher autour du slug)
-            mid_pattern = re.search(
-                re.escape(home_slug) + r'.{0,200}?\?mid=([A-Za-z0-9]{6,12})',
-                html, re.DOTALL
-            )
-            if not mid_pattern:
-                # Chercher globalement
-                mid_pattern = re.search(r'\?mid=([A-Za-z0-9]{6,12})', html)
-
-            mid = mid_pattern.group(1) if mid_pattern else home_slug + "_" + away_slug
-
-            home_name = re.sub(r'-[A-Za-z0-9]{6,10}$', '', home_slug).replace("-", " ").title()
-            away_name = re.sub(r'-[A-Za-z0-9]{6,10}$', '', away_slug).replace("-", " ").title()
-
-            if not any(m["mid"] == mid for m in matches):
-                matches.append({
-                    "mid": mid,
-                    "home": normalize_team_name(home_name),
-                    "away": normalize_team_name(away_name),
-                    "date": today_str
-                })
-                print(f"  ✅ {home_name} vs {away_name} | mid={mid}")
+            if event_type == "3":  # But
+                if player_id not in events["goals"]:
+                    events["goals"][player_id] = []
+                events["goals"][player_id].append(minute)
+            elif event_type == "1":  # Carton jaune
+                events["yellow"][player_id] = minute
+            elif event_type == "6":  # Carton rouge
+                events["red"][player_id] = minute
 
     except Exception as e:
-        print("Erreur get_today_matches:", e)
+        print(f"  Erreur events: {e}")
+    return events
 
-    # Fallback: chercher via l'API Flashscore feed du jour
-    if not matches:
-        print("Fallback: recherche via feeds Flashscore...")
-        try:
-            # Feed liste des matchs du sport football
-            feed_url = f"https://{PROJECT}.flashscore.ninja/46/x/feed/f_1_0_3_fr_1"
-            r2 = scraper.get(feed_url, headers=FS_HEADERS, timeout=10)
-            print("Feed status:", r2.status_code, "| Taille:", len(r2.text))
-            if r2.status_code == 200 and len(r2.text) > 10:
-                # Chercher les IDs algériens dans le feed
-                for sw_id in ALGERIA_SW_IDS:
-                    if sw_id in r2.text:
-                        print(f"  ID algérien trouvé dans feed: {sw_id}")
-                        # Extraire le mid associé
-                        idx = r2.text.find(sw_id)
-                        context = r2.text[max(0, idx-200):idx+200]
-                        mid_m = re.search(r'([A-Za-z0-9]{8})', context)
-                        if mid_m:
-                            print(f"  Contexte: {context[:200]}")
-        except Exception as e:
-            print("Erreur fallback:", e)
-
-    return matches
-
-def get_lineups_from_feed(mid):
+def get_lineups(mid):
     """
-    Récupère les lineups depuis l'API Flashscore ninja.
-    Feed: df_li_1_{mid}_1_fr_1
-    Format: LH=index, LC=équipe(1=dom,2=ext), LI=nom, LJ=numéro, LP=ID, LK=1=titulaire/2=remplaçant
+    Récupère lineups + positions + buts + cartons.
+    LH = index position (0=GK,1-4=DEF,5-7=MID,8-10=ATT)
+    LK = 1 titulaire (LK=15 aussi), 2 = remplaçant
     """
     url = f"https://{PROJECT}.flashscore.ninja/46/x/feed/df_li_1_{mid}_1_fr_1"
     try:
         r = scraper.get(url, headers=FS_HEADERS, timeout=10)
         if r.status_code != 200 or len(r.text) < 10:
+            print(f"  Lineups pas dispo (status={r.status_code}, taille={len(r.text)})")
             return None
 
-        entries = parse_feed(r.text)
+        # Récupérer les événements
+        events = parse_events(mid)
+        print(f"  Buts: {len(events['goals'])} | Cartons J: {len(events['yellow'])} | Cartons R: {len(events['red'])}")
 
         home_starters, away_starters = [], []
         home_subs, away_subs = [], []
-        current_team = 1  # 1=dom, 2=ext
+        current_team = 1
 
-        for e in entries:
-            # LB = header (Titulaires/Remplaçants)
-            if "LB" in e and "LI" not in e:
+        for block in r.text.split("~"):
+            fields = {}
+            for field in block.split("¬"):
+                if "÷" in field:
+                    k, _, v = field.partition("÷")
+                    fields[k.strip()] = v.strip()
+
+            if "LC" in fields and "LI" not in fields:
+                current_team = int(fields.get("LC", 1))
+                continue
+            if "LI" not in fields:
                 continue
 
-            # LC = changement d'équipe
-            if "LC" in e and "LI" not in e:
-                current_team = int(e.get("LC", 1))
-                continue
+            lh = int(fields.get("LH", 99))
+            player_id = fields.get("LP", "")
+            lk = fields.get("LK", "1")
+            is_sub = lk == "2"
+            is_starter = lk in ["1", "15"]
+            is_gk = fields.get("LS", "") == "Вратарь" or "(В)" in fields.get("LR", "")
 
-            # LI = nom joueur
-            if "LI" not in e:
-                continue
-
-            name = e.get("LI", "")
-            number = e.get("LJ", "")
-            player_id = e.get("LP", "")
-            pos_raw = e.get("LS", "")
-            is_gk = "Вратарь" in pos_raw or "(В)" in e.get("LR", "")
-            is_sub = e.get("LK", "1") == "2"
+            # Position depuis LH (seulement pour titulaires)
+            pos = "G" if is_gk else (lh_to_pos(lh) if is_starter else "")
 
             player = {
-                "name": name,
-                "number": number,
+                "name": fields.get("LI", ""),
+                "number": fields.get("LJ", ""),
                 "sw_player_id": player_id,
                 "is_gk": is_gk,
-                "is_captain": "(C)" in e.get("LR", ""),
+                "is_captain": "(C)" in fields.get("LR", ""),
+                "pos": pos,
+                # Enrichissement avec événements
+                "goals": len(events["goals"].get(player_id, [])),
+                "yellow": player_id in events["yellow"],
+                "red": player_id in events["red"],
             }
 
-            if current_team == 1:  # Domicile
-                if is_sub:
-                    home_subs.append(player)
-                else:
-                    home_starters.append(player)
-            else:  # Extérieur
-                if is_sub:
-                    away_subs.append(player)
-                else:
-                    away_starters.append(player)
+            if current_team == 1:
+                home_subs.append(player) if is_sub else home_starters.append(player)
+            else:
+                away_subs.append(player) if is_sub else away_starters.append(player)
 
         if home_starters or away_starters:
-            print(f"  Titulaires: {len(home_starters)} dom, {len(away_starters)} ext")
-            print(f"  Remplaçants: {len(home_subs)} dom, {len(away_subs)} ext")
+            print(f"  ✅ Dom: {len(home_starters)} tit + {len(home_subs)} rempl")
+            print(f"  ✅ Ext: {len(away_starters)} tit + {len(away_subs)} rempl")
             return {
                 "home_players": home_starters[:11],
                 "away_players": away_starters[:11],
@@ -237,8 +169,43 @@ def get_lineups_from_feed(mid):
         return None
 
     except Exception as e:
-        print(f"  Erreur lineups feed: {e}")
+        print(f"  Erreur lineups: {e}")
         return None
+
+def get_today_matches():
+    today_str = date.today().strftime("%Y-%m-%d")
+    matches = []
+    seen = set()
+    try:
+        r = scraper.get(
+            "https://www.flashscore.ca/soccer/algeria/ligue-1/fixtures/",
+            timeout=20
+        )
+        print(f"Flashscore status: {r.status_code} | Taille: {len(r.text)}")
+        for block in r.text.split("~"):
+            if "AA÷" not in block:
+                continue
+            fields = {}
+            for field in block.split("¬"):
+                if "÷" in field:
+                    k, _, v = field.partition("÷")
+                    fields[k.strip()] = v.strip()
+            mid = fields.get("AA", "")
+            ts = int(fields.get("AD", 0))
+            if not mid or mid in seen:
+                continue
+            if ts:
+                match_date = datetime.fromtimestamp(ts).strftime("%Y-%m-%d")
+                if match_date != today_str:
+                    continue
+            seen.add(mid)
+            home = normalize(fields.get("CX", fields.get("WM", "")))
+            away = normalize(fields.get("AF", fields.get("WN", "")))
+            matches.append({"mid": mid, "home": home, "away": away, "date": today_str})
+            print(f"  ✅ {home} vs {away} | mid={mid}")
+    except Exception as e:
+        print(f"Erreur: {e}")
+    return matches
 
 def get_fixture_id(home, away, match_date):
     try:
@@ -254,41 +221,35 @@ def get_fixture_id(home, away, match_date):
         pass
     return 0
 
-# ══════════════════════════════════════════════════
-print("=== Algeria Lineups (Flashscore API)", datetime.now().strftime("%H:%M:%S"), "===")
+# ══════════════════════════
+print("=== Algeria Lineups Scraper", datetime.now().strftime("%H:%M:%S"), "===")
 matches = get_today_matches()
-print(f"Matchs aujourd'hui: {len(matches)}")
+print(f"\nMatchs aujourd'hui: {len(matches)}")
 
 if not matches:
-    print("Aucun match aujourd'hui - OK")
+    print("Aucun match - OK")
     exit(0)
 
 for match in matches:
-    mid = match["mid"]
-    home = match["home"]
-    away = match["away"]
-    match_date = match["date"]
+    mid, home, away, match_date = match["mid"], match["home"], match["away"], match["date"]
     print(f"\n--- {home} vs {away} (mid={mid}) ---")
-
-    # Vérifier si déjà scrapé
     try:
         check = requests.get(
-            SB_URL + "/rest/v1/algeria_lineups?soccerway_mid=eq." + requests.utils.quote(str(mid)) +
-            "&select=id,home_players",
-            headers=SB_HEADERS
+            SB_URL + "/rest/v1/algeria_lineups?soccerway_mid=eq." + requests.utils.quote(mid) +
+            "&select=id,home_players", headers=SB_HEADERS
         ).json()
         if check and check[0].get("home_players") and len(check[0]["home_players"]) > 0:
-            print("Déjà scrapé")
+            print("Déjà scrapé ✓")
             continue
     except:
         pass
 
-    lineups = get_lineups_from_feed(mid)
+    lineups = get_lineups(mid)
     if lineups:
         fixture_id = get_fixture_id(home, away, match_date)
         res = requests.post(SB_URL + "/rest/v1/algeria_lineups", headers=SB_HEADERS, json={
             "fixture_id": fixture_id,
-            "soccerway_mid": str(mid),
+            "soccerway_mid": mid,
             "home_team": home,
             "away_team": away,
             "match_date": match_date,
@@ -300,8 +261,7 @@ for match in matches:
         })
         print(f"Sauvegarde: {res.status_code}")
     else:
-        print("Lineups pas encore disponibles")
-
+        print("Pas encore dispo")
     time.sleep(1)
 
-print("=== Terminé ===")
+print("\n=== Terminé ===")
