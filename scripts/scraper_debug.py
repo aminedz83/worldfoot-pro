@@ -4,56 +4,47 @@ scraper = cloudscraper.create_scraper(
     browser={"browser": "chrome", "platform": "windows", "mobile": False}
 )
 
-mid = "IiwUv5Er"
 PROJECT = "2043"
-
-headers = {
+FS_HEADERS = {
     "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36",
     "Accept": "*/*",
     "Referer": "https://fr.soccerway.com/",
     "x-fsign": "SW9D1eZo",
 }
 
-# Récupérer le feed lineups complet
-url = f"https://{PROJECT}.flashscore.ninja/46/x/feed/df_li_1_{mid}_1_fr_1"
-r = scraper.get(url, headers=headers, timeout=10)
-print("=== Feed Lineups Complet ===")
-print("Taille:", len(r.text))
-print(r.text)
-print("\n=== Parsing ===")
+ALGERIA_SW_IDS = [
+    "Wfaskwf0", "vNJLB2jP", "tnY2Lfcp", "zXBidj5t",
+    "nBionu2l", "EDgC6qYp", "CrCmB35M", "Aobolc96",
+    "nimcBvel", "QmvZvxCB", "lYuJtBj9", "hGHHy7Am",
+    "WIyffF3J", "j9T7TM2E", "S6H5xCS1", "dhMQsMOh",
+]
 
-# Parser le format ¬ 
-# Format: KEY÷VALUE¬KEY÷VALUE~KEY÷VALUE
-def parse_feed(text):
-    players = []
-    current = {}
-    
-    # Splitter par ~ (séparateur de joueurs) puis par ¬ (séparateur de champs)
-    blocks = text.split("~")
-    for block in blocks:
-        if not block.strip():
-            continue
-        fields = {}
-        for field in block.split("¬"):
-            if "÷" in field:
-                key, _, val = field.partition("÷")
-                fields[key.strip()] = val.strip()
-        if fields:
-            players.append(fields)
-    return players
+# Récupérer le feed du jour
+print("=== Feed matchs du jour ===")
+url = f"https://{PROJECT}.flashscore.ninja/46/x/feed/f_1_0_3_fr_1"
+r = scraper.get(url, headers=FS_HEADERS, timeout=15)
+print(f"Status: {r.status_code} | Taille: {len(r.text)}")
 
-entries = parse_feed(r.text)
+feed = r.text
 
-print(f"Total entrées: {len(entries)}")
-print("\nDétail:")
-for e in entries:
-    if "LI" in e:  # LI = nom joueur
-        name = e.get("LI", "?")
-        pos = e.get("LS", "?")
-        num = e.get("LJ", "?")
-        team = e.get("LH", "?")  # 0=dom, 1=ext
-        player_id = e.get("LP", "?")
-        side = "DOM" if team == "0" else "EXT"
-        print(f"  [{side}] #{num} {name} ({pos}) | ID={player_id}")
-    elif "LB" in e:
-        print(f"\n--- {e.get('LB')} ---")
+# Chercher les IDs algériens
+print("\n=== IDs algériens dans le feed ===")
+for sw_id in ALGERIA_SW_IDS:
+    if sw_id in feed:
+        idx = feed.find(sw_id)
+        context = feed[max(0,idx-300):idx+300]
+        print(f"\n✅ Trouvé: {sw_id}")
+        print(f"Contexte: {context}")
+
+# Afficher les 2000 premiers chars pour comprendre le format
+print("\n=== Format du feed (2000 chars) ===")
+print(feed[:2000])
+
+# Chercher "Algerie" ou "Algeria" dans le feed
+print("\n=== Algérie dans le feed ===")
+for keyword in ["Algerie", "Algeria", "algeri", "Ligue 1", "ligue-1"]:
+    if keyword.lower() in feed.lower():
+        idx = feed.lower().find(keyword.lower())
+        print(f"✅ '{keyword}' trouvé!")
+        print(feed[max(0,idx-100):idx+300])
+        print("---")
