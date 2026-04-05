@@ -14,64 +14,46 @@ headers = {
     "x-fsign": "SW9D1eZo",
 }
 
-print("=== Recherche feed lineups ===")
+# Récupérer le feed lineups complet
+url = f"https://{PROJECT}.flashscore.ninja/46/x/feed/df_li_1_{mid}_1_fr_1"
+r = scraper.get(url, headers=headers, timeout=10)
+print("=== Feed Lineups Complet ===")
+print("Taille:", len(r.text))
+print(r.text)
+print("\n=== Parsing ===")
 
-# Tester tous les codes de feed possibles
-feed_codes = [
-    "df_sui",   # lineups ?
-    "df_li",    # lineups ?
-    "df_liom",  # lineups ?
-    "df_fo",    # formation ?
-    "df_line",  # lineups ?
-    "dl_1",
-    "dl_li",
-    "di_1",
-    "di_li",
-    "dline",
-    "df_ls",
-    "df_lc",
-    "df_la",
-    "df_lb",
-    "df_ld",
-    "df_le",
-    "df_lf",
-    "df_lg",
-    "df_lh",
-    "df_lk",
-    "df_ll",
-    "df_lm",
-    "df_ln",
-    "df_lo",
-    "df_lp",
-    "df_lq",
-    "df_lr",
-    "df_lu",
-    "df_lv",
-    "df_lw",
-]
+# Parser le format ¬ 
+# Format: KEY÷VALUE¬KEY÷VALUE~KEY÷VALUE
+def parse_feed(text):
+    players = []
+    current = {}
+    
+    # Splitter par ~ (séparateur de joueurs) puis par ¬ (séparateur de champs)
+    blocks = text.split("~")
+    for block in blocks:
+        if not block.strip():
+            continue
+        fields = {}
+        for field in block.split("¬"):
+            if "÷" in field:
+                key, _, val = field.partition("÷")
+                fields[key.strip()] = val.strip()
+        if fields:
+            players.append(fields)
+    return players
 
-for code in feed_codes:
-    url = f"https://{PROJECT}.flashscore.ninja/46/x/feed/{code}_1_{mid}_1_fr_1"
-    try:
-        r = scraper.get(url, headers=headers, timeout=5)
-        size = len(r.text)
-        if r.status_code == 200 and size > 5:
-            print(f"✅ {code}: Status={r.status_code} | Taille={size}")
-            print(f"   Contenu: {r.text[:200]}")
-        elif r.status_code != 200:
-            print(f"❌ {code}: Status={r.status_code}")
-    except Exception as e:
-        print(f"  {code}: Erreur - {e}")
+entries = parse_feed(r.text)
 
-# Aussi tester sans le suffixe _1_fr_1
-print("\n=== Sans suffixe ===")
-for code in ["df_li", "df_sui", "df_liom", "df_fo", "dl_1", "di_1"]:
-    url = f"https://{PROJECT}.flashscore.ninja/46/x/feed/{code}_{mid}"
-    try:
-        r = scraper.get(url, headers=headers, timeout=5)
-        size = len(r.text)
-        if r.status_code == 200 and size > 5:
-            print(f"✅ {code}: Status={r.status_code} | Taille={size}")
-            print(f"   Contenu: {r.text[:200]}")
-    except:
-        pass
+print(f"Total entrées: {len(entries)}")
+print("\nDétail:")
+for e in entries:
+    if "LI" in e:  # LI = nom joueur
+        name = e.get("LI", "?")
+        pos = e.get("LS", "?")
+        num = e.get("LJ", "?")
+        team = e.get("LH", "?")  # 0=dom, 1=ext
+        player_id = e.get("LP", "?")
+        side = "DOM" if team == "0" else "EXT"
+        print(f"  [{side}] #{num} {name} ({pos}) | ID={player_id}")
+    elif "LB" in e:
+        print(f"\n--- {e.get('LB')} ---")
