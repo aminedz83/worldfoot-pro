@@ -12499,6 +12499,359 @@ function ProgressionPanel(props) {
 }
 
 
+// ══════════════════════════════════════════════════════════════
+// RANK TRACKER — style SofaScore
+// ══════════════════════════════════════════════════════════════
+function RankTracker(props) {
+  var teamId   = props.teamId;
+  var teamName = props.teamName;
+  var teamLogo = props.teamLogo;
+  var season   = props.season;
+  var onClose  = props.onClose;
+  var _s = season || (new Date().getMonth() >= 6 ? new Date().getFullYear() : new Date().getFullYear() - 1);
+
+  var ALGERIA_CLUBS = [
+    {id:918,name:"JS Kabylie",     logo:"https://media.api-sports.io/football/teams/918.png"},
+    {id:904,name:"CR Belouizdad", logo:"https://media.api-sports.io/football/teams/904.png"},
+    {id:906,name:"MC Alger",       logo:"https://media.api-sports.io/football/teams/906.png"},
+    {id:910,name:"USM Alger",      logo:"https://media.api-sports.io/football/teams/910.png"},
+    {id:911,name:"CS Constantine", logo:"https://media.api-sports.io/football/teams/911.png"},
+    {id:905,name:"ES Setif",       logo:"https://media.api-sports.io/football/teams/905.png"},
+    {id:907,name:"MC Oran",        logo:"https://media.api-sports.io/football/teams/907.png"},
+    {id:916,name:"ASO Chlef",      logo:"https://media.api-sports.io/football/teams/916.png"},
+    {id:914,name:"JS Saoura",      logo:"https://media.api-sports.io/football/teams/914.png"},
+    {id:919,name:"ES Ben Aknoun",  logo:"https://media.api-sports.io/football/teams/919.png"},
+    {id:920,name:"USM Khenchela",  logo:"https://media.api-sports.io/football/teams/920.png"},
+    {id:921,name:"MB Rouissat",    logo:"https://media.api-sports.io/football/teams/921.png"},
+    {id:915,name:"Paradou AC",     logo:"https://media.api-sports.io/football/teams/915.png"},
+    {id:922,name:"ES Mostaganem",  logo:"https://media.api-sports.io/football/teams/922.png"},
+    {id:923,name:"MC El Bayadh",   logo:"https://media.api-sports.io/football/teams/923.png"},
+    {id:924,name:"Olympique Akbou",logo:"https://media.api-sports.io/football/teams/924.png"},
+  ];
+
+  var [loading,    setLoading]    = React.useState(true);
+  var [progMap,    setProgMap]    = React.useState({}); // teamId → [{j, position, scoreStr, ...}]
+  var [totalTeams, setTotalTeams] = React.useState(16);
+  var [leagueLogo, setLeagueLogo] = React.useState("");
+  var [selJournee, setSelJournee] = React.useState(null);
+  var [maxJ,       setMaxJ]       = React.useState(1);
+  var [compareId,  setCompareId]  = React.useState(null);  // équipe à comparer
+  var [showDrop,   setShowDrop]   = React.useState(false); // dropdown clubs
+  var [clubList,   setClubList]   = React.useState([]);    // clubs réels de la saison
+
+  React.useEffect(function() {
+    setLoading(true);
+    Promise.all([
+      api('/fixtures?league=186&season='+_s+'&status=FT', 3600000),
+      api('/standings?league=186&season='+_s, 3600000)
+    ]).then(function(res) {
+      var fixtures   = res[0] || [];
+      var standData  = res[1] || [];
+      var allTeams   = [];
+      try { allTeams = standData[0].league.standings[0] || []; } catch(e) {}
+      try { setLeagueLogo(standData[0].league.logo || ""); } catch(e) {}
+      setTotalTeams(allTeams.length || 16);
+
+      // Liste réelle des clubs (depuis standings)
+      var realClubs = allTeams.map(function(t){
+        return {id:t.team.id, name:t.team.name, logo:t.team.logo};
+      }).filter(function(c){ return c.id !== teamId; });
+      setClubList(realClubs.length > 0 ? realClubs : ALGERIA_CLUBS.filter(function(c){return c.id!==teamId;}));
+
+      var teamInfo = {};
+      allTeams.forEach(function(t){ teamInfo[t.team.id]={logo:t.team.logo,name:t.team.name}; });
+
+      var sorted = fixtures.slice().sort(function(a,b){return new Date(a.fixture.date)-new Date(b.fixture.date);});
+      var journeeMap = {};
+      sorted.forEach(function(f){
+        var r=(f.league&&f.league.round)||'';
+        var n=r.match(/[0-9]+/); var jNum=n?parseInt(n[0]):0;
+        if(!jNum||jNum>34) return;
+        if(!journeeMap[jNum]) journeeMap[jNum]=[];
+        journeeMap[jNum].push(f);
+      });
+
+      // Calculer progression pour TOUS les clubs
+      var pts={},gd={},gf={};
+      allTeams.forEach(function(t){pts[t.team.id]=0;gd[t.team.id]=0;gf[t.team.id]=0;});
+
+      var journees = Object.keys(journeeMap).map(Number).sort(function(a,b){return a-b;});
+      var maxJournee = journees.length > 0 ? journees[journees.length-1] : 1;
+      setMaxJ(maxJournee);
+      setSelJournee(maxJournee);
+
+      var progAll = {}; // id → [{j,position,scoreStr,opponentLogo,isHome,hg,ag}]
+
+      journees.forEach(function(jNum){
+        var jFix = journeeMap[jNum];
+        jFix.forEach(function(f){
+          var hId=f.teams.home.id, aId=f.teams.away.id;
+          var hG=f.goals.home, aG=f.goals.away;
+          if(hG===null||aG===null) return;
+          if(!pts[hId]) pts[hId]=0; if(!pts[aId]) pts[aId]=0;
+          if(!gd[hId]) gd[hId]=0;  if(!gd[aId]) gd[aId]=0;
+          if(!gf[hId]) gf[hId]=0;  if(!gf[aId]) gf[aId]=0;
+          gd[hId]+=hG-aG; gd[aId]+=aG-hG;
+          gf[hId]+=hG; gf[aId]+=aG;
+          if(hG>aG) pts[hId]+=3;
+          else if(hG<aG) pts[aId]+=3;
+          else {pts[hId]+=1;pts[aId]+=1;}
+        });
+
+        var ranking = Object.keys(pts).map(function(tid){
+          return {id:parseInt(tid),p:pts[tid],g:gd[tid]||0,f:gf[tid]||0};
+        }).sort(function(a,b){
+          if(b.p!==a.p) return b.p-a.p;
+          if(b.g!==a.g) return b.g-a.g;
+          return b.f-a.f;
+        });
+
+        ranking.forEach(function(r,idx){
+          var tid=r.id;
+          if(!progAll[tid]) progAll[tid]=[];
+          var ourMatch=null;
+          jFix.forEach(function(f){ if(f.teams.home.id===tid||f.teams.away.id===tid) ourMatch=f; });
+          if(!ourMatch) return;
+          var isHome=ourMatch.teams.home.id===tid;
+          var oppId=isHome?ourMatch.teams.away.id:ourMatch.teams.home.id;
+          var oppInfo=teamInfo[oppId]||{};
+          var hG2=ourMatch.goals.home, aG2=ourMatch.goals.away;
+          var myG=isHome?hG2:aG2, oppG=isHome?aG2:hG2;
+          progAll[tid].push({
+            j:jNum, position:idx+1, points:pts[tid]||0,
+            opponentLogo:oppInfo.logo||"", opponentName:oppInfo.name||"",
+            isHome:isHome, hg:hG2, ag:aG2, myG:myG, oppG:oppG
+          });
+        });
+      });
+
+      setProgMap(progAll);
+      setLoading(false);
+    }).catch(function(){ setLoading(false); });
+  }, [teamId, _s]);
+
+  if(loading) return React.createElement("div",{style:{
+    position:"fixed",inset:0,background:"rgba(0,0,0,.5)",zIndex:9000,
+    display:"flex",alignItems:"center",justifyContent:"center"
+  }}, React.createElement("div",{style:{background:"#fff",borderRadius:20,padding:"40px 32px",textAlign:"center"}},
+    React.createElement(Spin,{s:28,c:"#2563eb"}),
+    React.createElement("div",{style:{fontSize:13,color:"#94a3b8",marginTop:12}},"Chargement du tracker...")
+  ));
+
+  var prog  = progMap[teamId] || [];
+  var prog2 = compareId ? (progMap[compareId]||[]) : null;
+  if(prog.length===0) return null;
+
+  var W=340, H=260, PL=28, PR=14, PT=16, PB=28;
+  var CW=W-PL-PR, CH=H-PT-PB;
+  var xS=function(j){return PL+((j-1)/(Math.max(maxJ-1,1)))*CW;};
+  var yS=function(p){return PT+((p-1)/(Math.max(totalTeams-1,1)))*CH;};
+  var pathD=prog.map(function(p,i){return (i===0?"M":"L")+xS(p.j).toFixed(1)+" "+yS(p.position).toFixed(1);}).join(" ");
+  var pathD2=prog2?prog2.map(function(p,i){return (i===0?"M":"L")+xS(p.j).toFixed(1)+" "+yS(p.position).toFixed(1);}).join(" "):null;
+
+  // Journée sélectionnée
+  var selData  = prog.find(function(p){return p.j===selJournee;}) || prog[prog.length-1];
+  var selData2 = prog2?(prog2.find(function(p){return p.j===selJournee;})||prog2[prog2.length-1]):null;
+  var cmpClub  = compareId ? clubList.find(function(c){return c.id===compareId;})||{} : null;
+
+  // Axe X labels (journées clés)
+  var xLabels = [];
+  for(var jj=1;jj<=maxJ;jj+=Math.max(1,Math.floor(maxJ/6))) xLabels.push(jj);
+  if(xLabels[xLabels.length-1]!==maxJ) xLabels.push(maxJ);
+
+  return React.createElement("div",{
+    style:{position:"fixed",inset:0,zIndex:9000,display:"flex",flexDirection:"column",justifyContent:"flex-end"},
+    onClick:function(e){if(e.target===e.currentTarget){onClose();setShowDrop(false);}}
+  },
+    // Overlay sombre
+    React.createElement("div",{style:{position:"absolute",inset:0,background:"rgba(0,0,0,.45)"},onClick:onClose}),
+
+    // Panel blanc slide-up
+    React.createElement("div",{style:{
+      position:"relative",background:"#fff",borderRadius:"20px 20px 0 0",
+      paddingBottom:24,zIndex:1,maxHeight:"90vh",overflowY:"auto"
+    },onClick:function(e){e.stopPropagation();setShowDrop(false);}},
+
+      // Barre de drag + titre
+      React.createElement("div",{style:{display:"flex",flexDirection:"column",alignItems:"center",padding:"10px 20px 0"}},
+        React.createElement("div",{style:{width:36,height:4,borderRadius:2,background:"#e2e8f0",marginBottom:12}}),
+        React.createElement("div",{style:{alignSelf:"stretch",fontSize:18,fontWeight:800,color:"#0f172a",marginBottom:8}},
+          "Tracker de classement"
+        )
+      ),
+
+      // Logo ligue + nom saison
+      React.createElement("div",{style:{display:"flex",alignItems:"center",gap:10,padding:"4px 20px 12px"}},
+        leagueLogo && React.createElement("img",{src:leagueLogo,style:{width:24,height:24,objectFit:"contain"},onError:function(e){e.target.style.display="none";}}),
+        React.createElement("span",{style:{fontSize:14,fontWeight:600,color:"#0f172a"}},
+          "Algerian Ligue 1 \u2022 "+_s.toString().slice(2)+"/"+(_s+1).toString().slice(2)
+        )
+      ),
+
+      // Graphique SVG
+      React.createElement("div",{style:{padding:"0 12px 8px",position:"relative"}},
+        React.createElement("svg",{
+          viewBox:"0 0 "+W+" "+H,
+          style:{width:"100%",height:"auto",display:"block",overflow:"visible"}
+        },
+          // Grilles horizontales
+          Array.from({length:totalTeams},function(_,i){
+            var p=i+1, y=yS(p);
+            return React.createElement("g",{key:"h"+p},
+              React.createElement("line",{x1:PL,y1:y,x2:W-PR,y2:y,stroke:p%2===0?"#f1f5f9":"#f8fafc",strokeWidth:p%2===0?1:0.5,strokeDasharray:p%2===0?"4,3":""}),
+              p%2===1?React.createElement("text",{x:PL-4,y:y+3,fontSize:7,fill:"#94a3b8",textAnchor:"end"},p):null
+            );
+          }),
+          // Axe X
+          xLabels.map(function(j){
+            return React.createElement("text",{key:"xj"+j,x:xS(j),y:H-2,fontSize:7,fill:"#94a3b8",textAnchor:"middle"},j);
+          }),
+          // Ligne verticale journée sélectionnée
+          selJournee && React.createElement("line",{
+            x1:xS(selJournee),y1:PT,x2:xS(selJournee),y2:H-PB,
+            stroke:"#64748b",strokeWidth:1,strokeDasharray:"3,3"
+          }),
+          // Courbe équipe comparée (bleue)
+          pathD2 && React.createElement("path",{d:pathD2,fill:"none",stroke:"#2563eb",strokeWidth:2.5,strokeLinejoin:"round",strokeLinecap:"round"}),
+          // Courbe équipe principale (verte)
+          React.createElement("path",{d:pathD,fill:"none",stroke:"#16a34a",strokeWidth:2.5,strokeLinejoin:"round",strokeLinecap:"round"}),
+          // Point journée sélectionnée équipe principale
+          selData && React.createElement("circle",{cx:xS(selData.j),cy:yS(selData.position),r:5,fill:"#16a34a",stroke:"#fff",strokeWidth:2}),
+          // Point journée sélectionnée équipe comparée
+          selData2 && React.createElement("circle",{cx:xS(selData2.j),cy:yS(selData2.position),r:5,fill:"#2563eb",stroke:"#fff",strokeWidth:2})
+        )
+      ),
+
+      // Sélecteur journée (flèches)
+      React.createElement("div",{style:{
+        display:"flex",alignItems:"center",justifyContent:"center",gap:16,
+        padding:"4px 20px 12px"
+      }},
+        React.createElement("button",{
+          onClick:function(){setSelJournee(function(j){return Math.max(1,j-1);});},
+          style:{width:32,height:32,borderRadius:"50%",border:"1px solid #e2e8f0",background:"#f8fafc",cursor:"pointer",fontSize:16,display:"flex",alignItems:"center",justifyContent:"center",color:"#2563eb",fontWeight:700}
+        },"‹"),
+        React.createElement("div",{style:{textAlign:"center"}},
+          React.createElement("span",{style:{fontSize:16,fontWeight:800,color:"#0f172a",marginRight:6}},selJournee),
+          React.createElement("span",{style:{fontSize:12,color:"#94a3b8"}},
+            (function(){
+              var d=prog.find(function(p){return p.j===selJournee;});
+              if(!d) return "";
+              var fx=d; var date="";
+              return "Journée "+selJournee;
+            })()
+          )
+        ),
+        React.createElement("button",{
+          onClick:function(){setSelJournee(function(j){return Math.min(maxJ,j+1);});},
+          style:{width:32,height:32,borderRadius:"50%",border:"1px solid #e2e8f0",background:"#f8fafc",cursor:"pointer",fontSize:16,display:"flex",alignItems:"center",justifyContent:"center",color:"#2563eb",fontWeight:700}
+        },"›")
+      ),
+
+      // Barre verte équipe principale + bleue équipe comparée
+      React.createElement("div",{style:{display:"flex",gap:8,padding:"0 16px 12px",alignItems:"stretch"}},
+        // Card équipe principale
+        React.createElement("div",{style:{flex:1,position:"relative"}},
+          React.createElement("div",{style:{height:3,borderRadius:"2px 2px 0 0",background:"#16a34a"}}),
+          React.createElement("div",{style:{
+            background:"#f8fafc",borderRadius:"0 0 10px 10px",
+            padding:"10px 12px",position:"relative"
+          }},
+            // Dropdown équipe principale (toujours l'équipe en cours, pas changeable)
+            React.createElement("div",{style:{display:"flex",alignItems:"center",gap:8,marginBottom:8}},
+              React.createElement("img",{src:teamLogo,style:{width:28,height:28,objectFit:"contain"},onError:function(e){e.target.style.display="none";}}),
+              React.createElement("span",{style:{fontSize:12,fontWeight:700,color:"#0f172a",flex:1,overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap"}},teamName)
+            ),
+            selData?React.createElement("div",null,
+              React.createElement("div",{style:{fontSize:11,color:"#64748b",marginBottom:4}},"Position "+selData.position),
+              React.createElement("div",{style:{display:"flex",alignItems:"center",gap:6}},
+                React.createElement("img",{src:teamLogo,style:{width:20,height:20,objectFit:"contain"},onError:function(e){e.target.style.display="none";}}),
+                React.createElement("span",{style:{fontSize:13,fontWeight:800,color:"#0f172a"}},selData.myG+" - "+selData.oppG),
+                React.createElement("img",{src:selData.opponentLogo,style:{width:20,height:20,objectFit:"contain"},onError:function(e){e.target.style.display="none";}})
+              )
+            ):null
+          )
+        ),
+
+        // Card équipe comparée (si sélectionnée)
+        compareId && cmpClub ? React.createElement("div",{style:{flex:1,position:"relative"}},
+          React.createElement("div",{style:{height:3,borderRadius:"2px 2px 0 0",background:"#2563eb"}}),
+          React.createElement("div",{style:{
+            background:"#f8fafc",borderRadius:"0 0 10px 10px",
+            padding:"10px 12px"
+          }},
+            React.createElement("div",{style:{display:"flex",alignItems:"center",gap:8,marginBottom:8}},
+              React.createElement("img",{src:cmpClub.logo||"",style:{width:28,height:28,objectFit:"contain"},onError:function(e){e.target.style.display="none";}}),
+              React.createElement("span",{style:{fontSize:12,fontWeight:700,color:"#0f172a",flex:1,overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap"}},cmpClub.name)
+            ),
+            selData2?React.createElement("div",null,
+              React.createElement("div",{style:{fontSize:11,color:"#64748b",marginBottom:4}},"Position "+selData2.position),
+              React.createElement("div",{style:{display:"flex",alignItems:"center",gap:6}},
+                React.createElement("img",{src:cmpClub.logo||"",style:{width:20,height:20,objectFit:"contain"},onError:function(e){e.target.style.display="none";}}),
+                React.createElement("span",{style:{fontSize:13,fontWeight:800,color:"#0f172a"}},selData2.myG+" - "+selData2.oppG),
+                React.createElement("img",{src:selData2.opponentLogo,style:{width:20,height:20,objectFit:"contain"},onError:function(e){e.target.style.display="none";}})
+              )
+            ):null
+          )
+        ) : null,
+
+        // Boutons action (X supprimer comparaison + bouton COMPAREZ)
+        React.createElement("div",{style:{display:"flex",flexDirection:"column",gap:6,justifyContent:"center",alignItems:"center",flexShrink:0}},
+          compareId ? React.createElement("button",{
+            onClick:function(){setCompareId(null);},
+            style:{width:32,height:32,borderRadius:"50%",border:"1px solid #e2e8f0",background:"#fff",cursor:"pointer",fontSize:16,color:"#64748b",display:"flex",alignItems:"center",justifyContent:"center"}
+          },"✕") : null,
+          React.createElement("button",{
+            onClick:function(e){e.stopPropagation();setShowDrop(function(v){return !v;});},
+            style:{
+              padding:"8px 16px",borderRadius:20,border:"none",
+              background:"#2563eb",color:"#fff",fontSize:12,fontWeight:800,
+              cursor:"pointer",whiteSpace:"nowrap"
+            }
+          }, compareId ? "CHANGER" : "COMPAREZ")
+        )
+      ),
+
+      // Dropdown liste des clubs
+      showDrop && React.createElement("div",{
+        style:{
+          margin:"0 16px 16px",background:"#fff",borderRadius:14,
+          boxShadow:"0 8px 32px rgba(0,0,0,.18)",border:"1px solid #e2e8f0",
+          maxHeight:260,overflowY:"auto",zIndex:10,position:"relative"
+        },
+        onClick:function(e){e.stopPropagation();}
+      },
+        clubList.map(function(c){
+          var isActive = compareId===c.id;
+          return React.createElement("div",{
+            key:c.id,
+            onClick:function(){setCompareId(c.id);setShowDrop(false);},
+            style:{
+              display:"flex",alignItems:"center",gap:12,
+              padding:"11px 16px",borderBottom:"1px solid #f1f5f9",
+              cursor:"pointer",background:isActive?"rgba(37,99,235,.06)":"#fff"
+            }
+          },
+            React.createElement("img",{src:c.logo,style:{width:32,height:32,objectFit:"contain",flexShrink:0},onError:function(e){e.target.style.display="none";}}),
+            React.createElement("span",{style:{fontSize:14,fontWeight:isActive?700:400,color:"#0f172a"}},c.name)
+          );
+        })
+      ),
+
+      // À propos
+      React.createElement("div",{style:{margin:"0 16px",borderRadius:12,border:"1px solid #e2e8f0",overflow:"hidden"}},
+        React.createElement("div",{style:{
+          display:"flex",alignItems:"center",justifyContent:"space-between",
+          padding:"14px 16px",cursor:"pointer",background:"#fff"
+        }},
+          React.createElement("span",{style:{fontSize:14,fontWeight:600,color:"#0f172a"}},"À propos du graphique"),
+          React.createElement("span",{style:{fontSize:14,color:"#94a3b8"}},"∨")
+        )
+      )
+    )
+  );
+}
+
 function TeamPage({ teamId, teamName, teamLogo, leagueId, season, onClose, onTeam }) {
   const [info,      setInfo]      = useState(null);
   const [results,   setResults]   = useState([]);
@@ -12518,6 +12871,7 @@ function TeamPage({ teamId, teamName, teamLogo, leagueId, season, onClose, onTea
   const [standingsFiltered, setStandingsFiltered] = useState([]);
   const [loadingStand, setLoadingStand] = useState(false);
   const [cupResults, setCupResults] = useState(null); // fixtures coupe pour saison sélectionnée
+  const [showTracker, setShowTracker] = useState(false); // tracker de classement
 
   const openMatchDetail = async (fixtureId) => {
     setDetailMatch({ loading: true });
@@ -13259,6 +13613,7 @@ function TeamPage({ teamId, teamName, teamLogo, leagueId, season, onClose, onTea
                   setSelLeagueId(l.id);
                   setLoadingStand(true);
                   setCupResults(null);
+                  setShowTracker(false);
                   api('/standings?league='+l.id+'&season='+(selSeason||l.season), 3600000)
                     .then(function(d){
                       var rows=(d||[]).flatMap(function(g){return Array.isArray(g)?g:(g&&g.league&&g.league.standings?g.league.standings.flat():[]);});
@@ -13331,8 +13686,37 @@ function TeamPage({ teamId, teamName, teamLogo, leagueId, season, onClose, onTea
           )
         ),
 
+        // ── Bouton Graphique (Ligue 1 Algérie uniquement) ──
+        selLeagueId === 186 && React.createElement("div",{style:{
+          padding:"10px 16px",background:"#fff",borderBottom:"1px solid #f1f5f9",
+          display:"flex",alignItems:"center",justifyContent:"space-between"
+        }},
+          React.createElement("span",{style:{fontSize:13,fontWeight:700,color:"#0f172a"}},
+            "Ligue 1 · "+(selSeason?selSeason.toString().slice(2)+"/"+(selSeason+1).toString().slice(2):"")
+          ),
+          React.createElement("button",{
+            onClick:function(){ setShowTracker(function(v){return !v;}); },
+            style:{
+              display:"flex",alignItems:"center",gap:6,
+              padding:"7px 14px",borderRadius:20,border:"none",cursor:"pointer",
+              background:showTracker?"#2563eb":"#2563eb",
+              color:"#fff",fontSize:12,fontWeight:700
+            }
+          },
+            React.createElement("span",{style:{fontSize:13}},"📈"),
+            "Graphique"
+          )
+        ),
+
+        // ── Tracker de classement (modal slide-up) ──
+        showTracker && React.createElement(RankTracker,{
+          teamId:teamId, teamName:teamName, teamLogo:teamLogo,
+          season:selSeason, allTeams:standingsFiltered.length>0?standingsFiltered:standings,
+          onClose:function(){setShowTracker(false);}
+        }),
+
         // ── Tableau classement ──
-        loadingStand
+        !showTracker && loadingStand
           ? React.createElement("div",{style:{textAlign:"center",padding:"32px",color:"#94a3b8",fontSize:13}},"Chargement...")
           : (function(){
               var rows = standingsFiltered.length > 0 ? standingsFiltered : standings;
