@@ -12543,12 +12543,21 @@ function RankTracker(props) {
 
   React.useEffect(function() {
     setLoading(true);
+    // Charger fixtures en deux lots pour dépasser la limite 100 de l'API
     Promise.all([
-      api('/fixtures?league=186&season='+_s, 3600000),
+      api('/fixtures?league=186&season='+_s+'&from='+_s+'-07-01&to='+(_s+1)+'-01-31', 3600000),
+      api('/fixtures?league=186&season='+_s+'&from='+(_s+1)+'-02-01&to='+(_s+1)+'-07-31', 3600000),
       api('/standings?league=186&season='+_s, 3600000)
     ]).then(function(res) {
-      var fixtures  = res[0] || [];
-      var standData = res[1] || [];
+      var fixtures  = (res[0]||[]).concat(res[1]||[]);
+      // Dédupliquer par fixture id
+      var seen={};
+      fixtures = fixtures.filter(function(f){
+        var id=f.fixture&&f.fixture.id;
+        if(!id||seen[id]) return false;
+        seen[id]=true; return true;
+      });
+      var standData = res[2] || [];
       var allTeams  = [];
       try { allTeams = standData[0].league.standings[0] || []; } catch(e) {}
       try { setLeagueLogo(standData[0].league.logo || ""); } catch(e) {}
@@ -12574,12 +12583,13 @@ function RankTracker(props) {
         journeeMap[jNum].push(f);
       });
 
-      // Garder seulement les journées avec >= 50% matchs joués
+      // Garder seulement les journées entièrement terminées (tous les matchs FT)
       var journees = Object.keys(journeeMap).map(Number).sort(function(a,b){return a-b;});
       var journeesOk = journees.filter(function(jNum){
         var jFix = journeeMap[jNum];
         var done = jFix.filter(function(f){ return DONE.has(f.fixture.status.short); });
-        return done.length >= Math.ceil(jFix.length * 0.5);
+        // Journée complète = tous les matchs joués OU au moins 7/8 (matchs reportés)
+        return done.length >= jFix.length - 1 && done.length >= 6;
       });
 
       if(journeesOk.length === 0) { setLoading(false); return; }
