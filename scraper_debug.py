@@ -1,64 +1,69 @@
-import requests
+import cloudscraper, re
+from bs4 import BeautifulSoup
 from datetime import date, datetime
 
-HEADERS = {
-    "User-Agent": "Mozilla/5.0 (iPhone; CPU iPhone OS 17_0 like Mac OS X) AppleWebKit/605.1.15",
-    "Accept": "application/json",
-    "Accept-Language": "fr-FR,fr;q=0.9",
-    "Referer": "https://www.sofascore.com/",
-}
+scraper = cloudscraper.create_scraper(
+    browser={"browser": "chrome", "platform": "windows", "mobile": False}
+)
 
-today_str = date.today().strftime("%Y-%m-%d")
-print("=== Test SofaScore Ligue 1 Algérie ===")
+today = date.today()
+today_str = today.strftime("%Y-%m-%d")
+print("=== Test Soccerway avec cloudscraper ===")
 print("Date:", today_str)
 
-# Test 1: Matchs par date
-print("\n--- Endpoint par date ---")
-url = f"https://api.sofascore.com/api/v1/sport/football/scheduled-events/{today_str}"
-r = requests.get(url, headers=HEADERS, timeout=10)
-print("Status:", r.status_code)
-if r.status_code == 200:
-    events = r.json().get("events", [])
-    algeria = [e for e in events if e.get("tournament", {}).get("uniqueTournament", {}).get("id") == 841]
-    print("Matchs Ligue 1 Algérie:", len(algeria))
-    for e in algeria:
-        print(" ", e["homeTeam"]["name"], "vs", e["awayTeam"]["name"], "| ID:", e["id"])
+# Test 1: Page équipe JSK (comme valeurs marchandes)
+# On sait que ça marche !
+print("\n--- Page équipe JSK ---")
+url_jsk = "https://fr.soccerway.com/equipe/js-kabylie/Wfaskwf0/"
+r = scraper.get(url_jsk, timeout=20)
+print("Status:", r.status_code, "| Taille:", len(r.text))
 
-# Test 2: Par round (journée 25-27)
-print("\n--- Endpoint par journée ---")
-for rnd in range(24, 28):
-    url = f"https://api.sofascore.com/api/v1/tournament/841/season/79568/events/round/{rnd}"
-    r = requests.get(url, headers=HEADERS, timeout=10)
-    if r.status_code == 200:
-        events = r.json().get("events", [])
-        print(f"Round {rnd}: {len(events)} matchs")
-        for e in events:
-            ts = e.get("startTimestamp", 0)
-            d = datetime.fromtimestamp(ts).strftime("%Y-%m-%d %H:%M")
-            status = e.get("status", {}).get("type", "?")
-            print(f"  [{status}] {d} | {e['homeTeam']['name']} vs {e['awayTeam']['name']} | ID={e['id']}")
+soup = BeautifulSoup(r.text, "html.parser")
 
-# Test 3: Lineups d'un match SofaScore
-print("\n--- Test lineups SofaScore ---")
-# Prendre le premier match trouvé
-url = "https://api.sofascore.com/api/v1/tournament/841/season/79568/events/round/25"
-r = requests.get(url, headers=HEADERS, timeout=10)
-if r.status_code == 200:
-    events = r.json().get("events", [])
-    if events:
-        event_id = events[0]["id"]
-        home = events[0]["homeTeam"]["name"]
-        away = events[0]["awayTeam"]["name"]
-        print(f"Match: {home} vs {away} (ID={event_id})")
-        lineup_url = f"https://api.sofascore.com/api/v1/event/{event_id}/lineups"
-        r2 = requests.get(lineup_url, headers=HEADERS, timeout=10)
-        print("Lineups status:", r2.status_code)
-        if r2.status_code == 200:
-            data = r2.json()
-            home_players = data.get("home", {}).get("players", [])
-            away_players = data.get("away", {}).get("players", [])
-            print(f"Joueurs dom: {len(home_players)} | ext: {len(away_players)}")
-            for p in home_players[:3]:
-                name = p.get("player", {}).get("name", "?")
-                pos = p.get("position", "?")
-                print(f"  {name} ({pos})")
+# Chercher les matchs dans la page équipe
+print("\nRecherche matchs dans page équipe...")
+# Liens de matchs
+match_links = []
+for a in soup.find_all("a", href=True):
+    href = a.get("href", "")
+    # Format: /matches/2026/04/05/algeria/ligue-1/xxx/yyy/ID/
+    if re.search(r"/matches/\d{4}/\d{2}/\d{2}/", href):
+        match_links.append(href)
+
+print("Liens matchs trouvés:", len(match_links))
+for lnk in match_links[:10]:
+    print(" ", lnk)
+
+# Test 2: URL matches avec format pays/compétition
+print("\n--- Page matches Algérie ---")
+url_matches = f"https://fr.soccerway.com/matches/{today.strftime('%Y/%m/%d')}/algeria/"
+r2 = scraper.get(url_matches, timeout=20)
+print("Status:", r2.status_code, "| Taille:", len(r2.text))
+if r2.status_code == 200:
+    soup2 = BeautifulSoup(r2.text, "html.parser")
+    links2 = [a.get("href","") for a in soup2.find_all("a", href=re.compile(r"/matches/\d{4}/\d{2}/\d{2}/"))]
+    print("Liens matchs:", len(links2))
+    for l in links2[:5]:
+        print(" ", l)
+
+# Test 3: URL directe d'un match connu (format ancien Soccerway)
+print("\n--- Test URL match direct ---")
+# Khenchela vs Paradou 05/04/2026
+urls_to_try = [
+    "https://fr.soccerway.com/matches/2026/04/05/algeria/ligue-professionnelle-1/usm-khenchela/paradou-ac/",
+    "https://fr.soccerway.com/matches/2026/04/05/algeria/",
+    "https://fr.soccerway.com/national/algeria/ligue-professionnelle-1/2025-2026/regular-season/r76191/matches/",
+]
+for url in urls_to_try:
+    r3 = scraper.get(url, timeout=20)
+    print(f"URL: {url}")
+    print(f"Status: {r3.status_code} | Taille: {len(r3.text)}")
+    if r3.status_code == 200 and len(r3.text) > 100000:
+        soup3 = BeautifulSoup(r3.text, "html.parser")
+        trs = soup3.find_all("tr")
+        print(f"  TR trouvés: {len(trs)}")
+        match_hrefs = [a.get("href","") for a in soup3.find_all("a", href=re.compile(r"/matches/\d{4}/\d{2}/\d{2}/"))]
+        print(f"  Liens matchs: {len(match_hrefs)}")
+        for h in match_hrefs[:3]:
+            print(f"    {h}")
+    print()
