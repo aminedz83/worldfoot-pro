@@ -4,71 +4,67 @@ scraper = cloudscraper.create_scraper(
     browser={"browser": "chrome", "platform": "windows", "mobile": False}
 )
 
-url = "https://fr.soccerway.com/match/el-bayadh-S6H5xCS1/kabylie-Wfaskwf0/?mid=IiwUv5Er"
-r = scraper.get(url, timeout=20)
-html = r.text
+mid = "IiwUv5Er"
+TOKEN = "Y3uhIv5Ges46mMdAZm53akso95sYOogk"
+SIGN = "SW9D1eZo"
+PROJECT = "2043"
 
-# Chercher le token d'authentification
-print("=== Tokens dans le HTML ===")
-patterns = [
-    r'"token"\s*:\s*"([^"]+)"',
-    r'"auth"\s*:\s*"([^"]+)"',
-    r'"key"\s*:\s*"([^"]+)"',
-    r'x-fsign["\s:]+([^"\'<>\s]+)',
-    r'"fsign"\s*:\s*"([^"]+)"',
-    r'sign["\s:]+([A-Za-z0-9]{8,})',
-    r'"_hash"\s*:\s*"([^"]+)"',
-    r'hash["\s:]+([A-Za-z0-9]{4,20})',
-    r'ninja[^"]{0,100}"([^"]{10,50})"',
-    r'46/x/feed[^"]{0,50}"([^"]+)"',
-    r'"sport_id"\s*:\s*(\d+)',
-    r'"project_id"\s*:\s*(\d+)',
+print("=== Test API Flashscore avec token ===")
+
+# Headers avec token
+headers = {
+    "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36",
+    "Accept": "*/*",
+    "Referer": "https://fr.soccerway.com/",
+    "x-fsign": SIGN,
+    "Authorization": f"Bearer {TOKEN}",
+}
+
+# Test toutes les variantes d'API
+apis = [
+    # Flashscore ninja avec token
+    f"https://{PROJECT}.flashscore.ninja/46/x/feed/df_sui_{mid}_1_fr_1",
+    f"https://{PROJECT}.flashscore.ninja/46/x/feed/dc_1_{mid}",
+    f"https://{PROJECT}.flashscore.ninja/46/x/feed/df_st_1_{mid}",
+    f"https://{PROJECT}.flashscore.ninja/46/x/feed/df_liom_1_{mid}_1_fr_1",
+    # GraphQL GET
+    f"https://{PROJECT}.ds.lsapp.eu/pq_graphql?_hash=el&event_id={mid}&sport=football&_token={TOKEN}",
+    f"https://{PROJECT}.ds.lsapp.eu/pq_graphql?_hash=sui&event_id={mid}&_token={TOKEN}",
+    # API directe avec token
+    f"https://d.flashscore.com/x/feed/df_sui_{mid}_1_fr_1",
+    f"https://d.flashscore.com/x/feed/dc_1_{mid}",
 ]
 
-for pat in patterns:
-    for m in re.finditer(pat, html, re.IGNORECASE):
-        val = m.group(1)
-        if len(val) > 3:
-            print(f"  [{pat[:30]}] → {val[:80]}")
-
-# Chercher spécifiquement dans window.environment
-print("\n=== window.environment complet ===")
-env_match = re.search(r'window\.environment\s*=\s*({.+?});\s*\n', html, re.DOTALL)
-if env_match:
+for api in apis:
     try:
-        env = json.loads(env_match.group(1))
-        print(json.dumps(env, indent=2)[:3000])
+        r = scraper.get(api, headers=headers, timeout=10)
+        print(f"\n{api[:80]}")
+        print(f"Status: {r.status_code} | Taille: {len(r.text)}")
+        if r.status_code == 200 and len(r.text) > 5:
+            print("Contenu:", r.text[:300])
+    except Exception as e:
+        print(f"Erreur: {e}")
+
+# Chercher le JS qui charge les lineups pour trouver l'URL exacte
+print("\n=== Chercher URL lineups dans le JS ===")
+url_page = "https://fr.soccerway.com/match/el-bayadh-S6H5xCS1/kabylie-Wfaskwf0/?mid=IiwUv5Er"
+r_page = scraper.get(url_page, timeout=20)
+
+# Chercher les fichiers JS chargés
+js_files = re.findall(r'src="(https://[^"]+\.js[^"]*)"', r_page.text)
+print("Fichiers JS:", len(js_files))
+for js in js_files[:5]:
+    print(" ", js[:100])
+
+# Télécharger le JS principal et chercher l'URL de lineups
+for js_url in js_files[:3]:
+    try:
+        rjs = scraper.get(js_url, timeout=15)
+        if "lineup" in rjs.text.lower() or "sui" in rjs.text:
+            print(f"\nJS avec lineup: {js_url[:60]}")
+            # Chercher le pattern d'URL
+            urls_in_js = re.findall(r'["\']([^"\']*(?:lineup|sui|feed)[^"\']*)["\']', rjs.text)
+            for u in urls_in_js[:10]:
+                print(f"  {u[:100]}")
     except:
-        print(env_match.group(1)[:2000])
-
-# Chercher l'URL ninja avec token
-print("\n=== URLs ninja dans le HTML ===")
-ninja_urls = re.findall(r'flashscore\.ninja[^"\'<>\s]+', html)
-for u in ninja_urls[:10]:
-    print(" ", u)
-
-# Chercher le numéro du datacenter (2043)
-print("\n=== Config datacenter ===")
-dc_patterns = re.findall(r'2043[^"\'<>\s]{0,100}', html)
-for d in dc_patterns[:5]:
-    print(" ", d[:100])
-
-# Tester l'API GraphQL correctement
-print("\n=== Test GraphQL ===")
-graphql_url = "https://2043.ds.lsapp.eu/pq_graphql"
-# Requête pour les lineups
-query = {
-    "operationName": "MatchLineups",
-    "query": """query MatchLineups($eventId: String!) {
-        event(id: $eventId) {
-            lineups { home { players { player { name } position } } away { players { player { name } position } } }
-        }
-    }""",
-    "variables": {"eventId": "IiwUv5Er"}
-}
-try:
-    r2 = scraper.post(graphql_url, json=query, timeout=10)
-    print("GraphQL status:", r2.status_code)
-    print("Réponse:", r2.text[:500])
-except Exception as e:
-    print("Erreur:", e)
+        pass
