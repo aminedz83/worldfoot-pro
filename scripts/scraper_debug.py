@@ -1,4 +1,5 @@
 import cloudscraper, re
+from datetime import date
 
 scraper = cloudscraper.create_scraper(
     browser={"browser": "chrome", "platform": "windows", "mobile": False}
@@ -12,41 +13,56 @@ FS_HEADERS = {
     "x-fsign": "SW9D1eZo",
 }
 
-url = f"https://{PROJECT}.flashscore.ninja/46/x/feed/f_1_0_3_fr_1"
-r = scraper.get(url, headers=FS_HEADERS, timeout=15)
-feed = r.text
+today = date.today().strftime("%Y-%m-%d")
+print("Date:", today)
 
-print("=== Recherche Algeria dans le feed ===")
-keywords = ["algeria", "algerie", "algérie", "/algeria/", "alger", "kabylie", 
-            "belouizdad", "ligue-professionnelle", "ligue professionnelle"]
+# Depuis l'URL du match El Bayadh vs JSK on sait que:
+# - tournament ID Flashscore = Iylbph6E (depuis l'URL ligue)
+# https://fr.soccerway.com/algerie/ligue-1/#/Iylbph6E/classements/global/
 
-for kw in keywords:
-    if kw.lower() in feed.lower():
-        idx = feed.lower().find(kw.lower())
-        print(f"\n✅ '{kw}' trouvé!")
-        print(feed[max(0,idx-200):idx+400])
-        print("---")
+TOURNAMENT_ID = "Iylbph6E"  # ID Flashscore Ligue 1 Algérie !
 
-# Format: ZA=compétition, ZL=URL, AA=matchID, CX=home, AF=away
-# Chercher toutes les ligues dans le feed
-print("\n=== Toutes les compétitions (ZL=URL) ===")
-leagues = re.findall(r'ZL÷([^¬]+)', feed)
-for l in leagues:
-    if "alger" in l.lower():
-        print(f"✅ ALGÉRIE: {l}")
+print(f"\n=== Test feeds avec tournament ID {TOURNAMENT_ID} ===")
 
-# Chercher le tournoi Ligue 1 Algérie par son ID Flashscore
-# On sait que sur SofaScore c'est 841 mais sur Flashscore c'est différent
-print("\n=== URLs contenant 'alger' ===")
-alger_urls = [l for l in leagues if "alger" in l.lower()]
-print(f"Total: {len(alger_urls)}")
-for u in alger_urls:
-    print(" ", u)
+feed_urls = [
+    f"https://{PROJECT}.flashscore.ninja/46/x/feed/f_1_{TOURNAMENT_ID}_3_fr_1",
+    f"https://{PROJECT}.flashscore.ninja/46/x/feed/f_1_{TOURNAMENT_ID}_0_fr_1",
+    f"https://{PROJECT}.flashscore.ninja/46/x/feed/t_{TOURNAMENT_ID}_fr_1",
+    f"https://{PROJECT}.flashscore.ninja/46/x/feed/to_{TOURNAMENT_ID}_fr_1",
+    f"https://{PROJECT}.flashscore.ninja/46/x/feed/ls_{TOURNAMENT_ID}_3_fr_1",
+    f"https://{PROJECT}.flashscore.ninja/46/x/feed/f_1_{TOURNAMENT_ID}_3_en_1",
+]
 
-# Afficher toutes les compétitions africaines
-print("\n=== Compétitions africaines ===")
-african = [(l, re.search(r'ZA÷([^¬]+)', feed[max(0,feed.find(l)-500):feed.find(l)])) 
-           for l in leagues if any(x in l.lower() for x in ["africa", "algeria", "maroc", "tunisi", "egypt", "senegal", "ghana", "cameroun"])]
-for url, za in african:
-    name = za.group(1) if za else "?"
-    print(f"  {name} → {url}")
+for url in feed_urls:
+    try:
+        r = scraper.get(url, headers=FS_HEADERS, timeout=10)
+        print(f"\n{url[-50:]}")
+        print(f"Status: {r.status_code} | Taille: {len(r.text)}")
+        if r.status_code == 200 and len(r.text) > 5:
+            print(f"Contenu: {r.text[:400]}")
+    except Exception as e:
+        print(f"Erreur: {e}")
+
+# Aussi chercher l'ID numérique de la ligue depuis l'URL du match
+# El Bayadh vs JSK: /match/el-bayadh-S6H5xCS1/kabylie-Wfaskwf0/?mid=IiwUv5Er
+# Récupérer la page du match et extraire l'ID du tournoi
+print("\n=== Extraction ID tournoi depuis page match ===")
+url_match = "https://fr.soccerway.com/match/el-bayadh-S6H5xCS1/kabylie-Wfaskwf0/?mid=IiwUv5Er"
+r = scraper.get(url_match, timeout=20)
+html = r.text
+
+# Chercher l'ID du tournoi dans le JS
+patterns = [
+    r'"tournament_id"\s*:\s*"([^"]+)"',
+    r'"tournamentId"\s*:\s*"([^"]+)"',
+    r'Iylbph6E',  # ID qu'on a dans l'URL
+    r'"league_id"\s*:\s*"([^"]+)"',
+    r'ZEE÷([A-Za-z0-9]+)',
+    r'/football/algeria/[^"\'<>\s]+',
+]
+
+for pat in patterns:
+    for m in re.finditer(pat, html):
+        val = m.group(1) if m.lastindex else m.group(0)
+        if len(val) > 3 and len(val) < 50:
+            print(f"  [{pat[:30]}] → {val}")
