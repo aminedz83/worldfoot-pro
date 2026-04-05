@@ -1,63 +1,48 @@
 import cloudscraper, re
-from datetime import date, datetime
 
 scraper = cloudscraper.create_scraper(
     browser={"browser": "chrome", "platform": "windows", "mobile": False}
 )
 
-today = date.today().strftime("%Y-%m-%d")
-print("Aujourd'hui:", today)
+PROJECT = "2043"
+FS_HEADERS = {
+    "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36",
+    "Accept": "*/*",
+    "Referer": "https://fr.soccerway.com/",
+    "x-fsign": "SW9D1eZo",
+}
 
-# Récupérer la page Flashscore CA fixtures
-r = scraper.get("https://www.flashscore.ca/soccer/algeria/ligue-1/fixtures/", timeout=20)
-print(f"Status: {r.status_code} | Taille: {len(r.text)}")
+mid = "IiwUv5Er"
 
-html = r.text
+# Feed lineups complet
+print("=== Feed df_li (lineups) ===")
+r = scraper.get(f"https://{PROJECT}.flashscore.ninja/46/x/feed/df_li_1_{mid}_1_fr_1", headers=FS_HEADERS, timeout=10)
+print(r.text)
 
-# Parser tous les matchs: AA=mid, AD=timestamp, CX=home, AF=away
-entries = []
-blocks = html.split("~")
-for block in blocks:
-    if "AA÷" not in block:
-        continue
+# Feed événements (buts, cartons)
+print("\n=== Feed df_sui (événements) ===")
+r2 = scraper.get(f"https://{PROJECT}.flashscore.ninja/46/x/feed/df_sui_1_{mid}_1_fr_1", headers=FS_HEADERS, timeout=10)
+print(r2.text)
+
+# Chercher la formation dans les feeds
+print("\n=== Analyse positions et formation ===")
+feed = r.text
+# Tous les champs uniques
+all_keys = set()
+for block in feed.split("~"):
+    for field in block.split("¬"):
+        if "÷" in field:
+            key = field.split("÷")[0].strip()
+            all_keys.add(key)
+print("Clés disponibles:", sorted(all_keys))
+
+# Afficher le contenu de LS (position) pour chaque joueur
+print("\nPositions (LS):")
+for block in feed.split("~"):
     fields = {}
     for field in block.split("¬"):
         if "÷" in field:
-            key, _, val = field.partition("÷")
-            fields[key.strip()] = val.strip()
-    if "AA" in fields:
-        entries.append(fields)
-
-print(f"\nTotal matchs: {len(entries)}")
-
-# Afficher tous les matchs à venir
-print("\n=== Prochains matchs Ligue 1 Algérie ===")
-future_matches = []
-for e in entries:
-    mid = e.get("AA", "")
-    ts = int(e.get("AD", 0))
-    home = e.get("CX", e.get("WM", "?"))
-    away = e.get("AF", e.get("WN", "?"))
-    
-    if ts:
-        match_date = datetime.fromtimestamp(ts).strftime("%Y-%m-%d")
-        match_time = datetime.fromtimestamp(ts).strftime("%H:%M")
-        if match_date >= today:
-            future_matches.append({
-                "mid": mid,
-                "date": match_date,
-                "time": match_time,
-                "home": home,
-                "away": away,
-                "ts": ts
-            })
-
-future_matches.sort(key=lambda x: x["ts"])
-for m in future_matches:
-    print(f"  {m['date']} {m['time']} | {m['home']} vs {m['away']} | mid={m['mid']}")
-
-# Matchs d'aujourd'hui spécifiquement
-today_matches = [m for m in future_matches if m["date"] == today]
-print(f"\nMatchs aujourd'hui ({today}): {len(today_matches)}")
-for m in today_matches:
-    print(f"  {m['time']} | {m['home']} vs {m['away']} | mid={m['mid']}")
+            k, _, v = field.partition("÷")
+            fields[k.strip()] = v.strip()
+    if "LI" in fields and "LS" in fields:
+        print(f"  {fields['LI']} → LS={fields['LS']} | LR={fields.get('LR','')} | LK={fields.get('LK','')}")
