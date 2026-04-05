@@ -43,17 +43,30 @@ def get_matches_without_minutes():
             timeout=15
         )
         rows = r.json()
+        print(f"  Total rows Supabase: {len(rows)}")
         to_update = []
         for row in rows:
             hp = row.get("home_players") or []
+            home = row.get("home_team", "?")
+            away = row.get("away_team", "?")
             if not hp or len(hp) == 0:
+                print(f"  Skip {home} vs {away}: pas de joueurs")
                 continue
             first = hp[0]
-            # Debug: afficher ce qu'on a
-            print(f"  Check {row.get('home_team')} vs {row.get('away_team')}: keys={list(first.keys())[:6]}")
-            # Traiter si minutes absentes ou nulles
-            if "minutes" not in first or first.get("minutes") is None:
+            keys = list(first.keys())
+            print(f"  Check {home} vs {away}: {keys}")
+            # Traiter si données incomplètes
+            needs_update = (
+                "minutes" not in first
+                or first.get("minutes") is None
+                or "sw_player_id" not in first
+                or "yellow" not in first
+            )
+            if needs_update:
+                print(f"    → A traiter!")
                 to_update.append(row)
+            else:
+                print(f"    → OK (minutes={first.get('minutes')})")
         return to_update
     except Exception as e:
         print("Erreur fetch:", e)
