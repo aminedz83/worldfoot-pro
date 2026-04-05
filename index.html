@@ -12820,34 +12820,36 @@ function RankTracker(props) {
 
         // Ligne des boutons sélecteurs + boutons action
         React.createElement("div",{style:{display:"flex",gap:10,alignItems:"center",marginBottom:8}},
-          // Bouton sélecteur équipe principale
+          // Bouton sélecteur équipe principale — compact logo + ▼
           React.createElement("button",{
             onClick:function(e){e.stopPropagation();setShowDrop1(function(v){return !v;});setShowDrop(false);},
             style:{
-              display:"flex",alignItems:"center",gap:8,flex:1,
-              padding:"7px 12px",borderRadius:10,
+              display:"flex",alignItems:"center",gap:6,
+              padding:"6px 10px",borderRadius:10,
               border:"1.5px solid #e2e8f0",background:"#fff",
-              cursor:"pointer",boxShadow:"0 1px 4px rgba(0,0,0,.06)"
+              cursor:"pointer",boxShadow:"0 1px 4px rgba(0,0,0,.06)",
+              flexShrink:0
             }
           },
-            React.createElement("img",{src:mainLogo,style:{width:28,height:28,objectFit:"contain"},onError:function(e){e.target.style.display="none";}}),
-            React.createElement("span",{style:{fontSize:11,color:"#64748b",flex:1,textAlign:"left",overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap"}},mainName),
-            React.createElement("span",{style:{fontSize:9,color:"#64748b"}}),"▼"
+            React.createElement("img",{src:mainLogo,style:{width:32,height:32,objectFit:"contain"},onError:function(e){e.target.style.display="none";}}),
+            React.createElement("span",{style:{fontSize:10,color:"#475569",fontWeight:700,lineHeight:1}}),"▼"
           ),
-          // Bouton sélecteur équipe comparée (si active)
+          // Bouton sélecteur équipe comparée (si active) — compact logo + ▼
           compareId&&cmpClub?React.createElement("button",{
             onClick:function(e){e.stopPropagation();setShowDrop(function(v){return !v;});setShowDrop1(false);},
             style:{
-              display:"flex",alignItems:"center",gap:8,flex:1,
-              padding:"7px 12px",borderRadius:10,
+              display:"flex",alignItems:"center",gap:6,
+              padding:"6px 10px",borderRadius:10,
               border:"1.5px solid #e2e8f0",background:"#fff",
-              cursor:"pointer",boxShadow:"0 1px 4px rgba(0,0,0,.06)"
+              cursor:"pointer",boxShadow:"0 1px 4px rgba(0,0,0,.06)",
+              flexShrink:0
             }
           },
-            React.createElement("img",{src:cmpClub.logo||"",style:{width:28,height:28,objectFit:"contain"},onError:function(e){e.target.style.display="none";}}),
-            React.createElement("span",{style:{fontSize:11,color:"#64748b",flex:1,textAlign:"left",overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap"}},[cmpClub.name||""]),
-            React.createElement("span",{style:{fontSize:9,color:"#64748b"}}),"▼"
+            React.createElement("img",{src:cmpClub.logo||"",style:{width:32,height:32,objectFit:"contain"},onError:function(e){e.target.style.display="none";}}),
+            React.createElement("span",{style:{fontSize:10,color:"#475569",fontWeight:700,lineHeight:1}}),"▼"
           ):null,
+          // Spacer
+          React.createElement("div",{style:{flex:1}}),
           // Bouton ✕
           compareId?React.createElement("button",{
             onClick:function(){setCompareId(null);},
@@ -12856,13 +12858,12 @@ function RankTracker(props) {
           // Bouton COMPAREZ
           React.createElement("button",{
             onClick:function(e){e.stopPropagation();setShowDrop(function(v){return !v;});setShowDrop1(false);},
-            style:{padding:"9px 14px",borderRadius:22,border:"none",background:"#2563eb",color:"#fff",fontSize:12,fontWeight:800,cursor:"pointer",whiteSpace:"nowrap",flexShrink:0,boxShadow:"0 2px 8px rgba(37,99,235,.35)"}
+            style:{padding:"9px 16px",borderRadius:22,border:"none",background:"#2563eb",color:"#fff",fontSize:12,fontWeight:800,cursor:"pointer",whiteSpace:"nowrap",flexShrink:0,boxShadow:"0 2px 8px rgba(37,99,235,.35)"}
           },compareId?"CHANGER":"COMPAREZ")
         ),
 
         // Cards info — ligne couleur pleine largeur
         React.createElement("div",{style:{display:"flex",gap:10}},
-
           // Card principale
           React.createElement("div",{style:{flex:1,minWidth:0}},
             React.createElement("div",{style:{height:3,background:"#16a34a",borderRadius:"2px 2px 0 0"}}),
@@ -12877,7 +12878,6 @@ function RankTracker(props) {
               ):React.createElement("div",{style:{fontSize:11,color:"#94a3b8",textAlign:"center",padding:"8px 0"}},"Pas de match")
             )
           ),
-
           // Card comparée
           compareId&&cmpClub?React.createElement("div",{style:{flex:1,minWidth:0}},
             React.createElement("div",{style:{height:3,background:"#2563eb",borderRadius:"2px 2px 0 0"}}),
@@ -12895,100 +12895,75 @@ function RankTracker(props) {
         )
       ),
 
-      // Dropdown équipe PRINCIPALE — overlay flottant
+      // Dropdown équipe PRINCIPALE — popup flottant (pas slide-up)
       showDrop1&&React.createElement("div",{
-        style:{position:"fixed",top:0,left:0,right:0,bottom:0,zIndex:10000,display:"flex",alignItems:"flex-end"},
-        onClick:function(e){if(e.target===e.currentTarget) setShowDrop1(false);}
+        style:{position:"fixed",top:0,left:0,right:0,bottom:0,zIndex:10000},
+        onClick:function(){setShowDrop1(false);}
       },
-        React.createElement("div",{style:{position:"absolute",inset:0,background:"rgba(0,0,0,.3)"},onClick:function(){setShowDrop1(false);}}),
         React.createElement("div",{
-          style:{position:"relative",width:"100%",background:"#fff",borderRadius:"20px 20px 0 0",zIndex:1,maxHeight:"60vh",display:"flex",flexDirection:"column"},
+          style:{
+            position:"absolute",left:14,right:14,
+            bottom:200,
+            background:"#fff",borderRadius:16,
+            boxShadow:"0 8px 40px rgba(0,0,0,.18)",
+            border:"1px solid #e2e8f0",
+            maxHeight:320,display:"flex",flexDirection:"column",
+            overflow:"hidden"
+          },
           onClick:function(e){e.stopPropagation();}
         },
-          React.createElement("div",{style:{display:"flex",flexDirection:"column",alignItems:"center",padding:"10px 20px 8px",borderBottom:"1px solid #f1f5f9",flexShrink:0}},
-            React.createElement("div",{style:{width:36,height:4,borderRadius:2,background:"#e2e8f0",marginBottom:12}}),
-            React.createElement("div",{style:{alignSelf:"stretch",fontSize:15,fontWeight:700,color:"#0f172a"}},"Choisir un club")
+          React.createElement("div",{style:{padding:"12px 16px 8px",borderBottom:"1px solid #f1f5f9",flexShrink:0}},
+            React.createElement("div",{style:{fontSize:14,fontWeight:700,color:"#0f172a"}},"Choisir un club")
           ),
-          React.createElement("div",{style:{overflowY:"auto",flex:1,paddingBottom:16}},
+          React.createElement("div",{style:{overflowY:"auto",flex:1}},
             allClubList.slice().sort(function(a,b){return a.name.localeCompare(b.name);}).map(function(c){
               var curMain=mainId||teamId;
               var isActive=curMain===c.id;
               return React.createElement("div",{
                 key:c.id,
-                onClick:function(){
-                  setMainId(c.id===teamId?null:c.id);
-                  setShowDrop1(false);
-                },
-                style:{display:"flex",alignItems:"center",gap:14,padding:"12px 20px",borderBottom:"1px solid #f8fafc",cursor:"pointer",background:isActive?"rgba(22,163,74,.05)":"#fff"}
+                onClick:function(){setMainId(c.id===teamId?null:c.id);setShowDrop1(false);},
+                style:{display:"flex",alignItems:"center",gap:12,padding:"10px 16px",borderBottom:"1px solid #f8fafc",cursor:"pointer",background:isActive?"rgba(22,163,74,.05)":"#fff"}
               },
-                React.createElement("img",{src:c.logo,style:{width:36,height:36,objectFit:"contain",flexShrink:0},onError:function(e){e.target.style.display="none";}}),
-                React.createElement("span",{style:{fontSize:15,fontWeight:isActive?700:400,color:isActive?"#16a34a":"#0f172a",flex:1}},c.name),
-                isActive&&React.createElement("div",{style:{width:8,height:8,borderRadius:"50%",background:"#16a34a",flexShrink:0}})
+                React.createElement("img",{src:c.logo,style:{width:32,height:32,objectFit:"contain",flexShrink:0},onError:function(e){e.target.style.display="none";}}),
+                React.createElement("span",{style:{fontSize:14,fontWeight:isActive?700:400,color:isActive?"#16a34a":"#0f172a",flex:1}},c.name),
+                isActive&&React.createElement("div",{style:{width:7,height:7,borderRadius:"50%",background:"#16a34a"}})
               );
             })
           )
         )
       ),
 
-      // Dropdown clubs COMPARAISON — overlay flottant style SofaScore
+      // Dropdown clubs COMPARAISON — popup flottant
       showDrop&&React.createElement("div",{
-        style:{
-          position:"fixed",top:0,left:0,right:0,bottom:0,
-          zIndex:10000,display:"flex",alignItems:"flex-end"
-        },
-        onClick:function(e){if(e.target===e.currentTarget) setShowDrop(false);}
+        style:{position:"fixed",top:0,left:0,right:0,bottom:0,zIndex:10000},
+        onClick:function(){setShowDrop(false);}
       },
-        // Fond semi-transparent
-        React.createElement("div",{
-          style:{position:"absolute",inset:0,background:"rgba(0,0,0,.3)"},
-          onClick:function(){setShowDrop(false);}
-        }),
-        // Panel liste
         React.createElement("div",{
           style:{
-            position:"relative",width:"100%",background:"#fff",
-            borderRadius:"20px 20px 0 0",zIndex:1,
-            maxHeight:"60vh",display:"flex",flexDirection:"column"
+            position:"absolute",left:14,right:14,
+            bottom:200,
+            background:"#fff",borderRadius:16,
+            boxShadow:"0 8px 40px rgba(0,0,0,.18)",
+            border:"1px solid #e2e8f0",
+            maxHeight:320,display:"flex",flexDirection:"column",
+            overflow:"hidden"
           },
           onClick:function(e){e.stopPropagation();}
         },
-          // Header
-          React.createElement("div",{style:{
-            display:"flex",flexDirection:"column",alignItems:"center",
-            padding:"10px 20px 8px",borderBottom:"1px solid #f1f5f9",flexShrink:0
-          }},
-            React.createElement("div",{style:{width:36,height:4,borderRadius:2,background:"#e2e8f0",marginBottom:12}}),
-            React.createElement("div",{style:{
-              alignSelf:"stretch",fontSize:15,fontWeight:700,color:"#0f172a"
-            }},"Choisir un club")
+          React.createElement("div",{style:{padding:"12px 16px 8px",borderBottom:"1px solid #f1f5f9",flexShrink:0}},
+            React.createElement("div",{style:{fontSize:14,fontWeight:700,color:"#0f172a"}},"Choisir un club")
           ),
-          // Liste scrollable triée alphabétiquement
-          React.createElement("div",{style:{overflowY:"auto",flex:1,paddingBottom:16}},
+          React.createElement("div",{style:{overflowY:"auto",flex:1}},
             cmpList.slice().sort(function(a,b){return a.name.localeCompare(b.name);}).map(function(c){
               var isActive=compareId===c.id;
               return React.createElement("div",{
                 key:c.id,
                 onClick:function(){setCompareId(c.id);setShowDrop(false);},
-                style:{
-                  display:"flex",alignItems:"center",gap:14,
-                  padding:"12px 20px",
-                  borderBottom:"1px solid #f8fafc",
-                  cursor:"pointer",
-                  background:isActive?"rgba(37,99,235,.05)":"#fff"
-                }
+                style:{display:"flex",alignItems:"center",gap:12,padding:"10px 16px",borderBottom:"1px solid #f8fafc",cursor:"pointer",background:isActive?"rgba(37,99,235,.05)":"#fff"}
               },
-                React.createElement("img",{
-                  src:c.logo,
-                  style:{width:36,height:36,objectFit:"contain",flexShrink:0},
-                  onError:function(e){e.target.style.display="none";}
-                }),
-                React.createElement("span",{style:{
-                  fontSize:15,fontWeight:isActive?700:400,
-                  color:isActive?"#2563eb":"#0f172a",flex:1
-                }},c.name),
-                isActive&&React.createElement("div",{style:{
-                  width:8,height:8,borderRadius:"50%",background:"#2563eb",flexShrink:0
-                }})
+                React.createElement("img",{src:c.logo,style:{width:32,height:32,objectFit:"contain",flexShrink:0},onError:function(e){e.target.style.display="none";}}),
+                React.createElement("span",{style:{fontSize:14,fontWeight:isActive?700:400,color:isActive?"#2563eb":"#0f172a",flex:1}},c.name),
+                isActive&&React.createElement("div",{style:{width:7,height:7,borderRadius:"50%",background:"#2563eb"}})
               );
             })
           )
