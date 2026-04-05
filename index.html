@@ -13846,7 +13846,7 @@ function TeamPage({ teamId, teamName, teamLogo, leagueId, season, onClose, onTea
         }),
 
         // ── Tableau classement ──
-        !showTracker && loadingStand
+        !showTracker && (loadingStand
           ? React.createElement("div",{style:{textAlign:"center",padding:"32px",color:"#94a3b8",fontSize:13}},"Chargement...")
           : (function(){
               var rows = standingsFiltered.length > 0 ? standingsFiltered : standings;
@@ -14077,9 +14077,8 @@ function TeamPage({ teamId, teamName, teamLogo, leagueId, season, onClose, onTea
                 )
               );
             })()
+        )
       ),
-
-      // ── EFFECTIF ──
       tab==="effectif" && React.createElement("div",{style:{background:"#f2f3f5"}},
         squad.length===0
           ? React.createElement("div",{style:{textAlign:"center",padding:"48px 24px",color:"#94a3b8",fontSize:14}},"Effectif indisponible")
