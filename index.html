@@ -12537,6 +12537,8 @@ function RankTracker(props) {
   var [maxJ,       setMaxJ]       = React.useState(1);
   var [compareId,  setCompareId]  = React.useState(null);
   var [showDrop,   setShowDrop]   = React.useState(false);
+  var [showDrop1,  setShowDrop1]  = React.useState(false); // dropdown équipe principale
+  var [mainId,     setMainId]     = React.useState(null);  // null = teamId par défaut
   var [clubList,   setClubList]   = React.useState([]);
 
   React.useEffect(function() {
@@ -12664,9 +12666,19 @@ function RankTracker(props) {
     )
   );
 
-  var prog  = progMap[teamId] || [];
+  var prog  = progMap[mainId||teamId] || [];
   var prog2 = compareId ? (progMap[compareId]||[]) : null;
   if(prog.length===0) return null;
+
+  // Infos équipe principale dynamique
+  var mainClub = mainId ? (clubList.find(function(c){return c.id===mainId;})||{logo:teamLogo,name:teamName}) : {logo:teamLogo,name:teamName};
+  var mainLogo = mainClub.logo||teamLogo;
+  var mainName = mainClub.name||teamName;
+  // Liste complète pour dropdown équipe principale (tous les clubs)
+  var allClubList = clubList.slice();
+  // Ajouter l'équipe courante si pas déjà dans la liste
+  var alreadyIn = allClubList.some(function(c){return c.id===teamId;});
+  if(!alreadyIn) allClubList.unshift({id:teamId,name:teamName,logo:teamLogo});
 
   var W=340, H=240, PL=30, PR=12, PT=14, PB=26;
   var CW=W-PL-PR, CH=H-PT-PB;
@@ -12691,7 +12703,9 @@ function RankTracker(props) {
 
   var selData  = prog.find(function(p){return p.j===selJournee;});
   var selData2 = prog2?(prog2.find(function(p){return p.j===selJournee;})):null;
-  var cmpClub  = compareId ? clubList.find(function(c){return c.id===compareId;})||{} : null;
+  var cmpClub  = compareId ? (clubList.find(function(c){return c.id===compareId;})||allClubList.find(function(c){return c.id===compareId;})||{}) : null;
+  // Exclure l'équipe principale de la liste de comparaison
+  var cmpList  = allClubList.filter(function(c){return c.id!==(mainId||teamId);});
 
   var xLabels=[];
   var step=Math.max(1,Math.floor(maxJ/6));
@@ -12770,16 +12784,27 @@ function RankTracker(props) {
 
         // Card équipe principale
         React.createElement("div",{style:{flex:1,minWidth:0}},
+          // Bouton sélecteur équipe principale — logo + ▼
+          React.createElement("button",{
+            onClick:function(e){e.stopPropagation();setShowDrop1(function(v){return !v;});setShowDrop(false);},
+            style:{
+              display:"flex",alignItems:"center",gap:8,
+              padding:"6px 10px 6px 8px",marginBottom:6,
+              borderRadius:10,border:"1.5px solid #e2e8f0",
+              background:"#fff",cursor:"pointer",
+              boxShadow:"0 1px 4px rgba(0,0,0,.06)"
+            }
+          },
+            React.createElement("img",{src:mainLogo,style:{width:28,height:28,objectFit:"contain"},onError:function(e){e.target.style.display="none";}}),
+            React.createElement("span",{style:{fontSize:10,color:"#64748b",fontWeight:600}}),"▼"
+          ),
           React.createElement("div",{style:{height:3,borderRadius:"2px 2px 0 0",background:"#16a34a"}}),
           React.createElement("div",{style:{background:"#f8fafc",borderRadius:"0 0 12px 12px",padding:"10px 12px"}},
-            React.createElement("div",{style:{display:"flex",alignItems:"center",gap:8,marginBottom:8}},
-              React.createElement("img",{src:teamLogo,style:{width:26,height:26,objectFit:"contain"},onError:function(e){e.target.style.display="none";}}),
-              React.createElement("span",{style:{fontSize:12,fontWeight:700,color:"#0f172a",overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap"}},[teamName])
-            ),
+            React.createElement("div",{style:{fontSize:11,color:"#64748b",marginBottom:4,fontWeight:600}},mainName),
             selData?React.createElement("div",null,
               React.createElement("div",{style:{fontSize:11,color:"#64748b",marginBottom:6}},"Position "+selData.position),
               React.createElement("div",{style:{display:"flex",alignItems:"center",justifyContent:"center",gap:6}},
-                React.createElement("img",{src:teamLogo,style:{width:22,height:22,objectFit:"contain"},onError:function(e){e.target.style.display="none";}}),
+                React.createElement("img",{src:mainLogo,style:{width:22,height:22,objectFit:"contain"},onError:function(e){e.target.style.display="none";}}),
                 React.createElement("span",{style:{fontSize:14,fontWeight:800,color:"#0f172a"}},selData.myG+" - "+selData.oppG),
                 React.createElement("img",{src:selData.opponentLogo,style:{width:22,height:22,objectFit:"contain"},onError:function(e){e.target.style.display="none";}})
               )
@@ -12789,12 +12814,23 @@ function RankTracker(props) {
 
         // Card équipe comparée
         compareId&&cmpClub?React.createElement("div",{style:{flex:1,minWidth:0}},
+          // Bouton sélecteur équipe comparée — logo + ▼
+          React.createElement("button",{
+            onClick:function(e){e.stopPropagation();setShowDrop(function(v){return !v;});setShowDrop1(false);},
+            style:{
+              display:"flex",alignItems:"center",gap:8,
+              padding:"6px 10px 6px 8px",marginBottom:6,
+              borderRadius:10,border:"1.5px solid #e2e8f0",
+              background:"#fff",cursor:"pointer",
+              boxShadow:"0 1px 4px rgba(0,0,0,.06)"
+            }
+          },
+            React.createElement("img",{src:cmpClub.logo||"",style:{width:28,height:28,objectFit:"contain"},onError:function(e){e.target.style.display="none";}}),
+            React.createElement("span",{style:{fontSize:10,color:"#64748b"}}),"▼"
+          ),
           React.createElement("div",{style:{height:3,borderRadius:"2px 2px 0 0",background:"#2563eb"}}),
           React.createElement("div",{style:{background:"#f8fafc",borderRadius:"0 0 12px 12px",padding:"10px 12px"}},
-            React.createElement("div",{style:{display:"flex",alignItems:"center",gap:8,marginBottom:8}},
-              React.createElement("img",{src:cmpClub.logo||"",style:{width:26,height:26,objectFit:"contain"},onError:function(e){e.target.style.display="none";}}),
-              React.createElement("span",{style:{fontSize:12,fontWeight:700,color:"#0f172a",overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap"}},[cmpClub.name||""])
-            ),
+            React.createElement("div",{style:{fontSize:11,color:"#64748b",marginBottom:4,fontWeight:600}},cmpClub.name||""),
             selData2?React.createElement("div",null,
               React.createElement("div",{style:{fontSize:11,color:"#64748b",marginBottom:6}},"Position "+selData2.position),
               React.createElement("div",{style:{display:"flex",alignItems:"center",justifyContent:"center",gap:6}},
@@ -12807,19 +12843,54 @@ function RankTracker(props) {
         ):null,
 
         // Boutons ✕ + COMPAREZ
-        React.createElement("div",{style:{display:"flex",flexDirection:"column",gap:8,justifyContent:"center",alignItems:"center",flexShrink:0,paddingTop:3}},
+        React.createElement("div",{style:{display:"flex",flexDirection:"column",gap:8,justifyContent:"center",alignItems:"center",flexShrink:0,paddingTop:40}},
           compareId?React.createElement("button",{
             onClick:function(){setCompareId(null);},
             style:{width:32,height:32,borderRadius:"50%",border:"1.5px solid #e2e8f0",background:"#fff",cursor:"pointer",fontSize:16,color:"#64748b",display:"flex",alignItems:"center",justifyContent:"center",lineHeight:1}
           },"✕"):null,
           React.createElement("button",{
-            onClick:function(e){e.stopPropagation();setShowDrop(function(v){return !v;});},
+            onClick:function(e){e.stopPropagation();setShowDrop(function(v){return !v;});setShowDrop1(false);},
             style:{padding:"9px 14px",borderRadius:22,border:"none",background:"#2563eb",color:"#fff",fontSize:12,fontWeight:800,cursor:"pointer",whiteSpace:"nowrap",boxShadow:"0 2px 8px rgba(37,99,235,.35)"}
           },compareId?"CHANGER":"COMPAREZ")
         )
       ),
 
-      // Dropdown clubs — overlay flottant style SofaScore
+      // Dropdown équipe PRINCIPALE — overlay flottant
+      showDrop1&&React.createElement("div",{
+        style:{position:"fixed",top:0,left:0,right:0,bottom:0,zIndex:10000,display:"flex",alignItems:"flex-end"},
+        onClick:function(e){if(e.target===e.currentTarget) setShowDrop1(false);}
+      },
+        React.createElement("div",{style:{position:"absolute",inset:0,background:"rgba(0,0,0,.3)"},onClick:function(){setShowDrop1(false);}}),
+        React.createElement("div",{
+          style:{position:"relative",width:"100%",background:"#fff",borderRadius:"20px 20px 0 0",zIndex:1,maxHeight:"60vh",display:"flex",flexDirection:"column"},
+          onClick:function(e){e.stopPropagation();}
+        },
+          React.createElement("div",{style:{display:"flex",flexDirection:"column",alignItems:"center",padding:"10px 20px 8px",borderBottom:"1px solid #f1f5f9",flexShrink:0}},
+            React.createElement("div",{style:{width:36,height:4,borderRadius:2,background:"#e2e8f0",marginBottom:12}}),
+            React.createElement("div",{style:{alignSelf:"stretch",fontSize:15,fontWeight:700,color:"#0f172a"}},"Choisir un club")
+          ),
+          React.createElement("div",{style:{overflowY:"auto",flex:1,paddingBottom:16}},
+            allClubList.slice().sort(function(a,b){return a.name.localeCompare(b.name);}).map(function(c){
+              var curMain=mainId||teamId;
+              var isActive=curMain===c.id;
+              return React.createElement("div",{
+                key:c.id,
+                onClick:function(){
+                  setMainId(c.id===teamId?null:c.id);
+                  setShowDrop1(false);
+                },
+                style:{display:"flex",alignItems:"center",gap:14,padding:"12px 20px",borderBottom:"1px solid #f8fafc",cursor:"pointer",background:isActive?"rgba(22,163,74,.05)":"#fff"}
+              },
+                React.createElement("img",{src:c.logo,style:{width:36,height:36,objectFit:"contain",flexShrink:0},onError:function(e){e.target.style.display="none";}}),
+                React.createElement("span",{style:{fontSize:15,fontWeight:isActive?700:400,color:isActive?"#16a34a":"#0f172a",flex:1}},c.name),
+                isActive&&React.createElement("div",{style:{width:8,height:8,borderRadius:"50%",background:"#16a34a",flexShrink:0}})
+              );
+            })
+          )
+        )
+      ),
+
+      // Dropdown clubs COMPARAISON — overlay flottant style SofaScore
       showDrop&&React.createElement("div",{
         style:{
           position:"fixed",top:0,left:0,right:0,bottom:0,
@@ -12853,7 +12924,7 @@ function RankTracker(props) {
           ),
           // Liste scrollable triée alphabétiquement
           React.createElement("div",{style:{overflowY:"auto",flex:1,paddingBottom:16}},
-            clubList.slice().sort(function(a,b){return a.name.localeCompare(b.name);}).map(function(c){
+            cmpList.slice().sort(function(a,b){return a.name.localeCompare(b.name);}).map(function(c){
               var isActive=compareId===c.id;
               return React.createElement("div",{
                 key:c.id,
