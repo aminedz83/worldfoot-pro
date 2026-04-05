@@ -12815,57 +12815,29 @@ function RankTracker(props) {
         },"›")
       ),
 
-      // Cards équipes
+      // Cards équipes — chaque colonne = bouton + card alignés
       React.createElement("div",{style:{padding:"0 14px 14px"}},
 
-        // Ligne des boutons sélecteurs + boutons action
-        React.createElement("div",{style:{display:"flex",gap:10,alignItems:"center",marginBottom:8}},
-          // Bouton sélecteur équipe principale — compact logo + ▼
-          React.createElement("button",{
-            onClick:function(e){e.stopPropagation();setShowDrop1(function(v){return !v;});setShowDrop(false);},
-            style:{
-              display:"flex",alignItems:"center",gap:6,
-              padding:"6px 10px",borderRadius:10,
-              border:"1.5px solid #e2e8f0",background:"#fff",
-              cursor:"pointer",boxShadow:"0 1px 4px rgba(0,0,0,.06)",
-              flexShrink:0
-            }
-          },
-            React.createElement("img",{src:mainLogo,style:{width:32,height:32,objectFit:"contain"},onError:function(e){e.target.style.display="none";}}),
-            React.createElement("span",{style:{fontSize:10,color:"#475569",fontWeight:700,lineHeight:1}}),"▼"
-          ),
-          // Bouton sélecteur équipe comparée (si active) — compact logo + ▼
-          compareId&&cmpClub?React.createElement("button",{
-            onClick:function(e){e.stopPropagation();setShowDrop(function(v){return !v;});setShowDrop1(false);},
-            style:{
-              display:"flex",alignItems:"center",gap:6,
-              padding:"6px 10px",borderRadius:10,
-              border:"1.5px solid #e2e8f0",background:"#fff",
-              cursor:"pointer",boxShadow:"0 1px 4px rgba(0,0,0,.06)",
-              flexShrink:0
-            }
-          },
-            React.createElement("img",{src:cmpClub.logo||"",style:{width:32,height:32,objectFit:"contain"},onError:function(e){e.target.style.display="none";}}),
-            React.createElement("span",{style:{fontSize:10,color:"#475569",fontWeight:700,lineHeight:1}}),"▼"
-          ):null,
-          // Spacer
-          React.createElement("div",{style:{flex:1}}),
-          // Bouton ✕
-          compareId?React.createElement("button",{
-            onClick:function(){setCompareId(null);},
-            style:{width:32,height:32,borderRadius:"50%",border:"1.5px solid #e2e8f0",background:"#fff",cursor:"pointer",fontSize:15,color:"#64748b",display:"flex",alignItems:"center",justifyContent:"center",flexShrink:0}
-          },"✕"):null,
-          // Bouton COMPAREZ
-          React.createElement("button",{
-            onClick:function(e){e.stopPropagation();setShowDrop(function(v){return !v;});setShowDrop1(false);},
-            style:{padding:"9px 16px",borderRadius:22,border:"none",background:"#2563eb",color:"#fff",fontSize:12,fontWeight:800,cursor:"pointer",whiteSpace:"nowrap",flexShrink:0,boxShadow:"0 2px 8px rgba(37,99,235,.35)"}
-          },compareId?"CHANGER":"COMPAREZ")
-        ),
+        // Rangée principale : [colonne1] [colonne2] [✕ + COMPAREZ]
+        React.createElement("div",{style:{display:"flex",gap:10,alignItems:"flex-start"}},
 
-        // Cards info — ligne couleur pleine largeur
-        React.createElement("div",{style:{display:"flex",gap:10}},
-          // Card principale
+          // Colonne équipe principale
           React.createElement("div",{style:{flex:1,minWidth:0}},
+            // Bouton logo+▼
+            React.createElement("button",{
+              onClick:function(e){e.stopPropagation();setShowDrop1(function(v){return !v;});setShowDrop(false);},
+              style:{
+                display:"flex",alignItems:"center",gap:6,width:"100%",
+                padding:"6px 10px",marginBottom:6,borderRadius:10,
+                border:"1.5px solid #e2e8f0",background:"#fff",
+                cursor:"pointer",boxShadow:"0 1px 4px rgba(0,0,0,.06)"
+              }
+            },
+              React.createElement("img",{src:mainLogo,style:{width:30,height:30,objectFit:"contain"},onError:function(e){e.target.style.display="none";}}),
+              React.createElement("div",{style:{flex:1}}),
+              React.createElement("span",{style:{fontSize:10,color:"#475569",fontWeight:700}}),"▼"
+            ),
+            // Card verte
             React.createElement("div",{style:{height:3,background:"#16a34a",borderRadius:"2px 2px 0 0"}}),
             React.createElement("div",{style:{background:"#f8fafc",borderRadius:"0 0 12px 12px",padding:"10px 12px"}},
               selData?React.createElement("div",null,
@@ -12878,8 +12850,24 @@ function RankTracker(props) {
               ):React.createElement("div",{style:{fontSize:11,color:"#94a3b8",textAlign:"center",padding:"8px 0"}},"Pas de match")
             )
           ),
-          // Card comparée
+
+          // Colonne équipe comparée (si active)
           compareId&&cmpClub?React.createElement("div",{style:{flex:1,minWidth:0}},
+            // Bouton logo+▼
+            React.createElement("button",{
+              onClick:function(e){e.stopPropagation();setShowDrop(function(v){return !v;});setShowDrop1(false);},
+              style:{
+                display:"flex",alignItems:"center",gap:6,width:"100%",
+                padding:"6px 10px",marginBottom:6,borderRadius:10,
+                border:"1.5px solid #e2e8f0",background:"#fff",
+                cursor:"pointer",boxShadow:"0 1px 4px rgba(0,0,0,.06)"
+              }
+            },
+              React.createElement("img",{src:cmpClub.logo||"",style:{width:30,height:30,objectFit:"contain"},onError:function(e){e.target.style.display="none";}}),
+              React.createElement("div",{style:{flex:1}}),
+              React.createElement("span",{style:{fontSize:10,color:"#475569",fontWeight:700}}),"▼"
+            ),
+            // Card bleue
             React.createElement("div",{style:{height:3,background:"#2563eb",borderRadius:"2px 2px 0 0"}}),
             React.createElement("div",{style:{background:"#f8fafc",borderRadius:"0 0 12px 12px",padding:"10px 12px"}},
               selData2?React.createElement("div",null,
@@ -12891,7 +12879,25 @@ function RankTracker(props) {
                 )
               ):React.createElement("div",{style:{fontSize:11,color:"#94a3b8",textAlign:"center",padding:"8px 0"}},"Pas de match")
             )
-          ):null
+          ):null,
+
+          // Colonne boutons action ✕ + COMPAREZ/+
+          React.createElement("div",{style:{display:"flex",flexDirection:"column",gap:6,flexShrink:0,paddingTop:2}},
+            compareId?React.createElement("button",{
+              onClick:function(){setCompareId(null);},
+              style:{width:34,height:34,borderRadius:"50%",border:"1.5px solid #e2e8f0",background:"#fff",cursor:"pointer",fontSize:15,color:"#64748b",display:"flex",alignItems:"center",justifyContent:"center"}
+            },"✕"):null,
+            React.createElement("button",{
+              onClick:function(e){e.stopPropagation();setShowDrop(function(v){return !v;});setShowDrop1(false);},
+              style:{
+                width:34,height:34,borderRadius:"50%",border:"none",
+                background:"#2563eb",color:"#fff",
+                fontSize:compareId?14:20,fontWeight:700,
+                cursor:"pointer",display:"flex",alignItems:"center",justifyContent:"center",
+                boxShadow:"0 2px 8px rgba(37,99,235,.35)"
+              }
+            },compareId?"↺":"+")
+          )
         )
       ),
 
