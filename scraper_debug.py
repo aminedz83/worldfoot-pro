@@ -1,70 +1,77 @@
-import cloudscraper, re, json
+import cloudscraper, re
 
 scraper = cloudscraper.create_scraper(
     browser={"browser": "chrome", "platform": "windows", "mobile": False}
 )
 
 mid = "IiwUv5Er"
-TOKEN = "Y3uhIv5Ges46mMdAZm53akso95sYOogk"
-SIGN = "SW9D1eZo"
 PROJECT = "2043"
 
-print("=== Test API Flashscore avec token ===")
-
-# Headers avec token
 headers = {
     "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36",
     "Accept": "*/*",
     "Referer": "https://fr.soccerway.com/",
-    "x-fsign": SIGN,
-    "Authorization": f"Bearer {TOKEN}",
+    "x-fsign": "SW9D1eZo",
 }
 
-# Test toutes les variantes d'API
-apis = [
-    # Flashscore ninja avec token
-    f"https://{PROJECT}.flashscore.ninja/46/x/feed/df_sui_{mid}_1_fr_1",
-    f"https://{PROJECT}.flashscore.ninja/46/x/feed/dc_1_{mid}",
-    f"https://{PROJECT}.flashscore.ninja/46/x/feed/df_st_1_{mid}",
-    f"https://{PROJECT}.flashscore.ninja/46/x/feed/df_liom_1_{mid}_1_fr_1",
-    # GraphQL GET
-    f"https://{PROJECT}.ds.lsapp.eu/pq_graphql?_hash=el&event_id={mid}&sport=football&_token={TOKEN}",
-    f"https://{PROJECT}.ds.lsapp.eu/pq_graphql?_hash=sui&event_id={mid}&_token={TOKEN}",
-    # API directe avec token
-    f"https://d.flashscore.com/x/feed/df_sui_{mid}_1_fr_1",
-    f"https://d.flashscore.com/x/feed/dc_1_{mid}",
+print("=== Recherche feed lineups ===")
+
+# Tester tous les codes de feed possibles
+feed_codes = [
+    "df_sui",   # lineups ?
+    "df_li",    # lineups ?
+    "df_liom",  # lineups ?
+    "df_fo",    # formation ?
+    "df_line",  # lineups ?
+    "dl_1",
+    "dl_li",
+    "di_1",
+    "di_li",
+    "dline",
+    "df_ls",
+    "df_lc",
+    "df_la",
+    "df_lb",
+    "df_ld",
+    "df_le",
+    "df_lf",
+    "df_lg",
+    "df_lh",
+    "df_lk",
+    "df_ll",
+    "df_lm",
+    "df_ln",
+    "df_lo",
+    "df_lp",
+    "df_lq",
+    "df_lr",
+    "df_lu",
+    "df_lv",
+    "df_lw",
 ]
 
-for api in apis:
+for code in feed_codes:
+    url = f"https://{PROJECT}.flashscore.ninja/46/x/feed/{code}_1_{mid}_1_fr_1"
     try:
-        r = scraper.get(api, headers=headers, timeout=10)
-        print(f"\n{api[:80]}")
-        print(f"Status: {r.status_code} | Taille: {len(r.text)}")
-        if r.status_code == 200 and len(r.text) > 5:
-            print("Contenu:", r.text[:300])
+        r = scraper.get(url, headers=headers, timeout=5)
+        size = len(r.text)
+        if r.status_code == 200 and size > 5:
+            print(f"✅ {code}: Status={r.status_code} | Taille={size}")
+            print(f"   Contenu: {r.text[:200]}")
+        elif r.status_code != 200:
+            print(f"❌ {code}: Status={r.status_code}")
     except Exception as e:
-        print(f"Erreur: {e}")
+        print(f"  {code}: Erreur - {e}")
 
-# Chercher le JS qui charge les lineups pour trouver l'URL exacte
-print("\n=== Chercher URL lineups dans le JS ===")
-url_page = "https://fr.soccerway.com/match/el-bayadh-S6H5xCS1/kabylie-Wfaskwf0/?mid=IiwUv5Er"
-r_page = scraper.get(url_page, timeout=20)
-
-# Chercher les fichiers JS chargés
-js_files = re.findall(r'src="(https://[^"]+\.js[^"]*)"', r_page.text)
-print("Fichiers JS:", len(js_files))
-for js in js_files[:5]:
-    print(" ", js[:100])
-
-# Télécharger le JS principal et chercher l'URL de lineups
-for js_url in js_files[:3]:
+# Aussi tester sans le suffixe _1_fr_1
+print("\n=== Sans suffixe ===")
+for code in ["df_li", "df_sui", "df_liom", "df_fo", "dl_1", "di_1"]:
+    url = f"https://{PROJECT}.flashscore.ninja/46/x/feed/{code}_{mid}"
     try:
-        rjs = scraper.get(js_url, timeout=15)
-        if "lineup" in rjs.text.lower() or "sui" in rjs.text:
-            print(f"\nJS avec lineup: {js_url[:60]}")
-            # Chercher le pattern d'URL
-            urls_in_js = re.findall(r'["\']([^"\']*(?:lineup|sui|feed)[^"\']*)["\']', rjs.text)
-            for u in urls_in_js[:10]:
-                print(f"  {u[:100]}")
+        r = scraper.get(url, headers=headers, timeout=5)
+        size = len(r.text)
+        if r.status_code == 200 and size > 5:
+            print(f"✅ {code}: Status={r.status_code} | Taille={size}")
+            print(f"   Contenu: {r.text[:200]}")
     except:
         pass
