@@ -12517,6 +12517,7 @@ function TeamPage({ teamId, teamName, teamLogo, leagueId, season, onClose, onTea
   const [selSeason, setSelSeason] = useState(null);
   const [standingsFiltered, setStandingsFiltered] = useState([]);
   const [loadingStand, setLoadingStand] = useState(false);
+  const [cupResults, setCupResults] = useState(null); // fixtures coupe pour saison sélectionnée
 
   const openMatchDetail = async (fixtureId) => {
     setDetailMatch({ loading: true });
@@ -13257,6 +13258,7 @@ function TeamPage({ teamId, teamName, teamLogo, leagueId, season, onClose, onTea
                   if(isActive) return;
                   setSelLeagueId(l.id);
                   setLoadingStand(true);
+                  setCupResults(null);
                   api('/standings?league='+l.id+'&season='+(selSeason||l.season), 3600000)
                     .then(function(d){
                       var rows=(d||[]).flatMap(function(g){return Array.isArray(g)?g:(g&&g.league&&g.league.standings?g.league.standings.flat():[]);});
@@ -13289,12 +13291,29 @@ function TeamPage({ teamId, teamName, teamLogo, leagueId, season, onClose, onTea
                 var newSeas=parseInt(e.target.value);
                 setSelSeason(newSeas);
                 setLoadingStand(true);
-                api('/standings?league='+(selLeagueId||186)+'&season='+newSeas, 3600000)
-                  .then(function(d){
-                    var rows=(d||[]).flatMap(function(g){return Array.isArray(g)?g:(g&&g.league&&g.league.standings?g.league.standings.flat():[]);});
-                    setStandingsFiltered(rows);
-                    setLoadingStand(false);
-                  }).catch(function(){setLoadingStand(false);});
+                setCupResults(null);
+                // Détecter si la ligue sélectionnée est une coupe
+                var selLg = teamLeagues.find(function(l){ return l.id === selLeagueId; }) || {};
+                var lgName = (selLg.name || "").toLowerCase();
+                var isCup = lgName.includes("cup")||lgName.includes("coupe")||lgName.includes("copa")||lgName.includes("coppa")||lgName.includes("pokal")||lgName.includes("nationale")||lgName.includes("league cup")||lgName.includes("super cup");
+                if(isCup) {
+                  // Recharger les fixtures de cette coupe pour la nouvelle saison
+                  api('/fixtures?team='+teamId+'&league='+selLeagueId+'&season='+newSeas, 3600000)
+                    .then(function(d){
+                      var DONE_S = new Set(["FT","AET","PEN","AWD","WO"]);
+                      var done = (d||[]).filter(function(f){ return DONE_S.has(f.fixture&&f.fixture.status&&f.fixture.status.short); });
+                      setCupResults(done);
+                      setStandingsFiltered([]);
+                      setLoadingStand(false);
+                    }).catch(function(){ setCupResults([]); setLoadingStand(false); });
+                } else {
+                  api('/standings?league='+(selLeagueId||186)+'&season='+newSeas, 3600000)
+                    .then(function(d){
+                      var rows=(d||[]).flatMap(function(g){return Array.isArray(g)?g:(g&&g.league&&g.league.standings?g.league.standings.flat():[]);});
+                      setStandingsFiltered(rows);
+                      setLoadingStand(false);
+                    }).catch(function(){setLoadingStand(false);});
+                }
               },
               style:{
                 padding:"6px 24px 6px 10px",borderRadius:8,
@@ -13335,7 +13354,9 @@ function TeamPage({ teamId, teamName, teamLogo, leagueId, season, onClose, onTea
 
               if(rows.length === 0 || isCupLeague) {
                 // Coupe / élimination directe → afficher les matchs
-                var cupMatches = results.filter(function(f){ return f.league && f.league.id === selLeagueId; });
+                // Si cupResults chargé (changement de saison), l'utiliser ; sinon filtrer results
+                var cupSource = cupResults !== null ? cupResults : results.filter(function(f){ return f.league && f.league.id === selLeagueId; });
+                var cupMatches = cupSource;
                 if(cupMatches.length === 0) return React.createElement("div",{style:{textAlign:"center",padding:"48px 24px",color:"#94a3b8",fontSize:14}},"Aucune donnée disponible");
                 var sortedCup = cupMatches.slice().sort(function(a,b){ return new Date(a.fixture.date)-new Date(b.fixture.date); });
                 return React.createElement("div",{style:{padding:"8px 12px 16px"}},
