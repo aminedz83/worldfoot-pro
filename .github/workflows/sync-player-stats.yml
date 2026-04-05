@@ -2,10 +2,8 @@ name: Sync Player Stats
 
 on:
   schedule:
-    # Toutes les 5 min entre 9h-18h Algérie (8h-17h UTC)
-    # Se déclenche après chaque match pour récupérer les stats
     - cron: '*/5 8-17 * * *'
-  workflow_dispatch:  # Déclenchement manuel aussi
+  workflow_dispatch:
 
 jobs:
   sync-stats:
@@ -19,7 +17,7 @@ jobs:
           python-version: '3.11'
 
       - name: Install dependencies
-        run: pip install requests beautifulsoup4
+        run: pip install requests beautifulsoup4 cloudscraper
 
       - name: Run stats scraper
         env:
