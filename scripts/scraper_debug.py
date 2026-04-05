@@ -9,30 +9,46 @@ HEADERS = {
     "Referer": "https://fr.soccerway.com/"
 }
 
-url = "https://fr.soccerway.com/national/algeria/ligue-professionnelle-1/2025-2026/regular-season/r76191/"
+today = date.today()
+url = "https://fr.soccerway.com/matches/{}/{}/{}/".format(
+    today.strftime("%Y"), today.strftime("%m"), today.strftime("%d")
+)
+print("URL:", url)
 r = requests.get(url, headers=HEADERS, timeout=20)
-print("Status:", r.status_code)
-print("Taille HTML:", len(r.text))
+print("Status:", r.status_code, "| Taille:", len(r.text))
 
-soup = BeautifulSoup(r.text, "html.parser")
+# Chercher TOUS les liens /match/ dans le HTML brut
+print("\n=== Tous les /match/ dans le HTML ===")
+matches_found = re.findall(r'/match/[^"\'<>\s]+', r.text)
+print("Total liens /match/:", len(matches_found))
+for m in matches_found[:20]:
+    print(" ", m)
 
-# Afficher toutes les classes des <tr> trouvés
-print("\n=== Classes des TR ===")
-classes_found = set()
-for tr in soup.find_all("tr"):
-    cls = tr.get("class", [])
-    if cls:
-        classes_found.add(" ".join(cls))
-for c in sorted(classes_found)[:30]:
-    print(" ", c)
+# Chercher algeria dans le HTML
+print("\n=== Algérie dans le HTML ===")
+if "algeri" in r.text.lower() or "kabylie" in r.text.lower() or "belouizdad" in r.text.lower():
+    print("✅ Algérie/Kabylie trouvé dans le HTML!")
+    # Trouver le contexte
+    idx = r.text.lower().find("kabylie")
+    if idx > 0:
+        print("Contexte:", r.text[max(0,idx-200):idx+200])
+else:
+    print("❌ Aucune référence à l'Algérie dans le HTML")
 
-# Chercher tous les liens qui ressemblent à des matchs
-print("\n=== Liens matchs ===")
-for a in soup.find_all("a", href=True):
-    href = a.get("href", "")
-    if re.search(r"/\d{5,8}/?$", href) or "match" in href.lower():
-        print(" ", href[:80])
+# Chercher les IDs Soccerway algériens
+ALGERIA_SW_IDS = ["Wfaskwf0","vNJLB2jP","tnY2Lfcp","zXBidj5t","nBionu2l",
+                   "EDgC6qYp","CrCmB35M","Aobolc96","nimcBvel","QmvZvxCB",
+                   "lYuJtBj9","hGHHy7Am","WIyffF3J","j9T7TM2E","S6H5xCS1","dhMQsMOh"]
 
-# Afficher les 500 premiers chars du HTML pour voir la structure
-print("\n=== Début HTML ===")
-print(r.text[:2000])
+print("\n=== IDs algériens dans le HTML ===")
+found_ids = []
+for sw_id in ALGERIA_SW_IDS:
+    if sw_id in r.text:
+        found_ids.append(sw_id)
+        print("  ✅ Trouvé:", sw_id)
+if not found_ids:
+    print("  ❌ Aucun ID algérien trouvé")
+
+# Afficher les 3000 premiers chars pour voir la structure
+print("\n=== Structure HTML (3000 chars) ===")
+print(r.text[1000:4000])
