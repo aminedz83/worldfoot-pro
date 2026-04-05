@@ -4,57 +4,71 @@ scraper = cloudscraper.create_scraper(
     browser={"browser": "chrome", "platform": "windows", "mobile": False}
 )
 
-mid = "IiwUv5Er"
-
-print("=== Test APIs Flashscore/Soccerway ===")
-
-# Extraire les URLs d'API depuis le HTML
 url = "https://fr.soccerway.com/match/el-bayadh-S6H5xCS1/kabylie-Wfaskwf0/?mid=IiwUv5Er"
 r = scraper.get(url, timeout=20)
 html = r.text
 
-# Chercher les endpoints dans le JS
-print("--- Endpoints dans le HTML ---")
-endpoints = re.findall(r'["\']([^"\']*(?:lineup|squad|player|formation)[^"\']*)["\']', html, re.IGNORECASE)
-for e in set(endpoints):
-    if len(e) > 5 and len(e) < 200:
-        print(" ", e[:100])
-
-# Chercher les URLs de données
-print("\n--- URLs de données ---")
-data_urls = re.findall(r'["\']https?://[^"\']+["\']', html)
-unique_data = set()
-for u in data_urls:
-    u = u.strip("\"'")
-    if any(x in u for x in ["api", "data", "feed", "graphql", "json"]):
-        unique_data.add(u)
-for u in sorted(unique_data)[:20]:
-    print(" ", u[:100])
-
-# Tester l'API Flashscore directe (ds.lsapp.eu = datacenter Livesport)
-print("\n--- Test API Livesport/Flashscore ---")
-apis = [
-    f"https://2043.ds.lsapp.eu/pq_graphql?_hash=el&category=football&event_id={mid}&tab=lineups",
-    f"https://2043.ds.lsapp.eu/pq_graphql?_hash=el&event_id={mid}",
-    f"https://2043.flashscore.ninja/46/x/feed/dc_1_{mid}",
-    f"https://2043.flashscore.ninja/46/x/feed/df_st_1_{mid}",
-    f"https://d.flashscore.com/x/feed/dc_1_{mid}",
-    f"https://d.flashscore.com/x/feed/df_sui_{mid}_1_en_1",
+# Chercher le token d'authentification
+print("=== Tokens dans le HTML ===")
+patterns = [
+    r'"token"\s*:\s*"([^"]+)"',
+    r'"auth"\s*:\s*"([^"]+)"',
+    r'"key"\s*:\s*"([^"]+)"',
+    r'x-fsign["\s:]+([^"\'<>\s]+)',
+    r'"fsign"\s*:\s*"([^"]+)"',
+    r'sign["\s:]+([A-Za-z0-9]{8,})',
+    r'"_hash"\s*:\s*"([^"]+)"',
+    r'hash["\s:]+([A-Za-z0-9]{4,20})',
+    r'ninja[^"]{0,100}"([^"]{10,50})"',
+    r'46/x/feed[^"]{0,50}"([^"]+)"',
+    r'"sport_id"\s*:\s*(\d+)',
+    r'"project_id"\s*:\s*(\d+)',
 ]
 
-headers_fs = {
-    "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36",
-    "Accept": "*/*",
-    "Referer": "https://fr.soccerway.com/",
-    "x-fsign": "SW9D1eZo",
-}
+for pat in patterns:
+    for m in re.finditer(pat, html, re.IGNORECASE):
+        val = m.group(1)
+        if len(val) > 3:
+            print(f"  [{pat[:30]}] → {val[:80]}")
 
-for api in apis:
+# Chercher spécifiquement dans window.environment
+print("\n=== window.environment complet ===")
+env_match = re.search(r'window\.environment\s*=\s*({.+?});\s*\n', html, re.DOTALL)
+if env_match:
     try:
-        r2 = scraper.get(api, timeout=10)
-        print(f"\n{api[:80]}")
-        print(f"Status: {r2.status_code} | Taille: {len(r2.text)}")
-        if r2.status_code == 200 and len(r2.text) > 50:
-            print("Contenu:", r2.text[:400])
-    except Exception as e:
-        print(f"Erreur: {e}")
+        env = json.loads(env_match.group(1))
+        print(json.dumps(env, indent=2)[:3000])
+    except:
+        print(env_match.group(1)[:2000])
+
+# Chercher l'URL ninja avec token
+print("\n=== URLs ninja dans le HTML ===")
+ninja_urls = re.findall(r'flashscore\.ninja[^"\'<>\s]+', html)
+for u in ninja_urls[:10]:
+    print(" ", u)
+
+# Chercher le numéro du datacenter (2043)
+print("\n=== Config datacenter ===")
+dc_patterns = re.findall(r'2043[^"\'<>\s]{0,100}', html)
+for d in dc_patterns[:5]:
+    print(" ", d[:100])
+
+# Tester l'API GraphQL correctement
+print("\n=== Test GraphQL ===")
+graphql_url = "https://2043.ds.lsapp.eu/pq_graphql"
+# Requête pour les lineups
+query = {
+    "operationName": "MatchLineups",
+    "query": """query MatchLineups($eventId: String!) {
+        event(id: $eventId) {
+            lineups { home { players { player { name } position } } away { players { player { name } position } } }
+        }
+    }""",
+    "variables": {"eventId": "IiwUv5Er"}
+}
+try:
+    r2 = scraper.post(graphql_url, json=query, timeout=10)
+    print("GraphQL status:", r2.status_code)
+    print("Réponse:", r2.text[:500])
+except Exception as e:
+    print("Erreur:", e)
