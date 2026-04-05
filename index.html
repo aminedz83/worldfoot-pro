@@ -12806,40 +12806,57 @@ function RankTracker(props) {
           style:{display:"flex",alignItems:"center",justifyContent:"space-between",padding:"14px 16px",cursor:"pointer"}
         },
           React.createElement("span",{style:{fontSize:14,fontWeight:700,color:"#0f172a"}},"À propos du graphique"),
-          React.createElement("span",{style:{fontSize:18,color:"#64748b",lineHeight:1,transform:showAbout?"rotate(180deg)":"rotate(0deg)",display:"inline-block",transition:"transform .2s"}},"∧")
+          React.createElement("span",{style:{fontSize:14,color:"#64748b",fontWeight:500}},showAbout?"∨":"∨")
         ),
         // Contenu dépliant
-        showAbout && React.createElement("div",{style:{padding:"0 16px 20px",background:"#f8fafc",borderTop:"1px solid #f1f5f9"}},
-          React.createElement("p",{style:{fontSize:14,color:"#334155",lineHeight:1.7,margin:"14px 0 16px"}},
+        showAbout && React.createElement("div",{style:{padding:"4px 16px 20px",background:"#f8fafc",borderTop:"1px solid #f1f5f9"}},
+          React.createElement("p",{style:{fontSize:14,color:"#334155",lineHeight:1.75,margin:"14px 0 16px"}},
             "Ce graphique montre le classement des équipes au cours d'une saison. L'axe X représente les journées et l'axe Y représente la position. Vous pouvez sélectionner et comparer jusqu'à quatre équipes ensemble."
           ),
-          // Mini graphique illustratif
-          React.createElement("div",{style:{background:"#fff",borderRadius:10,padding:"16px",border:"1px solid #e2e8f0"}},
-            React.createElement("svg",{viewBox:"0 0 280 130",style:{width:"100%",height:"auto",display:"block"}},
-              // Grilles
-              [1,2,3,4,5].map(function(i){
-                var y=10+i*20;
-                return React.createElement("line",{key:"g"+i,x1:40,y1:y,x2:260,y2:y,stroke:"#e9ecef",strokeWidth:1,strokeDasharray:"4,4"});
+          // Mini graphique illustratif — identique SofaScore
+          React.createElement("div",{style:{background:"#fff",borderRadius:10,padding:"20px 16px 16px",border:"1px solid #e2e8f0"}},
+            React.createElement("svg",{viewBox:"0 0 300 160",style:{width:"100%",height:"auto",display:"block"}},
+              // ── Axes ──
+              // Axe Y (vertical)
+              React.createElement("line",{x1:48,y1:10,x2:48,y2:128,stroke:"#94a3b8",strokeWidth:1.5}),
+              React.createElement("polygon",{points:"48,8 44,16 52,16",fill:"#94a3b8"}),
+              // Axe X (horizontal)
+              React.createElement("line",{x1:48,y1:128,x2:278,y2:128,stroke:"#94a3b8",strokeWidth:1.5}),
+              React.createElement("polygon",{points:"280,128 272,124 272,132",fill:"#94a3b8"}),
+
+              // ── Label axe Y (vertical, rotaté) ──
+              React.createElement("text",{
+                x:14,y:75,fontSize:11,fill:"#94a3b8",textAnchor:"middle",
+                transform:"rotate(-90,14,75)"
+              },"Poste"),
+
+              // ── Label axe X ──
+              React.createElement("text",{x:163,y:152,fontSize:11,fill:"#94a3b8",textAnchor:"middle"},"Semaine"),
+
+              // ── Grilles horizontales tiretées ──
+              [30,55,80,105].map(function(y,i){
+                return React.createElement("line",{key:"gl"+i,x1:52,y1:y,x2:274,y2:y,stroke:"#e2e8f0",strokeWidth:1,strokeDasharray:"5,4"});
               }),
-              // Label axe Y
-              React.createElement("text",{x:18,y:65,fontSize:10,fill:"#94a3b8",textAnchor:"middle",transform:"rotate(-90,18,65)"},"Poste"),
-              // Label axe X
-              React.createElement("text",{x:150,y:128,fontSize:10,fill:"#94a3b8",textAnchor:"middle"},"Semaine"),
-              // Flèche axe Y
-              React.createElement("line",{x1:38,y1:115,x2:38,y2:10,stroke:"#94a3b8",strokeWidth:1.5}),
-              React.createElement("polygon",{points:"38,8 35,14 41,14",fill:"#94a3b8"}),
-              // Flèche axe X
-              React.createElement("line",{x1:38,y1:113,x2:262,y2:113,stroke:"#94a3b8",strokeWidth:1.5}),
-              React.createElement("polygon",{points:"264,113 258,110 258,116",fill:"#94a3b8"}),
-              // Courbe Équipe 1 — verte
-              React.createElement("path",{d:"M45 55 L75 45 L105 52 L135 40 L165 35 L195 42 L225 32 L255 38",fill:"none",stroke:"#16a34a",strokeWidth:2.5,strokeLinejoin:"round",strokeLinecap:"round",strokeDasharray:"6,3"}),
-              // Courbe Équipe 2 — bleue
-              React.createElement("path",{d:"M45 70 L75 80 L105 75 L135 85 L165 78 L195 88 L225 82 L255 90",fill:"none",stroke:"#2563eb",strokeWidth:2.5,strokeLinejoin:"round",strokeLinecap:"round",strokeDasharray:"6,3"}),
-              // Légendes
-              React.createElement("line",{x1:168,y1:38,x2:190,y2:38,stroke:"#16a34a",strokeWidth:2.5,strokeDasharray:"6,3"}),
-              React.createElement("text",{x:194,y:42,fontSize:11,fill:"#16a34a",fontWeight:"700"},"Équipe 1"),
-              React.createElement("line",{x1:168,y1:58,x2:190,y2:58,stroke:"#2563eb",strokeWidth:2.5,strokeDasharray:"6,3"}),
-              React.createElement("text",{x:194,y:62,fontSize:11,fill:"#2563eb",fontWeight:"700"},"Équipe 2")
+
+              // ── Courbe Équipe 1 — verte tiretée (en haut) ──
+              React.createElement("path",{
+                d:"M55 72 L80 65 L105 68 L130 62 L155 58 L180 55 L205 60 L230 54 L255 57",
+                fill:"none",stroke:"#16a34a",strokeWidth:2.5,
+                strokeDasharray:"8,4",strokeLinejoin:"round",strokeLinecap:"round"
+              }),
+
+              // ── Courbe Équipe 2 — bleue tiretée (en bas) ──
+              React.createElement("path",{
+                d:"M55 92 L80 96 L105 93 L130 98 L155 95 L180 100 L205 97 L230 102 L255 105",
+                fill:"none",stroke:"#2563eb",strokeWidth:2.5,
+                strokeDasharray:"8,4",strokeLinejoin:"round",strokeLinecap:"round"
+              }),
+
+              // ── Légendes sur les courbes ──
+              React.createElement("line",{x1:180,y1:44,x2:202,y2:44,stroke:"#16a34a",strokeWidth:2.5,strokeDasharray:"8,4"}),
+              React.createElement("text",{x:206,y:48,fontSize:11,fill:"#16a34a",fontWeight:"bold"},"Équipe 1"),
+              React.createElement("line",{x1:180,y1:64,x2:202,y2:64,stroke:"#2563eb",strokeWidth:2.5,strokeDasharray:"8,4"}),
+              React.createElement("text",{x:206,y:68,fontSize:11,fill:"#2563eb",fontWeight:"bold"},"Équipe 2")
             )
           )
         )
