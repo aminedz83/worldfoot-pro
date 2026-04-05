@@ -247,7 +247,9 @@ for match in matches:
     lineups = get_lineups(mid)
     if lineups:
         fixture_id = get_fixture_id(home, away, match_date)
-        res = requests.post(SB_URL + "/rest/v1/algeria_lineups", headers=SB_HEADERS, json={
+        upsert_headers = dict(SB_HEADERS)
+        upsert_headers["Prefer"] = "resolution=merge-duplicates,return=minimal"
+        res = requests.post(SB_URL + "/rest/v1/algeria_lineups", headers=upsert_headers, json={
             "fixture_id": fixture_id,
             "soccerway_mid": mid,
             "home_team": home,
@@ -259,7 +261,21 @@ for match in matches:
             "away_subs": lineups["away_subs"],
             "scraped_at": datetime.now(timezone.utc).isoformat()
         })
-        print(f"Sauvegarde: {res.status_code}")
+        print(f"Sauvegarde: {res.status_code} ({'OK' if res.status_code in [200,201,204] else 'ERREUR'})")
+        if res.status_code == 409:
+            # Forcer la mise à jour
+            patch_res = requests.patch(
+                SB_URL + "/rest/v1/algeria_lineups?soccerway_mid=eq." + requests.utils.quote(mid),
+                headers=SB_HEADERS,
+                json={
+                    "home_players": lineups["home_players"],
+                    "away_players": lineups["away_players"],
+                    "home_subs": lineups["home_subs"],
+                    "away_subs": lineups["away_subs"],
+                    "scraped_at": datetime.now(timezone.utc).isoformat()
+                }
+            )
+            print(f"  PATCH: {patch_res.status_code}")
     else:
         print("Pas encore dispo")
     time.sleep(1)
