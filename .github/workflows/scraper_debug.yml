@@ -1,13 +1,21 @@
 name: Debug Scraper
+
 on:
   workflow_dispatch:
+
 jobs:
   debug:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v3
-      - uses: actions/setup-python@v4
+
+      - name: Setup Python
+        uses: actions/setup-python@v4
         with:
           python-version: '3.11'
-      - run: pip install requests beautifulsoup4
-      - run: python3 scripts/scraper_debug.py
+
+      - name: Install dependencies
+        run: pip install requests beautifulsoup4 cloudscraper
+
+      - name: Run debug
+        run: python3 scripts/scraper_debug.py
