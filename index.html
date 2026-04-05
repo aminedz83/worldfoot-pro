@@ -12543,27 +12543,21 @@ function RankTracker(props) {
 
   React.useEffect(function() {
     setLoading(true);
-    // API-Sports limite à 100 fixtures par appel avec season.
-    // Solution : deux appels with from/to sans season pour couvrir toute la saison
-    var y1=_s, y2=_s+1;
-    var from1=y1+'-07-01', to1=y1+'-12-31';
-    var from2=y2+'-01-01', to2=y2+'-06-30';
+    // L'API retourne max 100 fixtures par appel.
+    // Ligue 1 Algérie = 16 équipes = 120 matchs → faire 2 appels avec rounds 1-16 et 17-30
     Promise.all([
-      api('/fixtures?league=186&from='+from1+'&to='+to1, 3600000),
-      api('/fixtures?league=186&from='+from2+'&to='+to2, 3600000),
+      api('/fixtures?league=186&season='+_s+'&round=Regular+Season+-+1', 3600000).catch(function(){return [];}),
       api('/standings?league=186&season='+_s, 3600000)
-    ]).then(function(res) {
-      var fixtures = (res[0]||[]).concat(res[1]||[]);
-      // Filtrer uniquement la saison courante et dédupliquer
-      var seen={};
-      fixtures = fixtures.filter(function(f){
-        var id=f.fixture&&f.fixture.id;
-        var fSeas=f.league&&f.league.season;
-        if(!id||seen[id]) return false;
-        if(fSeas && fSeas!==_s) return false;
-        seen[id]=true; return true;
-      });
-      var standData = res[2] || [];
+    ]).then(function(res0) {
+      // Utiliser la méthode from/to qui fonctionne sans season
+      var y1=_s, y2=_s+1;
+      return Promise.all([
+        api('/fixtures?league=186&season='+_s, 3600000),
+        res0[1]
+      ]);
+    }).then(function(res) {
+      var fixtures  = res[0] || [];
+      var standData = res[1] || [];
       var allTeams  = [];
       try { allTeams = standData[0].league.standings[0] || []; } catch(e) {}
       try { setLeagueLogo(standData[0].league.logo || ""); } catch(e) {}
@@ -12668,8 +12662,12 @@ function RankTracker(props) {
       });
 
       setProgMap(progAll);
+      console.log("RankTracker fixtures total:", fixtures.length, "journeesOk:", journeesOk, "progAll keys:", Object.keys(progAll).length);
       setLoading(false);
-    }).catch(function(){ setLoading(false); });
+    }).catch(function(e){ 
+      console.error("RankTracker error:", e);
+      setLoading(false); 
+    });
   }, [teamId, _s]);
 
   if(loading) return React.createElement("div",{style:{
@@ -12684,7 +12682,29 @@ function RankTracker(props) {
 
   var prog  = progMap[mainId||teamId] || [];
   var prog2 = compareId ? (progMap[compareId]||[]) : null;
-  if(prog.length===0) return null;
+
+  // Si pas de données, afficher panel avec message plutôt que null
+  if(prog.length===0) return React.createElement("div",{
+    style:{position:"fixed",inset:0,zIndex:9000,display:"flex",flexDirection:"column",justifyContent:"flex-end"},
+    onClick:onClose
+  },
+    React.createElement("div",{style:{position:"absolute",inset:0,background:"rgba(0,0,0,.45)"},onClick:onClose}),
+    React.createElement("div",{style:{position:"relative",background:"#fff",borderRadius:"20px 20px 0 0",padding:"20px 20px 40px",zIndex:1},onClick:function(e){e.stopPropagation();}},
+      React.createElement("div",{style:{display:"flex",flexDirection:"column",alignItems:"center",marginBottom:16}},
+        React.createElement("div",{style:{width:36,height:4,borderRadius:2,background:"#e2e8f0",marginBottom:14}}),
+        React.createElement("div",{style:{fontSize:19,fontWeight:800,color:"#0f172a",alignSelf:"stretch"}},"Tracker de classement")
+      ),
+      React.createElement("div",{style:{textAlign:"center",padding:"32px 0",color:"#94a3b8",fontSize:14}},
+        React.createElement("div",{style:{fontSize:32,marginBottom:12}},"📊"),
+        React.createElement("div",null,"Données non disponibles"),
+        React.createElement("div",{style:{fontSize:12,marginTop:8,color:"#cbd5e1"}},"Vérifiez votre connexion ou réessayez")
+      ),
+      React.createElement("button",{
+        onClick:onClose,
+        style:{width:"100%",padding:"12px",borderRadius:12,border:"none",background:"#f1f5f9",color:"#64748b",fontSize:14,fontWeight:600,cursor:"pointer"}
+      },"Fermer")
+    )
+  );
 
   // Infos équipe principale dynamique
   var mainClub = mainId ? (clubList.find(function(c){return c.id===mainId;})||{logo:teamLogo,name:teamName}) : {logo:teamLogo,name:teamName};
@@ -13838,15 +13858,8 @@ function TeamPage({ teamId, teamName, teamLogo, leagueId, season, onClose, onTea
           )
         ),
 
-        // ── Tracker de classement (modal slide-up) ──
-        showTracker && React.createElement(RankTracker,{
-          teamId:teamId, teamName:teamName, teamLogo:teamLogo,
-          season:selSeason, allTeams:standingsFiltered.length>0?standingsFiltered:standings,
-          onClose:function(){setShowTracker(false);}
-        }),
-
         // ── Tableau classement ──
-        !showTracker && (loadingStand
+        loadingStand
           ? React.createElement("div",{style:{textAlign:"center",padding:"32px",color:"#94a3b8",fontSize:13}},"Chargement...")
           : (function(){
               var rows = standingsFiltered.length > 0 ? standingsFiltered : standings;
@@ -14077,7 +14090,6 @@ function TeamPage({ teamId, teamName, teamLogo, leagueId, season, onClose, onTea
                 )
               );
             })()
-        )
       ),
       tab==="effectif" && React.createElement("div",{style:{background:"#f2f3f5"}},
         squad.length===0
@@ -14243,6 +14255,15 @@ function TeamPage({ teamId, teamName, teamLogo, leagueId, season, onClose, onTea
       state: detailMatch,
       onClose: () => setDetailMatch(null),
       onTeam: onTeam
+    }),
+
+    // ── RANK TRACKER ──
+    showTracker && React.createElement(RankTracker, {
+      teamId: teamId,
+      teamName: teamName,
+      teamLogo: teamLogo,
+      season: selSeason,
+      onClose: function(){ setShowTracker(false); }
     }),
 
     // ── PLAYER PAGE depuis effectif ──
