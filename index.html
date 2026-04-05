@@ -12819,22 +12819,69 @@ function RankTracker(props) {
         )
       ),
 
-      // Dropdown clubs
+      // Dropdown clubs — overlay flottant style SofaScore
       showDrop&&React.createElement("div",{
-        style:{margin:"0 14px 14px",background:"#fff",borderRadius:14,boxShadow:"0 8px 32px rgba(0,0,0,.16)",border:"1px solid #e2e8f0",maxHeight:250,overflowY:"auto"},
-        onClick:function(e){e.stopPropagation();}
+        style:{
+          position:"fixed",top:0,left:0,right:0,bottom:0,
+          zIndex:10000,display:"flex",alignItems:"flex-end"
+        },
+        onClick:function(e){if(e.target===e.currentTarget) setShowDrop(false);}
       },
-        clubList.map(function(c){
-          var isActive=compareId===c.id;
-          return React.createElement("div",{
-            key:c.id,
-            onClick:function(){setCompareId(c.id);setShowDrop(false);},
-            style:{display:"flex",alignItems:"center",gap:12,padding:"11px 16px",borderBottom:"1px solid #f1f5f9",cursor:"pointer",background:isActive?"rgba(37,99,235,.06)":"#fff"}
+        // Fond semi-transparent
+        React.createElement("div",{
+          style:{position:"absolute",inset:0,background:"rgba(0,0,0,.3)"},
+          onClick:function(){setShowDrop(false);}
+        }),
+        // Panel liste
+        React.createElement("div",{
+          style:{
+            position:"relative",width:"100%",background:"#fff",
+            borderRadius:"20px 20px 0 0",zIndex:1,
+            maxHeight:"60vh",display:"flex",flexDirection:"column"
           },
-            React.createElement("img",{src:c.logo,style:{width:30,height:30,objectFit:"contain",flexShrink:0},onError:function(e){e.target.style.display="none";}}),
-            React.createElement("span",{style:{fontSize:14,fontWeight:isActive?700:400,color:"#0f172a"}},c.name)
-          );
-        })
+          onClick:function(e){e.stopPropagation();}
+        },
+          // Header
+          React.createElement("div",{style:{
+            display:"flex",flexDirection:"column",alignItems:"center",
+            padding:"10px 20px 8px",borderBottom:"1px solid #f1f5f9",flexShrink:0
+          }},
+            React.createElement("div",{style:{width:36,height:4,borderRadius:2,background:"#e2e8f0",marginBottom:12}}),
+            React.createElement("div",{style:{
+              alignSelf:"stretch",fontSize:15,fontWeight:700,color:"#0f172a"
+            }},"Choisir un club")
+          ),
+          // Liste scrollable triée alphabétiquement
+          React.createElement("div",{style:{overflowY:"auto",flex:1,paddingBottom:16}},
+            clubList.slice().sort(function(a,b){return a.name.localeCompare(b.name);}).map(function(c){
+              var isActive=compareId===c.id;
+              return React.createElement("div",{
+                key:c.id,
+                onClick:function(){setCompareId(c.id);setShowDrop(false);},
+                style:{
+                  display:"flex",alignItems:"center",gap:14,
+                  padding:"12px 20px",
+                  borderBottom:"1px solid #f8fafc",
+                  cursor:"pointer",
+                  background:isActive?"rgba(37,99,235,.05)":"#fff"
+                }
+              },
+                React.createElement("img",{
+                  src:c.logo,
+                  style:{width:36,height:36,objectFit:"contain",flexShrink:0},
+                  onError:function(e){e.target.style.display="none";}
+                }),
+                React.createElement("span",{style:{
+                  fontSize:15,fontWeight:isActive?700:400,
+                  color:isActive?"#2563eb":"#0f172a",flex:1
+                }},c.name),
+                isActive&&React.createElement("div",{style:{
+                  width:8,height:8,borderRadius:"50%",background:"#2563eb",flexShrink:0
+                }})
+              );
+            })
+          )
+        )
       ),
 
       // À propos
