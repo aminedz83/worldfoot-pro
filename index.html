@@ -12546,12 +12546,13 @@ function RankTracker(props) {
     }).filter(function(c){ return c.id && c.id !== teamId; });
     setClubList(realClubs);
 
-    // Un seul appel API : fixtures de la ligue
-    api('/fixtures?league=186&season='+_s, 3600000)
+    // Fixtures de la ligue — TTL 24h car les matchs FT ne changent jamais
+    var TTL_LEAGUE = 86400000; // 24h
+    api('/fixtures?league=186&season='+_s, TTL_LEAGUE)
       .then(function(fix1) {
-        // Si 100 fixtures → page 2
+        // Si 100 fixtures → page 2 (même TTL 24h)
         var p2 = fix1.length >= 100
-          ? api('/fixtures?league=186&season='+_s+'&page=2', 3600000).catch(function(){return [];})
+          ? api('/fixtures?league=186&season='+_s+'&page=2', TTL_LEAGUE).catch(function(){return [];})
           : Promise.resolve([]);
 
         return p2.then(function(fix2) {
