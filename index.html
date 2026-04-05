@@ -13317,29 +13317,66 @@ function TeamPage({ teamId, teamName, teamLogo, leagueId, season, onClose, onTea
           ? React.createElement("div",{style:{textAlign:"center",padding:"32px",color:"#94a3b8",fontSize:13}},"Chargement...")
           : (function(){
               var rows = standingsFiltered.length > 0 ? standingsFiltered : standings;
-              if(rows.length === 0) {
+
+              // Détecter si la ligue sélectionnée est une coupe (KO) par son nom
+              var selLeagueName = (teamLeagues.find(function(l){ return l.id === selLeagueId; }) || {}).name || "";
+              var selLeagueNameLower = selLeagueName.toLowerCase();
+              var isCupLeague = selLeagueNameLower.includes("cup") ||
+                selLeagueNameLower.includes("coupe") ||
+                selLeagueNameLower.includes("copa") ||
+                selLeagueNameLower.includes("coppa") ||
+                selLeagueNameLower.includes("pokal") ||
+                selLeagueNameLower.includes("nationale") ||
+                selLeagueNameLower.includes("fa cup") ||
+                selLeagueNameLower.includes("league cup") ||
+                selLeagueNameLower.includes("super cup") ||
+                selLeagueNameLower.includes("supercoupe") ||
+                selLeagueNameLower.includes("supercoupa");
+
+              if(rows.length === 0 || isCupLeague) {
                 // Coupe / élimination directe → afficher les matchs
                 var cupMatches = results.filter(function(f){ return f.league && f.league.id === selLeagueId; });
                 if(cupMatches.length === 0) return React.createElement("div",{style:{textAlign:"center",padding:"48px 24px",color:"#94a3b8",fontSize:14}},"Aucune donnée disponible");
-                return React.createElement("div",{style:{padding:"8px 0"}},
-                  React.createElement("div",{style:{padding:"8px 16px",fontSize:11,fontWeight:700,color:"#64748b",textTransform:"uppercase",letterSpacing:.5}},"Parcours en coupe"),
-                  cupMatches.map(function(f,i){
-                    var home=f.teams&&f.teams.home, away=f.teams&&f.teams.away;
-                    var hg=f.goals&&f.goals.home, ag=f.goals&&f.goals.away;
-                    var isHome=home&&home.id===teamId;
-                    var opp=isHome?away:home;
-                    var round=(f.league&&f.league.round)||"";
-                    return React.createElement("div",{key:i,style:{
-                      display:"flex",alignItems:"center",gap:8,
-                      padding:"10px 16px",borderBottom:"1px solid #f1f5f9",
-                      background:"#fff"
-                    }},
-                      React.createElement("div",{style:{fontSize:10,color:"#94a3b8",minWidth:50}},round.replace("Round of ","1/").replace("Quarter-finals","1/4").replace("Semi-finals","1/2").replace("Final","Finale")),
-                      React.createElement("img",{src:opp&&opp.logo,style:{width:24,height:24,objectFit:"contain"},onError:function(e){e.target.style.display="none";}}),
-                      React.createElement("span",{style:{flex:1,fontSize:13,fontWeight:600,color:"#0f172a"}},opp&&opp.name),
-                      hg!==null&&ag!==null && React.createElement("span",{style:{fontSize:13,fontWeight:700,color:"#0f172a"}},isHome?(hg+"-"+ag):(ag+"-"+hg))
-                    );
-                  })
+                var sortedCup = cupMatches.slice().sort(function(a,b){ return new Date(a.fixture.date)-new Date(b.fixture.date); });
+                return React.createElement("div",{style:{padding:"8px 12px 16px"}},
+                  React.createElement("div",{style:{padding:"8px 4px 10px",fontSize:11,fontWeight:700,color:"#64748b",textTransform:"uppercase",letterSpacing:.8,display:"flex",alignItems:"center",gap:6}},
+                    React.createElement("div",{style:{width:3,height:14,background:"#00c170",borderRadius:2}}),
+                    "Parcours en coupe"
+                  ),
+                  React.createElement("div",{style:{background:"#fff",borderRadius:14,overflow:"hidden",boxShadow:"0 1px 8px rgba(15,23,42,.07)"}},
+                    sortedCup.map(function(f,i){
+                      var home=f.teams&&f.teams.home, away=f.teams&&f.teams.away;
+                      var hg=f.goals&&f.goals&&f.goals.home!=null?f.goals.home:null;
+                      var ag=f.goals&&f.goals&&f.goals.away!=null?f.goals.away:null;
+                      var isHome=home&&home.id===teamId;
+                      var opp=isHome?away:home;
+                      var myG=isHome?hg:ag, oppG=isHome?ag:hg;
+                      var round=(f.league&&f.league.round)||"";
+                      var roundLabel=round.replace(/Round of 64/i,"1/32").replace(/Round of 32/i,"1/16").replace(/Round of 16/i,"1/8").replace(/Quarter-finals?/i,"1/4").replace(/Semi-finals?/i,"1/2").replace(/\bFinal\b/i,"Finale");
+                      var isWin=myG!==null&&oppG!==null&&myG>oppG;
+                      var isDraw=myG!==null&&oppG!==null&&myG===oppG;
+                      var isLoss=myG!==null&&oppG!==null&&myG<oppG;
+                      var scoreColor=isWin?"#22c55e":isLoss?"#ef4444":"#64748b";
+                      var resultBadge=isWin?"V":isDraw?"N":"D";
+                      var badgeBg=isWin?"#22c55e":isDraw?"#f59e0b":"#ef4444";
+                      return React.createElement("div",{
+                        key:i,
+                        style:{display:"flex",alignItems:"center",gap:10,padding:"11px 14px",borderBottom:i<sortedCup.length-1?"1px solid #f8fafc":"none",background:"#fff"}
+                      },
+                        myG!==null?React.createElement("div",{style:{width:20,height:20,borderRadius:6,flexShrink:0,background:badgeBg,display:"flex",alignItems:"center",justifyContent:"center"}},
+                          React.createElement("span",{style:{fontSize:10,fontWeight:800,color:"#fff"}},resultBadge)
+                        ):null,
+                        React.createElement("img",{src:opp&&opp.logo,style:{width:26,height:26,objectFit:"contain",flexShrink:0},onError:function(e){e.target.style.display="none";}}),
+                        React.createElement("div",{style:{flex:1,minWidth:0}},
+                          React.createElement("div",{style:{fontSize:13,fontWeight:600,color:"#0f172a",overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap"}},opp&&opp.name),
+                          React.createElement("div",{style:{fontSize:10,color:"#94a3b8",marginTop:1}},roundLabel+(isHome?" · Domicile":" · Extérieur"))
+                        ),
+                        hg!==null&&ag!==null
+                          ?React.createElement("div",{style:{fontSize:15,fontWeight:900,color:scoreColor,flexShrink:0}},(isHome?(hg+"-"+ag):(ag+"-"+hg)))
+                          :React.createElement("span",{style:{fontSize:12,color:"#cbd5e1",flexShrink:0}},"—")
+                      );
+                    })
+                  )
                 );
               }
 
