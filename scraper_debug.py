@@ -1,61 +1,64 @@
-import cloudscraper, re
-from bs4 import BeautifulSoup
+import requests
+from datetime import date, datetime
 
-scraper = cloudscraper.create_scraper(
-    browser={"browser": "chrome", "platform": "windows", "mobile": False}
-)
+HEADERS = {
+    "User-Agent": "Mozilla/5.0 (iPhone; CPU iPhone OS 17_0 like Mac OS X) AppleWebKit/605.1.15",
+    "Accept": "application/json",
+    "Accept-Language": "fr-FR,fr;q=0.9",
+    "Referer": "https://www.sofascore.com/",
+}
 
-ALGERIA_SW_IDS = [
-    "Wfaskwf0", "vNJLB2jP", "tnY2Lfcp", "zXBidj5t",
-    "nBionu2l", "EDgC6qYp", "CrCmB35M", "Aobolc96",
-    "nimcBvel", "QmvZvxCB", "lYuJtBj9", "hGHHy7Am",
-    "WIyffF3J", "j9T7TM2E", "S6H5xCS1", "dhMQsMOh",
-]
+today_str = date.today().strftime("%Y-%m-%d")
+print("=== Test SofaScore Ligue 1 Algérie ===")
+print("Date:", today_str)
 
-# Test 1: Page du jour
-print("=== Test page du jour ===")
-url = "https://fr.soccerway.com/matches/2026/04/05/"
-r = scraper.get(url, timeout=20)
-print("Status:", r.status_code, "| Taille:", len(r.text))
+# Test 1: Matchs par date
+print("\n--- Endpoint par date ---")
+url = f"https://api.sofascore.com/api/v1/sport/football/scheduled-events/{today_str}"
+r = requests.get(url, headers=HEADERS, timeout=10)
+print("Status:", r.status_code)
+if r.status_code == 200:
+    events = r.json().get("events", [])
+    algeria = [e for e in events if e.get("tournament", {}).get("uniqueTournament", {}).get("id") == 841]
+    print("Matchs Ligue 1 Algérie:", len(algeria))
+    for e in algeria:
+        print(" ", e["homeTeam"]["name"], "vs", e["awayTeam"]["name"], "| ID:", e["id"])
 
-# Chercher IDs algériens
-found = [sw_id for sw_id in ALGERIA_SW_IDS if sw_id in r.text]
-print("IDs algériens trouvés:", found)
+# Test 2: Par round (journée 25-27)
+print("\n--- Endpoint par journée ---")
+for rnd in range(24, 28):
+    url = f"https://api.sofascore.com/api/v1/tournament/841/season/79568/events/round/{rnd}"
+    r = requests.get(url, headers=HEADERS, timeout=10)
+    if r.status_code == 200:
+        events = r.json().get("events", [])
+        print(f"Round {rnd}: {len(events)} matchs")
+        for e in events:
+            ts = e.get("startTimestamp", 0)
+            d = datetime.fromtimestamp(ts).strftime("%Y-%m-%d %H:%M")
+            status = e.get("status", {}).get("type", "?")
+            print(f"  [{status}] {d} | {e['homeTeam']['name']} vs {e['awayTeam']['name']} | ID={e['id']}")
 
-# Tous les liens /match/
-matches = re.findall(r'/match/[^"\'<>\s]+', r.text)
-print("Total liens /match/:", len(matches))
-for m in matches[:5]:
-    print(" ", m)
-
-# Test 2: Page Ligue 1 Algérie avec cloudscraper
-print("\n=== Test Ligue 1 Algérie ===")
-url2 = "https://fr.soccerway.com/national/algeria/ligue-professionnelle-1/2025-2026/regular-season/r76191/"
-r2 = scraper.get(url2, timeout=20)
-print("Status:", r2.status_code, "| Taille:", len(r2.text))
-
-soup = BeautifulSoup(r2.text, "html.parser")
-trs = soup.find_all("tr")
-print("Nombre de <tr>:", len(trs))
-
-# Chercher les classes des TR
-classes = set()
-for tr in trs:
-    cls = tr.get("class", [])
-    if cls:
-        classes.add(" ".join(cls))
-print("Classes TR:", classes)
-
-# Chercher tous les liens de matchs
-all_links = []
-for a in soup.find_all("a", href=True):
-    href = a.get("href", "")
-    if "/match/" in href or re.search(r"/\d{5,8}/?$", href):
-        all_links.append(href)
-print("Liens matchs:", all_links[:10])
-
-# Chercher kabylie dans le HTML
-if "kabylie" in r2.text.lower():
-    idx = r2.text.lower().find("kabylie")
-    print("\nContexte Kabylie:")
-    print(r2.text[max(0,idx-100):idx+200])
+# Test 3: Lineups d'un match SofaScore
+print("\n--- Test lineups SofaScore ---")
+# Prendre le premier match trouvé
+url = "https://api.sofascore.com/api/v1/tournament/841/season/79568/events/round/25"
+r = requests.get(url, headers=HEADERS, timeout=10)
+if r.status_code == 200:
+    events = r.json().get("events", [])
+    if events:
+        event_id = events[0]["id"]
+        home = events[0]["homeTeam"]["name"]
+        away = events[0]["awayTeam"]["name"]
+        print(f"Match: {home} vs {away} (ID={event_id})")
+        lineup_url = f"https://api.sofascore.com/api/v1/event/{event_id}/lineups"
+        r2 = requests.get(lineup_url, headers=HEADERS, timeout=10)
+        print("Lineups status:", r2.status_code)
+        if r2.status_code == 200:
+            data = r2.json()
+            home_players = data.get("home", {}).get("players", [])
+            away_players = data.get("away", {}).get("players", [])
+            print(f"Joueurs dom: {len(home_players)} | ext: {len(away_players)}")
+            for p in home_players[:3]:
+                name = p.get("player", {}).get("name", "?")
+                pos = p.get("position", "?")
+                print(f"  {name} ({pos})")
