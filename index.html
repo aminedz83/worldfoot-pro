@@ -12543,25 +12543,19 @@ function RankTracker(props) {
 
   React.useEffect(function() {
     setLoading(true);
-    // L'API retourne max 100 fixtures par appel.
-    // Ligue 1 Algérie = 16 équipes = 120 matchs → faire 2 appels avec rounds 1-16 et 17-30
+
+    // Étape 1 : charger standings actuels + fixtures de l'équipe principale
     Promise.all([
-      api('/fixtures?league=186&season='+_s+'&round=Regular+Season+-+1', 3600000).catch(function(){return [];}),
-      api('/standings?league=186&season='+_s, 3600000)
-    ]).then(function(res0) {
-      // Utiliser la méthode from/to qui fonctionne sans season
-      var y1=_s, y2=_s+1;
-      return Promise.all([
-        api('/fixtures?league=186&season='+_s, 3600000),
-        res0[1]
-      ]);
-    }).then(function(res) {
-      var fixtures  = res[0] || [];
-      var standData = res[1] || [];
+      api('/standings?league=186&season='+_s, 3600000),
+      api('/fixtures?team='+teamId+'&league=186&season='+_s, 3600000)
+    ]).then(function(res) {
+      var standData = res[0] || [];
+      var teamFix   = res[1] || [];
       var allTeams  = [];
       try { allTeams = standData[0].league.standings[0] || []; } catch(e) {}
       try { setLeagueLogo(standData[0].league.logo || ""); } catch(e) {}
-      setTotalTeams(allTeams.length || 16);
+      var nTeams = allTeams.length || 16;
+      setTotalTeams(nTeams);
 
       var realClubs = allTeams.map(function(t){
         return {id:t.team.id, name:t.team.name, logo:t.team.logo};
@@ -12571,102 +12565,99 @@ function RankTracker(props) {
       var teamInfo = {};
       allTeams.forEach(function(t){ teamInfo[t.team.id]={logo:t.team.logo,name:t.team.name}; });
 
+      // Trouver toutes les journées jouées par l'équipe
       var DONE = new Set(["FT","AET","PEN","AWD","WO"]);
-      var sorted = fixtures.slice().sort(function(a,b){return new Date(a.fixture.date)-new Date(b.fixture.date);});
+      var playedMatches = teamFix.filter(function(f){ return DONE.has(f.fixture&&f.fixture.status&&f.fixture.status.short); });
+      playedMatches.sort(function(a,b){ return new Date(a.fixture.date)-new Date(b.fixture.date); });
 
-      var journeeMap = {};
-      sorted.forEach(function(f){
+      // Extraire les numéros de journée
+      var journeeNums = [];
+      var matchByJournee = {};
+      playedMatches.forEach(function(f){
         var r=(f.league&&f.league.round)||'';
         var n=r.match(/[0-9]+/); var jNum=n?parseInt(n[0]):0;
         if(!jNum||jNum>34) return;
-        if(!journeeMap[jNum]) journeeMap[jNum]=[];
-        journeeMap[jNum].push(f);
+        if(journeeNums.indexOf(jNum)===-1) journeeNums.push(jNum);
+        matchByJournee[jNum]=f;
       });
+      journeeNums.sort(function(a,b){return a-b;});
 
-      // Garder seulement les journées entièrement terminées (tous les matchs FT)
-      var journees = Object.keys(journeeMap).map(Number).sort(function(a,b){return a-b;});
-      var journeesOk = journees.filter(function(jNum){
-        var jFix = journeeMap[jNum];
-        var done = jFix.filter(function(f){ return DONE.has(f.fixture.status.short); });
-        // Journée complète = tous les matchs joués OU au moins 7/8 (matchs reportés)
-        return done.length >= jFix.length - 1 && done.length >= 6;
-      });
-
-      if(journeesOk.length === 0) { setLoading(false); return; }
-      var maxJournee = journeesOk[journeesOk.length-1];
+      if(journeeNums.length===0){ setLoading(false); return; }
+      var maxJournee = journeeNums[journeeNums.length-1];
       setMaxJ(maxJournee);
       setSelJournee(maxJournee);
 
-      // Calcul cumulatif points/DB/buts
-      var pts={},gd={},gf={};
-      allTeams.forEach(function(t){ pts[t.team.id]=0; gd[t.team.id]=0; gf[t.team.id]=0; });
-
+      // Charger standings après chaque journée pour TOUTES les équipes
+      // Appel par batch de 5 pour ne pas surcharger l'API
       var progAll = {};
+      var requests = journeeNums.map(function(jNum){
+        return api('/standings?league=186&season='+_s+'&round=Regular+Season+-+'+jNum, 3600000)
+          .then(function(d){
+            var rows = [];
+            try { rows = d[0].league.standings[0] || []; } catch(e) {}
+            rows.forEach(function(r, idx){
+              var tid = r.team&&r.team.id;
+              if(!tid) return;
+              if(!progAll[tid]) progAll[tid]=[];
+              // Trouver le match de cette équipe à cette journée
+              var f = matchByJournee[jNum];
+              var myMatch = null;
+              // Chercher dans les fixtures chargés
+              if(f && (f.teams.home.id===tid||f.teams.away.id===tid)) myMatch=f;
+              var myG=null, oppG=null, oppLogo="";
+              if(myMatch){
+                var isHome=myMatch.teams.home.id===tid;
+                myG=isHome?myMatch.goals.home:myMatch.goals.away;
+                oppG=isHome?myMatch.goals.away:myMatch.goals.home;
+                var oppId=isHome?myMatch.teams.away.id:myMatch.teams.home.id;
+                var oppInfo=teamInfo[oppId]||{};
+                oppLogo=oppInfo.logo||"";
+              }
+              var already=progAll[tid].some(function(p){return p.j===jNum;});
+              if(!already) progAll[tid].push({
+                j:jNum, position:r.rank||idx+1, points:r.points||0,
+                opponentLogo:oppLogo, myG:myG, oppG:oppG
+              });
+            });
+          }).catch(function(){});
+      });
 
-      journeesOk.forEach(function(jNum){
-        var jFix = journeeMap[jNum];
-
-        jFix.forEach(function(f){
-          if(!DONE.has(f.fixture.status.short)) return;
-          var hId=f.teams.home.id, aId=f.teams.away.id;
-          var hG=f.goals.home, aG=f.goals.away;
-          if(hG===null||aG===null) return;
-          if(pts[hId]===undefined) pts[hId]=0;
-          if(pts[aId]===undefined) pts[aId]=0;
-          if(gd[hId]===undefined) gd[hId]=0;
-          if(gd[aId]===undefined) gd[aId]=0;
-          if(gf[hId]===undefined) gf[hId]=0;
-          if(gf[aId]===undefined) gf[aId]=0;
-          gd[hId]+=hG-aG; gd[aId]+=aG-hG;
-          gf[hId]+=hG; gf[aId]+=aG;
-          if(hG>aG) pts[hId]+=3;
-          else if(hG<aG) pts[aId]+=3;
-          else { pts[hId]+=1; pts[aId]+=1; }
-        });
-
-        var ranking = Object.keys(pts).map(function(tid){
-          return {id:parseInt(tid),p:pts[tid],g:gd[tid]||0,f:gf[tid]||0};
-        }).sort(function(a,b){
-          if(b.p!==a.p) return b.p-a.p;
-          if(b.g!==a.g) return b.g-a.g;
-          return b.f-a.f;
-        });
-
-        jFix.forEach(function(f){
-          if(!DONE.has(f.fixture.status.short)) return;
-          var tids=[f.teams.home.id, f.teams.away.id];
-          tids.forEach(function(tid){
-            var pos=-1;
-            for(var i=0;i<ranking.length;i++){ if(ranking[i].id===tid){pos=i+1;break;} }
-            if(pos===-1) return;
-            if(!progAll[tid]) progAll[tid]=[];
-            var isHome=f.teams.home.id===tid;
-            var oppId=isHome?f.teams.away.id:f.teams.home.id;
-            var oppInfo=teamInfo[oppId]||{};
-            var hG2=f.goals.home, aG2=f.goals.away;
-            var myG=isHome?hG2:aG2, oppG=isHome?aG2:hG2;
-            // Éviter doublons (même équipe même journée)
-            var already=progAll[tid].some(function(p){return p.j===jNum;});
-            if(!already) progAll[tid].push({
-              j:jNum, position:pos, points:pts[tid]||0,
-              opponentLogo:oppInfo.logo||"", opponentName:oppInfo.name||"",
-              isHome:isHome, hg:hG2, ag:aG2, myG:myG, oppG:oppG
+      Promise.all(requests).then(function(){
+        // Pour les équipes sans données standings par round, calculer depuis fixtures
+        // Charger TOUS les fixtures de la ligue en 2 appels
+        return Promise.all([
+          api('/fixtures?league=186&season='+_s+'&status=FT&from='+_s+'-07-01&to='+_s+'-12-31', 3600000).catch(function(){return [];}),
+          api('/fixtures?league=186&season='+_s+'&status=FT&from='+(_s+1)+'-01-01&to='+(_s+1)+'-07-31', 3600000).catch(function(){return [];})
+        ]).then(function(r2){
+          var allFix=(r2[0]||[]).concat(r2[1]||[]);
+          // Enrichir progAll avec les matchs manquants (opponentLogo etc)
+          journeeNums.forEach(function(jNum){
+            var jFix=allFix.filter(function(f){
+              var r=(f.league&&f.league.round)||'';
+              var n=r.match(/[0-9]+/); return n&&parseInt(n[0])===jNum;
+            });
+            Object.keys(progAll).forEach(function(tid){
+              var entry=progAll[tid].find(function(p){return p.j===jNum;});
+              if(!entry||entry.myG!==null) return;
+              var myMatch=null;
+              jFix.forEach(function(f){ if(f.teams.home.id===parseInt(tid)||f.teams.away.id===parseInt(tid)) myMatch=f; });
+              if(!myMatch) return;
+              var isHome=myMatch.teams.home.id===parseInt(tid);
+              entry.myG=isHome?myMatch.goals.home:myMatch.goals.away;
+              entry.oppG=isHome?myMatch.goals.away:myMatch.goals.home;
+              var oppId=isHome?myMatch.teams.away.id:myMatch.teams.home.id;
+              entry.opponentLogo=(teamInfo[oppId]&&teamInfo[oppId].logo)||"";
             });
           });
+          Object.keys(progAll).forEach(function(tid){ progAll[tid].sort(function(a,b){return a.j-b.j;}); });
+          console.log("RankTracker standings/round: journées="+journeeNums.length+" équipes="+Object.keys(progAll).length);
+          setProgMap(progAll);
+          setLoading(false);
         });
       });
-
-      // Trier chaque progression par journée
-      Object.keys(progAll).forEach(function(tid){
-        progAll[tid].sort(function(a,b){return a.j-b.j;});
-      });
-
-      setProgMap(progAll);
-      console.log("RankTracker fixtures total:", fixtures.length, "journeesOk:", journeesOk, "progAll keys:", Object.keys(progAll).length);
-      setLoading(false);
-    }).catch(function(e){ 
+    }).catch(function(e){
       console.error("RankTracker error:", e);
-      setLoading(false); 
+      setLoading(false);
     });
   }, [teamId, _s]);
 
