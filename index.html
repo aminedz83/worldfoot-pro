@@ -2687,7 +2687,8 @@ function ComposPanel({lineups, players, homeTeam, awayTeam, isPartial, fix, even
       var posCount = {D:0, M:0, F:0};
       starters.forEach(function(p) {
         var matched = matchWithSquad(p, squadPlayers);
-        var pos = p.is_gk ? "G" : (matched ? matched.position : p.pos || "");
+        var pos = p.is_gk ? "G" : (p.pos && p.pos !== "" ? p.pos : (matched ? matched.position : "M"));
+        if(pos === "A") pos = "F";
         if(posCount[pos] !== undefined) posCount[pos]++;
       });
       var formation = posCount.D + "-" + posCount.M + "-" + posCount.F;
@@ -2696,7 +2697,8 @@ function ComposPanel({lineups, players, homeTeam, awayTeam, isPartial, fix, even
       var posLines = {G:[], D:[], M:[], F:[]};
       starters.forEach(function(p) {
         var matched = matchWithSquad(p, squadPlayers);
-        var pos = p.is_gk ? "G" : (matched ? matched.position : (p.is_gk ? "G" : "M"));
+        var pos = p.is_gk ? "G" : (p.pos && p.pos !== "" ? p.pos : (matched ? matched.position : "M"));
+        if(pos === "A") pos = "F";
         if(!posLines[pos]) pos = "M";
         posLines[pos].push(p);
       });
@@ -2722,7 +2724,7 @@ function ComposPanel({lineups, players, homeTeam, awayTeam, isPartial, fix, even
         formation: formation,
         startXI: starters.map(function(p) {
           var matched = matchWithSquad(p, squadPlayers);
-          var pos = p.is_gk ? "G" : (matched ? matched.position : "M");
+          var pos = p.is_gk ? "G" : (p.pos && p.pos !== "" ? p.pos : (matched ? matched.position : "M"));
           return {
             player: {
               id: matched ? matched.id : null,
@@ -2730,7 +2732,14 @@ function ComposPanel({lineups, players, homeTeam, awayTeam, isPartial, fix, even
               number: parseInt(p.number)||0,
               pos: pos,
               grid: grids[p.name] || null,
-              photo: matched ? matched.photo : "https://media.api-sports.io/football/players/0.png"
+              photo: matched ? matched.photo : "https://media.api-sports.io/football/players/0.png",
+              events: {
+                goals: p.goals || 0,
+                yellow: p.yellow ? 1 : 0,
+                red: p.red ? 1 : 0
+              },
+              minutes: p.minutes || 90,
+              captain: p.is_captain || false
             }
           };
         }),
@@ -2741,9 +2750,16 @@ function ComposPanel({lineups, players, homeTeam, awayTeam, isPartial, fix, even
               id: matched ? matched.id : null,
               name: p.name,
               number: parseInt(p.number)||0,
-              pos: p.is_gk ? "G" : (matched ? matched.position : "M"),
+              pos: p.is_gk ? "G" : (p.pos && p.pos !== "" ? p.pos : (matched ? matched.position : "M")),
               grid: null,
-              photo: matched ? matched.photo : "https://media.api-sports.io/football/players/0.png"
+              photo: matched ? matched.photo : "https://media.api-sports.io/football/players/0.png",
+              events: {
+                goals: p.goals || 0,
+                yellow: p.yellow ? 1 : 0,
+                red: p.red ? 1 : 0
+              },
+              minutes: p.minutes || 0,
+              captain: p.is_captain || false
             }
           };
         })
