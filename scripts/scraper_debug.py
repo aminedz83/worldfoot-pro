@@ -12,37 +12,53 @@ FS_HEADERS = {
     "x-fsign": "SW9D1eZo",
 }
 
-mid = "IiwUv5Er"
+# Joueurs connus avec leurs IDs
+players = [
+    ("Boudebouz R.", "jVdly9DL", "/player/boudebouz-ryad/jVdly9DL/"),
+    ("Merbah G.", "tb5oS4uU", "/player/merbah-gaya/tb5oS4uU/"),
+    ("Barkat A.", "babSxJzC", "/player/barkat-abdelilah/babSxJzC/"),
+]
 
-# Feed lineups complet
-print("=== Feed df_li (lineups) ===")
-r = scraper.get(f"https://{PROJECT}.flashscore.ninja/46/x/feed/df_li_1_{mid}_1_fr_1", headers=FS_HEADERS, timeout=10)
-print(r.text)
+print("=== Test photos joueurs Flashscore ===")
 
-# Feed événements (buts, cartons)
-print("\n=== Feed df_sui (événements) ===")
-r2 = scraper.get(f"https://{PROJECT}.flashscore.ninja/46/x/feed/df_sui_1_{mid}_1_fr_1", headers=FS_HEADERS, timeout=10)
-print(r2.text)
+# Format 1: image directe avec ID
+for name, pid, url_path in players:
+    photo_urls = [
+        f"https://static.flashscore.com/res/image/data/{pid}.png",
+        f"https://static.flashscore.com/res/image/data/{pid[:8]}.png",
+        f"https://images.flashscore.com/res/image/data/{pid}.png",
+    ]
+    print(f"\n{name} (ID={pid})")
+    for photo_url in photo_urls:
+        r = scraper.get(photo_url, timeout=5)
+        print(f"  {photo_url[-40:]}: {r.status_code} | {len(r.content)} bytes")
 
-# Chercher la formation dans les feeds
-print("\n=== Analyse positions et formation ===")
-feed = r.text
-# Tous les champs uniques
-all_keys = set()
-for block in feed.split("~"):
-    for field in block.split("¬"):
-        if "÷" in field:
-            key = field.split("÷")[0].strip()
-            all_keys.add(key)
-print("Clés disponibles:", sorted(all_keys))
+# Format 2: Page joueur Soccerway → chercher l'image
+print("\n=== Page joueur Soccerway ===")
+r2 = scraper.get("https://fr.soccerway.com/player/boudebouz-ryad/jVdly9DL/", timeout=15)
+print(f"Status: {r2.status_code} | Taille: {len(r2.text)}")
+if r2.status_code == 200:
+    # Chercher l'image du joueur
+    img_patterns = [
+        r'<img[^>]+src="([^"]+(?:player|avatar|photo)[^"]*)"',
+        r'"image"\s*:\s*"([^"]+)"',
+        r'player[^"]*\.(?:jpg|png|webp)',
+        r'OA÷([A-Za-z0-9_-]+\.(?:png|jpg))',
+    ]
+    for pat in img_patterns:
+        m = re.search(pat, r2.text, re.IGNORECASE)
+        if m:
+            print(f"  Image trouvée: {m.group(1)[:100]}")
 
-# Afficher le contenu de LS (position) pour chaque joueur
-print("\nPositions (LS):")
-for block in feed.split("~"):
-    fields = {}
-    for field in block.split("¬"):
-        if "÷" in field:
-            k, _, v = field.partition("÷")
-            fields[k.strip()] = v.strip()
-    if "LI" in fields and "LS" in fields:
-        print(f"  {fields['LI']} → LS={fields['LS']} | LR={fields.get('LR','')} | LK={fields.get('LK','')}")
+# Format 3: Feed joueur Flashscore
+print("\n=== Feed joueur Flashscore ===")
+for name, pid, _ in players:
+    url = f"https://{PROJECT}.flashscore.ninja/46/x/feed/dp_1_{pid}_1_fr_1"
+    r3 = scraper.get(url, headers=FS_HEADERS, timeout=5)
+    print(f"\n{name}: status={r3.status_code} | taille={len(r3.text)}")
+    if r3.status_code == 200 and len(r3.text) > 5:
+        print(f"  Contenu: {r3.text[:300]}")
+        # Chercher image dans le feed
+        imgs = re.findall(r'[A-Za-z0-9_/-]+\.(?:png|jpg|webp)', r3.text)
+        for img in imgs[:5]:
+            print(f"  Image: {img}")
