@@ -1,68 +1,58 @@
-import cloudscraper, re
+import cloudscraper, re, json
 from bs4 import BeautifulSoup
 
 scraper = cloudscraper.create_scraper(
     browser={"browser": "chrome", "platform": "windows", "mobile": False}
 )
 
-# Test 1: Page match El Bayadh vs JSK
-print("=== Test page match ===")
+print("=== Analyse HTML page match ===")
 url = "https://fr.soccerway.com/match/el-bayadh-S6H5xCS1/kabylie-Wfaskwf0/?mid=IiwUv5Er"
 r = scraper.get(url, timeout=20)
 print("Status:", r.status_code, "| Taille:", len(r.text))
 
-if r.status_code == 200:
-    soup = BeautifulSoup(r.text, "html.parser")
-    
-    # Chercher lineups
-    has_lineup = bool(soup.find(string=re.compile(r"STARTING LINEUP|TITULAIRES|Starting XI|XI de départ", re.I)))
-    print("Lineups trouvés:", has_lineup)
-    
-    # Chercher les joueurs
-    player_links = soup.find_all("a", href=re.compile(r"/joueur/|/players/"))
-    print("Liens joueurs:", len(player_links))
-    for p in player_links[:5]:
-        print(" ", p.get_text(strip=True), "|", p.get("href","")[:50])
-    
-    # Chercher tables
-    tables = soup.find_all("table")
-    print("Tables:", len(tables))
-    
-    # Chercher TR
-    trs = soup.find_all("tr")
-    print("TR:", len(trs))
-    
-    # Afficher un bout du HTML
-    print("\nHTML (2000 chars):")
-    print(r.text[5000:7000])
+html = r.text
 
-# Test 2: URL lineups directe avec mid
-print("\n=== Test lineups avec mid ===")
-mid = "IiwUv5Er"
-lineup_urls = [
-    f"https://fr.soccerway.com/game/x/x/summary/lineups/?mid={mid}",
-    f"https://fr.soccerway.com/match/el-bayadh-S6H5xCS1/kabylie-Wfaskwf0/lineups/?mid={mid}",
+# Chercher les données JSON dans les scripts
+print("\n--- JSON dans les scripts ---")
+# Souvent les données sont dans window.__INITIAL_STATE__ ou similar
+patterns = [
+    r'window\.__INITIAL_STATE__\s*=\s*({.+?});',
+    r'window\.__data__\s*=\s*({.+?});',
+    r'"lineups"\s*:\s*(\{.+?\})',
+    r'"startXI"\s*:\s*(\[.+?\])',
+    r'"players"\s*:\s*(\[.+?\])',
+    r'STARTING LINEUP(.{0,2000})',
 ]
-for url in lineup_urls:
-    r2 = scraper.get(url, timeout=20)
-    print(f"URL: {url}")
-    print(f"Status: {r2.status_code} | Taille: {len(r2.text)}")
-    if r2.status_code == 200:
-        soup2 = BeautifulSoup(r2.text, "html.parser")
-        trs = soup2.find_all("tr")
-        print(f"TR: {len(trs)}")
-        has_lineup = bool(soup2.find(string=re.compile(r"STARTING|TITULAIRES|Starting XI", re.I)))
-        print(f"Lineup text: {has_lineup}")
-    print()
 
-# Test 3: Page ligue Algérie
-print("=== Test page ligue ===")
-url3 = "https://fr.soccerway.com/algerie/ligue-1/#/Iylbph6E/classements/global/"
-r3 = scraper.get(url3, timeout=20)
-print("Status:", r3.status_code, "| Taille:", len(r3.text))
-soup3 = BeautifulSoup(r3.text, "html.parser")
-trs3 = soup3.find_all("tr")
-print("TR:", len(trs3))
-# Chercher mid dans le HTML
-mids = re.findall(r'mid=([A-Za-z0-9]{6,12})', r3.text)
-print("MIDs trouvés:", mids[:10])
+for pat in patterns:
+    m = re.search(pat, html, re.DOTALL)
+    if m:
+        print(f"\nPattern trouvé: {pat[:40]}")
+        print(m.group(0)[:500])
+
+# Chercher tous les noms de joueurs algériens connus
+print("\n--- Noms joueurs dans HTML ---")
+players_to_find = ["Merbah", "Hadid", "Mahious", "Boudebouz", "Benchaa", "Nechat", "Bada"]
+for name in players_to_find:
+    if name.lower() in html.lower():
+        idx = html.lower().find(name.lower())
+        print(f"✅ {name} trouvé! Contexte:")
+        print(html[max(0,idx-100):idx+200])
+        print("---")
+
+# Chercher les scripts avec données
+print("\n--- Scripts avec données joueurs ---")
+soup = BeautifulSoup(html, "html.parser")
+for script in soup.find_all("script"):
+    src = script.get("src", "")
+    content = script.string or ""
+    if "lineup" in content.lower() or "player" in content.lower() or "merbah" in content.lower():
+        print("Script trouvé!")
+        print(content[:1000])
+        print("---")
+
+# Chercher dans le HTML brut autour de "STARTING"
+print("\n--- Contexte autour de STARTING LINEUP ---")
+idx = html.find("STARTING LINEUP")
+if idx > 0:
+    print(html[max(0,idx-200):idx+1000])
