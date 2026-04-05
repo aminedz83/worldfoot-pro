@@ -12543,18 +12543,24 @@ function RankTracker(props) {
 
   React.useEffect(function() {
     setLoading(true);
-    // Charger fixtures en deux lots pour dépasser la limite 100 de l'API
+    // API-Sports limite à 100 fixtures par appel avec season.
+    // Solution : deux appels with from/to sans season pour couvrir toute la saison
+    var y1=_s, y2=_s+1;
+    var from1=y1+'-07-01', to1=y1+'-12-31';
+    var from2=y2+'-01-01', to2=y2+'-06-30';
     Promise.all([
-      api('/fixtures?league=186&season='+_s+'&from='+_s+'-07-01&to='+(_s+1)+'-01-31', 3600000),
-      api('/fixtures?league=186&season='+_s+'&from='+(_s+1)+'-02-01&to='+(_s+1)+'-07-31', 3600000),
+      api('/fixtures?league=186&from='+from1+'&to='+to1, 3600000),
+      api('/fixtures?league=186&from='+from2+'&to='+to2, 3600000),
       api('/standings?league=186&season='+_s, 3600000)
     ]).then(function(res) {
-      var fixtures  = (res[0]||[]).concat(res[1]||[]);
-      // Dédupliquer par fixture id
+      var fixtures = (res[0]||[]).concat(res[1]||[]);
+      // Filtrer uniquement la saison courante et dédupliquer
       var seen={};
       fixtures = fixtures.filter(function(f){
         var id=f.fixture&&f.fixture.id;
+        var fSeas=f.league&&f.league.season;
         if(!id||seen[id]) return false;
+        if(fSeas && fSeas!==_s) return false;
         seen[id]=true; return true;
       });
       var standData = res[2] || [];
