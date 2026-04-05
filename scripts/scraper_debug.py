@@ -12,39 +12,41 @@ FS_HEADERS = {
     "x-fsign": "SW9D1eZo",
 }
 
-ALGERIA_SW_IDS = [
-    "Wfaskwf0", "vNJLB2jP", "tnY2Lfcp", "zXBidj5t",
-    "nBionu2l", "EDgC6qYp", "CrCmB35M", "Aobolc96",
-    "nimcBvel", "QmvZvxCB", "lYuJtBj9", "hGHHy7Am",
-    "WIyffF3J", "j9T7TM2E", "S6H5xCS1", "dhMQsMOh",
-]
-
-# Récupérer le feed du jour
-print("=== Feed matchs du jour ===")
 url = f"https://{PROJECT}.flashscore.ninja/46/x/feed/f_1_0_3_fr_1"
 r = scraper.get(url, headers=FS_HEADERS, timeout=15)
-print(f"Status: {r.status_code} | Taille: {len(r.text)}")
-
 feed = r.text
 
-# Chercher les IDs algériens
-print("\n=== IDs algériens dans le feed ===")
-for sw_id in ALGERIA_SW_IDS:
-    if sw_id in feed:
-        idx = feed.find(sw_id)
-        context = feed[max(0,idx-300):idx+300]
-        print(f"\n✅ Trouvé: {sw_id}")
-        print(f"Contexte: {context}")
+print("=== Recherche Algeria dans le feed ===")
+keywords = ["algeria", "algerie", "algérie", "/algeria/", "alger", "kabylie", 
+            "belouizdad", "ligue-professionnelle", "ligue professionnelle"]
 
-# Afficher les 2000 premiers chars pour comprendre le format
-print("\n=== Format du feed (2000 chars) ===")
-print(feed[:2000])
-
-# Chercher "Algerie" ou "Algeria" dans le feed
-print("\n=== Algérie dans le feed ===")
-for keyword in ["Algerie", "Algeria", "algeri", "Ligue 1", "ligue-1"]:
-    if keyword.lower() in feed.lower():
-        idx = feed.lower().find(keyword.lower())
-        print(f"✅ '{keyword}' trouvé!")
-        print(feed[max(0,idx-100):idx+300])
+for kw in keywords:
+    if kw.lower() in feed.lower():
+        idx = feed.lower().find(kw.lower())
+        print(f"\n✅ '{kw}' trouvé!")
+        print(feed[max(0,idx-200):idx+400])
         print("---")
+
+# Format: ZA=compétition, ZL=URL, AA=matchID, CX=home, AF=away
+# Chercher toutes les ligues dans le feed
+print("\n=== Toutes les compétitions (ZL=URL) ===")
+leagues = re.findall(r'ZL÷([^¬]+)', feed)
+for l in leagues:
+    if "alger" in l.lower():
+        print(f"✅ ALGÉRIE: {l}")
+
+# Chercher le tournoi Ligue 1 Algérie par son ID Flashscore
+# On sait que sur SofaScore c'est 841 mais sur Flashscore c'est différent
+print("\n=== URLs contenant 'alger' ===")
+alger_urls = [l for l in leagues if "alger" in l.lower()]
+print(f"Total: {len(alger_urls)}")
+for u in alger_urls:
+    print(" ", u)
+
+# Afficher toutes les compétitions africaines
+print("\n=== Compétitions africaines ===")
+african = [(l, re.search(r'ZA÷([^¬]+)', feed[max(0,feed.find(l)-500):feed.find(l)])) 
+           for l in leagues if any(x in l.lower() for x in ["africa", "algeria", "maroc", "tunisi", "egypt", "senegal", "ghana", "cameroun"])]
+for url, za in african:
+    name = za.group(1) if za else "?"
+    print(f"  {name} → {url}")
