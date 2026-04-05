@@ -5,64 +5,50 @@ scraper = cloudscraper.create_scraper(
     browser={"browser": "chrome", "platform": "windows", "mobile": False}
 )
 
-PROJECT = "2043"
 FS_HEADERS = {
     "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36",
     "Accept": "*/*",
-    "Referer": "https://fr.soccerway.com/",
+    "Referer": "https://www.flashscore.ca/",
     "x-fsign": "SW9D1eZo",
 }
 
 today = date.today().strftime("%Y-%m-%d")
-print("Date:", today)
 
-# Depuis l'URL du match El Bayadh vs JSK on sait que:
-# - tournament ID Flashscore = Iylbph6E (depuis l'URL ligue)
-# https://fr.soccerway.com/algerie/ligue-1/#/Iylbph6E/classements/global/
+# Test 1: Page calendrier Soccerway
+print("=== Test Soccerway calendrier ===")
+r1 = scraper.get("https://fr.soccerway.com/algerie/ligue-1/calendrier/", timeout=20)
+print(f"Status: {r1.status_code} | Taille: {len(r1.text)}")
+mids1 = re.findall(r'mid=([A-Za-z0-9]{6,12})', r1.text)
+print(f"MIDs trouvés: {len(mids1)}")
+for m in mids1[:10]:
+    print(f"  {m}")
 
-TOURNAMENT_ID = "Iylbph6E"  # ID Flashscore Ligue 1 Algérie !
+# Test 2: Page Flashscore fixtures
+print("\n=== Test Flashscore fixtures ===")
+r2 = scraper.get("https://www.flashscore.ca/soccer/algeria/ligue-1/fixtures/", timeout=20)
+print(f"Status: {r2.status_code} | Taille: {len(r2.text)}")
 
-print(f"\n=== Test feeds avec tournament ID {TOURNAMENT_ID} ===")
+# Chercher les MIDs dans Flashscore
+mids2 = re.findall(r'AA÷([A-Za-z0-9]{8})', r2.text)
+print(f"MIDs (AA÷) trouvés: {len(mids2)}")
+for m in mids2[:10]:
+    print(f"  {m}")
 
-feed_urls = [
-    f"https://{PROJECT}.flashscore.ninja/46/x/feed/f_1_{TOURNAMENT_ID}_3_fr_1",
-    f"https://{PROJECT}.flashscore.ninja/46/x/feed/f_1_{TOURNAMENT_ID}_0_fr_1",
-    f"https://{PROJECT}.flashscore.ninja/46/x/feed/t_{TOURNAMENT_ID}_fr_1",
-    f"https://{PROJECT}.flashscore.ninja/46/x/feed/to_{TOURNAMENT_ID}_fr_1",
-    f"https://{PROJECT}.flashscore.ninja/46/x/feed/ls_{TOURNAMENT_ID}_3_fr_1",
-    f"https://{PROJECT}.flashscore.ninja/46/x/feed/f_1_{TOURNAMENT_ID}_3_en_1",
-]
+# Chercher dans le HTML brut
+print("\n--- Contenu Flashscore (3000 chars) ---")
+print(r2.text[1000:4000])
 
-for url in feed_urls:
+# Test 3: API Flashscore Canada avec tournament ID
+print("\n=== Test feed Flashscore CA ===")
+PROJECT_CA = "2035"  # Project ID pour Canada
+for proj in ["2035", "2021", "2043", "2025"]:
+    url = f"https://{proj}.flashscore.ninja/46/x/feed/f_1_Iylbph6E_4_en_1"
     try:
-        r = scraper.get(url, headers=FS_HEADERS, timeout=10)
-        print(f"\n{url[-50:]}")
-        print(f"Status: {r.status_code} | Taille: {len(r.text)}")
-        if r.status_code == 200 and len(r.text) > 5:
-            print(f"Contenu: {r.text[:400]}")
+        r3 = scraper.get(url, headers=FS_HEADERS, timeout=10)
+        if r3.status_code == 200 and len(r3.text) > 5:
+            print(f"\n✅ Project {proj}: {len(r3.text)} bytes")
+            print(r3.text[:500])
+        else:
+            print(f"Project {proj}: {r3.status_code} | {len(r3.text)}")
     except Exception as e:
-        print(f"Erreur: {e}")
-
-# Aussi chercher l'ID numérique de la ligue depuis l'URL du match
-# El Bayadh vs JSK: /match/el-bayadh-S6H5xCS1/kabylie-Wfaskwf0/?mid=IiwUv5Er
-# Récupérer la page du match et extraire l'ID du tournoi
-print("\n=== Extraction ID tournoi depuis page match ===")
-url_match = "https://fr.soccerway.com/match/el-bayadh-S6H5xCS1/kabylie-Wfaskwf0/?mid=IiwUv5Er"
-r = scraper.get(url_match, timeout=20)
-html = r.text
-
-# Chercher l'ID du tournoi dans le JS
-patterns = [
-    r'"tournament_id"\s*:\s*"([^"]+)"',
-    r'"tournamentId"\s*:\s*"([^"]+)"',
-    r'Iylbph6E',  # ID qu'on a dans l'URL
-    r'"league_id"\s*:\s*"([^"]+)"',
-    r'ZEE÷([A-Za-z0-9]+)',
-    r'/football/algeria/[^"\'<>\s]+',
-]
-
-for pat in patterns:
-    for m in re.finditer(pat, html):
-        val = m.group(1) if m.lastindex else m.group(0)
-        if len(val) > 3 and len(val) < 50:
-            print(f"  [{pat[:30]}] → {val}")
+        print(f"Project {proj}: Erreur - {e}")
