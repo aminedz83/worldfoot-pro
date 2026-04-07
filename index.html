@@ -2687,8 +2687,7 @@ function ComposPanel({lineups, players, homeTeam, awayTeam, isPartial, fix, even
       var posCount = {D:0, M:0, F:0};
       starters.forEach(function(p) {
         var matched = matchWithSquad(p, squadPlayers);
-        var pos = p.is_gk ? "G" : (p.pos && p.pos !== "" ? p.pos : (matched ? matched.position : ""));
-        if(pos === "A") pos = "F";
+        var pos = p.is_gk ? "G" : (matched ? matched.position : p.pos || "");
         if(posCount[pos] !== undefined) posCount[pos]++;
       });
       var formation = posCount.D + "-" + posCount.M + "-" + posCount.F;
@@ -2697,8 +2696,7 @@ function ComposPanel({lineups, players, homeTeam, awayTeam, isPartial, fix, even
       var posLines = {G:[], D:[], M:[], F:[]};
       starters.forEach(function(p) {
         var matched = matchWithSquad(p, squadPlayers);
-        var pos = p.is_gk ? "G" : (p.pos && p.pos !== "" ? p.pos : (matched ? matched.position : "M"));
-        if(pos === "A") pos = "F";
+        var pos = p.is_gk ? "G" : (matched ? matched.position : (p.is_gk ? "G" : "M"));
         if(!posLines[pos]) pos = "M";
         posLines[pos].push(p);
       });
@@ -2724,8 +2722,7 @@ function ComposPanel({lineups, players, homeTeam, awayTeam, isPartial, fix, even
         formation: formation,
         startXI: starters.map(function(p) {
           var matched = matchWithSquad(p, squadPlayers);
-          var pos = p.is_gk ? "G" : (p.pos && p.pos !== "" ? p.pos : (matched ? matched.position : "M"));
-          if(pos === "A") pos = "F";
+          var pos = p.is_gk ? "G" : (matched ? matched.position : "M");
           return {
             player: {
               id: matched ? matched.id : null,
@@ -2733,28 +2730,20 @@ function ComposPanel({lineups, players, homeTeam, awayTeam, isPartial, fix, even
               number: parseInt(p.number)||0,
               pos: pos,
               grid: grids[p.name] || null,
-              photo: matched ? matched.photo : "https://media.api-sports.io/football/players/0.png",
-              events: { goals: p.goals||0, yellow: p.yellow?1:0, red: p.red?1:0 },
-              minutes: p.minutes||90,
-              captain: p.is_captain||false
+              photo: matched ? matched.photo : "https://media.api-sports.io/football/players/0.png"
             }
           };
         }),
         substitutes: (subs||[]).map(function(p) {
           var matched = matchWithSquad(p, squadPlayers);
-          var pos = p.is_gk ? "G" : (p.pos && p.pos !== "" ? p.pos : (matched ? matched.position : "M"));
-          if(pos === "A") pos = "F";
           return {
             player: {
               id: matched ? matched.id : null,
               name: p.name,
               number: parseInt(p.number)||0,
-              pos: pos,
+              pos: p.is_gk ? "G" : (matched ? matched.position : "M"),
               grid: null,
-              photo: matched ? matched.photo : "https://media.api-sports.io/football/players/0.png",
-              events: { goals: p.goals||0, yellow: p.yellow?1:0, red: p.red?1:0 },
-              minutes: p.minutes||0,
-              captain: p.is_captain||false
+              photo: matched ? matched.photo : "https://media.api-sports.io/football/players/0.png"
             }
           };
         })
@@ -6778,60 +6767,23 @@ function MatchDetail({state,onClose,onTeam}){
     var matchDate = fix.fixture&&fix.fixture.date&&fix.fixture.date.slice(0,10);
     var fixtureId = fix.fixture&&fix.fixture.id;
     if(!homeTeam||!awayTeam||!matchDate) return;
-
-    // Mapping noms API football → noms Supabase
-    var ALG_TEAM_MAP = {
-      "JS Kabylie":"JS Kabylie","Kabylie":"JS Kabylie",
-      "CR Belouizdad":"CR Belouizdad","Belouizdad":"CR Belouizdad",
-      "MC Alger":"MC Alger",
-      "USM Alger":"USM Alger",
-      "CS Constantine":"CS Constantine","Constantine":"CS Constantine",
-      "ES Setif":"ES Setif","Setif":"ES Setif",
-      "MC Oran":"MC Oran","Oran":"MC Oran",
-      "ASO Chlef":"ASO Chlef","Chlef":"ASO Chlef",
-      "JS Saoura":"JS Saoura","Saoura":"JS Saoura",
-      "ES Ben Aknoun":"ES Ben Aknoun","Ben Aknoun":"ES Ben Aknoun",
-      "USM Khenchela":"USM Khenchela","Khenchela":"USM Khenchela",
-      "MB Rouissat":"MB Rouissat","Rouissat":"MB Rouissat","Rouisset":"MB Rouissat",
-      "Paradou AC":"Paradou AC","Paradou":"Paradou AC",
-      "ES Mostaganem":"ES Mostaganem","Mostaganem":"ES Mostaganem",
-      "MC El Bayadh":"MC El Bayadh","El Bayadh":"MC El Bayadh",
-      "Olympique Akbou":"Olympique Akbou","Akbou":"Olympique Akbou"
-    };
-    var normTeam = function(n) { return ALG_TEAM_MAP[n] || n; };
-    var homeTeamSB = normTeam(homeTeam);
-    var awayTeamSB = normTeam(awayTeam);
-
-    console.log("Algeria lineups fetch:", homeTeamSB, "vs", awayTeamSB, matchDate, "fid:", fixtureId);
+    console.log("Algeria lineups fetch:", homeTeam, "vs", awayTeam, matchDate, "fid:", fixtureId);
     var SB = 'https://iqeqlsxjiklygywjirqs.supabase.co/rest/v1/algeria_lineups';
     var H = { 'apikey': SB_KEY, 'Authorization': 'Bearer '+SB_KEY };
     var tryFetch = function(url) {
       return fetch(url, { headers: H }).then(function(r){ return r.json(); });
     };
+    // Essayer 1: par fixture_id
+    // Essayer 2: par nom équipe + date
+    // Essayer 3: par date seule (pour trouver le bon match)
     var url1 = fixtureId ? SB+'?fixture_id=eq.'+fixtureId+'&select=*' : null;
-    var url2 = SB+'?home_team=eq.'+encodeURIComponent(homeTeamSB)+'&away_team=eq.'+encodeURIComponent(awayTeamSB)+'&match_date=eq.'+matchDate+'&select=*';
-    var url3 = SB+'?match_date=eq.'+matchDate+'&select=*';
+    var url2 = SB+'?home_team=eq.'+encodeURIComponent(homeTeam)+'&away_team=eq.'+encodeURIComponent(awayTeam)+'&match_date=eq.'+matchDate+'&select=*';
     var p = url1 ? tryFetch(url1) : Promise.resolve([]);
     p.then(function(d){
       if(d&&d.length>0) return d;
       return tryFetch(url2);
-    }).then(function(d){
-      if(d&&d.length>0) return d;
-      return tryFetch(url3).then(function(rows) {
-        if(!rows||!rows.length) return [];
-        var hLow = homeTeamSB.toLowerCase();
-        var aLow = awayTeamSB.toLowerCase();
-        var found = rows.find(function(r) {
-          var rh = (r.home_team||"").toLowerCase();
-          var ra = (r.away_team||"").toLowerCase();
-          var hMatch = rh.includes(hLow.split(" ").pop()) || hLow.includes(rh.split(" ").pop());
-          var aMatch = ra.includes(aLow.split(" ").pop()) || aLow.includes(ra.split(" ").pop());
-          return hMatch && aMatch;
-        });
-        return found ? [found] : [];
-      });
     }).then(function(data){
-      console.log("Algeria lineups result:", data&&data.length, "rows");
+      console.log("Algeria lineups result:", JSON.stringify(data));
       if(data&&data.length>0){
         var row = data[0];
         setAlgeriaLineups({
