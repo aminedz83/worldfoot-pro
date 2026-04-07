@@ -2,7 +2,7 @@
 <html lang="fr">
 <head>
     <meta charset="UTF-8" />
-    <!-- v257 -->
+    <!-- v258 -->
     <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate" />
     <meta http-equiv="Pragma" content="no-cache" />
     <meta http-equiv="Expires" content="0" />
@@ -2295,17 +2295,31 @@ const renderListeFlash = (fix, hLu, aLu, players, events, injuries, hid, aid) =>
                   fontSize: 12
                 }
               }, homeSub.name || "Joueur"),
-              homeSub.pos === "G" && React.createElement("span", {
-                style: {
-                  fontSize: 8,
-                  color: "#666",
-                  background: "#f0f2f5",
-                  padding: "1px 4px",
-                  borderRadius: 3,
-                  marginTop: 1,
-                  display: "inline-block"
-                }
-              }, "G")
+              homeSub.pos === "G"
+                ? React.createElement("span", {
+                    style: {
+                      fontSize: 8,
+                      color: "#666",
+                      background: "#f0f2f5",
+                      padding: "1px 4px",
+                      borderRadius: 3,
+                      marginTop: 1,
+                      display: "inline-block"
+                    }
+                  }, "G")
+                : (homeSub.minutes && homeSub.minutes > 0)
+                  ? React.createElement("div", {
+                      style: {
+                        fontSize: 10,
+                        color: "#00b86b",
+                        fontWeight: 700,
+                        marginTop: 1,
+                        display: "flex",
+                        alignItems: "center",
+                        gap: 2
+                      }
+                    }, "\u21AA " + homeSub.minutes + "'")
+                  : null
             )
           ) : React.createElement("div", { style: { height: 38 } })
         ),
@@ -2334,17 +2348,32 @@ const renderListeFlash = (fix, hLu, aLu, players, events, injuries, hid, aid) =>
                   fontSize: 12
                 }
               }, awaySub.name || "Joueur"),
-              awaySub.pos === "G" && React.createElement("span", {
-                style: {
-                  fontSize: 8,
-                  color: "#666",
-                  background: "#f0f2f5",
-                  padding: "1px 4px",
-                  borderRadius: 3,
-                  marginTop: 1,
-                  display: "inline-block"
-                }
-              }, "G")
+              awaySub.pos === "G"
+                ? React.createElement("span", {
+                    style: {
+                      fontSize: 8,
+                      color: "#666",
+                      background: "#f0f2f5",
+                      padding: "1px 4px",
+                      borderRadius: 3,
+                      marginTop: 1,
+                      display: "inline-block"
+                    }
+                  }, "G")
+                : (awaySub.minutes && awaySub.minutes > 0)
+                  ? React.createElement("div", {
+                      style: {
+                        fontSize: 10,
+                        color: "#00b86b",
+                        fontWeight: 700,
+                        marginTop: 1,
+                        display: "flex",
+                        alignItems: "center",
+                        justifyContent: "flex-end",
+                        gap: 2
+                      }
+                    }, "\u21AA " + awaySub.minutes + "'")
+                  : null
             ),
 
             (() => {
@@ -13245,7 +13274,8 @@ function TeamPage({ teamId, teamName, teamLogo, leagueId, season, onClose, onTea
   const fmt  = d => d ? new Date(d).toLocaleDateString("fr-FR",{day:"2-digit",month:"short"}) : "";
 
   const last5 = [...results].slice(0,5);
-  const myStand = standings.find(r=>r.team?.id===teamId);
+  const activeStandings = standingsFiltered.length > 0 ? standingsFiltered : standings;
+  const myStand = activeStandings.find(r=>r.team&&r.team.id===teamId);
 
   // ── TABS ──────────────────────────────────────────────────
   const TABS = [
@@ -13919,12 +13949,15 @@ function TeamPage({ teamId, teamName, teamLogo, leagueId, season, onClose, onTea
                   React.createElement("div",{style:{width:3,height:16,borderRadius:2,background:"#00c170",flexShrink:0}}),
                   React.createElement("span",{style:{fontSize:13,fontWeight:700,color:"#0f172a"}},selLeagueNameDisp||"Classement")
                 ),
-                // Header colonnes : # ÉQUIPE MJ B PTS
+                // Header colonnes : # ÉQUIPE MJ V N D DB PTS
                 React.createElement("div",{style:{display:"flex",alignItems:"center",padding:"5px 12px",background:"#f8fafc",borderBottom:"1px solid #f1f5f9"}},
                   React.createElement("div",{style:{width:28,fontSize:9,fontWeight:700,color:"#94a3b8",textAlign:"center"}},"#"),
                   React.createElement("div",{style:{flex:1,fontSize:9,fontWeight:700,color:"#94a3b8",paddingLeft:6}},"ÉQUIPE"),
-                  React.createElement("div",{style:{width:30,fontSize:9,fontWeight:700,color:"#94a3b8",textAlign:"center"}},"MJ"),
-                  React.createElement("div",{style:{width:46,fontSize:9,fontWeight:700,color:"#94a3b8",textAlign:"center"}},"B"),
+                  React.createElement("div",{style:{width:24,fontSize:9,fontWeight:700,color:"#94a3b8",textAlign:"center"}},"MJ"),
+                  React.createElement("div",{style:{width:22,fontSize:9,fontWeight:700,color:"#22c55e",textAlign:"center"}},"V"),
+                  React.createElement("div",{style:{width:22,fontSize:9,fontWeight:700,color:"#94a3b8",textAlign:"center"}},"N"),
+                  React.createElement("div",{style:{width:22,fontSize:9,fontWeight:700,color:"#ef4444",textAlign:"center"}},"D"),
+                  React.createElement("div",{style:{width:38,fontSize:9,fontWeight:700,color:"#94a3b8",textAlign:"center"}},"B"),
                   React.createElement("div",{style:{width:32,fontSize:9,fontWeight:800,color:"#0f172a",textAlign:"center"}},"PTS")
                 ),
                 // Lignes
@@ -13972,9 +14005,15 @@ function TeamPage({ teamId, teamName, teamLogo, leagueId, season, onClose, onTea
                       )
                     ),
                     // MJ
-                    React.createElement("div",{style:{width:30,textAlign:"center",fontSize:12,color:"#64748b",flexShrink:0}},r.all&&r.all.played||0),
+                    React.createElement("div",{style:{width:24,textAlign:"center",fontSize:12,color:"#64748b",flexShrink:0}},r.all&&r.all.played||0),
+                    // V
+                    React.createElement("div",{style:{width:22,textAlign:"center",fontSize:12,fontWeight:600,color:"#22c55e",flexShrink:0}},r.all&&r.all.win||0),
+                    // N
+                    React.createElement("div",{style:{width:22,textAlign:"center",fontSize:12,color:"#64748b",flexShrink:0}},r.all&&r.all.draw||0),
+                    // D
+                    React.createElement("div",{style:{width:22,textAlign:"center",fontSize:12,fontWeight:600,color:"#ef4444",flexShrink:0}},r.all&&r.all.lose||0),
                     // Buts pour:contre
-                    React.createElement("div",{style:{width:46,textAlign:"center",fontSize:11,color:"#64748b",flexShrink:0}},goalsFor+":"+goalsAg),
+                    React.createElement("div",{style:{width:38,textAlign:"center",fontSize:11,color:"#64748b",flexShrink:0}},goalsFor+":"+goalsAg),
                     // PTS
                     React.createElement("div",{style:{width:32,textAlign:"center",flexShrink:0}},
                       isTop2
