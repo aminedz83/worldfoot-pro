@@ -2,7 +2,7 @@
 <html lang="fr">
 <head>
     <meta charset="UTF-8" />
-    <!-- v257 -->
+    <!-- v258 -->
     <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate" />
     <meta http-equiv="Pragma" content="no-cache" />
     <meta http-equiv="Expires" content="0" />
@@ -2295,17 +2295,31 @@ const renderListeFlash = (fix, hLu, aLu, players, events, injuries, hid, aid) =>
                   fontSize: 12
                 }
               }, homeSub.name || "Joueur"),
-              homeSub.pos === "G" && React.createElement("span", {
-                style: {
-                  fontSize: 8,
-                  color: "#666",
-                  background: "#f0f2f5",
-                  padding: "1px 4px",
-                  borderRadius: 3,
-                  marginTop: 1,
-                  display: "inline-block"
-                }
-              }, "G")
+              homeSub.pos === "G"
+                ? React.createElement("span", {
+                    style: {
+                      fontSize: 8,
+                      color: "#666",
+                      background: "#f0f2f5",
+                      padding: "1px 4px",
+                      borderRadius: 3,
+                      marginTop: 1,
+                      display: "inline-block"
+                    }
+                  }, "G")
+                : (homeSub.minutes && homeSub.minutes > 0)
+                  ? React.createElement("div", {
+                      style: {
+                        fontSize: 10,
+                        color: "#00b86b",
+                        fontWeight: 700,
+                        marginTop: 1,
+                        display: "flex",
+                        alignItems: "center",
+                        gap: 2
+                      }
+                    }, "\u21AA " + homeSub.minutes + "'")
+                  : null
             )
           ) : React.createElement("div", { style: { height: 38 } })
         ),
@@ -2334,17 +2348,32 @@ const renderListeFlash = (fix, hLu, aLu, players, events, injuries, hid, aid) =>
                   fontSize: 12
                 }
               }, awaySub.name || "Joueur"),
-              awaySub.pos === "G" && React.createElement("span", {
-                style: {
-                  fontSize: 8,
-                  color: "#666",
-                  background: "#f0f2f5",
-                  padding: "1px 4px",
-                  borderRadius: 3,
-                  marginTop: 1,
-                  display: "inline-block"
-                }
-              }, "G")
+              awaySub.pos === "G"
+                ? React.createElement("span", {
+                    style: {
+                      fontSize: 8,
+                      color: "#666",
+                      background: "#f0f2f5",
+                      padding: "1px 4px",
+                      borderRadius: 3,
+                      marginTop: 1,
+                      display: "inline-block"
+                    }
+                  }, "G")
+                : (awaySub.minutes && awaySub.minutes > 0)
+                  ? React.createElement("div", {
+                      style: {
+                        fontSize: 10,
+                        color: "#00b86b",
+                        fontWeight: 700,
+                        marginTop: 1,
+                        display: "flex",
+                        alignItems: "center",
+                        justifyContent: "flex-end",
+                        gap: 2
+                      }
+                    }, "\u21AA " + awaySub.minutes + "'")
+                  : null
             ),
 
             (() => {
@@ -2687,7 +2716,8 @@ function ComposPanel({lineups, players, homeTeam, awayTeam, isPartial, fix, even
       var posCount = {D:0, M:0, F:0};
       starters.forEach(function(p) {
         var matched = matchWithSquad(p, squadPlayers);
-        var pos = p.is_gk ? "G" : (matched ? matched.position : p.pos || "");
+        var pos = p.is_gk ? "G" : (p.pos && p.pos !== "" ? p.pos : (matched ? matched.position : ""));
+        if(pos === "A") pos = "F";
         if(posCount[pos] !== undefined) posCount[pos]++;
       });
       var formation = posCount.D + "-" + posCount.M + "-" + posCount.F;
@@ -2696,7 +2726,8 @@ function ComposPanel({lineups, players, homeTeam, awayTeam, isPartial, fix, even
       var posLines = {G:[], D:[], M:[], F:[]};
       starters.forEach(function(p) {
         var matched = matchWithSquad(p, squadPlayers);
-        var pos = p.is_gk ? "G" : (matched ? matched.position : (p.is_gk ? "G" : "M"));
+        var pos = p.is_gk ? "G" : (p.pos && p.pos !== "" ? p.pos : (matched ? matched.position : "M"));
+        if(pos === "A") pos = "F";
         if(!posLines[pos]) pos = "M";
         posLines[pos].push(p);
       });
@@ -2722,7 +2753,8 @@ function ComposPanel({lineups, players, homeTeam, awayTeam, isPartial, fix, even
         formation: formation,
         startXI: starters.map(function(p) {
           var matched = matchWithSquad(p, squadPlayers);
-          var pos = p.is_gk ? "G" : (matched ? matched.position : "M");
+          var pos = p.is_gk ? "G" : (p.pos && p.pos !== "" ? p.pos : (matched ? matched.position : "M"));
+          if(pos === "A") pos = "F";
           return {
             player: {
               id: matched ? matched.id : null,
@@ -2730,20 +2762,28 @@ function ComposPanel({lineups, players, homeTeam, awayTeam, isPartial, fix, even
               number: parseInt(p.number)||0,
               pos: pos,
               grid: grids[p.name] || null,
-              photo: matched ? matched.photo : "https://media.api-sports.io/football/players/0.png"
+              photo: matched ? matched.photo : "https://media.api-sports.io/football/players/0.png",
+              events: { goals: p.goals||0, yellow: p.yellow?1:0, red: p.red?1:0 },
+              minutes: p.minutes||90,
+              captain: p.is_captain||false
             }
           };
         }),
         substitutes: (subs||[]).map(function(p) {
           var matched = matchWithSquad(p, squadPlayers);
+          var pos = p.is_gk ? "G" : (p.pos && p.pos !== "" ? p.pos : (matched ? matched.position : "M"));
+          if(pos === "A") pos = "F";
           return {
             player: {
               id: matched ? matched.id : null,
               name: p.name,
               number: parseInt(p.number)||0,
-              pos: p.is_gk ? "G" : (matched ? matched.position : "M"),
+              pos: pos,
               grid: null,
-              photo: matched ? matched.photo : "https://media.api-sports.io/football/players/0.png"
+              photo: matched ? matched.photo : "https://media.api-sports.io/football/players/0.png",
+              events: { goals: p.goals||0, yellow: p.yellow?1:0, red: p.red?1:0 },
+              minutes: p.minutes||0,
+              captain: p.is_captain||false
             }
           };
         })
@@ -6767,23 +6807,60 @@ function MatchDetail({state,onClose,onTeam}){
     var matchDate = fix.fixture&&fix.fixture.date&&fix.fixture.date.slice(0,10);
     var fixtureId = fix.fixture&&fix.fixture.id;
     if(!homeTeam||!awayTeam||!matchDate) return;
-    console.log("Algeria lineups fetch:", homeTeam, "vs", awayTeam, matchDate, "fid:", fixtureId);
+
+    // Mapping noms API football → noms Supabase
+    var ALG_TEAM_MAP = {
+      "JS Kabylie":"JS Kabylie","Kabylie":"JS Kabylie",
+      "CR Belouizdad":"CR Belouizdad","Belouizdad":"CR Belouizdad",
+      "MC Alger":"MC Alger",
+      "USM Alger":"USM Alger",
+      "CS Constantine":"CS Constantine","Constantine":"CS Constantine",
+      "ES Setif":"ES Setif","Setif":"ES Setif",
+      "MC Oran":"MC Oran","Oran":"MC Oran",
+      "ASO Chlef":"ASO Chlef","Chlef":"ASO Chlef",
+      "JS Saoura":"JS Saoura","Saoura":"JS Saoura",
+      "ES Ben Aknoun":"ES Ben Aknoun","Ben Aknoun":"ES Ben Aknoun",
+      "USM Khenchela":"USM Khenchela","Khenchela":"USM Khenchela",
+      "MB Rouissat":"MB Rouissat","Rouissat":"MB Rouissat","Rouisset":"MB Rouissat",
+      "Paradou AC":"Paradou AC","Paradou":"Paradou AC",
+      "ES Mostaganem":"ES Mostaganem","Mostaganem":"ES Mostaganem",
+      "MC El Bayadh":"MC El Bayadh","El Bayadh":"MC El Bayadh",
+      "Olympique Akbou":"Olympique Akbou","Akbou":"Olympique Akbou"
+    };
+    var normTeam = function(n) { return ALG_TEAM_MAP[n] || n; };
+    var homeTeamSB = normTeam(homeTeam);
+    var awayTeamSB = normTeam(awayTeam);
+
+    console.log("Algeria lineups fetch:", homeTeamSB, "vs", awayTeamSB, matchDate, "fid:", fixtureId);
     var SB = 'https://iqeqlsxjiklygywjirqs.supabase.co/rest/v1/algeria_lineups';
     var H = { 'apikey': SB_KEY, 'Authorization': 'Bearer '+SB_KEY };
     var tryFetch = function(url) {
       return fetch(url, { headers: H }).then(function(r){ return r.json(); });
     };
-    // Essayer 1: par fixture_id
-    // Essayer 2: par nom équipe + date
-    // Essayer 3: par date seule (pour trouver le bon match)
     var url1 = fixtureId ? SB+'?fixture_id=eq.'+fixtureId+'&select=*' : null;
-    var url2 = SB+'?home_team=eq.'+encodeURIComponent(homeTeam)+'&away_team=eq.'+encodeURIComponent(awayTeam)+'&match_date=eq.'+matchDate+'&select=*';
+    var url2 = SB+'?home_team=eq.'+encodeURIComponent(homeTeamSB)+'&away_team=eq.'+encodeURIComponent(awayTeamSB)+'&match_date=eq.'+matchDate+'&select=*';
+    var url3 = SB+'?match_date=eq.'+matchDate+'&select=*';
     var p = url1 ? tryFetch(url1) : Promise.resolve([]);
     p.then(function(d){
       if(d&&d.length>0) return d;
       return tryFetch(url2);
+    }).then(function(d){
+      if(d&&d.length>0) return d;
+      return tryFetch(url3).then(function(rows) {
+        if(!rows||!rows.length) return [];
+        var hLow = homeTeamSB.toLowerCase();
+        var aLow = awayTeamSB.toLowerCase();
+        var found = rows.find(function(r) {
+          var rh = (r.home_team||"").toLowerCase();
+          var ra = (r.away_team||"").toLowerCase();
+          var hMatch = rh.includes(hLow.split(" ").pop()) || hLow.includes(rh.split(" ").pop());
+          var aMatch = ra.includes(aLow.split(" ").pop()) || aLow.includes(ra.split(" ").pop());
+          return hMatch && aMatch;
+        });
+        return found ? [found] : [];
+      });
     }).then(function(data){
-      console.log("Algeria lineups result:", JSON.stringify(data));
+      console.log("Algeria lineups result:", data&&data.length, "rows");
       if(data&&data.length>0){
         var row = data[0];
         setAlgeriaLineups({
@@ -13197,7 +13274,8 @@ function TeamPage({ teamId, teamName, teamLogo, leagueId, season, onClose, onTea
   const fmt  = d => d ? new Date(d).toLocaleDateString("fr-FR",{day:"2-digit",month:"short"}) : "";
 
   const last5 = [...results].slice(0,5);
-  const myStand = standings.find(r=>r.team?.id===teamId);
+  const activeStandings = standingsFiltered.length > 0 ? standingsFiltered : standings;
+  const myStand = activeStandings.find(r=>r.team&&r.team.id===teamId);
 
   // ── TABS ──────────────────────────────────────────────────
   const TABS = [
@@ -13871,12 +13949,15 @@ function TeamPage({ teamId, teamName, teamLogo, leagueId, season, onClose, onTea
                   React.createElement("div",{style:{width:3,height:16,borderRadius:2,background:"#00c170",flexShrink:0}}),
                   React.createElement("span",{style:{fontSize:13,fontWeight:700,color:"#0f172a"}},selLeagueNameDisp||"Classement")
                 ),
-                // Header colonnes : # ÉQUIPE MJ B PTS
+                // Header colonnes : # ÉQUIPE MJ V N D DB PTS
                 React.createElement("div",{style:{display:"flex",alignItems:"center",padding:"5px 12px",background:"#f8fafc",borderBottom:"1px solid #f1f5f9"}},
                   React.createElement("div",{style:{width:28,fontSize:9,fontWeight:700,color:"#94a3b8",textAlign:"center"}},"#"),
                   React.createElement("div",{style:{flex:1,fontSize:9,fontWeight:700,color:"#94a3b8",paddingLeft:6}},"ÉQUIPE"),
-                  React.createElement("div",{style:{width:30,fontSize:9,fontWeight:700,color:"#94a3b8",textAlign:"center"}},"MJ"),
-                  React.createElement("div",{style:{width:46,fontSize:9,fontWeight:700,color:"#94a3b8",textAlign:"center"}},"B"),
+                  React.createElement("div",{style:{width:24,fontSize:9,fontWeight:700,color:"#94a3b8",textAlign:"center"}},"MJ"),
+                  React.createElement("div",{style:{width:22,fontSize:9,fontWeight:700,color:"#22c55e",textAlign:"center"}},"V"),
+                  React.createElement("div",{style:{width:22,fontSize:9,fontWeight:700,color:"#94a3b8",textAlign:"center"}},"N"),
+                  React.createElement("div",{style:{width:22,fontSize:9,fontWeight:700,color:"#ef4444",textAlign:"center"}},"D"),
+                  React.createElement("div",{style:{width:38,fontSize:9,fontWeight:700,color:"#94a3b8",textAlign:"center"}},"B"),
                   React.createElement("div",{style:{width:32,fontSize:9,fontWeight:800,color:"#0f172a",textAlign:"center"}},"PTS")
                 ),
                 // Lignes
@@ -13924,9 +14005,15 @@ function TeamPage({ teamId, teamName, teamLogo, leagueId, season, onClose, onTea
                       )
                     ),
                     // MJ
-                    React.createElement("div",{style:{width:30,textAlign:"center",fontSize:12,color:"#64748b",flexShrink:0}},r.all&&r.all.played||0),
+                    React.createElement("div",{style:{width:24,textAlign:"center",fontSize:12,color:"#64748b",flexShrink:0}},r.all&&r.all.played||0),
+                    // V
+                    React.createElement("div",{style:{width:22,textAlign:"center",fontSize:12,fontWeight:600,color:"#22c55e",flexShrink:0}},r.all&&r.all.win||0),
+                    // N
+                    React.createElement("div",{style:{width:22,textAlign:"center",fontSize:12,color:"#64748b",flexShrink:0}},r.all&&r.all.draw||0),
+                    // D
+                    React.createElement("div",{style:{width:22,textAlign:"center",fontSize:12,fontWeight:600,color:"#ef4444",flexShrink:0}},r.all&&r.all.lose||0),
                     // Buts pour:contre
-                    React.createElement("div",{style:{width:46,textAlign:"center",fontSize:11,color:"#64748b",flexShrink:0}},goalsFor+":"+goalsAg),
+                    React.createElement("div",{style:{width:38,textAlign:"center",fontSize:11,color:"#64748b",flexShrink:0}},goalsFor+":"+goalsAg),
                     // PTS
                     React.createElement("div",{style:{width:32,textAlign:"center",flexShrink:0}},
                       isTop2
