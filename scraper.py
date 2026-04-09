@@ -61,7 +61,7 @@ def parse_events(mid):
     IE=3 → But, IE=1 → Carton jaune, IE=6 → Carton rouge
     IM = player_id, IB = minute, IA = équipe (1=dom, 2=ext)
     """
-    url = f"https://{PROJECT}.flashscore.ninja/46/x/feed/df_sui_1_{mid}_1_fr_1"
+    url = f"https://{PROJECT}.flashscore.ninja/46/x/feed/df_sui_1_{mid}_1_en_1"
     events = {"goals": {}, "yellow": {}, "red": {}}
     try:
         r = scraper.get(url, headers=FS_HEADERS, timeout=10)
@@ -101,7 +101,7 @@ def get_lineups(mid):
     LH = index position (0=GK,1-4=DEF,5-7=MID,8-10=ATT)
     LK = 1 titulaire (LK=15 aussi), 2 = remplaçant
     """
-    url = f"https://{PROJECT}.flashscore.ninja/46/x/feed/df_li_1_{mid}_1_fr_1"
+    url = f"https://{PROJECT}.flashscore.ninja/46/x/feed/df_li_1_{mid}_1_en_1"
     try:
         r = scraper.get(url, headers=FS_HEADERS, timeout=10)
         if r.status_code != 200 or len(r.text) < 10:
