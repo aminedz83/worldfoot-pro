@@ -2,8 +2,8 @@ name: BeSoccer Players Sync
 
 on:
   schedule:
-    - cron: '0 3 * * 1'  # Chaque lundi à 3h UTC
-  workflow_dispatch:      # Lancement manuel possible
+    - cron: '0 3 * * 1'
+  workflow_dispatch:
 
 jobs:
   sync:
@@ -22,9 +22,4 @@ jobs:
       - name: Run scraper
         env:
           SUPABASE_KEY: ${{ secrets.SUPABASE_KEY }}
-        run: |
-          if [ -f scripts/besoccer_players.py ]; then
-            python3 scripts/besoccer_players.py
-          else
-            python3 besoccer_players.py
-          fi
+        run: python3 "besoccer players.py"
