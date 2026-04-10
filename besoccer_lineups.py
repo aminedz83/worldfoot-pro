@@ -220,12 +220,19 @@ def get_today_matches():
             ],
         }
 
-    if not rows:
-        print("  Utilisation IDs BeSoccer connus...")
-        today_matches = KNOWN_IDS.get(today, [])
-        for m in today_matches:
-            rows.append({"home_team": m["home_team"], "away_team": m["away_team"],
-                         "bs_id": m.get("bs_id"), "bs_home": m.get("bs_home"), "bs_away": m.get("bs_away")})
+    # Toujours enrichir avec les IDs connus du jour
+    today_known = KNOWN_IDS.get(today, [])
+    if today_known:
+        # Construire index des matchs déjà dans rows
+        existing = {f"{r.get('home_team')}_{r.get('away_team')}" for r in rows}
+        for m in today_known:
+            key = f"{m['home_team']}_{m['away_team']}"
+            if key not in existing:
+                rows.append({"home_team": m["home_team"], "away_team": m["away_team"],
+                             "bs_id": m.get("bs_id"), "bs_home": m.get("bs_home"), "bs_away": m.get("bs_away")})
+        print(f"  {len(rows)} matchs total après enrichissement")
+    elif not rows:
+        print("  ⚠️  Aucun match connu pour aujourd'hui")
 
     # Construire l'index des IDs connus pour aujourd'hui
     known_today = {f"{m['home_team']}_{m['away_team']}": m
