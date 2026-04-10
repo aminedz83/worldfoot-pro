@@ -2,7 +2,6 @@
 besoccer players.py
 ===================
 Scrape joueurs + photos + stats de Ligue 1 Algérie depuis BeSoccer.
-Sélecteurs basés sur le vrai HTML de BeSoccer.
 Sauvegarde dans Supabase : besoccer_players
 """
 
@@ -24,23 +23,24 @@ SB_HEADERS   = {
     "Prefer":        "resolution=merge-duplicates"
 }
 
+# Slugs corrigés depuis les vraies URLs BeSoccer
 CLUBS = [
-    {"name": "MC Alger",        "id": 11505,  "slug": "mc-alger"},
-    {"name": "CR Belouizdad",   "id": 11507,  "slug": "cr-belouizdad"},
-    {"name": "JS Kabylie",      "id": 11506,  "slug": "js-kabylie"},
-    {"name": "USM Alger",       "id": 11504,  "slug": "usm-alger"},
-    {"name": "ES Sétif",        "id": 11501,  "slug": "es-setif"},
-    {"name": "CS Constantine",  "id": 11510,  "slug": "cs-constantine"},
-    {"name": "Paradou AC",      "id": 59336,  "slug": "paradou-ac"},
-    {"name": "ASO Chlef",       "id": 11511,  "slug": "aso-chlef"},
-    {"name": "MC Oran",         "id": 11509,  "slug": "mc-oran"},
-    {"name": "JS Saoura",       "id": 20933,  "slug": "js-saoura"},
-    {"name": "MC El Bayadh",    "id": 11729,  "slug": "mc-el-bayadh"},
-    {"name": "USM Khenchela",   "id": 11530,  "slug": "usm-khenchela"},
-    {"name": "Olympique Akbou", "id": 11522,  "slug": "olympique-akbou"},
-    {"name": "ES Mostaganem",   "id": 13715,  "slug": "es-mostaganem"},
-    {"name": "MB Rouissat",     "id": 100882, "slug": "mb-rouissat"},
-    {"name": "ES Ben Aknoun",   "id": 11519,  "slug": "es-ben-aknoun"},
+    {"name": "MC Alger",        "slug": "mc-alger",      "id": 11505},
+    {"name": "CR Belouizdad",   "slug": "belouizdad",    "id": 11507},
+    {"name": "JS Kabylie",      "slug": "kabylie",       "id": 11506},
+    {"name": "USM Alger",       "slug": "usm-alger",     "id": 11504},
+    {"name": "ES Sétif",        "slug": "es-setif",      "id": 11501},
+    {"name": "CS Constantine",  "slug": "cs-constantine","id": 11510},
+    {"name": "Paradou AC",      "slug": "paradou",       "id": 59336},
+    {"name": "ASO Chlef",       "slug": "aso-chlef",     "id": 11511},
+    {"name": "MC Oran",         "slug": "mc-oran",       "id": 11509},
+    {"name": "JS Saoura",       "slug": "js-saoura",     "id": 20933},
+    {"name": "MC El Bayadh",    "slug": "el-bayadh",     "id": 11729},
+    {"name": "USM Khenchela",   "slug": "usm-khenchela", "id": 11530},
+    {"name": "Olympique Akbou", "slug": "oued-akbou",    "id": 11522},
+    {"name": "ES Mostaganem",   "slug": "es-mostaganem", "id": 13715},
+    {"name": "MB Rouissat",     "slug": "mb-rouisset",   "id": 100882},
+    {"name": "ES Ben Aknoun",   "slug": "ben-aknoun",    "id": 11519},
 ]
 
 # ══════════════════════════════════════════════
@@ -54,7 +54,7 @@ scraper = cloudscraper.create_scraper(
 def fetch(url):
     try:
         r = scraper.get(url, timeout=20)
-        print(f"  Status {r.status_code}")
+        print(f"  Status {r.status_code} : {url}")
         if r.status_code == 200:
             return BeautifulSoup(r.text, "html.parser")
         return None
@@ -63,18 +63,13 @@ def fetch(url):
         return None
 
 def extract_id_from_url(href):
-    """
-    Extrait l'ID depuis l'URL BeSoccer.
-    Ex: /player/z-naidji-462650 → 462650
-    Ex: /player/ayoub-abdellaoui → ayoub-abdellaoui (slug sans ID numérique)
-    """
     if not href:
         return None
-    # Cas 1 : URL avec ID numérique à la fin  /player/nom-123456
+    # Cas 1 : /player/nom-123456
     m = re.search(r"/player/[^/]+-(\d+)/?$", href)
     if m:
         return m.group(1)
-    # Cas 2 : URL slug sans ID  /player/ayoub-abdellaoui
+    # Cas 2 : /player/slug-sans-id
     m = re.search(r"/player/([^/]+)/?$", href)
     if m:
         return m.group(1)
@@ -86,22 +81,17 @@ def extract_id_from_url(href):
 
 def scrape_club(club):
     url = f"https://www.besoccer.com/team/squad/{club['slug']}/{club['id']}/"
-    print(f"\n📋 {club['name']} → {url}")
-
     soup = fetch(url)
     if not soup:
         return []
 
-    players = []
-    seen    = set()
-
-    # Le poste courant est défini par les lignes d'en-tête tr.row-head
+    players      = []
+    seen         = set()
     current_poste = ""
 
-    rows = soup.select("tr")
+    for row in soup.select("tr"):
 
-    for row in rows:
-        # Ligne d'en-tête → met à jour le poste courant
+        # Ligne en-tête → poste courant
         if "row-head" in row.get("class", []):
             th = row.select_one("th.main")
             if th:
@@ -112,7 +102,6 @@ def scrape_club(club):
         if "row-body" not in row.get("class", []):
             continue
 
-        # Nom + lien depuis td.name
         name_td = row.select_one("td.name a")
         if not name_td:
             continue
@@ -123,41 +112,29 @@ def scrape_club(club):
 
         if not player_id or not nom or player_id in seen:
             continue
-
         seen.add(player_id)
 
-        # Photo depuis td.player-img img
-        photo_td  = row.select_one("td.player-img img")
+        # Photo
+        photo_td = row.select_one("td.player-img img")
         if photo_td and photo_td.get("src"):
-            photo = photo_td["src"]
-            # Remplacer size=60x par size=120x pour meilleure qualité
-            photo = photo.replace("size=60x", "size=120x")
+            photo = photo_td["src"].replace("size=60x", "size=120x")
             if photo.startswith("//"):
                 photo = "https:" + photo
         else:
             photo = f"https://cdn.resfu.com/img_data/players/medium/{player_id}.jpg?size=120x&lossy=1"
 
-        # Numéro de maillot depuis td.number-box
+        # Numéro maillot
         num_td = row.select_one("td.number-box div")
         numero = num_td.get_text(strip=True) if num_td else ""
 
-        # Stats depuis les td avec data-content-tab="team_performance"
-        perf_tds = row.select("td[data-content-tab='team_performance']")
-        matchs   = 0
-        buts     = 0
-        cartons_j = 0
-        cartons_r = 0
+        # Stats performance : MP, GS, Buts, CJ, CR
+        perf_tds  = row.select("td[data-content-tab='team_performance']")
+        matchs    = int(perf_tds[0].get_text(strip=True) or 0) if len(perf_tds) > 0 else 0
+        buts      = int(perf_tds[2].get_text(strip=True) or 0) if len(perf_tds) > 2 else 0
+        cartons_j = int(perf_tds[3].get_text(strip=True) or 0) if len(perf_tds) > 3 else 0
+        cartons_r = int(perf_tds[4].get_text(strip=True) or 0) if len(perf_tds) > 4 else 0
 
-        if len(perf_tds) >= 1:
-            matchs    = int(perf_tds[0].get_text(strip=True) or 0)
-        if len(perf_tds) >= 3:
-            buts      = int(perf_tds[2].get_text(strip=True) or 0)
-        if len(perf_tds) >= 4:
-            cartons_j = int(perf_tds[3].get_text(strip=True) or 0)
-        if len(perf_tds) >= 5:
-            cartons_r = int(perf_tds[4].get_text(strip=True) or 0)
-
-        # Age depuis td[data-content-tab="team_info"]
+        # Age
         info_tds = row.select("td[data-content-tab='team_info']")
         age = ""
         if info_tds:
@@ -180,27 +157,8 @@ def scrape_club(club):
             "scraped_at":  datetime.now(timezone.utc).isoformat()
         })
 
-    print(f"  ✅ {len(players)} joueurs trouvés")
+    print(f"  ✅ {len(players)} joueurs")
     return players
-
-# ══════════════════════════════════════════════
-# COACH
-# ══════════════════════════════════════════════
-
-def scrape_coach(soup, club_name):
-    """Extrait le coach depuis la section .team-coach"""
-    coaches = []
-    coach_divs = soup.select(".team-coach")
-    for div in coach_divs:
-        link = div.select_one("a[href*='/coach/']")
-        img  = div.select_one("img.player")
-        if link:
-            nom   = link.get_text(strip=True)
-            photo = img["src"] if img and img.get("src") else ""
-            if photo.startswith("//"):
-                photo = "https:" + photo
-            coaches.append({"club": club_name, "nom": nom, "url_photo": photo})
-    return coaches
 
 # ══════════════════════════════════════════════
 # SAUVEGARDE SUPABASE
@@ -214,8 +172,8 @@ def save_players(players):
         headers=SB_HEADERS,
         json=players
     )
-    status = res.status_code
-    print(f"  Supabase players: {status} ({'OK' if status in [200,201,204] else res.text[:300]})")
+    code = res.status_code
+    print(f"  Supabase: {code} ({'OK' if code in [200,201,204] else res.text[:200]})")
 
 # ══════════════════════════════════════════════
 # MAIN
@@ -223,34 +181,20 @@ def save_players(players):
 
 print("=== BeSoccer Players Scraper ===")
 print(datetime.now().strftime("%Y-%m-%d %H:%M:%S"))
-print(f"{len(CLUBS)} clubs à scraper\n")
+print(f"{len(CLUBS)} clubs\n")
 
 total = 0
 for club in CLUBS:
+    print(f"\n📋 {club['name']}")
     try:
-        soup = scraper.get(
-            f"https://www.besoccer.com/team/squad/{club['slug']}/{club['id']}/",
-            timeout=20
-        )
-        print(f"\n📋 {club['name']} → Status {soup.status_code}")
-
-        if soup.status_code != 200:
-            print(f"  ⚠️  Ignoré")
-            time.sleep(3)
-            continue
-
-        bs = BeautifulSoup(soup.text, "html.parser")
         players = scrape_club(club)
-
         if players:
             save_players(players)
             total += len(players)
         else:
             print(f"  ⚠️  Aucun joueur")
-
     except Exception as e:
-        print(f"  ❌ Erreur {club['name']}: {e}")
-
+        print(f"  ❌ Erreur: {e}")
     time.sleep(3)
 
 print(f"\n=== Terminé : {total} joueurs sauvegardés ===")
