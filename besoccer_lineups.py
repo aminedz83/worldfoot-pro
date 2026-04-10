@@ -124,15 +124,23 @@ def find_besoccer_match_id(home_team, away_team, match_date):
                 print(f"  ✅ Trouvé: {match_url}")
                 return match_id, match_url
 
-    # Si pas trouvé par date, prendre le plus récent avec away_slug
+    # Fallback : prendre l'ID le plus grand (matchs de ligue > matchs de coupe)
+    best_id = None
+    best_url = None
     for a in soup.select(f"a[href*='/match/'][href*='{away_slug}']"):
         href = a.get("href", "")
         m = re.search(r"/match/[^/]+/[^/]+/(\d+)/?", href)
         if m:
-            match_id = m.group(1)
-            match_url = "https://www.besoccer.com" + href if href.startswith("/") else href
-            print(f"  ✅ Trouvé (fallback): {match_url}")
-            return match_id, match_url
+            mid = m.group(1)
+            try:
+                if best_id is None or int(mid) > int(best_id):
+                    best_id = mid
+                    best_url = "https://www.besoccer.com" + href if href.startswith("/") else href
+            except:
+                pass
+    if best_id:
+        print(f"  ✅ Trouvé (best id): {best_url}")
+        return best_id, best_url
 
     return None, None
 
