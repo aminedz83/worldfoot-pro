@@ -2,7 +2,7 @@
 besoccer players.py
 ===================
 Scrape joueurs + photos + stats de Ligue 1 Algérie depuis BeSoccer.
-Sauvegarde dans Supabase : besoccer_players
+Sauvegarde dans Supabase : besoccer_players (UPSERT)
 """
 
 import os, re, time, requests
@@ -16,7 +16,9 @@ from datetime import datetime, timezone
 
 SUPABASE_KEY = os.environ["SUPABASE_KEY"]
 SB_URL       = "https://iqeqlsxjiklygywjirqs.supabase.co"
-SB_HEADERS   = {
+
+# Headers standard
+SB_HEADERS = {
     "apikey":        SUPABASE_KEY,
     "Authorization": "Bearer " + SUPABASE_KEY,
     "Content-Type":  "application/json",
@@ -32,7 +34,7 @@ CLUBS = [
     {"name": "ES Sétif",        "slug": "es-setif",      "id": 11501},
     {"name": "CS Constantine",  "slug": "cs-constantine","id": 11510},
     {"name": "Paradou AC",      "slug": "paradou",       "id": 59336},
-    {"name": "ASO Chlef",       "slug": "aso-chlef",     "id": 11511},
+    {"name": "ASO Chlef",       "slug": "aso-chlef",     "id": 11511},  # à corriger si 404
     {"name": "MC Oran",         "slug": "mc-oran",       "id": 11509},
     {"name": "JS Saoura",       "slug": "js-saoura",     "id": 20933},
     {"name": "MC El Bayadh",    "slug": "el-bayadh",     "id": 11729},
@@ -54,7 +56,7 @@ scraper = cloudscraper.create_scraper(
 def fetch(url):
     try:
         r = scraper.get(url, timeout=20)
-        print(f"  Status {r.status_code} : {url}")
+        print(f"  Status {r.status_code}")
         if r.status_code == 200:
             return BeautifulSoup(r.text, "html.parser")
         return None
@@ -65,11 +67,9 @@ def fetch(url):
 def extract_id_from_url(href):
     if not href:
         return None
-    # Cas 1 : /player/nom-123456
     m = re.search(r"/player/[^/]+-(\d+)/?$", href)
     if m:
         return m.group(1)
-    # Cas 2 : /player/slug-sans-id
     m = re.search(r"/player/([^/]+)/?$", href)
     if m:
         return m.group(1)
@@ -80,13 +80,13 @@ def extract_id_from_url(href):
 # ══════════════════════════════════════════════
 
 def scrape_club(club):
-    url = f"https://www.besoccer.com/team/squad/{club['slug']}/{club['id']}/"
+    url  = f"https://www.besoccer.com/team/squad/{club['slug']}/{club['id']}/"
     soup = fetch(url)
     if not soup:
         return []
 
-    players      = []
-    seen         = set()
+    players       = []
+    seen          = set()
     current_poste = ""
 
     for row in soup.select("tr"):
@@ -98,7 +98,6 @@ def scrape_club(club):
                 current_poste = th.get_text(strip=True)
             continue
 
-        # Ligne joueur
         if "row-body" not in row.get("class", []):
             continue
 
@@ -127,7 +126,7 @@ def scrape_club(club):
         num_td = row.select_one("td.number-box div")
         numero = num_td.get_text(strip=True) if num_td else ""
 
-        # Stats performance : MP, GS, Buts, CJ, CR
+        # Stats performance
         perf_tds  = row.select("td[data-content-tab='team_performance']")
         matchs    = int(perf_tds[0].get_text(strip=True) or 0) if len(perf_tds) > 0 else 0
         buts      = int(perf_tds[2].get_text(strip=True) or 0) if len(perf_tds) > 2 else 0
@@ -161,19 +160,25 @@ def scrape_club(club):
     return players
 
 # ══════════════════════════════════════════════
-# SAUVEGARDE SUPABASE
+# SAUVEGARDE SUPABASE — UPSERT (évite les doublons)
 # ══════════════════════════════════════════════
 
 def save_players(players):
     if not players:
         return
+
+    # UPSERT : on_conflict=besoccer_id → met à jour si déjà existant
     res = requests.post(
         SB_URL + "/rest/v1/besoccer_players",
-        headers=SB_HEADERS,
+        headers={**SB_HEADERS, "Prefer": "resolution=merge-duplicates"},
+        params={"on_conflict": "besoccer_id"},
         json=players
     )
     code = res.status_code
-    print(f"  Supabase: {code} ({'OK' if code in [200,201,204] else res.text[:200]})")
+    if code in [200, 201, 204]:
+        print(f"  Supabase: ✅ OK ({code})")
+    else:
+        print(f"  Supabase: ❌ {code} → {res.text[:200]}")
 
 # ══════════════════════════════════════════════
 # MAIN
@@ -184,6 +189,8 @@ print(datetime.now().strftime("%Y-%m-%d %H:%M:%S"))
 print(f"{len(CLUBS)} clubs\n")
 
 total = 0
+errors = 0
+
 for club in CLUBS:
     print(f"\n📋 {club['name']}")
     try:
@@ -192,9 +199,11 @@ for club in CLUBS:
             save_players(players)
             total += len(players)
         else:
-            print(f"  ⚠️  Aucun joueur")
+            print(f"  ⚠️  Aucun joueur — vérifier le slug")
+            errors += 1
     except Exception as e:
         print(f"  ❌ Erreur: {e}")
+        errors += 1
     time.sleep(3)
 
-print(f"\n=== Terminé : {total} joueurs sauvegardés ===")
+print(f"\n=== Terminé : {total} joueurs | {errors} clubs ignorés ===")
