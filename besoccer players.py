@@ -2,10 +2,12 @@
 besoccer players.py
 ===================
 Scrape joueurs + photos + stats de Ligue 1 Algérie depuis BeSoccer.
+Utilise cloudscraper pour contourner la protection anti-bot.
 Sauvegarde dans Supabase : besoccer_players
 """
 
 import os, re, time, requests
+import cloudscraper
 from bs4 import BeautifulSoup
 from datetime import datetime, timezone
 
@@ -20,21 +22,6 @@ SB_HEADERS   = {
     "Authorization": "Bearer " + SUPABASE_KEY,
     "Content-Type":  "application/json",
     "Prefer":        "resolution=merge-duplicates"
-}
-
-# Headers complets qui imitent Chrome
-HEADERS = {
-    "User-Agent":                "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/122.0.0.0 Safari/537.36",
-    "Accept":                    "text/html,application/xhtml+xml,application/xml;q=0.9,image/avif,image/webp,image/apng,*/*;q=0.8",
-    "Accept-Language":           "fr-FR,fr;q=0.9,en-US;q=0.8,en;q=0.7",
-    "Accept-Encoding":           "gzip, deflate, br",
-    "Connection":                "keep-alive",
-    "Upgrade-Insecure-Requests": "1",
-    "Sec-Fetch-Dest":            "document",
-    "Sec-Fetch-Mode":            "navigate",
-    "Sec-Fetch-Site":            "none",
-    "Sec-Fetch-User":            "?1",
-    "Cache-Control":             "max-age=0",
 }
 
 CLUBS = [
@@ -57,26 +44,16 @@ CLUBS = [
 ]
 
 # ══════════════════════════════════════════════
-# SESSION avec cookies
+# SCRAPER (contourne anti-bot comme Flashscore)
 # ══════════════════════════════════════════════
 
-session = requests.Session()
-session.headers.update(HEADERS)
-
-def init_session():
-    """Visite la page d'accueil pour obtenir les cookies."""
-    try:
-        r = session.get("https://www.besoccer.com/", timeout=15)
-        print(f"  Session init: {r.status_code}")
-        time.sleep(2)
-    except Exception as e:
-        print(f"  Erreur session init: {e}")
+scraper = cloudscraper.create_scraper(
+    browser={"browser": "chrome", "platform": "windows", "mobile": False}
+)
 
 def fetch(url):
     try:
-        # Simuler un vrai navigateur avec Referer
-        session.headers.update({"Referer": "https://www.besoccer.com/"})
-        r = session.get(url, timeout=15)
+        r = scraper.get(url, timeout=20)
         print(f"  Status {r.status_code} : {url}")
         if r.status_code == 200:
             return BeautifulSoup(r.text, "html.parser")
@@ -106,8 +83,7 @@ def scrape_club(club):
     players = []
     seen    = set()
 
-    # Chercher toutes les lignes avec un lien joueur
-    rows = soup.select("tr, li.player-item, .squad-player")
+    rows = soup.select("tr, li.player-item, .squad-player, .player-row")
 
     for row in rows:
         link = row.select_one("a[href*='/player/']")
@@ -121,9 +97,8 @@ def scrape_club(club):
         if not player_id or not nom or player_id in seen:
             continue
 
-        # Ignorer coach
         row_text = row.get_text(" ").lower()
-        if any(k in row_text for k in ["coach", "entrenador", "entraîneur", "manager"]):
+        if any(k in row_text for k in ["coach", "entrenador", "entraîneur"]):
             continue
 
         seen.add(player_id)
@@ -149,7 +124,7 @@ def scrape_club(club):
         if not re.match(r"^\d{2}$", age):
             age = ""
 
-        # Stats numériques
+        # Stats
         tds  = row.select("td")
         nums = []
         for td in tds:
@@ -157,10 +132,7 @@ def scrape_club(club):
             if re.match(r"^\d{1,4}$", t):
                 nums.append(int(t))
 
-        matchs  = 0
-        minutes = 0
-        buts    = 0
-
+        matchs = minutes = buts = 0
         for n in nums:
             if 0 < n <= 38 and matchs == 0:
                 matchs = n
@@ -207,10 +179,7 @@ def save_players(players):
 
 print("=== BeSoccer Players Scraper ===")
 print(datetime.now().strftime("%Y-%m-%d %H:%M:%S"))
-
-# Initialiser la session avec cookies
-print("\nInitialisation session...")
-init_session()
+print(f"16 clubs à scraper\n")
 
 total = 0
 for club in CLUBS:
