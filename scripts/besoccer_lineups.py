@@ -325,10 +325,42 @@ def parse_player(link):
             role_text = role_text.replace(number, "").strip()
         pos = role_text
     
-    # Buts (icône goal dans info-wrapper)
-    goals = len(link.select("img[alt='Goal']"))
-    yellow = len(link.select("img[alt*='Yellow'], img[alt*='yellow']")) > 0
-    red = len(link.select("img[alt*='Red'], img[alt*='red']")) > 0
+    # Événements depuis info-wrapper (buts, cartons, changements)
+    info_wrapper = link.select_one("div.info-wrapper")
+    goals = 0
+    goal_minutes = []
+    yellow = False
+    yellow_minute = None
+    red = False
+    red_minute = None
+    sub_out_minute = None  # minute de sortie
+
+    if info_wrapper:
+        event_divs = info_wrapper.select("div.row div")
+        for div in event_divs:
+            img = div.select_one("img.ic-bench")
+            min_el = div.select_one("p.min")
+            minute_str = min_el.get_text(strip=True) if min_el else ""
+            # Nettoyer la minute (ex: "+1", "19", "45+2")
+            try:
+                minute_val = int(minute_str.replace("+","").strip()) if minute_str else None
+            except:
+                minute_val = None
+
+            if img:
+                alt = img.get("alt","").lower()
+                src = img.get("src","").lower()
+                if "goal" in alt or "accion1" in src:
+                    goals += 1
+                    if minute_val: goal_minutes.append(minute_val)
+                elif "yellow" in alt or "tarjeta_a" in src or "event-5" in src:
+                    yellow = True
+                    yellow_minute = minute_val
+                elif "red" in alt or "tarjeta_r" in src or "event-3" in src:
+                    red = True
+                    red_minute = minute_val
+                elif "sub" in alt or "cambio" in src or "event-6" in src:
+                    sub_out_minute = minute_val
 
     # Note joueur (match-point-sm)
     note_el = link.select_one("div.match-point-sm")
@@ -340,16 +372,21 @@ def parse_player(link):
             pass
 
     return {
-        "name":    nom,
-        "id":      player_id,
-        "number":  number,
-        "pos":     pos,
-        "photo":   photo,
-        "goals":   goals,
-        "yellow":  yellow,
-        "red":     red,
-        "minutes": 90,
-        "rating":  note,
+        "name":          nom,
+        "id":            player_id,
+        "number":        number,
+        "pos":           pos,
+        "photo":         photo,
+        "goals":         goals,
+        "goal_minutes":  goal_minutes,
+        "yellow":        yellow,
+        "yellow_minute": yellow_minute,
+        "red":           red,
+        "red_minute":    red_minute,
+        "sub_out":       sub_out_minute is not None,
+        "sub_out_minute":sub_out_minute,
+        "minutes":       90,
+        "rating":        note,
     }
 
 def scrape_lineup(match):
