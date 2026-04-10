@@ -7020,14 +7020,21 @@ function MatchDetail({state,onClose,onTeam}){
           else if(posLow === "d" || posLow === "def" || posLow === "defender" || posLow === "defenders") pos = "D";
           else if(posLow === "mf" || posLow === "mid" || posLow === "midfielder" || posLow === "midfielders" || posLow === "m") pos = "M";
           else if(posLow === "f" || posLow === "att" || posLow === "forward" || posLow === "strikers" || posLow === "striker") pos = "F";
+          var subInMin = p.sub_in_minute || null;
+          // Filtrer les faux buts: si goal_minute == sub_in_minute c'est un bug scraper
+          var rawGoalMins = p.goal_minutes || [];
+          var cleanGoalMins = rawGoalMins.filter(function(m) { return m !== subInMin; });
+          var realGoals = cleanGoalMins.length;
+          // Si goals=1 mais goal_minutes vide ou filtrés → pas de but réel
+          var hasGoals = realGoals > 0;
           return {
             name:          p.name || "",
             number:        p.number || "",
             pos:           pos,
             is_gk:         pos === "G",
             is_captain:    p.captain || false,
-            goals:         p.goals || 0,
-            goal_minutes:  p.goal_minutes || [],
+            goals:         hasGoals ? realGoals : 0,
+            goal_minutes:  cleanGoalMins,
             yellow:        p.yellow || false,
             yellow_minute: p.yellow_minute || null,
             red:           p.red || false,
