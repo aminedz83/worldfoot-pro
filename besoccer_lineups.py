@@ -228,6 +228,10 @@ def get_today_matches():
             rows.append({"home_team": m["home_team"], "away_team": m["away_team"],
                          "bs_id": m.get("bs_id"), "bs_home": m.get("bs_home"), "bs_away": m.get("bs_away")})
 
+    # Construire l'index des IDs connus pour aujourd'hui
+    known_today = {f"{m['home_team']}_{m['away_team']}": m
+                   for m in KNOWN_IDS.get(today, [])}
+
     for row in rows:
         home = row.get("home_team", "")
         away = row.get("away_team", "")
@@ -241,15 +245,24 @@ def get_today_matches():
 
         print(f"\n  🔍 {home} vs {away}")
 
-        # Si on a un ID BeSoccer direct, l'utiliser
-        bs_id   = row.get("bs_id")
-        bs_home = row.get("bs_home", TEAM_SLUG.get(home, ""))
-        bs_away = row.get("bs_away", TEAM_SLUG.get(away, ""))
-
-        if bs_id and bs_home and bs_away:
+        # Priorité 1 : ID connu dans KNOWN_IDS
+        known = known_today.get(key)
+        if known and known.get("bs_id"):
+            bs_id   = known["bs_id"]
+            bs_home = known["bs_home"]
+            bs_away = known["bs_away"]
+            match_url = f"https://www.besoccer.com/match/{bs_home}/{bs_away}/{bs_id}"
+            print(f"  ✅ ID connu: {match_url}")
+            match_id = bs_id
+        # Priorité 2 : ID dans le row (depuis Supabase)
+        elif row.get("bs_id"):
+            bs_id   = row["bs_id"]
+            bs_home = row.get("bs_home", TEAM_SLUG.get(home, ""))
+            bs_away = row.get("bs_away", TEAM_SLUG.get(away, ""))
             match_url = f"https://www.besoccer.com/match/{bs_home}/{bs_away}/{bs_id}"
             print(f"  ✅ ID direct: {match_url}")
             match_id = bs_id
+        # Priorité 3 : chercher sur BeSoccer
         else:
             match_id, match_url = find_besoccer_match_id(home, away, today[:4])
 
