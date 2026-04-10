@@ -2,9 +2,7 @@
 besoccer_lineups.py
 ===================
 Scrape les compositions Ligue 1 Algérie depuis BeSoccer.
-Stratégie : cherche les matchs du jour via la page scores avec date exacte.
-URL format : /competition/scores/ligue_1_algeria/YYYY/round
-Les matchs sont dans le JSON embarqué dans la page (data-params ou script JSON-LD).
+Utilise l'endpoint AJAX réel : POST /ajax/getCompetitionRounds
 """
 
 import os, re, time, requests, json
@@ -25,26 +23,6 @@ SB_HEADERS   = {
     "Prefer":        "resolution=merge-duplicates"
 }
 
-# Mapping équipes BeSoccer → slugs pour construire les URLs de match
-TEAM_SLUGS = {
-    "MC Alger":        "mc-alger",
-    "CR Belouizdad":   "belouizdad",
-    "JS Kabylie":      "kabylie",
-    "USM Alger":       "usm-alger",
-    "ES Sétif":        "es-setif",
-    "CS Constantine":  "cs-constantine",
-    "Paradou AC":      "paradou",
-    "ASO Chlef":       "chlef",
-    "MC Oran":         "mc-oran",
-    "JS Saoura":       "js-saoura",
-    "MC El Bayadh":    "el-bayadh",
-    "USM Khenchela":   "usm-khenchela",
-    "Olympique Akbou": "oued-akbou",
-    "ES Mostaganem":   "es-mostaganem",
-    "MB Rouissat":     "mb-rouisset",
-    "ES Ben Aknoun":   "ben-aknoun",
-}
-
 # ══════════════════════════════════════════════
 # CLOUDSCRAPER
 # ══════════════════════════════════════════════
@@ -53,15 +31,56 @@ scraper = cloudscraper.create_scraper(
     browser={"browser": "chrome", "platform": "windows", "mobile": False}
 )
 
-def fetch(url):
+def fetch_html(url):
     try:
         r = scraper.get(url, timeout=20)
-        print(f"  Status {r.status_code} : {url}")
+        print(f"  GET {r.status_code} : {url}")
         if r.status_code == 200:
-            return r
+            return BeautifulSoup(r.text, "html.parser")
         return None
     except Exception as e:
         print(f"  Erreur: {e}")
+        return None
+
+def post_ajax(data_params, round_num=None):
+    """
+    Appelle POST /ajax/getCompetitionRounds comme le fait le JS de BeSoccer.
+    data_params = le contenu de data-params du div#data_params
+    """
+    req = dict(data_params)
+    if round_num:
+        req["round"] = str(round_num)
+
+    payload = {
+        "dataInfo":     json.dumps(req),
+        "offsetName":   "Africa/Algiers",
+        "onchange":     "false",
+        "isCompetition": "1"
+    }
+
+    headers = {
+        "User-Agent":   "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36",
+        "Accept":       "application/json, text/javascript, */*; q=0.01",
+        "Content-Type": "application/x-www-form-urlencoded; charset=UTF-8",
+        "X-Requested-With": "XMLHttpRequest",
+        "Referer":      "https://www.besoccer.com/competition/scores/ligue_1_algeria/2026",
+        "Origin":       "https://www.besoccer.com",
+    }
+
+    try:
+        r = scraper.post(
+            "https://www.besoccer.com/ajax/getCompetitionRounds",
+            data=payload,
+            headers=headers,
+            timeout=20
+        )
+        print(f"  AJAX POST {r.status_code}")
+        if r.status_code == 200:
+            result = json.loads(r.text)
+            return result.get("html", "")
+        return None
+    except Exception as e:
+        print(f"  Erreur AJAX: {e}")
         return None
 
 def extract_player_id(href):
@@ -83,107 +102,62 @@ def extract_match_id(href):
 # MATCHS DU JOUR
 # ══════════════════════════════════════════════
 
+def get_data_params():
+    """Récupère les data-params depuis la page de la compétition."""
+    soup = fetch_html("https://www.besoccer.com/competition/ligue_1_algeria")
+    if not soup:
+        return None
+    div = soup.select_one("#data_params")
+    if not div:
+        return None
+    try:
+        params = json.loads(div.get("data-params", "{}"))
+        return params.get("req", {})
+    except:
+        return None
+
 def get_today_matches():
-    """
-    Cherche les matchs du jour en scannant les pages de rounds BeSoccer.
-    BeSoccer charge les matchs via JS, mais les URLs des matchs sont dans
-    les liens <a href="/match/..."> présents dans le HTML des pages de round.
-    On cherche aussi dans les balises JSON-LD et data attributes.
-    """
     today     = date.today().strftime("%Y-%m-%d")
-    today_fmt = [
-        date.today().strftime("%d/%m/%Y"),
-        date.today().strftime("%d/%m/%y"),
-        date.today().strftime("%-d %b. %Y"),    # "10 Apr. 2026"
-        date.today().strftime("%d %b. %Y"),     # "10 Apr. 2026"
-        date.today().strftime("%B %-d, %Y"),    # "April 10, 2026"
-        date.today().strftime("%Y-%m-%d"),
-    ]
-    matches = []
-    seen    = set()
+    today_apr = date.today().strftime("%-d %b. %Y")   # "10 Apr. 2026"
+    today_dmy = date.today().strftime("%d/%m/%Y")
+    matches   = []
+    seen      = set()
 
     print(f"\nRecherche matchs du {today}...")
 
-    # Récupérer le round actuel depuis la page principale
-    r = fetch("https://www.besoccer.com/competition/ligue_1_algeria")
-    current_round = "26"
-    if r:
-        soup = BeautifulSoup(r.text, "html.parser")
-        data_div = soup.select_one("#data_params")
-        if data_div:
-            try:
-                params = json.loads(data_div.get("data-params", "{}"))
-                current_round = str(params.get("req", {}).get("round", "26"))
-            except:
-                pass
-        m = re.search(r"round[\"'\s:]+(\d+)", r.text, re.IGNORECASE)
-        if m:
-            current_round = m.group(1)
+    # Récupérer les data-params
+    data_params = get_data_params()
+    if not data_params:
+        print("  ❌ Impossible de récupérer data-params")
+        return []
+
+    current_round = int(data_params.get("round", 26))
     print(f"  Round actuel: {current_round}")
 
-    # Scanner les rounds autour du round actuel
-    try:
-        base = int(current_round)
-        rounds = [base, base-1, base+1]
-    except:
-        rounds = [26, 25, 27]
-
-    for round_num in rounds:
-        url = f"https://www.besoccer.com/competition/scores/ligue_1_algeria/2026/{round_num}"
-        r = fetch(url)
-        if not r:
-            time.sleep(1)
+    # Essayer round actuel + voisins
+    for round_num in [current_round, current_round - 1, current_round + 1]:
+        print(f"  Essai round {round_num}...")
+        html = post_ajax(data_params, round_num)
+        if not html:
             continue
 
-        text = r.text
+        soup = BeautifulSoup(html, "html.parser")
 
-        # Chercher les matchs dans le JSON-LD
-        for script in re.findall(r'<script[^>]*type="application/ld\+json"[^>]*>(.*?)</script>', text, re.DOTALL):
-            try:
-                data = json.loads(script)
-                events = data if isinstance(data, list) else [data]
-                for ev in events:
-                    if ev.get("@type") in ["SportsEvent", "Event"]:
-                        start = ev.get("startDate", "")
-                        if today in str(start):
-                            url_ev = ev.get("url", "")
-                            match_id = extract_match_id(url_ev)
-                            if match_id and match_id not in seen:
-                                seen.add(match_id)
-                                home = ev.get("homeTeam", {}).get("name", "")
-                                away = ev.get("awayTeam", {}).get("name", "")
-                                if not home and isinstance(ev.get("competitor"), list):
-                                    teams = ev["competitor"]
-                                    home = teams[0].get("name", "") if teams else ""
-                                    away = teams[1].get("name", "") if len(teams) > 1 else ""
-                                matches.append({
-                                    "match_id":  match_id,
-                                    "url":       "https://www.besoccer.com" + url_ev if url_ev.startswith("/") else url_ev,
-                                    "home_team": home,
-                                    "away_team": away,
-                                    "date":      today
-                                })
-                                print(f"  ✅ JSON-LD: {home} vs {away} | id={match_id}")
-            except:
-                pass
-
-        # Chercher les matchs dans les liens /match/ avec vérification de date
-        soup = BeautifulSoup(text, "html.parser")
-        for a in soup.select("a.match-link, a[href*='/match/']"):
-            href = a.get("href", "")
+        # Chercher les liens de matchs avec leur date
+        for a in soup.select("a[href*='/match/']"):
+            href     = a.get("href", "")
             match_id = extract_match_id(href)
             if not match_id or match_id in seen:
                 continue
 
             # Vérifier la date dans le parent
-            parent = a.find_parent(["tr", "li", "div", "article"])
-            row_text = parent.get_text(" ") if parent else ""
-
-            # Chercher ".date" dans le parent
-            date_el = parent.select_one(".date, time, [class*='date']") if parent else None
+            parent    = a.find_parent(["tr", "li", "div", "article"])
+            row_text  = parent.get_text(" ") if parent else ""
+            date_el   = parent.select_one(".date, time, [class*='date']") if parent else None
             date_text = date_el.get_text(strip=True) if date_el else ""
 
-            is_today = any(d in row_text or d in date_text for d in today_fmt)
+            is_today = any(d in row_text or d in date_text
+                          for d in [today, today_apr, today_dmy])
 
             if not is_today:
                 continue
@@ -192,8 +166,8 @@ def get_today_matches():
             match_url = "https://www.besoccer.com" + href if href.startswith("/") else href
 
             # Noms équipes
-            home_el = parent.select_one(".team-name.ta-r, .local .team-name, .team-info.ta-r .team-name") if parent else None
-            away_el = parent.select_one(".team-name.ta-l, .visitor .team-name, .team-info:not(.ta-r) .team-name") if parent else None
+            home_el = parent.select_one(".team-name.ta-r, .local .team-name") if parent else None
+            away_el = parent.select_one(".team-name.ta-l, .visitor .team-name") if parent else None
 
             matches.append({
                 "match_id":  match_id,
@@ -202,51 +176,9 @@ def get_today_matches():
                 "away_team": away_el.get_text(strip=True) if away_el else "",
                 "date":      today
             })
-            print(f"  ✅ HTML: {match_id}")
+            print(f"  ✅ Match trouvé: {match_id} | {match_url}")
 
         time.sleep(1)
-
-    # ── Fallback : construire les URLs depuis Supabase algeria_lineups ──────
-    # Si on n'a toujours rien, chercher les matchs du jour dans algeria_lineups
-    # et construire les URLs BeSoccer à partir des noms d'équipes
-    if not matches:
-        print("  Fallback : cherche matchs dans algeria_lineups (Flashscore)...")
-        try:
-            r2 = requests.get(
-                SB_URL + f"/rest/v1/algeria_lineups?match_date=eq.{today}&select=home_team,away_team,soccerway_mid",
-                headers={**SB_HEADERS, "Prefer": ""}
-            )
-            rows = r2.json() if r2.status_code == 200 else []
-            for row in rows:
-                home = row.get("home_team", "")
-                away = row.get("away_team", "")
-                home_slug = TEAM_SLUGS.get(home, home.lower().replace(" ", "-"))
-                away_slug = TEAM_SLUGS.get(away, away.lower().replace(" ", "-"))
-                # URL format BeSoccer : /match/home-away/
-                # On ne connaît pas l'ID mais on peut essayer de le chercher
-                search_url = f"https://www.besoccer.com/match/{home_slug}/{away_slug}/"
-                print(f"  🔍 Essai URL: {search_url}")
-                r3 = fetch(search_url)
-                if r3 and r3.status_code == 200:
-                    match_id = extract_match_id(r3.url)
-                    if not match_id:
-                        # Chercher l'ID dans l'URL finale (après redirect)
-                        m = re.search(r"/match/[^/]+/[^/]+/(\d+)/?", r3.url)
-                        if m:
-                            match_id = m.group(1)
-                    if match_id and match_id not in seen:
-                        seen.add(match_id)
-                        matches.append({
-                            "match_id":  match_id,
-                            "url":       r3.url,
-                            "home_team": home,
-                            "away_team": away,
-                            "date":      today
-                        })
-                        print(f"  ✅ Fallback: {home} vs {away} | id={match_id}")
-                time.sleep(1)
-        except Exception as e:
-            print(f"  Erreur fallback: {e}")
 
     return matches
 
@@ -279,12 +211,9 @@ def is_official(soup):
 # ══════════════════════════════════════════════
 
 def scrape_lineup(match):
-    if not match.get("url"):
+    soup = fetch_html(match["url"])
+    if not soup:
         return None
-    r = fetch(match["url"])
-    if not r:
-        return None
-    soup = BeautifulSoup(r.text, "html.parser")
 
     if not is_official(soup):
         print(f"  ⏳ Compos pas encore officielles")
@@ -311,7 +240,9 @@ def scrape_lineup(match):
     if len(formations) >= 2: result["away_formation"] = formations[1]
 
     # Sections équipes
-    team_sections = soup.select(".lineup-team, [class*='lineup-team'], .match-lineup .team, .alineacion .equipo")
+    team_sections = soup.select(
+        ".lineup-team, [class*='lineup-team'], .match-lineup .team, .alineacion .equipo"
+    )
 
     for idx, section in enumerate(team_sections[:2]):
         key_pl  = "home_players" if idx == 0 else "away_players"
