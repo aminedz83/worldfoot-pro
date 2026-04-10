@@ -408,8 +408,8 @@ def parse_player(link):
 
 def scrape_events(base_url):
     """
-    Scrape la page /events pour récupérer les minutes de changement.
-    Retourne dict: {nom_joueur_entrant: minute_entree, ...}
+    Lit la page /events BeSoccer pour extraire les minutes de changement.
+    Retourne dict: {nom_joueur_entrant: minute_entree}
     """
     url = base_url.rstrip("/").replace("/lineups","") + "/events"
     r = fetch(url)
@@ -417,32 +417,69 @@ def scrape_events(base_url):
         return {}
     soup = BeautifulSoup(r.text, "html.parser")
     sub_in_minutes = {}
-    # Structure BeSoccer events: div.table-played-match contient les événements
-    # Chaque changement : img alt="sub" ou src cambio + noms des joueurs
-    for row in soup.select("div.table-played-match, div.match-event"):
-        imgs = row.select("img.ic-bench, img[src*='cambio'], img[alt*='sub'], img[alt*='cambio']")
-        for img in imgs:
-            src = img.get("src","").lower()
-            alt = img.get("alt","").lower()
-            if "cambio" in src or "sub" in alt or "cambio" in alt:
-                # Trouver la minute
-                min_el = row.select_one("p.min, span.min, .event-minute")
-                minute_str = min_el.get_text(strip=True) if min_el else ""
-                try:
-                    clean = minute_str.replace("'","").strip()
-                    if "+" in clean:
-                        parts = clean.split("+")
-                        minute = int(parts[0]) + (int(parts[1]) if len(parts)>1 and parts[1] else 0)
-                    else:
-                        minute = int(clean) if clean else None
-                except:
-                    minute = None
-                # Joueur entrant : généralement le 2e nom dans le bloc
-                names = [a.get_text(strip=True) for a in row.select("a[href*='/player/']")]
-                if len(names) >= 2 and minute:
-                    sub_in_minutes[names[1]] = minute  # joueur entrant
-                elif len(names) == 1 and minute:
-                    sub_in_minutes[names[0]] = minute
+
+    # Sur la page /events, les changements sont dans des blocs avec 2 joueurs
+    # Structure typique BeSoccer events:
+    # <div class="table-played-match"> ou <div class="event-row">
+    #   <p class="min">65'</p>
+    #   <img class="ic-bench" alt="Sub" src=".../accion6.png"> (sortant)
+    #   <img class="ic-bench" alt="Sub" src=".../accion7.png"> (entrant)
+    #   <a href="/player/...">Joueur sortant</a>
+    #   <a href="/player/...">Joueur entrant</a>
+    # OU structure avec 2 colonnes (local/visitor)
+
+    # Essai 1 : structure div.table-played-match
+    for row in soup.select("div.table-played-match"):
+        # Chercher img cambio (accion6=sortant, accion7=entrant)
+        imgs = row.select("img.ic-bench")
+        is_sub = any(
+            "cambio" in (img.get("src","").lower()) or
+            "accion6" in (img.get("src","").lower()) or
+            "accion7" in (img.get("src","").lower()) or
+            "sub" in (img.get("alt","").lower())
+            for img in imgs
+        )
+        if not is_sub:
+            continue
+
+        min_el = row.select_one("p.min")
+        minute_str = min_el.get_text(strip=True) if min_el else ""
+        try:
+            clean = minute_str.replace("'","").strip()
+            if "+" in clean:
+                parts = clean.split("+")
+                minute = int(parts[0]) + (int(parts[1]) if len(parts)>1 and parts[1] else 0)
+            else:
+                minute = int(clean) if clean else None
+        except:
+            minute = None
+
+        players_in_row = [a.get_text(strip=True) for a in row.select("a[href*='/player/']")]
+        # Le joueur entrant est le 2e (index 1) dans la structure BeSoccer
+        if len(players_in_row) >= 2 and minute:
+            sub_in_minutes[players_in_row[1]] = minute
+        elif len(players_in_row) == 1 and minute:
+            sub_in_minutes[players_in_row[0]] = minute
+
+    if sub_in_minutes:
+        return sub_in_minutes
+
+    # Essai 2 : chercher tous les blocs contenant "cambio" ou "accion7"
+    for img in soup.select("img[src*='accion7'], img[src*='cambio'], img[alt*='Sub in']"):
+        container = img.find_parent("div")
+        if not container:
+            continue
+        min_el = container.select_one("p.min") or container.find_previous("p", class_="min")
+        minute_str = min_el.get_text(strip=True) if min_el else ""
+        try:
+            clean = minute_str.replace("'","").strip()
+            minute = int(clean.replace("+","")) if clean else None
+        except:
+            minute = None
+        player_link = container.select_one("a[href*='/player/']")
+        if player_link and minute:
+            sub_in_minutes[player_link.get_text(strip=True)] = minute
+
     return sub_in_minutes
 
 
@@ -505,6 +542,15 @@ def scrape_lineup(match):
         p = parse_player(link)
         if p:
             sub_min = sub_in_minutes.get(p["name"])
+            # Fallback: chercher par nom court (ex: "A. Mammeri" vs "Ahmed Mammeri")
+            if not sub_min:
+                for key, val in sub_in_minutes.items():
+                    if p["name"] and key and (
+                        p["name"].split(".")[-1].strip().lower() in key.lower() or
+                        key.split(".")[-1].strip().lower() in p["name"].lower()
+                    ):
+                        sub_min = val
+                        break
             p["minutes"] = sub_min if sub_min else 0
             p["sub_in_minute"] = sub_min
             result["home_subs"].append(p)
@@ -513,6 +559,14 @@ def scrape_lineup(match):
         p = parse_player(link)
         if p:
             sub_min = sub_in_minutes.get(p["name"])
+            if not sub_min:
+                for key, val in sub_in_minutes.items():
+                    if p["name"] and key and (
+                        p["name"].split(".")[-1].strip().lower() in key.lower() or
+                        key.split(".")[-1].strip().lower() in p["name"].lower()
+                    ):
+                        sub_min = val
+                        break
             p["minutes"] = sub_min if sub_min else 0
             p["sub_in_minute"] = sub_min
             result["away_subs"].append(p)
