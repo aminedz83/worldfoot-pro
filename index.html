@@ -13374,7 +13374,7 @@ function TeamPage({ teamId, teamName, teamLogo, leagueId, season, onClose, onTea
             };
             var bsClub = bsTeamMap[teamId];
             if(bsClub) {
-              var bsUrl2 = "https://iqeqlsxjiklygywjirqs.supabase.co/rest/v1/besoccer_players?club=eq." + encodeURIComponent(bsClub) + "&select=besoccer_id,nom,url_photo";
+              var bsUrl2 = "https://iqeqlsxjiklygywjirqs.supabase.co/rest/v1/besoccer_players?club=eq." + encodeURIComponent(bsClub) + "&select=besoccer_id,nom,url_photo,numero";
               fetch(bsUrl2, { headers: { "apikey": SB_KEY, "Authorization": "Bearer "+SB_KEY } })
               .then(function(r2) { return r2.json(); })
               .then(function(bsPlayers) {
@@ -13385,19 +13385,39 @@ function TeamPage({ teamId, teamName, teamLogo, leagueId, season, onClose, onTea
                     .replace(/[ôõ]/g,"o").replace(/[ùûü]/g,"u").replace(/ç/g,"c")
                     .replace(/ñ/g,"n").replace(/['']/g,"").replace(/\s+/g,"");
                 };
+                // Index BeSoccer par numéro de maillot
+                var bsByNumber = {};
+                bsPlayers.forEach(function(bp) {
+                  if(bp.numero) bsByNumber[String(bp.numero)] = bp;
+                });
+
                 var enriched2 = enriched.map(function(p) {
-                  var pNorm = normBS(p.name);
-                  var found = bsPlayers.find(function(bp) {
-                    var bNorm = normBS(bp.nom);
-                    if(pNorm === bNorm) return true;
-                    if(pNorm.length >= 5 && bNorm.includes(pNorm)) return true;
-                    if(bNorm.length >= 5 && pNorm.includes(bNorm)) return true;
-                    // Dernier mot (nom de famille)
-                    var pLast = pNorm.slice(-5);
-                    var bLast = bNorm.slice(-5);
-                    if(pLast.length >= 4 && pLast === bLast) return true;
-                    return false;
-                  });
+                  var found = null;
+
+                  // 1. Match par numéro de maillot (le plus fiable)
+                  if(p.number && bsByNumber[String(p.number)]) {
+                    found = bsByNumber[String(p.number)];
+                  }
+
+                  // 2. Match par nom normalisé
+                  if(!found) {
+                    var pNorm = normBS(p.name);
+                    // Extraire initiale prénom + nom de famille depuis "B. Benchaa"
+                    found = bsPlayers.find(function(bp) {
+                      var bNorm = normBS(bp.nom);
+                      if(pNorm === bNorm) return true;
+                      if(pNorm.length >= 5 && bNorm.includes(pNorm)) return true;
+                      if(bNorm.length >= 5 && pNorm.includes(bNorm)) return true;
+                      // Nom de famille (dernier mot)
+                      var pWords = (p.name||"").split(" ");
+                      var pLast = normBS(pWords[pWords.length-1]);
+                      var bWords = (bp.nom||"").split(" ");
+                      var bLast = normBS(bWords[bWords.length-1]);
+                      if(pLast.length >= 4 && pLast === bLast) return true;
+                      return false;
+                    });
+                  }
+
                   if(found && found.url_photo) {
                     return Object.assign({}, p, { photo: found.url_photo });
                   }
