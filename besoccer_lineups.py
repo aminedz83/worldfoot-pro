@@ -167,12 +167,8 @@ def get_today_matches():
         print(f"  Erreur Supabase: {e}")
         rows = []
 
-    # Si pas de données dans algeria_lineups, utiliser les IDs BeSoccer connus
-    # IDs découverts manuellement depuis les pages de match BeSoccer
-    if not rows:
-        print("  Utilisation IDs BeSoccer connus...")
-        today = date.today().strftime("%Y-%m-%d")
-        KNOWN_IDS = {
+    # IDs BeSoccer connus pour chaque journée
+    KNOWN_IDS = {
             "2026-04-10": [
                 {"home_team": "ES Ben Aknoun",   "away_team": "ASO Chlef",       "bs_id": "2026264208", "bs_home": "ben-aknoun",    "bs_away": "chlef"},
                 {"home_team": "ES Mostaganem",   "away_team": "USM Khenchela",   "bs_id": "2026264210", "bs_home": "es-mostaganem", "bs_away": "usm-khenchela"},
@@ -223,8 +219,11 @@ def get_today_matches():
                 {"home_team": "Olympique Akbou", "away_team": "ES Ben Aknoun",   "bs_id": "2026264439", "bs_home": "oued-akbou",    "bs_away": "ben-aknoun"},
             ],
         }
-        day_matches = KNOWN_IDS.get(today, [])
-        for m in day_matches:
+
+    if not rows:
+        print("  Utilisation IDs BeSoccer connus...")
+        today_matches = KNOWN_IDS.get(today, [])
+        for m in today_matches:
             rows.append({"home_team": m["home_team"], "away_team": m["away_team"],
                          "bs_id": m.get("bs_id"), "bs_home": m.get("bs_home"), "bs_away": m.get("bs_away")})
 
