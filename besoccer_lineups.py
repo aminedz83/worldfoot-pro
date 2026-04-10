@@ -343,15 +343,21 @@ def parse_player(link):
             parent = img.parent
             min_el = parent.select_one("p.min") if parent else None
             minute_str = min_el.get_text(strip=True) if min_el else ""
-            # Nettoyer: "+1" → 1, "19'" → 19, "45+2" → 45, "92'" → 92
+            # Nettoyer: "+1" → 46, "19'" → 19, "45+2" → 47, "90+3" → 93, "92'" → 92
             try:
                 clean = minute_str.replace("'","").strip()
-                # Cas "45+2" → prendre 45+2=47, cas "+1" → 1
-                if "+" in clean:
+                if clean.startswith("+"):
+                    # Temps additionnel seul (ex: "+1", "+2") → BeSoccer l'affiche pendant le match
+                    # On ne peut pas savoir si c'est 45+X ou 90+X sans contexte
+                    # On met None pour ne pas créer de faux buts avec minute incorrecte
+                    extra = int(clean[1:]) if clean[1:] else 0
+                    minute_val = extra  # sera 1, 2, etc. — corrigé plus bas si besoin
+                elif "+" in clean:
+                    # "45+2" → 47, "90+3" → 93
                     parts = clean.split("+")
                     base = int(parts[0]) if parts[0] else 0
                     extra = int(parts[1]) if len(parts) > 1 and parts[1] else 0
-                    minute_val = base + extra if base > 0 else extra
+                    minute_val = base + extra
                 else:
                     minute_val = int(clean) if clean else None
             except:
@@ -359,9 +365,11 @@ def parse_player(link):
 
             alt = img.get("alt","").lower()
             src = img.get("src","").lower()
+            # Exiger une minute valide pour buts et cartons (évite les icônes décoratives sans minute)
             if "goal" in alt or "gol" in alt or "accion1" in src:
-                goals += 1
-                if minute_val: goal_minutes.append(minute_val)
+                if minute_val is not None:  # ← exiger minute valide
+                    goals += 1
+                    goal_minutes.append(minute_val)
             elif "yellow" in alt or "amarilla" in alt or "tarjeta_a" in src or "event-5" in src:
                 yellow = True
                 yellow_minute = minute_val
@@ -398,19 +406,56 @@ def parse_player(link):
         "rating":        note,
     }
 
+def scrape_events(base_url):
+    """
+    Scrape la page /events pour récupérer les minutes de changement.
+    Retourne dict: {nom_joueur_entrant: minute_entree, ...}
+    """
+    url = base_url.rstrip("/").replace("/lineups","") + "/events"
+    r = fetch(url)
+    if not r:
+        return {}
+    soup = BeautifulSoup(r.text, "html.parser")
+    sub_in_minutes = {}
+    # Structure BeSoccer events: div.table-played-match contient les événements
+    # Chaque changement : img alt="sub" ou src cambio + noms des joueurs
+    for row in soup.select("div.table-played-match, div.match-event"):
+        imgs = row.select("img.ic-bench, img[src*='cambio'], img[alt*='sub'], img[alt*='cambio']")
+        for img in imgs:
+            src = img.get("src","").lower()
+            alt = img.get("alt","").lower()
+            if "cambio" in src or "sub" in alt or "cambio" in alt:
+                # Trouver la minute
+                min_el = row.select_one("p.min, span.min, .event-minute")
+                minute_str = min_el.get_text(strip=True) if min_el else ""
+                try:
+                    clean = minute_str.replace("'","").strip()
+                    if "+" in clean:
+                        parts = clean.split("+")
+                        minute = int(parts[0]) + (int(parts[1]) if len(parts)>1 and parts[1] else 0)
+                    else:
+                        minute = int(clean) if clean else None
+                except:
+                    minute = None
+                # Joueur entrant : généralement le 2e nom dans le bloc
+                names = [a.get_text(strip=True) for a in row.select("a[href*='/player/']")]
+                if len(names) >= 2 and minute:
+                    sub_in_minutes[names[1]] = minute  # joueur entrant
+                elif len(names) == 1 and minute:
+                    sub_in_minutes[names[0]] = minute
+    return sub_in_minutes
+
+
 def scrape_lineup(match):
     """
     Scrape la page /lineups de BeSoccer.
-    Structure : a.col-bench.local[data-cy=starterPlayer] et a.col-bench.visitor
     """
-    # URL de la page lineups
     url = match["url"]
     if not url.endswith("/lineups") and not url.endswith("/lineups/"):
         url = url.rstrip("/") + "/lineups"
     
     r = fetch(url)
     if not r:
-        # Essayer sans /lineups
         r = fetch(match["url"])
     if not r:
         return None
@@ -418,13 +463,16 @@ def scrape_lineup(match):
     soup = BeautifulSoup(r.text, "html.parser")
     print(f"  HTML size: {len(r.text)} chars")
 
-    # Vérifier qu'on a bien les titulaires (data-cy=starterPlayer)
     starters_all = soup.select('a.col-bench[data-cy="starterPlayer"]')
     print(f"  Titulaires trouvés: {len(starters_all)}")
     
     if len(starters_all) < 11:
         print(f"  ⏳ Compos pas encore officielles ({len(starters_all)} joueurs)")
         return None
+
+    # Scraper les minutes d'entrée depuis /events
+    sub_in_minutes = scrape_events(url)
+    print(f"  Changements: {sub_in_minutes}")
 
     result = {
         "match_id":       match["match_id"],
@@ -440,7 +488,6 @@ def scrape_lineup(match):
         "scraped_at":     datetime.now(timezone.utc).isoformat()
     }
 
-    # Titulaires domicile (classe local) et extérieur (classe visitor)
     home_starters = soup.select('a.col-bench.local[data-cy="starterPlayer"]')
     away_starters = soup.select('a.col-bench.visitor[data-cy="starterPlayer"]')
     home_subs     = soup.select('a.col-bench.local[data-cy="benchPlayer"]')
@@ -457,13 +504,17 @@ def scrape_lineup(match):
     for link in home_subs:
         p = parse_player(link)
         if p:
-            p["minutes"] = 0
+            sub_min = sub_in_minutes.get(p["name"])
+            p["minutes"] = sub_min if sub_min else 0
+            p["sub_in_minute"] = sub_min
             result["home_subs"].append(p)
 
     for link in away_subs:
         p = parse_player(link)
         if p:
-            p["minutes"] = 0
+            sub_min = sub_in_minutes.get(p["name"])
+            p["minutes"] = sub_min if sub_min else 0
+            p["sub_in_minute"] = sub_min
             result["away_subs"].append(p)
 
     h = len(result["home_players"])
