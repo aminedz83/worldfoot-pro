@@ -1,0 +1,25 @@
+name: BeSoccer Players Sync
+
+on:
+  schedule:
+    - cron: '0 3 * * 1'  # Chaque lundi à 3h UTC
+  workflow_dispatch:      # Lancement manuel possible
+
+jobs:
+  sync:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v3
+
+      - name: Setup Python
+        uses: actions/setup-python@v4
+        with:
+          python-version: '3.11'
+
+      - name: Install dependencies
+        run: pip install requests beautifulsoup4
+
+      - name: Run scraper
+        env:
+          SUPABASE_KEY: ${{ secrets.SUPABASE_KEY }}
+        run: python3 scripts/besoccer_players.py
