@@ -6969,7 +6969,7 @@ function MatchDetail({state,onClose,onTeam}){
         // Convertir format BeSoccer → format attendu par la PWA
         // BeSoccer: {name, id, number, pos, photo, goals, yellow, red, minutes}
         // PWA attend: {name, number, pos, is_gk, goals, yellow, red, minutes, photo}
-        var convertBS = function(p) {
+        var convertBS = function(p, isSub) {
           // Convertir positions BeSoccer → format PWA (G/D/M/F/A)
           var rawPos = (p.pos || "").trim();
           var pos = rawPos;
@@ -6987,17 +6987,17 @@ function MatchDetail({state,onClose,onTeam}){
             goals:      p.goals || 0,
             yellow:     p.yellow || false,
             red:        p.red || false,
-            minutes:    p.minutes || 90,
+            minutes:    isSub ? (p.minutes && p.minutes < 90 ? p.minutes : 0) : (p.minutes || 90),
             photo:      p.photo || "",
             id:         p.id || "",
             rating:     p.rating || null
           };
         };
 
-        var hpConv  = hp.map(convertBS);
-        var apConv  = ap.map(convertBS);
-        var hsConv  = hs.map(convertBS);
-        var asConv  = as_.map(convertBS);
+        var hpConv  = hp.map(function(p)  { return convertBS(p, false); });
+        var apConv  = ap.map(function(p)  { return convertBS(p, false); });
+        var hsConv  = hs.map(function(p)  { return convertBS(p, true);  });
+        var asConv  = as_.map(function(p) { return convertBS(p, true);  });
 
         // Enrichir avec photos depuis besoccer_players
         Promise.all([
