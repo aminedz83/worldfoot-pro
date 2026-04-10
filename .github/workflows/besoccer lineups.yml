@@ -2,7 +2,7 @@ name: BeSoccer Lineups Scraper
 
 on:
   schedule:
-    - cron: '*/5 8-20 * * *'  # Toutes les 5 min entre 9h-21h Algérie
+    - cron: '*/5 8-20 * * *'
   workflow_dispatch:
 
 jobs:
@@ -22,9 +22,4 @@ jobs:
       - name: Run scraper
         env:
           SUPABASE_KEY: ${{ secrets.SUPABASE_KEY }}
-        run: |
-          if [ -f scripts/besoccer_lineups.py ]; then
-            python3 scripts/besoccer_lineups.py
-          else
-            python3 besoccer_lineups.py
-          fi
+        run: python3 besoccer_lineups.py
