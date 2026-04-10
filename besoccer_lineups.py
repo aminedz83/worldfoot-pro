@@ -167,14 +167,26 @@ def get_today_matches():
         print(f"  Erreur Supabase: {e}")
         rows = []
 
-    # Si pas de données dans algeria_lineups, utiliser la liste connue
+    # Si pas de données dans algeria_lineups, utiliser les IDs BeSoccer connus
+    # IDs découverts manuellement depuis les pages de match BeSoccer
     if not rows:
-        print("  Utilisation liste matchs connus...")
-        rows = [
-            {"home_team": "ES Ben Aknoun", "away_team": "ASO Chlef"},
-            {"home_team": "ES Mostaganem", "away_team": "USM Khenchela"},
-            {"home_team": "JS Kabylie",    "away_team": "CS Constantine"},
-        ]
+        print("  Utilisation IDs BeSoccer connus...")
+        today = date.today().strftime("%Y-%m-%d")
+        KNOWN_IDS = {
+            "2026-04-10": [
+                {"home_team": "ES Ben Aknoun",   "away_team": "ASO Chlef",       "bs_id": "2026264208", "bs_home": "ben-aknoun", "bs_away": "chlef"},
+                {"home_team": "ES Mostaganem",   "away_team": "USM Khenchela",   "bs_id": "2026264209", "bs_home": "es-mostaganem", "bs_away": "usm-khenchela"},
+                {"home_team": "JS Kabylie",      "away_team": "CS Constantine",  "bs_id": "2026264210", "bs_home": "kabylie", "bs_away": "cs-constantine"},
+            ],
+            "2026-04-11": [
+                {"home_team": "Olympique Akbou", "away_team": "ES Setif",        "bs_id": None, "bs_home": "oued-akbou", "bs_away": "es-setif"},
+                {"home_team": "Paradou AC",      "away_team": "JS Saoura",       "bs_id": None, "bs_home": "paradou", "bs_away": "js-saoura"},
+            ],
+        }
+        day_matches = KNOWN_IDS.get(today, [])
+        for m in day_matches:
+            rows.append({"home_team": m["home_team"], "away_team": m["away_team"],
+                         "bs_id": m.get("bs_id"), "bs_home": m.get("bs_home"), "bs_away": m.get("bs_away")})
 
     for row in rows:
         home = row.get("home_team", "")
@@ -187,8 +199,19 @@ def get_today_matches():
             continue
         seen.add(key)
 
-        print(f"\n  🔍 Recherche BeSoccer: {home} vs {away}")
-        match_id, match_url = find_besoccer_match_id(home, away, today[:4])
+        print(f"\n  🔍 {home} vs {away}")
+
+        # Si on a un ID BeSoccer direct, l'utiliser
+        bs_id   = row.get("bs_id")
+        bs_home = row.get("bs_home", TEAM_SLUG.get(home, ""))
+        bs_away = row.get("bs_away", TEAM_SLUG.get(away, ""))
+
+        if bs_id and bs_home and bs_away:
+            match_url = f"https://www.besoccer.com/match/{bs_home}/{bs_away}/{bs_id}"
+            print(f"  ✅ ID direct: {match_url}")
+            match_id = bs_id
+        else:
+            match_id, match_url = find_besoccer_match_id(home, away, today[:4])
 
         if match_id:
             matches.append({
@@ -201,7 +224,7 @@ def get_today_matches():
         else:
             print(f"  ⚠️  Match BeSoccer non trouvé pour {home} vs {away}")
 
-        time.sleep(2)
+        time.sleep(1)
 
     return matches
 
