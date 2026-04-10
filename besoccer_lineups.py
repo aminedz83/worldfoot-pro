@@ -408,77 +408,51 @@ def parse_player(link):
 
 def scrape_events(base_url):
     """
-    Lit la page /events BeSoccer pour extraire les minutes de changement.
-    Retourne dict: {nom_joueur_entrant: minute_entree}
+    Scrape la page /events BeSoccer pour extraire les minutes d'entrée des remplaçants.
+    Structure réelle:
+      div.table-played-match.all-events
+        div.col-mid-rows > div.min  → "83'"
+        img[alt="Substitution"]
+        a[data-cy="eventOrd"]       → joueur ENTRANT
+        a[data-cy="event"]          → joueur SORTANT
+    Retourne dict: {nom_entrant: minute}
     """
     url = base_url.rstrip("/").replace("/lineups","") + "/events"
     r = fetch(url)
     if not r:
         return {}
+
     soup = BeautifulSoup(r.text, "html.parser")
     sub_in_minutes = {}
 
-    # Sur la page /events, les changements sont dans des blocs avec 2 joueurs
-    # Structure typique BeSoccer events:
-    # <div class="table-played-match"> ou <div class="event-row">
-    #   <p class="min">65'</p>
-    #   <img class="ic-bench" alt="Sub" src=".../accion6.png"> (sortant)
-    #   <img class="ic-bench" alt="Sub" src=".../accion7.png"> (entrant)
-    #   <a href="/player/...">Joueur sortant</a>
-    #   <a href="/player/...">Joueur entrant</a>
-    # OU structure avec 2 colonnes (local/visitor)
-
-    # Essai 1 : structure div.table-played-match
-    for row in soup.select("div.table-played-match"):
-        # Chercher img cambio (accion6=sortant, accion7=entrant)
-        imgs = row.select("img.ic-bench")
-        is_sub = any(
-            "cambio" in (img.get("src","").lower()) or
-            "accion6" in (img.get("src","").lower()) or
-            "accion7" in (img.get("src","").lower()) or
-            "sub" in (img.get("alt","").lower())
-            for img in imgs
-        )
-        if not is_sub:
+    for row in soup.select("div.table-played-match.all-events"):
+        # Vérifier que c'est un changement
+        cambio_img = row.select_one("img[src*='ico_event_cambio'], img[alt='Substitution']")
+        if not cambio_img:
             continue
 
-        min_el = row.select_one("p.min")
+        # Minute
+        min_el = row.select_one("div.col-mid-rows div.min")
         minute_str = min_el.get_text(strip=True) if min_el else ""
         try:
             clean = minute_str.replace("'","").strip()
             if "+" in clean:
                 parts = clean.split("+")
-                minute = int(parts[0]) + (int(parts[1]) if len(parts)>1 and parts[1] else 0)
+                minute = int(parts[0]) + (int(parts[1]) if len(parts) > 1 and parts[1] else 0)
+            elif clean and clean not in ("Half-time", "Kick-off"):
+                minute = int(clean)
             else:
-                minute = int(clean) if clean else None
+                continue
         except:
-            minute = None
-
-        players_in_row = [a.get_text(strip=True) for a in row.select("a[href*='/player/']")]
-        # Le joueur entrant est le 2e (index 1) dans la structure BeSoccer
-        if len(players_in_row) >= 2 and minute:
-            sub_in_minutes[players_in_row[1]] = minute
-        elif len(players_in_row) == 1 and minute:
-            sub_in_minutes[players_in_row[0]] = minute
-
-    if sub_in_minutes:
-        return sub_in_minutes
-
-    # Essai 2 : chercher tous les blocs contenant "cambio" ou "accion7"
-    for img in soup.select("img[src*='accion7'], img[src*='cambio'], img[alt*='Sub in']"):
-        container = img.find_parent("div")
-        if not container:
             continue
-        min_el = container.select_one("p.min") or container.find_previous("p", class_="min")
-        minute_str = min_el.get_text(strip=True) if min_el else ""
-        try:
-            clean = minute_str.replace("'","").strip()
-            minute = int(clean.replace("+","")) if clean else None
-        except:
-            minute = None
-        player_link = container.select_one("a[href*='/player/']")
-        if player_link and minute:
-            sub_in_minutes[player_link.get_text(strip=True)] = minute
+
+        # Joueur entrant = premier lien data-cy="eventOrd"
+        entrant_link = row.select_one("a[data-cy='eventOrd']")
+        if entrant_link:
+            nom = entrant_link.get_text(strip=True)
+            if nom:
+                sub_in_minutes[nom] = minute
+                print(f"    ↪ {nom} → {minute}'")
 
     return sub_in_minutes
 
