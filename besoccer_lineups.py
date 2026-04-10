@@ -341,9 +341,11 @@ def parse_player(link):
             img = div.select_one("img.ic-bench")
             min_el = div.select_one("p.min")
             minute_str = min_el.get_text(strip=True) if min_el else ""
-            # Nettoyer la minute (ex: "+1", "19", "45+2")
+            # Nettoyer la minute (ex: "+1", "19'", "45+2", "92'")
             try:
-                minute_val = int(minute_str.replace("+","").strip()) if minute_str else None
+                # Enlever apostrophe et signe +, garder juste les chiffres
+                clean = minute_str.replace("'","").replace("+","").strip()
+                minute_val = int(clean) if clean else None
             except:
                 minute_val = None
 
@@ -362,8 +364,8 @@ def parse_player(link):
                 elif "sub" in alt or "cambio" in src or "event-6" in src:
                     sub_out_minute = minute_val
 
-    # Note joueur (match-point-sm)
-    note_el = link.select_one("div.match-point-sm")
+    # Note joueur — BeSoccer utilise "match-points" (dans bench-player)
+    note_el = link.select_one("div.match-points")
     note = None
     if note_el:
         try:
