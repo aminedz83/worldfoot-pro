@@ -2335,7 +2335,7 @@ const renderListeFlash = (fix, hLu, aLu, players, events, injuries, hid, aid) =>
                       display: "inline-block"
                     }
                   }, "G")
-                : (homeSub.minutes && homeSub.minutes > 0)
+                : (homeSub.sub_in_minute || (homeSub.minutes && homeSub.minutes > 0))
                   ? React.createElement("div", {
                       style: {
                         fontSize: 10,
@@ -2346,7 +2346,7 @@ const renderListeFlash = (fix, hLu, aLu, players, events, injuries, hid, aid) =>
                         alignItems: "center",
                         gap: 2
                       }
-                    }, "\u21AA " + homeSub.minutes + "'")
+                    }, "\u21AA " + (homeSub.sub_in_minute || homeSub.minutes) + "'")
                   : null
             )
           ) : React.createElement("div", { style: { height: 38 } })
@@ -2388,7 +2388,7 @@ const renderListeFlash = (fix, hLu, aLu, players, events, injuries, hid, aid) =>
                       display: "inline-block"
                     }
                   }, "G")
-                : (awaySub.minutes && awaySub.minutes > 0)
+                : (awaySub.sub_in_minute || (awaySub.minutes && awaySub.minutes > 0))
                   ? React.createElement("div", {
                       style: {
                         fontSize: 10,
@@ -2400,7 +2400,7 @@ const renderListeFlash = (fix, hLu, aLu, players, events, injuries, hid, aid) =>
                         justifyContent: "flex-end",
                         gap: 2
                       }
-                    }, "\u21AA " + awaySub.minutes + "'")
+                    }, "\u21AA " + (awaySub.sub_in_minute || awaySub.minutes) + "'")
                   : null
             ),
 
@@ -2825,6 +2825,7 @@ function ComposPanel({lineups, players, homeTeam, awayTeam, isPartial, fix, even
               yellow_minute: p.yellow_minute||null,
               red_minute: p.red_minute||null,
               rating: p.rating||null,
+              sub_in_minute: p.sub_in_minute||null,
               minutes: p.minutes||0,
               captain: p.is_captain||false
             }
@@ -7019,7 +7020,8 @@ function MatchDetail({state,onClose,onTeam}){
             red_minute:    p.red_minute || null,
             sub_out:       p.sub_out || false,
             sub_out_minute:p.sub_out_minute || null,
-            minutes:       isSub ? (p.minutes && p.minutes < 90 ? p.minutes : 0) : (p.minutes || 90),
+            sub_in_minute: p.sub_in_minute || null,
+            minutes:       isSub ? (p.minutes && p.minutes > 0 && p.minutes < 90 ? p.minutes : 0) : (p.minutes || 90),
             photo:         p.photo || "",
             id:            p.id || "",
             rating:        p.rating || null
