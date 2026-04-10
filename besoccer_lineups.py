@@ -291,38 +291,83 @@ def get_today_matches():
 # DÉTECTION COMPO OFFICIELLE
 # ══════════════════════════════════════════════
 
-def is_official(soup):
-    if not soup: return False
-    text = soup.get_text(" ").lower()
-    official_kw = ["alineacion oficial", "official lineup", "confirmed",
-                   "confirmé", "alineación oficial"]
-    probable_kw = ["probable", "predicted", "prevista", "prévu", "expected"]
-    has_official = any(k in text for k in official_kw)
-    has_probable = any(k in text for k in probable_kw)
-    lineup_section = soup.select_one(".match-lineup, .lineup, [class*='lineup'], .alineacion")
-    if lineup_section:
-        players = lineup_section.select("a[href*='/player/']")
-        if len(players) >= 11 and not has_probable:
-            return True
-    return has_official and not has_probable
-
-# ══════════════════════════════════════════════
-# SCRAPE COMPOSITION
-# ══════════════════════════════════════════════
+def parse_player(link):
+    """Extrait les infos d'un joueur depuis un <a class='col-bench'>."""
+    href = link.get("href", "")
+    player_id = extract_player_id(href)
+    
+    # Nom
+    nom_el = link.select_one("p.name")
+    nom = nom_el.get_text(strip=True) if nom_el else link.get_text(strip=True)
+    
+    if not player_id or not nom:
+        return None
+    
+    # Photo
+    img = link.select_one("div.bench-player img")
+    photo = img["src"] if img and img.get("src") else ""
+    if photo and photo.startswith("//"):
+        photo = "https:" + photo
+    if not photo or "nofoto" in photo:
+        photo = f"https://cdn.resfu.com/img_data/players/medium/{player_id}.jpg?size=120x&lossy=1"
+    
+    # Numéro et position depuis role-box
+    number = ""
+    pos = ""
+    role_box = link.select_one("div.role-box span.t-up")
+    if role_box:
+        num_el = role_box.select_one("span.number")
+        if num_el:
+            number = num_el.get_text(strip=True)
+        # Position = texte après le numéro
+        role_text = role_box.get_text(strip=True)
+        if num_el:
+            role_text = role_text.replace(number, "").strip()
+        pos = role_text
+    
+    # Buts (icône goal dans info-wrapper)
+    goals = len(link.select("img[alt='Goal']"))
+    yellow = len(link.select("img[alt*='Yellow'], img[alt*='yellow']")) > 0
+    red = len(link.select("img[alt*='Red'], img[alt*='red']")) > 0
+    
+    return {
+        "name":    nom,
+        "id":      player_id,
+        "number":  number,
+        "pos":     pos,
+        "photo":   photo,
+        "goals":   goals,
+        "yellow":  yellow,
+        "red":     red,
+        "minutes": 90,
+    }
 
 def scrape_lineup(match):
-    r = fetch(match["url"])
-    if not r: return None
+    """
+    Scrape la page /lineups de BeSoccer.
+    Structure : a.col-bench.local[data-cy=starterPlayer] et a.col-bench.visitor
+    """
+    # URL de la page lineups
+    url = match["url"]
+    if not url.endswith("/lineups") and not url.endswith("/lineups/"):
+        url = url.rstrip("/") + "/lineups"
+    
+    r = fetch(url)
+    if not r:
+        # Essayer sans /lineups
+        r = fetch(match["url"])
+    if not r:
+        return None
+    
     soup = BeautifulSoup(r.text, "html.parser")
-
-    # Log HTML pour debug lors du premier vrai match
     print(f"  HTML size: {len(r.text)} chars")
 
-    if not is_official(soup):
-        print(f"  ⏳ Compos pas encore officielles")
-        # Log ce qu'on trouve pour debug
-        lineup_els = soup.select("a[href*='/player/']")
-        print(f"  Liens joueurs trouvés: {len(lineup_els)}")
+    # Vérifier qu'on a bien les titulaires (data-cy=starterPlayer)
+    starters_all = soup.select('a.col-bench[data-cy="starterPlayer"]')
+    print(f"  Titulaires trouvés: {len(starters_all)}")
+    
+    if len(starters_all) < 11:
+        print(f"  ⏳ Compos pas encore officielles ({len(starters_all)} joueurs)")
         return None
 
     result = {
@@ -339,42 +384,37 @@ def scrape_lineup(match):
         "scraped_at":     datetime.now(timezone.utc).isoformat()
     }
 
-    formations = [f.get_text(strip=True) for f in soup.select(".formation, [class*='formation']")
-                  if re.match(r"\d-\d", f.get_text(strip=True))]
-    if formations: result["home_formation"] = formations[0]
-    if len(formations) >= 2: result["away_formation"] = formations[1]
+    # Titulaires domicile (classe local) et extérieur (classe visitor)
+    home_starters = soup.select('a.col-bench.local[data-cy="starterPlayer"]')
+    away_starters = soup.select('a.col-bench.visitor[data-cy="starterPlayer"]')
+    home_subs     = soup.select('a.col-bench.local[data-cy="benchPlayer"]')
+    away_subs     = soup.select('a.col-bench.visitor[data-cy="benchPlayer"]')
 
-    team_sections = soup.select(
-        ".lineup-team, [class*='lineup-team'], .match-lineup .team, .alineacion .equipo"
-    )
+    for link in home_starters:
+        p = parse_player(link)
+        if p: result["home_players"].append(p)
 
-    for idx, section in enumerate(team_sections[:2]):
-        key_pl  = "home_players" if idx == 0 else "away_players"
-        key_sub = "home_subs"    if idx == 0 else "away_subs"
-        starters, subs = [], []
+    for link in away_starters:
+        p = parse_player(link)
+        if p: result["away_players"].append(p)
 
-        for i, link in enumerate(section.select("a[href*='/player/']")):
-            player_id = extract_player_id(link.get("href", ""))
-            nom       = link.get_text(strip=True)
-            if not player_id or not nom: continue
-            parent = link.find_parent(["li", "tr", "div"])
-            pos_el = parent.select_one(".pos, .position, .demarcacion") if parent else None
-            num_el = parent.select_one(".num, .number, .dorsal") if parent else None
-            player = {
-                "name": nom, "id": player_id,
-                "number": num_el.get_text(strip=True) if num_el else "",
-                "pos": pos_el.get_text(strip=True) if pos_el else "",
-                "photo": f"https://cdn.resfu.com/img_data/players/medium/{player_id}.jpg?size=120x&lossy=1",
-                "goals": 0, "yellow": False, "red": False,
-                "minutes": 90 if i < 11 else 0,
-            }
-            (starters if i < 11 else subs).append(player)
+    for link in home_subs:
+        p = parse_player(link)
+        if p:
+            p["minutes"] = 0
+            result["home_subs"].append(p)
 
-        result[key_pl]  = starters
-        result[key_sub] = subs
+    for link in away_subs:
+        p = parse_player(link)
+        if p:
+            p["minutes"] = 0
+            result["away_subs"].append(p)
 
-    h, a = len(result["home_players"]), len(result["away_players"])
-    print(f"  ✅ Compo : {h} vs {a} | {result['home_formation']} / {result['away_formation']}")
+    h = len(result["home_players"])
+    a = len(result["away_players"])
+    hs = len(result["home_subs"])
+    as_ = len(result["away_subs"])
+    print(f"  ✅ Compo : {h} vs {a} titulaires | {hs} vs {as_} remplaçants")
     return result
 
 # ══════════════════════════════════════════════
