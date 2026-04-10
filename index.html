@@ -6961,13 +6961,19 @@ function MatchDetail({state,onClose,onTeam}){
         // BeSoccer: {name, id, number, pos, photo, goals, yellow, red, minutes}
         // PWA attend: {name, number, pos, is_gk, goals, yellow, red, minutes, photo}
         var convertBS = function(p) {
-          var posMap = {"Goalkeepers":"G","Goalkeeper":"G","Defenders":"D","Defender":"D",
-                        "Midfielders":"M","Midfielder":"M","Strikers":"A","Forward":"A"};
+          // Convertir positions BeSoccer → format PWA (G/D/M/F/A)
+          var rawPos = (p.pos || "").trim();
+          var pos = rawPos;
+          var posLow = rawPos.toLowerCase();
+          if(posLow === "gk" || posLow === "goalkeeper" || posLow === "goalkeepers" || posLow === "gs") pos = "G";
+          else if(posLow === "d" || posLow === "def" || posLow === "defender" || posLow === "defenders") pos = "D";
+          else if(posLow === "mf" || posLow === "mid" || posLow === "midfielder" || posLow === "midfielders" || posLow === "m") pos = "M";
+          else if(posLow === "f" || posLow === "att" || posLow === "forward" || posLow === "strikers" || posLow === "striker") pos = "F";
           return {
             name:       p.name || "",
             number:     p.number || "",
-            pos:        p.pos || "",
-            is_gk:      p.pos === "G" || (p.pos||"").toLowerCase().includes("goal"),
+            pos:        pos,
+            is_gk:      pos === "G",
             is_captain: p.captain || false,
             goals:      p.goals || 0,
             yellow:     p.yellow || false,
