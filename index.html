@@ -2,7 +2,7 @@
 <html lang="fr">
 <head>
     <meta charset="UTF-8" />
-    <!-- v258 -->
+    <!-- v259 -->
     <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate" />
     <meta http-equiv="Pragma" content="no-cache" />
     <meta http-equiv="Expires" content="0" />
@@ -2755,6 +2755,10 @@ function ComposPanel({lineups, players, homeTeam, awayTeam, isPartial, fix, even
           var matched = matchWithSquad(p, squadPlayers);
           var pos = p.is_gk ? "G" : (p.pos && p.pos !== "" ? p.pos : (matched ? matched.position : "M"));
           if(pos === "A") pos = "F";
+          // Priorité photo : BeSoccer > API football > placeholder
+          var photo = p.photo && p.photo.includes("cdn.resfu.com")
+            ? p.photo
+            : (matched ? matched.photo : "https://media.api-sports.io/football/players/0.png");
           return {
             player: {
               id: matched ? matched.id : null,
@@ -2762,7 +2766,7 @@ function ComposPanel({lineups, players, homeTeam, awayTeam, isPartial, fix, even
               number: parseInt(p.number)||0,
               pos: pos,
               grid: grids[p.name] || null,
-              photo: matched ? matched.photo : "https://media.api-sports.io/football/players/0.png",
+              photo: photo,
               events: { goals: p.goals||0, yellow: p.yellow?1:0, red: p.red?1:0 },
               minutes: p.minutes||90,
               captain: p.is_captain||false
@@ -2773,6 +2777,9 @@ function ComposPanel({lineups, players, homeTeam, awayTeam, isPartial, fix, even
           var matched = matchWithSquad(p, squadPlayers);
           var pos = p.is_gk ? "G" : (p.pos && p.pos !== "" ? p.pos : (matched ? matched.position : "M"));
           if(pos === "A") pos = "F";
+          var photo = p.photo && p.photo.includes("cdn.resfu.com")
+            ? p.photo
+            : (matched ? matched.photo : "https://media.api-sports.io/football/players/0.png");
           return {
             player: {
               id: matched ? matched.id : null,
@@ -2780,7 +2787,7 @@ function ComposPanel({lineups, players, homeTeam, awayTeam, isPartial, fix, even
               number: parseInt(p.number)||0,
               pos: pos,
               grid: null,
-              photo: matched ? matched.photo : "https://media.api-sports.io/football/players/0.png",
+              photo: photo,
               events: { goals: p.goals||0, yellow: p.yellow?1:0, red: p.red?1:0 },
               minutes: p.minutes||0,
               captain: p.is_captain||false
@@ -6798,7 +6805,8 @@ function MatchDetail({state,onClose,onTeam}){
       .catch(()=>{});
   },[showLeagueSheet]);
 
-  // Fetch lineups algériennes depuis Supabase pour league 186
+  // Fetch lineups algériennes — SOURCE PRIORITAIRE : BeSoccer
+  // Fallback automatique sur Flashscore (algeria_lineups) si BeSoccer n'a rien
   React.useEffect(function(){
     if(tab!=="compos") return;
     if(!fix||!fix.league||fix.league.id!==186) return;
@@ -6808,12 +6816,38 @@ function MatchDetail({state,onClose,onTeam}){
     var fixtureId = fix.fixture&&fix.fixture.id;
     if(!homeTeam||!awayTeam||!matchDate) return;
 
-    // Mapping noms API football → noms Supabase
+    var H = { 'apikey': SB_KEY, 'Authorization': 'Bearer '+SB_KEY };
+    var SB_BASE = 'https://iqeqlsxjiklygywjirqs.supabase.co/rest/v1/';
+
+    var tryFetch = function(url) {
+      return fetch(url, { headers: H }).then(function(r){ return r.json(); });
+    };
+
+    // ── Mapping noms API → noms BeSoccer ──────────────────────
+    var BS_TEAM_MAP = {
+      "MC Alger":"MC Alger","Alger":"MC Alger",
+      "CR Belouizdad":"CR Belouizdad","Belouizdad":"CR Belouizdad",
+      "JS Kabylie":"JS Kabylie","Kabylie":"JS Kabylie",
+      "USM Alger":"USM Alger",
+      "ES Setif":"ES Sétif","Setif":"ES Sétif","ES Sétif":"ES Sétif",
+      "CS Constantine":"CS Constantine","Constantine":"CS Constantine",
+      "Paradou AC":"Paradou AC","Paradou":"Paradou AC",
+      "ASO Chlef":"ASO Chlef","Chlef":"ASO Chlef",
+      "MC Oran":"MC Oran","Oran":"MC Oran",
+      "JS Saoura":"JS Saoura","Saoura":"JS Saoura",
+      "MC El Bayadh":"MC El Bayadh","El Bayadh":"MC El Bayadh",
+      "USM Khenchela":"USM Khenchela","Khenchela":"USM Khenchela",
+      "Olympique Akbou":"Olympique Akbou","Akbou":"Olympique Akbou",
+      "ES Mostaganem":"ES Mostaganem","Mostaganem":"ES Mostaganem",
+      "MB Rouissat":"MB Rouissat","Rouissat":"MB Rouissat","Rouisset":"MB Rouissat",
+      "ES Ben Aknoun":"ES Ben Aknoun","Ben Aknoun":"ES Ben Aknoun"
+    };
+
+    // ── Mapping noms API → noms Flashscore ────────────────────
     var ALG_TEAM_MAP = {
       "JS Kabylie":"JS Kabylie","Kabylie":"JS Kabylie",
       "CR Belouizdad":"CR Belouizdad","Belouizdad":"CR Belouizdad",
-      "MC Alger":"MC Alger",
-      "USM Alger":"USM Alger",
+      "MC Alger":"MC Alger","USM Alger":"USM Alger",
       "CS Constantine":"CS Constantine","Constantine":"CS Constantine",
       "ES Setif":"ES Setif","Setif":"ES Setif",
       "MC Oran":"MC Oran","Oran":"MC Oran",
@@ -6827,52 +6861,220 @@ function MatchDetail({state,onClose,onTeam}){
       "MC El Bayadh":"MC El Bayadh","El Bayadh":"MC El Bayadh",
       "Olympique Akbou":"Olympique Akbou","Akbou":"Olympique Akbou"
     };
-    var normTeam = function(n) { return ALG_TEAM_MAP[n] || n; };
-    var homeTeamSB = normTeam(homeTeam);
-    var awayTeamSB = normTeam(awayTeam);
 
-    console.log("Algeria lineups fetch:", homeTeamSB, "vs", awayTeamSB, matchDate, "fid:", fixtureId);
-    var SB = 'https://iqeqlsxjiklygywjirqs.supabase.co/rest/v1/algeria_lineups';
-    var H = { 'apikey': SB_KEY, 'Authorization': 'Bearer '+SB_KEY };
-    var tryFetch = function(url) {
-      return fetch(url, { headers: H }).then(function(r){ return r.json(); });
+    var normBS  = function(n) { return BS_TEAM_MAP[n] || n; };
+    var normAlg = function(n) { return ALG_TEAM_MAP[n] || n; };
+
+    var homeBS  = normBS(homeTeam);
+    var awayBS  = normBS(awayTeam);
+    var homeAlg = normAlg(homeTeam);
+    var awayAlg = normAlg(awayTeam);
+
+    // ── Enrichir les joueurs avec photos BeSoccer ─────────────
+    // Charge tous les joueurs des 2 équipes depuis besoccer_players
+    var enrichWithBSPhotos = function(players, teamName) {
+      if(!players||!players.length) return Promise.resolve(players);
+      var url = SB_BASE + 'besoccer_players?club=eq.' + encodeURIComponent(teamName) + '&select=besoccer_id,nom,url_photo,poste,numero';
+      return tryFetch(url).then(function(bsPlayers) {
+        if(!bsPlayers||!bsPlayers.length) return players;
+
+        // Index par ID pour lookup rapide
+        var byId = {};
+        bsPlayers.forEach(function(bp) { byId[bp.besoccer_id] = bp; });
+
+        // Normaliser nom pour matching
+        var norm = function(s) {
+          return (s||"").toLowerCase().replace(/[^a-z]/g,"");
+        };
+
+        return players.map(function(p) {
+          // 1. Match direct par ID BeSoccer
+          if(p.id && byId[p.id]) {
+            var bp = byId[p.id];
+            return Object.assign({}, p, {
+              photo: bp.url_photo || p.photo,
+              url_photo: bp.url_photo || p.photo
+            });
+          }
+          // 2. Match par nom (recherche floue)
+          var pNorm = norm(p.name);
+          var found = bsPlayers.find(function(bp) {
+            var bNorm = norm(bp.nom);
+            if(pNorm === bNorm) return true;
+            // Dernier mot du nom (nom de famille)
+            var pLast = pNorm.split("").slice(-4).join("");
+            var bLast = bNorm.split("").slice(-4).join("");
+            if(pLast.length >= 4 && bLast.length >= 4 && pLast === bLast) return true;
+            if(pNorm.length >= 5 && bNorm.includes(pNorm)) return true;
+            if(bNorm.length >= 5 && pNorm.includes(bNorm)) return true;
+            return false;
+          });
+          if(found) {
+            return Object.assign({}, p, {
+              photo: found.url_photo || p.photo,
+              url_photo: found.url_photo || p.photo,
+              id: found.besoccer_id || p.id
+            });
+          }
+          return p;
+        });
+      }).catch(function() { return players; });
     };
-    var url1 = fixtureId ? SB+'?fixture_id=eq.'+fixtureId+'&select=*' : null;
-    var url2 = SB+'?home_team=eq.'+encodeURIComponent(homeTeamSB)+'&away_team=eq.'+encodeURIComponent(awayTeamSB)+'&match_date=eq.'+matchDate+'&select=*';
-    var url3 = SB+'?match_date=eq.'+matchDate+'&select=*';
-    var p = url1 ? tryFetch(url1) : Promise.resolve([]);
-    p.then(function(d){
+
+    // ══════════════════════════════════════════════════════════
+    // ÉTAPE 1 — Chercher dans besoccer_lineups
+    // ══════════════════════════════════════════════════════════
+    console.log("🔵 BeSoccer lineups fetch:", homeBS, "vs", awayBS, matchDate);
+
+    var bsUrl1 = SB_BASE + 'besoccer_lineups?match_date=eq.' + matchDate +
+      '&home_team=eq.' + encodeURIComponent(homeBS) +
+      '&away_team=eq.' + encodeURIComponent(awayBS) + '&select=*';
+    var bsUrl2 = SB_BASE + 'besoccer_lineups?match_date=eq.' + matchDate + '&select=*';
+
+    tryFetch(bsUrl1).then(function(d) {
       if(d&&d.length>0) return d;
-      return tryFetch(url2);
-    }).then(function(d){
-      if(d&&d.length>0) return d;
-      return tryFetch(url3).then(function(rows) {
+      // Fallback : chercher tous les matchs du jour et trouver par noms
+      return tryFetch(bsUrl2).then(function(rows) {
         if(!rows||!rows.length) return [];
-        var hLow = homeTeamSB.toLowerCase();
-        var aLow = awayTeamSB.toLowerCase();
+        var hLow = homeBS.toLowerCase();
+        var aLow = awayBS.toLowerCase();
         var found = rows.find(function(r) {
           var rh = (r.home_team||"").toLowerCase();
           var ra = (r.away_team||"").toLowerCase();
-          var hMatch = rh.includes(hLow.split(" ").pop()) || hLow.includes(rh.split(" ").pop());
-          var aMatch = ra.includes(aLow.split(" ").pop()) || aLow.includes(ra.split(" ").pop());
-          return hMatch && aMatch;
+          return (rh.includes(hLow.split(" ").pop()) || hLow.includes(rh.split(" ").pop())) &&
+                 (ra.includes(aLow.split(" ").pop()) || aLow.includes(ra.split(" ").pop()));
         });
         return found ? [found] : [];
       });
-    }).then(function(data){
-      console.log("Algeria lineups result:", data&&data.length, "rows");
-      if(data&&data.length>0){
-        var row = data[0];
-        setAlgeriaLineups({
-          home_players: row.home_players||[],
-          away_players: row.away_players||[],
-          home_subs: row.home_subs||[],
-          away_subs: row.away_subs||[]
+    }).then(function(bsData) {
+
+      if(bsData && bsData.length > 0) {
+        // ✅ BeSoccer a les données → enrichir avec photos
+        console.log("✅ BeSoccer lineups trouvées");
+        var row = bsData[0];
+        var hp  = row.home_players || [];
+        var ap  = row.away_players || [];
+        var hs  = row.home_subs    || [];
+        var as_ = row.away_subs    || [];
+
+        // Convertir format BeSoccer → format attendu par la PWA
+        // BeSoccer: {name, id, number, pos, photo, goals, yellow, red, minutes}
+        // PWA attend: {name, number, pos, is_gk, goals, yellow, red, minutes, photo}
+        var convertBS = function(p) {
+          var posMap = {"Goalkeepers":"G","Goalkeeper":"G","Defenders":"D","Defender":"D",
+                        "Midfielders":"M","Midfielder":"M","Strikers":"A","Forward":"A"};
+          return {
+            name:       p.name || "",
+            number:     p.number || "",
+            pos:        p.pos || "",
+            is_gk:      p.pos === "G" || (p.pos||"").toLowerCase().includes("goal"),
+            is_captain: p.captain || false,
+            goals:      p.goals || 0,
+            yellow:     p.yellow || false,
+            red:        p.red || false,
+            minutes:    p.minutes || 90,
+            photo:      p.photo || "",
+            id:         p.id || ""
+          };
+        };
+
+        var hpConv  = hp.map(convertBS);
+        var apConv  = ap.map(convertBS);
+        var hsConv  = hs.map(convertBS);
+        var asConv  = as_.map(convertBS);
+
+        // Enrichir avec photos depuis besoccer_players
+        Promise.all([
+          enrichWithBSPhotos(hpConv, homeBS),
+          enrichWithBSPhotos(apConv, awayBS),
+          enrichWithBSPhotos(hsConv, homeBS),
+          enrichWithBSPhotos(asConv, awayBS)
+        ]).then(function(results) {
+          setAlgeriaLineups({
+            source:       "besoccer",
+            home_players: results[0],
+            away_players: results[1],
+            home_subs:    results[2],
+            away_subs:    results[3]
+          });
+        }).catch(function() {
+          setAlgeriaLineups({
+            source:       "besoccer",
+            home_players: hpConv,
+            away_players: apConv,
+            home_subs:    hsConv,
+            away_subs:    asConv
+          });
         });
+
       } else {
-        setAlgeriaLineups(null);
+        // ══════════════════════════════════════════════════════
+        // ÉTAPE 2 — Fallback : Flashscore (algeria_lineups)
+        // ══════════════════════════════════════════════════════
+        console.log("🟡 Fallback Flashscore lineups:", homeAlg, "vs", awayAlg);
+        var SB = SB_BASE + 'algeria_lineups';
+        var url1 = fixtureId ? SB+'?fixture_id=eq.'+fixtureId+'&select=*' : null;
+        var url2 = SB+'?home_team=eq.'+encodeURIComponent(homeAlg)+'&away_team=eq.'+encodeURIComponent(awayAlg)+'&match_date=eq.'+matchDate+'&select=*';
+        var url3 = SB+'?match_date=eq.'+matchDate+'&select=*';
+
+        var p = url1 ? tryFetch(url1) : Promise.resolve([]);
+        p.then(function(d){
+          if(d&&d.length>0) return d;
+          return tryFetch(url2);
+        }).then(function(d){
+          if(d&&d.length>0) return d;
+          return tryFetch(url3).then(function(rows) {
+            if(!rows||!rows.length) return [];
+            var hLow = homeAlg.toLowerCase();
+            var aLow = awayAlg.toLowerCase();
+            var found = rows.find(function(r) {
+              var rh = (r.home_team||"").toLowerCase();
+              var ra = (r.away_team||"").toLowerCase();
+              return (rh.includes(hLow.split(" ").pop()) || hLow.includes(rh.split(" ").pop())) &&
+                     (ra.includes(aLow.split(" ").pop()) || aLow.includes(ra.split(" ").pop()));
+            });
+            return found ? [found] : [];
+          });
+        }).then(function(data){
+          console.log("Flashscore lineups result:", data&&data.length, "rows");
+          if(data&&data.length>0){
+            var row = data[0];
+            var hp  = row.home_players || [];
+            var ap  = row.away_players || [];
+            // Enrichir les photos Flashscore avec BeSoccer
+            Promise.all([
+              enrichWithBSPhotos(hp, homeBS),
+              enrichWithBSPhotos(ap, awayBS),
+              enrichWithBSPhotos(row.home_subs||[], homeBS),
+              enrichWithBSPhotos(row.away_subs||[], awayBS)
+            ]).then(function(results) {
+              setAlgeriaLineups({
+                source:       "flashscore",
+                home_players: results[0],
+                away_players: results[1],
+                home_subs:    results[2],
+                away_subs:    results[3]
+              });
+            }).catch(function() {
+              setAlgeriaLineups({
+                source:       "flashscore",
+                home_players: hp,
+                away_players: ap,
+                home_subs:    row.home_subs||[],
+                away_subs:    row.away_subs||[]
+              });
+            });
+          } else {
+            setAlgeriaLineups(null);
+          }
+        }).catch(function(e){ console.log("Flashscore error:", e); setAlgeriaLineups(null); });
       }
-    }).catch(function(e){ console.log("Algeria error:", e); setAlgeriaLineups(null); });
+
+    }).catch(function(e){
+      console.log("BeSoccer lineups error:", e);
+      setAlgeriaLineups(null);
+    });
+
   },[tab, fix&&fix.fixture&&fix.fixture.id]);
 
   React.useEffect(()=>{
