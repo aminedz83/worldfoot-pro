@@ -1,5 +1,5 @@
 """
-besoccer_players.py
+besoccer players.py
 ===================
 Scrape les joueurs, photos et stats de tous les 16 clubs
 de Ligue 1 Algérie depuis BeSoccer.
