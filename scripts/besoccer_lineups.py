@@ -329,7 +329,16 @@ def parse_player(link):
     goals = len(link.select("img[alt='Goal']"))
     yellow = len(link.select("img[alt*='Yellow'], img[alt*='yellow']")) > 0
     red = len(link.select("img[alt*='Red'], img[alt*='red']")) > 0
-    
+
+    # Note joueur (match-point-sm)
+    note_el = link.select_one("div.match-point-sm")
+    note = None
+    if note_el:
+        try:
+            note = float(note_el.get_text(strip=True))
+        except:
+            pass
+
     return {
         "name":    nom,
         "id":      player_id,
@@ -340,6 +349,7 @@ def parse_player(link):
         "yellow":  yellow,
         "red":     red,
         "minutes": 90,
+        "rating":  note,
     }
 
 def scrape_lineup(match):
