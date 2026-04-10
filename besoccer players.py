@@ -34,7 +34,7 @@ CLUBS = [
     {"name": "ES Sétif",        "slug": "es-setif",      "id": 11501},
     {"name": "CS Constantine",  "slug": "cs-constantine","id": 11510},
     {"name": "Paradou AC",      "slug": "paradou",       "id": 59336},
-    {"name": "ASO Chlef",       "slug": "aso-chlef",     "id": 11511},  # à corriger si 404
+    {"name": "ASO Chlef",        "slug": "chlef",        "id": 11511},  # à corriger si 404
     {"name": "MC Oran",         "slug": "mc-oran",       "id": 11509},
     {"name": "JS Saoura",       "slug": "js-saoura",     "id": 20933},
     {"name": "MC El Bayadh",    "slug": "el-bayadh",     "id": 11729},
