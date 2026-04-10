@@ -1803,14 +1803,23 @@ const renderListeFlash = (fix, hLu, aLu, players, events, injuries, hid, aid) =>
       const player = item.player;
       const rating = getPlayerRating(player.id);
       const evts = getPlayerEvents(player.id, player.name);
-      return { ...player, rating, events: evts };
+      // Priorité photo : BeSoccer (cdn.resfu.com) > API Football > getPlayerPhoto
+      var photo = player.photo;
+      if (!photo || photo.includes("media.api-sports.io/football/players/0")) {
+        photo = getPlayerPhoto(player.id) || player.photo;
+      }
+      return { ...player, photo, rating, events: evts };
     });
 
     const subs = (lineup.substitutes || []).map(item => {
       const player = item.player;
       const rating = getPlayerRating(player.id);
       const evts = getPlayerEvents(player.id, player.name);
-      return { ...player, rating, events: evts };
+      var photo = player.photo;
+      if (!photo || photo.includes("media.api-sports.io/football/players/0")) {
+        photo = getPlayerPhoto(player.id) || player.photo;
+      }
+      return { ...player, photo, rating, events: evts };
     });
 
     return { starters, subs };
@@ -2007,7 +2016,7 @@ const renderListeFlash = (fix, hLu, aLu, players, events, injuries, hid, aid) =>
             }, `${homePlayer.number || "?"}.`),
 
             (() => {
-              const photoUrl = getPlayerPhoto(homePlayer.id);
+              const photoUrl = homePlayer.photo || getPlayerPhoto(homePlayer.id);
               return photoUrl
                 ? React.createElement("img", {
                     src: photoUrl,
@@ -2160,7 +2169,7 @@ const renderListeFlash = (fix, hLu, aLu, players, events, injuries, hid, aid) =>
             ),
 
             (() => {
-              const photoUrl = getPlayerPhoto(awayPlayer.id);
+              const photoUrl = awayPlayer.photo || getPlayerPhoto(awayPlayer.id);
               return photoUrl
                 ? React.createElement("img", {
                     src: photoUrl,
@@ -2261,7 +2270,7 @@ const renderListeFlash = (fix, hLu, aLu, players, events, injuries, hid, aid) =>
             }, `${homeSub.number || "?"}.`),
 
             (() => {
-              const photoUrl = getPlayerPhoto(homeSub.id);
+              const photoUrl = homeSub.photo || getPlayerPhoto(homeSub.id);
               return photoUrl
                 ? React.createElement("img", {
                     src: photoUrl,
@@ -2377,7 +2386,7 @@ const renderListeFlash = (fix, hLu, aLu, players, events, injuries, hid, aid) =>
             ),
 
             (() => {
-              const photoUrl = getPlayerPhoto(awaySub.id);
+              const photoUrl = awaySub.photo || getPlayerPhoto(awaySub.id);
               return photoUrl
                 ? React.createElement("img", {
                     src: photoUrl,
@@ -6980,7 +6989,8 @@ function MatchDetail({state,onClose,onTeam}){
             red:        p.red || false,
             minutes:    p.minutes || 90,
             photo:      p.photo || "",
-            id:         p.id || ""
+            id:         p.id || "",
+            rating:     p.rating || null
           };
         };
 
