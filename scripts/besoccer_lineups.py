@@ -336,33 +336,40 @@ def parse_player(link):
     sub_out_minute = None  # minute de sortie
 
     if info_wrapper:
-        event_divs = info_wrapper.select("div.row div")
-        for div in event_divs:
-            img = div.select_one("img.ic-bench")
-            min_el = div.select_one("p.min")
+        # Chercher directement toutes les img.ic-bench dans info-wrapper
+        # Structure BeSoccer: <div class="row row-reverse..."><div><img class="ic-bench"><p class="min">
+        for img in info_wrapper.select("img.ic-bench"):
+            # La minute est dans le <p class="min"> frère de l'img (même parent <div>)
+            parent = img.parent
+            min_el = parent.select_one("p.min") if parent else None
             minute_str = min_el.get_text(strip=True) if min_el else ""
-            # Nettoyer la minute (ex: "+1", "19'", "45+2", "92'")
+            # Nettoyer: "+1" → 1, "19'" → 19, "45+2" → 45, "92'" → 92
             try:
-                # Enlever apostrophe et signe +, garder juste les chiffres
-                clean = minute_str.replace("'","").replace("+","").strip()
-                minute_val = int(clean) if clean else None
+                clean = minute_str.replace("'","").strip()
+                # Cas "45+2" → prendre 45+2=47, cas "+1" → 1
+                if "+" in clean:
+                    parts = clean.split("+")
+                    base = int(parts[0]) if parts[0] else 0
+                    extra = int(parts[1]) if len(parts) > 1 and parts[1] else 0
+                    minute_val = base + extra if base > 0 else extra
+                else:
+                    minute_val = int(clean) if clean else None
             except:
                 minute_val = None
 
-            if img:
-                alt = img.get("alt","").lower()
-                src = img.get("src","").lower()
-                if "goal" in alt or "accion1" in src:
-                    goals += 1
-                    if minute_val: goal_minutes.append(minute_val)
-                elif "yellow" in alt or "tarjeta_a" in src or "event-5" in src:
-                    yellow = True
-                    yellow_minute = minute_val
-                elif "red" in alt or "tarjeta_r" in src or "event-3" in src:
-                    red = True
-                    red_minute = minute_val
-                elif "sub" in alt or "cambio" in src or "event-6" in src:
-                    sub_out_minute = minute_val
+            alt = img.get("alt","").lower()
+            src = img.get("src","").lower()
+            if "goal" in alt or "gol" in alt or "accion1" in src:
+                goals += 1
+                if minute_val: goal_minutes.append(minute_val)
+            elif "yellow" in alt or "amarilla" in alt or "tarjeta_a" in src or "event-5" in src:
+                yellow = True
+                yellow_minute = minute_val
+            elif "red" in alt or "roja" in alt or "tarjeta_r" in src or "event-3" in src:
+                red = True
+                red_minute = minute_val
+            elif "sub" in alt or "cambio" in src or "event-6" in src:
+                sub_out_minute = minute_val
 
     # Note joueur — BeSoccer utilise "match-points" (dans bench-player)
     note_el = link.select_one("div.match-points")
