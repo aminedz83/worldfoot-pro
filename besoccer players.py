@@ -2,7 +2,7 @@
 besoccer players.py
 ===================
 Scrape joueurs + photos + stats de Ligue 1 Algérie depuis BeSoccer.
-Utilise cloudscraper pour contourner la protection anti-bot.
+Sélecteurs basés sur le vrai HTML de BeSoccer.
 Sauvegarde dans Supabase : besoccer_players
 """
 
@@ -44,7 +44,7 @@ CLUBS = [
 ]
 
 # ══════════════════════════════════════════════
-# SCRAPER (contourne anti-bot comme Flashscore)
+# SCRAPER
 # ══════════════════════════════════════════════
 
 scraper = cloudscraper.create_scraper(
@@ -54,19 +54,31 @@ scraper = cloudscraper.create_scraper(
 def fetch(url):
     try:
         r = scraper.get(url, timeout=20)
-        print(f"  Status {r.status_code} : {url}")
+        print(f"  Status {r.status_code}")
         if r.status_code == 200:
             return BeautifulSoup(r.text, "html.parser")
         return None
     except Exception as e:
-        print(f"  Erreur fetch: {e}")
+        print(f"  Erreur: {e}")
         return None
 
-def extract_id(href):
+def extract_id_from_url(href):
+    """
+    Extrait l'ID depuis l'URL BeSoccer.
+    Ex: /player/z-naidji-462650 → 462650
+    Ex: /player/ayoub-abdellaoui → ayoub-abdellaoui (slug sans ID numérique)
+    """
     if not href:
         return None
-    m = re.search(r"/player/[^/]+/(\d+)/?", href)
-    return m.group(1) if m else None
+    # Cas 1 : URL avec ID numérique à la fin  /player/nom-123456
+    m = re.search(r"/player/[^/]+-(\d+)/?$", href)
+    if m:
+        return m.group(1)
+    # Cas 2 : URL slug sans ID  /player/ayoub-abdellaoui
+    m = re.search(r"/player/([^/]+)/?$", href)
+    if m:
+        return m.group(1)
+    return None
 
 # ══════════════════════════════════════════════
 # SCRAPE UN CLUB
@@ -74,7 +86,7 @@ def extract_id(href):
 
 def scrape_club(club):
     url = f"https://www.besoccer.com/team/squad/{club['slug']}/{club['id']}/"
-    print(f"\n📋 {club['name']}")
+    print(f"\n📋 {club['name']} → {url}")
 
     soup = fetch(url)
     if not soup:
@@ -83,81 +95,112 @@ def scrape_club(club):
     players = []
     seen    = set()
 
-    rows = soup.select("tr, li.player-item, .squad-player, .player-row")
+    # Le poste courant est défini par les lignes d'en-tête tr.row-head
+    current_poste = ""
+
+    rows = soup.select("tr")
 
     for row in rows:
-        link = row.select_one("a[href*='/player/']")
-        if not link:
+        # Ligne d'en-tête → met à jour le poste courant
+        if "row-head" in row.get("class", []):
+            th = row.select_one("th.main")
+            if th:
+                current_poste = th.get_text(strip=True)
             continue
 
-        href      = link.get("href", "")
-        player_id = extract_id(href)
-        nom       = link.get_text(strip=True)
+        # Ligne joueur
+        if "row-body" not in row.get("class", []):
+            continue
+
+        # Nom + lien depuis td.name
+        name_td = row.select_one("td.name a")
+        if not name_td:
+            continue
+
+        href      = name_td.get("href", "")
+        nom       = name_td.get_text(strip=True)
+        player_id = extract_id_from_url(href)
 
         if not player_id or not nom or player_id in seen:
             continue
 
-        row_text = row.get_text(" ").lower()
-        if any(k in row_text for k in ["coach", "entrenador", "entraîneur"]):
-            continue
-
         seen.add(player_id)
 
-        # Photo
-        img = row.select_one("img")
-        if img and img.get("src") and any(k in img["src"] for k in ["player", "cdn", "resfu"]):
-            photo = img["src"]
+        # Photo depuis td.player-img img
+        photo_td  = row.select_one("td.player-img img")
+        if photo_td and photo_td.get("src"):
+            photo = photo_td["src"]
+            # Remplacer size=60x par size=120x pour meilleure qualité
+            photo = photo.replace("size=60x", "size=120x")
             if photo.startswith("//"):
                 photo = "https:" + photo
-            if photo.startswith("/"):
-                photo = "https://www.besoccer.com" + photo
         else:
-            photo = f"https://cdn.resfu.com/img_data/players/medium/{player_id}.jpg"
+            photo = f"https://cdn.resfu.com/img_data/players/medium/{player_id}.jpg?size=120x&lossy=1"
 
-        # Poste
-        pos_el = row.select_one("td.pos, .player-pos, span.pos, td.demarcation")
-        poste  = pos_el.get_text(strip=True) if pos_el else ""
+        # Numéro de maillot depuis td.number-box
+        num_td = row.select_one("td.number-box div")
+        numero = num_td.get_text(strip=True) if num_td else ""
 
-        # Age
-        age_el = row.select_one("td.age, .player-age")
-        age    = age_el.get_text(strip=True) if age_el else ""
-        if not re.match(r"^\d{2}$", age):
-            age = ""
+        # Stats depuis les td avec data-content-tab="team_performance"
+        perf_tds = row.select("td[data-content-tab='team_performance']")
+        matchs   = 0
+        buts     = 0
+        cartons_j = 0
+        cartons_r = 0
 
-        # Stats
-        tds  = row.select("td")
-        nums = []
-        for td in tds:
-            t = td.get_text(strip=True)
-            if re.match(r"^\d{1,4}$", t):
-                nums.append(int(t))
+        if len(perf_tds) >= 1:
+            matchs    = int(perf_tds[0].get_text(strip=True) or 0)
+        if len(perf_tds) >= 3:
+            buts      = int(perf_tds[2].get_text(strip=True) or 0)
+        if len(perf_tds) >= 4:
+            cartons_j = int(perf_tds[3].get_text(strip=True) or 0)
+        if len(perf_tds) >= 5:
+            cartons_r = int(perf_tds[4].get_text(strip=True) or 0)
 
-        matchs = minutes = buts = 0
-        for n in nums:
-            if 0 < n <= 38 and matchs == 0:
-                matchs = n
-            elif n > 38 and n <= 3420 and minutes == 0:
-                minutes = n
-            elif 0 < n <= 50 and buts == 0 and n != matchs:
-                buts = n
+        # Age depuis td[data-content-tab="team_info"]
+        info_tds = row.select("td[data-content-tab='team_info']")
+        age = ""
+        if info_tds:
+            age_text = info_tds[0].get_text(strip=True)
+            if re.match(r"^\d{2}$", age_text):
+                age = age_text
 
         players.append({
             "club":        club["name"],
-            "besoccer_id": player_id,
+            "besoccer_id": str(player_id),
             "nom":         nom,
             "url_photo":   photo,
-            "poste":       poste,
+            "poste":       current_poste,
+            "numero":      numero,
             "age":         age,
             "matchs":      matchs,
-            "minutes":     minutes,
             "buts":        buts,
-            "cartons_j":   0,
-            "cartons_r":   0,
+            "cartons_j":   cartons_j,
+            "cartons_r":   cartons_r,
             "scraped_at":  datetime.now(timezone.utc).isoformat()
         })
 
-    print(f"  ✅ {len(players)} joueurs")
+    print(f"  ✅ {len(players)} joueurs trouvés")
     return players
+
+# ══════════════════════════════════════════════
+# COACH
+# ══════════════════════════════════════════════
+
+def scrape_coach(soup, club_name):
+    """Extrait le coach depuis la section .team-coach"""
+    coaches = []
+    coach_divs = soup.select(".team-coach")
+    for div in coach_divs:
+        link = div.select_one("a[href*='/coach/']")
+        img  = div.select_one("img.player")
+        if link:
+            nom   = link.get_text(strip=True)
+            photo = img["src"] if img and img.get("src") else ""
+            if photo.startswith("//"):
+                photo = "https:" + photo
+            coaches.append({"club": club_name, "nom": nom, "url_photo": photo})
+    return coaches
 
 # ══════════════════════════════════════════════
 # SAUVEGARDE SUPABASE
@@ -171,7 +214,8 @@ def save_players(players):
         headers=SB_HEADERS,
         json=players
     )
-    print(f"  Supabase: {res.status_code} ({'OK' if res.status_code in [200,201,204] else res.text[:200]})")
+    status = res.status_code
+    print(f"  Supabase players: {status} ({'OK' if status in [200,201,204] else res.text[:300]})")
 
 # ══════════════════════════════════════════════
 # MAIN
@@ -179,19 +223,34 @@ def save_players(players):
 
 print("=== BeSoccer Players Scraper ===")
 print(datetime.now().strftime("%Y-%m-%d %H:%M:%S"))
-print(f"16 clubs à scraper\n")
+print(f"{len(CLUBS)} clubs à scraper\n")
 
 total = 0
 for club in CLUBS:
     try:
+        soup = scraper.get(
+            f"https://www.besoccer.com/team/squad/{club['slug']}/{club['id']}/",
+            timeout=20
+        )
+        print(f"\n📋 {club['name']} → Status {soup.status_code}")
+
+        if soup.status_code != 200:
+            print(f"  ⚠️  Ignoré")
+            time.sleep(3)
+            continue
+
+        bs = BeautifulSoup(soup.text, "html.parser")
         players = scrape_club(club)
+
         if players:
             save_players(players)
             total += len(players)
         else:
-            print(f"  ⚠️  Aucun joueur trouvé")
+            print(f"  ⚠️  Aucun joueur")
+
     except Exception as e:
         print(f"  ❌ Erreur {club['name']}: {e}")
+
     time.sleep(3)
 
 print(f"\n=== Terminé : {total} joueurs sauvegardés ===")
