@@ -1503,11 +1503,13 @@ const renderTerrainFlash = (fix, hLu, aLu, players, events, hid, aid, has, hg, a
     return lineup.startXI.map(item => {
       const player = item.player;
       const playerStats = players.flatMap(t => t.players || []).find(p => p.player?.id === player.id);
-      const rating = playerStats?.statistics?.[0]?.games?.rating;
+      const apiRating = playerStats?.statistics?.[0]?.games?.rating;
+      // Priorité: API Football > BeSoccer (déjà dans player.rating)
+      const rating = apiRating ? parseFloat(apiRating).toFixed(1) : (player.rating || null);
 
       return {
         ...player,
-        rating: rating ? parseFloat(rating).toFixed(1) : null,
+        rating: rating,
         photo: player?.photo || playerStats?.player?.photo
       };
     });
@@ -1801,7 +1803,9 @@ const renderListeFlash = (fix, hLu, aLu, players, events, injuries, hid, aid) =>
 
     const starters = (lineup.startXI || []).map(item => {
       const player = item.player;
-      const rating = getPlayerRating(player.id);
+      // Priorité: API Football rating > BeSoccer rating (déjà dans player.rating)
+      const apiRating = getPlayerRating(player.id);
+      const rating = apiRating || player.rating || null;
       const evts = getPlayerEvents(player.id, player.name);
       // Priorité photo : BeSoccer (cdn.resfu.com) > API Football > getPlayerPhoto
       var photo = player.photo;
@@ -1813,7 +1817,8 @@ const renderListeFlash = (fix, hLu, aLu, players, events, injuries, hid, aid) =>
 
     const subs = (lineup.substitutes || []).map(item => {
       const player = item.player;
-      const rating = getPlayerRating(player.id);
+      const apiRating = getPlayerRating(player.id);
+      const rating = apiRating || player.rating || null;
       const evts = getPlayerEvents(player.id, player.name);
       var photo = player.photo;
       if (!photo || photo.includes("media.api-sports.io/football/players/0")) {
@@ -2068,15 +2073,12 @@ const renderListeFlash = (fix, hLu, aLu, players, events, injuries, hid, aid) =>
                     borderRadius: 3
                   }
                 }, "G"),
-                homePlayer.events && homePlayer.events.goals > 0 && React.createElement("span", {
-                  style: { fontSize: 10 }
-                }, "⚽ " + (homePlayer.goal_minutes && homePlayer.goal_minutes.length ? homePlayer.goal_minutes.join("' ⚽ ")+"'" : homePlayer.events.goals+"x")),
-                homePlayer.events && homePlayer.events.yellow > 0 && React.createElement("span", {
-                  style: { fontSize: 10 }
-                }, "🟨" + (homePlayer.yellow_minute ? " "+homePlayer.yellow_minute+"'" : "")),
-                homePlayer.events && homePlayer.events.red > 0 && React.createElement("span", {
-                  style: { fontSize: 10 }
-                }, "🟥" + (homePlayer.red_minute ? " "+homePlayer.red_minute+"'" : ""))
+                ((homePlayer.goals > 0) || (homePlayer.events && homePlayer.events.goals > 0)) && React.createElement("span", { style:{fontSize:10} },
+                  "⚽ " + (homePlayer.goal_minutes && homePlayer.goal_minutes.length ? homePlayer.goal_minutes.join("' ⚽ ")+"'" : ((homePlayer.goals||homePlayer.events.goals)+"x"))),
+                (homePlayer.yellow || (homePlayer.events && homePlayer.events.yellow > 0)) && React.createElement("span", { style:{fontSize:10} },
+                  "🟨" + (homePlayer.yellow_minute ? " "+homePlayer.yellow_minute+"'" : "")),
+                (homePlayer.red || (homePlayer.events && homePlayer.events.red > 0)) && React.createElement("span", { style:{fontSize:10} },
+                  "🟥" + (homePlayer.red_minute ? " "+homePlayer.red_minute+"'" : ""))
               )
             ),
 
@@ -2147,15 +2149,10 @@ const renderListeFlash = (fix, hLu, aLu, players, events, injuries, hid, aid) =>
                   flexWrap: "wrap"
                 }
               },
-                awayPlayer.events && awayPlayer.events.red > 0 && React.createElement("span", {
-                  style: { fontSize: 10 }
-                }, "🟥"),
-                awayPlayer.events && awayPlayer.events.yellow > 0 && React.createElement("span", {
-                  style: { fontSize: 10 }
-                }, "🟨"),
-                awayPlayer.events && awayPlayer.events.goals > 0 && React.createElement("span", {
-                  style: { fontSize: 10 }
-                }, "⚽ " + (awayPlayer.goal_minutes && awayPlayer.goal_minutes.length ? awayPlayer.goal_minutes.join("' ⚽ ")+"'" : awayPlayer.events.goals+"x")),
+                (awayPlayer.red || (awayPlayer.events && awayPlayer.events.red > 0)) && React.createElement("span", { style:{fontSize:10} }, "🟥"),
+                (awayPlayer.yellow || (awayPlayer.events && awayPlayer.events.yellow > 0)) && React.createElement("span", { style:{fontSize:10} }, "🟨"),
+                ((awayPlayer.goals > 0) || (awayPlayer.events && awayPlayer.events.goals > 0)) && React.createElement("span", { style:{fontSize:10} },
+                  "⚽ " + (awayPlayer.goal_minutes && awayPlayer.goal_minutes.length ? awayPlayer.goal_minutes.join("' ⚽ ")+"'" : ((awayPlayer.goals||awayPlayer.events.goals)+"x"))),
                 awayPlayer.pos === "G" && React.createElement("span", {
                   style: {
                     fontSize: 8,
@@ -2777,6 +2774,10 @@ function ComposPanel({lineups, players, homeTeam, awayTeam, isPartial, fix, even
               grid: grids[p.name] || null,
               photo: photo,
               events: { goals: p.goals||0, yellow: p.yellow?1:0, red: p.red?1:0 },
+              goal_minutes: p.goal_minutes||[],
+              yellow_minute: p.yellow_minute||null,
+              red_minute: p.red_minute||null,
+              rating: p.rating||null,
               minutes: p.minutes||90,
               captain: p.is_captain||false
             }
@@ -2798,6 +2799,10 @@ function ComposPanel({lineups, players, homeTeam, awayTeam, isPartial, fix, even
               grid: null,
               photo: photo,
               events: { goals: p.goals||0, yellow: p.yellow?1:0, red: p.red?1:0 },
+              goal_minutes: p.goal_minutes||[],
+              yellow_minute: p.yellow_minute||null,
+              red_minute: p.red_minute||null,
+              rating: p.rating||null,
               minutes: p.minutes||0,
               captain: p.is_captain||false
             }
