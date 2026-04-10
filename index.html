@@ -2070,13 +2070,13 @@ const renderListeFlash = (fix, hLu, aLu, players, events, injuries, hid, aid) =>
                 }, "G"),
                 homePlayer.events && homePlayer.events.goals > 0 && React.createElement("span", {
                   style: { fontSize: 10 }
-                }, "⚽".repeat(homePlayer.events.goals)),
+                }, "⚽ " + (homePlayer.goal_minutes && homePlayer.goal_minutes.length ? homePlayer.goal_minutes.join("' ⚽ ")+"'" : homePlayer.events.goals+"x")),
                 homePlayer.events && homePlayer.events.yellow > 0 && React.createElement("span", {
                   style: { fontSize: 10 }
-                }, "🟨"),
+                }, "🟨" + (homePlayer.yellow_minute ? " "+homePlayer.yellow_minute+"'" : "")),
                 homePlayer.events && homePlayer.events.red > 0 && React.createElement("span", {
                   style: { fontSize: 10 }
-                }, "🟥")
+                }, "🟥" + (homePlayer.red_minute ? " "+homePlayer.red_minute+"'" : ""))
               )
             ),
 
@@ -2155,7 +2155,7 @@ const renderListeFlash = (fix, hLu, aLu, players, events, injuries, hid, aid) =>
                 }, "🟨"),
                 awayPlayer.events && awayPlayer.events.goals > 0 && React.createElement("span", {
                   style: { fontSize: 10 }
-                }, "⚽".repeat(awayPlayer.events.goals)),
+                }, "⚽ " + (awayPlayer.goal_minutes && awayPlayer.goal_minutes.length ? awayPlayer.goal_minutes.join("' ⚽ ")+"'" : awayPlayer.events.goals+"x")),
                 awayPlayer.pos === "G" && React.createElement("span", {
                   style: {
                     fontSize: 8,
@@ -6979,18 +6979,23 @@ function MatchDetail({state,onClose,onTeam}){
           else if(posLow === "mf" || posLow === "mid" || posLow === "midfielder" || posLow === "midfielders" || posLow === "m") pos = "M";
           else if(posLow === "f" || posLow === "att" || posLow === "forward" || posLow === "strikers" || posLow === "striker") pos = "F";
           return {
-            name:       p.name || "",
-            number:     p.number || "",
-            pos:        pos,
-            is_gk:      pos === "G",
-            is_captain: p.captain || false,
-            goals:      p.goals || 0,
-            yellow:     p.yellow || false,
-            red:        p.red || false,
-            minutes:    isSub ? (p.minutes && p.minutes < 90 ? p.minutes : 0) : (p.minutes || 90),
-            photo:      p.photo || "",
-            id:         p.id || "",
-            rating:     p.rating || null
+            name:          p.name || "",
+            number:        p.number || "",
+            pos:           pos,
+            is_gk:         pos === "G",
+            is_captain:    p.captain || false,
+            goals:         p.goals || 0,
+            goal_minutes:  p.goal_minutes || [],
+            yellow:        p.yellow || false,
+            yellow_minute: p.yellow_minute || null,
+            red:           p.red || false,
+            red_minute:    p.red_minute || null,
+            sub_out:       p.sub_out || false,
+            sub_out_minute:p.sub_out_minute || null,
+            minutes:       isSub ? (p.minutes && p.minutes < 90 ? p.minutes : 0) : (p.minutes || 90),
+            photo:         p.photo || "",
+            id:            p.id || "",
+            rating:        p.rating || null
           };
         };
 
