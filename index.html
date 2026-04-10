@@ -13364,7 +13364,51 @@ function TeamPage({ teamId, teamName, teamLogo, leagueId, season, onClose, onTea
             });
 
             window._sfMatched = enriched.filter(function(p){ return p.market_value; }).length;
-            setSquad(enriched);
+
+            // Enrichir aussi avec photos BeSoccer depuis besoccer_players
+            var bsTeamMap = {
+              918:"MC Alger", 904:"CR Belouizdad", 906:"JS Kabylie", 910:"USM Alger",
+              908:"ES Setif", 916:"CS Constantine", 907:"Paradou AC", 905:"ASO Chlef",
+              917:"MC Oran", 919:"JS Saoura", 920:"MC El Bayadh", 921:"USM Khenchela",
+              922:"Olympique Akbou", 923:"ES Mostaganem", 924:"MB Rouissat", 925:"ES Ben Aknoun"
+            };
+            var bsClub = bsTeamMap[teamId];
+            if(bsClub) {
+              var bsUrl2 = "https://iqeqlsxjiklygywjirqs.supabase.co/rest/v1/besoccer_players?club=eq." + encodeURIComponent(bsClub) + "&select=besoccer_id,nom,url_photo";
+              fetch(bsUrl2, { headers: { "apikey": SB_KEY, "Authorization": "Bearer "+SB_KEY } })
+              .then(function(r2) { return r2.json(); })
+              .then(function(bsPlayers) {
+                if(!bsPlayers || !bsPlayers.length) { setSquad(enriched); return; }
+                var normBS = function(s) {
+                  return (s||"").toLowerCase().trim()
+                    .replace(/[àáâã]/g,"a").replace(/[éèêë]/g,"e").replace(/[îï]/g,"i")
+                    .replace(/[ôõ]/g,"o").replace(/[ùûü]/g,"u").replace(/ç/g,"c")
+                    .replace(/ñ/g,"n").replace(/['']/g,"").replace(/\s+/g,"");
+                };
+                var enriched2 = enriched.map(function(p) {
+                  var pNorm = normBS(p.name);
+                  var found = bsPlayers.find(function(bp) {
+                    var bNorm = normBS(bp.nom);
+                    if(pNorm === bNorm) return true;
+                    if(pNorm.length >= 5 && bNorm.includes(pNorm)) return true;
+                    if(bNorm.length >= 5 && pNorm.includes(bNorm)) return true;
+                    // Dernier mot (nom de famille)
+                    var pLast = pNorm.slice(-5);
+                    var bLast = bNorm.slice(-5);
+                    if(pLast.length >= 4 && pLast === bLast) return true;
+                    return false;
+                  });
+                  if(found && found.url_photo) {
+                    return Object.assign({}, p, { photo: found.url_photo });
+                  }
+                  return p;
+                });
+                setSquad(enriched2);
+              })
+              .catch(function() { setSquad(enriched); });
+            } else {
+              setSquad(enriched);
+            }
           })
           .catch(function() { setSquad(sq); });
         } else {
