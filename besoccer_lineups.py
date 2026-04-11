@@ -557,12 +557,30 @@ def scrape_lineup(match):
 # ══════════════════════════════════════════════
 
 def already_scraped(match_id):
+    """
+    Retourne True si le match est déjà scrapé ET complet (subs avec ratings).
+    Retourne False si pas encore scrapé OU si les subs n'ont pas de notes
+    (match terminé depuis peu, notes pas encore calculées par BeSoccer).
+    """
     try:
         r = requests.get(
-            SB_URL + f"/rest/v1/besoccer_lineups?match_id=eq.{match_id}&select=id,home_players",
+            SB_URL + f"/rest/v1/besoccer_lineups?match_id=eq.{match_id}&select=id,home_players,home_subs,away_subs",
             headers={**SB_HEADERS, "Prefer": ""}
         ).json()
-        return bool(r and r[0].get("home_players") and len(r[0]["home_players"]) > 0)
+        if not r or not r[0].get("home_players") or len(r[0]["home_players"]) == 0:
+            return False
+        # Vérifier si les remplaçants entrés (sub_in_minute > 0) ont des notes
+        # Si aucune note → re-scraper pour récupérer les notes post-match
+        home_subs = r[0].get("home_subs") or []
+        away_subs = r[0].get("away_subs") or []
+        all_subs = home_subs + away_subs
+        entered_subs = [s for s in all_subs if s.get("sub_in_minute") or s.get("minutes", 0) > 0]
+        if entered_subs:
+            has_ratings = any(s.get("rating") for s in entered_subs)
+            if not has_ratings:
+                print(f"  ⚠️ Remplaçants sans notes → re-scrape")
+                return False
+        return True
     except:
         return False
 
