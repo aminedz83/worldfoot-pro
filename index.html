@@ -8770,15 +8770,15 @@ function MatchDetail({state,onClose,onTeam}){
   // ══════════════════════════════════════════════
   const renderAvantMatch = function() {
     if (bsPreviewLoading) {
-      return React.createElement("div", {style:{display:"flex",flexDirection:"column",alignItems:"center",padding:"50px 20px",gap:12,color:"#8E96A8"}},
-        React.createElement("div",{style:{fontSize:24}},"⏳"),
-        React.createElement("div",{style:{fontSize:13}},"Chargement...")
+      return React.createElement("div",{style:{display:"flex",flexDirection:"column",alignItems:"center",padding:"60px 20px",gap:10}},
+        React.createElement("div",{style:{width:36,height:36,border:"3px solid #059669",borderTopColor:"transparent",borderRadius:"50%"}}),
+        React.createElement("span",{style:{fontSize:13,color:"rgba(15,22,41,0.38)"}}, "Chargement...")
       );
     }
     if (!bsPreview) {
-      return React.createElement("div", {style:{display:"flex",flexDirection:"column",alignItems:"center",padding:"50px 20px",gap:12,color:"#8E96A8"}},
-        React.createElement("div",{style:{fontSize:24}},"📋"),
-        React.createElement("div",{style:{fontSize:13}},"Données avant-match non disponibles")
+      return React.createElement("div",{style:{display:"flex",flexDirection:"column",alignItems:"center",padding:"60px 20px",gap:10}},
+        React.createElement("div",{style:{fontSize:32}},"📋"),
+        React.createElement("span",{style:{fontSize:13,color:"rgba(15,22,41,0.38)"}}, "Données non disponibles")
       );
     }
 
@@ -8788,311 +8788,309 @@ function MatchDetail({state,onClose,onTeam}){
     var homeLogo = fix&&fix.teams&&fix.teams.home ? fix.teams.home.logo : "";
     var awayLogo = fix&&fix.teams&&fix.teams.away ? fix.teams.away.logo : "";
 
-    var G = "#2d8a1f";
-    var BLU = "#1565c0";
-    var YEL = "#e65100";
-    var BD = "#e5e8ef";
-    var TM = "#111827";
-    var TG = "#6b7280";
+    // Design tokens — même que la fiche d'équipe
+    var BG      = "#F5F6F8";
+    var SURFACE = "#FFFFFF";
+    var BORDER  = "rgba(15,23,42,0.07)";
+    var INK     = "#0F1629";
+    var INK2    = "rgba(15,22,41,0.60)";
+    var INK3    = "rgba(15,22,41,0.38)";
+    var JADE    = "#059669";
+    var JADE_D  = "rgba(5,150,105,0.10)";
+    var BLUE    = "#3B82F6";
+    var BLUE_D  = "rgba(59,130,246,0.10)";
+    var RED     = "#E53E3E";
+    var GOLD    = "#B7791F";
+    var GOLD_D  = "rgba(183,121,31,0.10)";
 
-    // ── CARD HELPER ─────────────────────────────────────────
-    var Card = function(icon, title, children) {
-      return React.createElement("div", {style:{background:"#fff",borderRadius:12,marginBottom:10,overflow:"hidden",border:"1px solid "+BD}},
-        React.createElement("div", {style:{background:G,padding:"9px 14px",display:"flex",alignItems:"center",gap:8}},
-          React.createElement("span",{style:{fontSize:14}}, icon),
-          React.createElement("span",{style:{color:"#fff",fontWeight:700,fontSize:12,textTransform:"uppercase",letterSpacing:"0.6px"}}, title)
-        ),
-        React.createElement("div",{style:{padding:"12px 14px"}}, children)
+    // ── HELPERS ──────────────────────────────────────────
+    var Section = function(title, children) {
+      return React.createElement("div",{
+        style:{background:SURFACE,borderRadius:16,margin:"0 0 10px",
+               padding:"14px 16px",border:"1px solid "+BORDER,
+               boxShadow:"0 1px 4px rgba(15,23,42,0.06)"}
+      },
+        React.createElement("div",{style:{fontSize:13,fontWeight:700,color:INK,marginBottom:12,paddingBottom:8,borderBottom:"1px solid "+BORDER}}, title),
+        children
       );
     };
 
-    // ── TEAM HEADER HELPER ───────────────────────────────────
-    var TeamHeader = function() {
-      return React.createElement("div",{style:{display:"flex",alignItems:"center",justifyContent:"space-between",marginBottom:12,padding:"6px 0"}},
+    var TeamRow = function() {
+      return React.createElement("div",{style:{display:"flex",alignItems:"center",justifyContent:"space-between",marginBottom:10}},
         React.createElement("div",{style:{display:"flex",alignItems:"center",gap:6,flex:1,minWidth:0}},
-          homeLogo && React.createElement("img",{src:homeLogo,style:{width:22,height:22,objectFit:"contain"},onError:function(e){e.target.style.display="none";}}),
-          React.createElement("span",{style:{fontSize:11,fontWeight:700,color:G,overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap"}}, homeName)
+          homeLogo && React.createElement("img",{src:homeLogo,style:{width:22,height:22,objectFit:"contain",flexShrink:0}}),
+          React.createElement("span",{style:{fontSize:12,fontWeight:700,color:JADE,overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap"}},homeName)
         ),
-        React.createElement("div",{style:{width:60}}),
         React.createElement("div",{style:{display:"flex",alignItems:"center",gap:6,flex:1,minWidth:0,justifyContent:"flex-end"}},
-          React.createElement("span",{style:{fontSize:11,fontWeight:700,color:BLU,overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap",textAlign:"right"}}, awayName),
-          awayLogo && React.createElement("img",{src:awayLogo,style:{width:22,height:22,objectFit:"contain"},onError:function(e){e.target.style.display="none";}})
+          React.createElement("span",{style:{fontSize:12,fontWeight:700,color:BLUE,overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap",textAlign:"right"}},awayName),
+          awayLogo && React.createElement("img",{src:awayLogo,style:{width:22,height:22,objectFit:"contain",flexShrink:0}})
         )
       );
     };
 
-    // ══════════════════════════════════════════════
-    // 1. STATS GÉNÉRALES
-    // ══════════════════════════════════════════════
+    // ── 1. STATS GÉNÉRALES ────────────────────────────────
     var sg = p.stats_general && p.stats_general.competition ? p.stats_general.competition : {};
-    var allSgKeys = Object.keys(sg).filter(function(k){ return k!=="valeur_home"&&k!=="valeur_away"&&sg[k]&&sg[k].home!==undefined; });
     var statDefs = [
-      {label:"Victoires", keys:["Victoires","Victorias","Wins","Gagnés","Won"]},
-      {label:"Nuls",      keys:["Nuls","Empates","Draws","Égalités"]},
-      {label:"Défaites",  keys:["Défaites","Derrotas","Losses","Perdus","Lost"]}
+      {label:"Victoires", keys:["Victoires","Victorias","Wins"]},
+      {label:"Nuls",      keys:["Nuls","Empates","Draws"]},
+      {label:"Défaites",  keys:["Défaites","Derrotas","Losses"]}
     ];
-    var usedKeys = [];
-    var statRows = statDefs.map(function(def) {
+    var sgKeys = Object.keys(sg).filter(function(k){ return k!=="valeur_home"&&k!=="valeur_away"&&sg[k]&&sg[k].home!==undefined; });
+    var statsRows = statDefs.map(function(def) {
       var d = null;
-      def.keys.forEach(function(k){ if(!d && sg[k]) { d=sg[k]; usedKeys.push(k); } });
-      if(!d && allSgKeys.length > 0) {
-        var remaining = allSgKeys.filter(function(k){ return usedKeys.indexOf(k)<0; });
-        if(remaining.length > 0) { d=sg[remaining[0]]; usedKeys.push(remaining[0]); }
-      }
-      if(!d) return null;
-      var hv = parseInt(d.home)||0;
-      var av = parseInt(d.away)||0;
-      var total = (hv+av) || 1;
-      var hPct = Math.round(hv/total*100);
-      var hColor = def.label==="Victoires" ? G : def.label==="Défaites" ? "#c62828" : "#f59e0b";
-      var aColor = def.label==="Victoires" ? BLU : def.label==="Défaites" ? "#e57373" : "#fcd34d";
+      def.keys.forEach(function(k){ if (!d&&sg[k]) d=sg[k]; });
+      if (!d && sgKeys.length > 0) d = sg[sgKeys.shift()];
+      if (!d) return null;
+      var hv = parseInt(d.home)||0, av = parseInt(d.away)||0;
+      var tot = hv+av||1;
+      var hp = Math.round(hv/tot*100), ap = 100-hp;
+      var hWin = hv>av, aWin = av>hv;
       return React.createElement("div",{key:def.label,style:{marginBottom:10}},
-        React.createElement("div",{style:{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:4}},
-          React.createElement("span",{style:{fontSize:15,fontWeight:700,color:hColor,minWidth:24}},""+hv),
-          React.createElement("span",{style:{fontSize:11,color:TG,textAlign:"center",flex:1}},def.label),
-          React.createElement("span",{style:{fontSize:15,fontWeight:700,color:aColor,minWidth:24,textAlign:"right"}},""+av)
+        React.createElement("div",{style:{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:5}},
+          React.createElement("span",{style:{fontSize:15,fontWeight:800,color:hWin?JADE:INK,
+            background:hWin?JADE_D:"transparent",padding:"2px 8px",borderRadius:8,minWidth:32,textAlign:"center"}},hv),
+          React.createElement("span",{style:{fontSize:11,color:INK3,letterSpacing:"0.3px",textTransform:"uppercase",fontWeight:500}},def.label),
+          React.createElement("span",{style:{fontSize:15,fontWeight:800,color:aWin?BLUE:INK,
+            background:aWin?BLUE_D:"transparent",padding:"2px 8px",borderRadius:8,minWidth:32,textAlign:"center"}},av)
         ),
-        React.createElement("div",{style:{height:7,borderRadius:4,background:"#f0f2f5",overflow:"hidden",display:"flex"}},
-          React.createElement("div",{style:{width:hPct+"%",background:hColor,borderRadius:"4px 0 0 4px"}}),
-          React.createElement("div",{style:{width:(100-hPct)+"%",background:aColor,borderRadius:"0 4px 4px 0"}})
+        React.createElement("div",{style:{height:4,borderRadius:2,overflow:"hidden",display:"flex",background:"#F5F6F8"}},
+          React.createElement("div",{style:{width:hp+"%",background:hWin?"linear-gradient(90deg,#059669,#10B981)":"rgba(5,150,105,0.3)"}}),
+          React.createElement("div",{style:{width:ap+"%",background:aWin?"linear-gradient(90deg,#3B82F6,#60A5FA)":"rgba(59,130,246,0.3)"}})
         )
       );
     });
-    var valHome = sg.valeur_home || sg.valeur_domicile || "";
-    var valAway = sg.valeur_away || sg.valeur_exterieur || "";
-    var statsSection = Card("📊","Statistiques générales",
+    var statsSection = Section("📊 Statistiques générales",
       React.createElement("div",null,
-        TeamHeader(),
-        statRows,
-        (valHome||valAway) && React.createElement("div",{style:{display:"flex",justifyContent:"space-between",alignItems:"center",marginTop:10,padding:"8px 10px",background:"#f8f9fb",borderRadius:8}},
-          React.createElement("span",{style:{fontSize:13,fontWeight:700,color:TM}},valHome ? valHome+"M€" : "—"),
-          React.createElement("span",{style:{fontSize:11,color:TG}}, "Valeur d'équipe (M€)"),
-          React.createElement("span",{style:{fontSize:13,fontWeight:700,color:TM}},valAway ? valAway+"M€" : "—")
+        TeamRow(),
+        statsRows,
+        (sg.valeur_home||sg.valeur_away) && React.createElement("div",{
+          style:{display:"flex",justifyContent:"space-between",alignItems:"center",
+                 marginTop:10,padding:"8px 12px",background:BG,borderRadius:10,border:"1px solid "+BORDER}
+        },
+          React.createElement("div",{style:{textAlign:"center"}},
+            React.createElement("div",{style:{fontSize:14,fontWeight:800,color:JADE}},(sg.valeur_home||"?")+"M€"),
+            React.createElement("div",{style:{fontSize:9,color:INK3,marginTop:1}},"Valeur")
+          ),
+          React.createElement("span",{style:{fontSize:10,color:INK3,fontWeight:500}},"Valeur d'équipe"),
+          React.createElement("div",{style:{textAlign:"center"}},
+            React.createElement("div",{style:{fontSize:14,fontWeight:800,color:BLUE}},(sg.valeur_away||"?")+"M€"),
+            React.createElement("div",{style:{fontSize:9,color:INK3,marginTop:1}},"Valeur")
+          )
         )
       )
     );
 
-    // ══════════════════════════════════════════════
-    // 2. FORME RÉCENTE
-    // ══════════════════════════════════════════════
-    var rf = p.recent_form && p.recent_form.competition ? p.recent_form.competition : {home:[],away:[]};
-    var streaks = p.streaks && p.streaks.competition ? p.streaks.competition : [];
-
-    var RBadge = function(r) {
-      var bg = r==="G"||r==="W" ? "#2d8a1f" : r==="P"||r==="L" ? "#c62828" : "#e8a000";
-      var lbl = r==="G"||r==="W" ? "G" : r==="P"||r==="L" ? "P" : "N";
-      return React.createElement("div",{
-        style:{ width:30,height:30,borderRadius:"50%",background:bg,
-                display:"flex",alignItems:"center",justifyContent:"center",
-                fontSize:13,fontWeight:900,color:"#fff",flexShrink:0,
-                boxShadow:"0 1px 4px rgba(0,0,0,0.2)" }
-      }, lbl);
+    // ── 2. FORME RÉCENTE ──────────────────────────────────
+    var rf = p.recent_form&&p.recent_form.competition ? p.recent_form.competition : {home:[],away:[]};
+    var streaks = p.streaks&&p.streaks.competition ? p.streaks.competition : [];
+    var RBadge = function(r, sz) {
+      var s = sz||26;
+      var bg = r==="G"||r==="W" ? JADE : r==="P"||r==="L" ? RED : GOLD;
+      var lbl = r==="G"||r==="W" ? "V" : r==="P"||r==="L" ? "D" : "N";
+      return React.createElement("div",{style:{width:s,height:s,borderRadius:"50%",background:bg,
+        display:"flex",alignItems:"center",justifyContent:"center",
+        fontSize:s*0.42,fontWeight:800,color:"#fff",flexShrink:0}},lbl);
     };
-
-    // Interleave home et away matchs côte à côte
-    var maxMatches = Math.max((rf.home||[]).length, (rf.away||[]).length);
-    var matchRows = [];
-    for (var mi = 0; mi < maxMatches; mi++) {
-      var hm = (rf.home||[])[mi];
-      var am = (rf.away||[])[mi];
-      matchRows.push(React.createElement("div",{
-        key:mi,
-        style:{ display:"flex",alignItems:"center",gap:4,
-                padding:"7px 0",borderBottom: mi < maxMatches-1 ? "1px solid "+BD : "none" }
+    var maxF = Math.max((rf.home||[]).length,(rf.away||[]).length);
+    var formRows = [];
+    for (var fi=0; fi<maxF&&fi<5; fi++) {
+      var hm=(rf.home||[])[fi], am=(rf.away||[])[fi];
+      formRows.push(React.createElement("div",{key:fi,
+        style:{display:"flex",alignItems:"center",gap:6,padding:"6px 0",
+               borderBottom:fi<maxF-1?"1px solid "+BORDER:"none"}
       },
-        // Home match
         React.createElement("div",{style:{display:"flex",alignItems:"center",gap:4,flex:1,minWidth:0}},
-          hm && hm.home_logo && React.createElement("img",{src:hm.home_logo,style:{width:20,height:20,objectFit:"contain",flexShrink:0},onError:function(e){e.target.style.display="none";}}),
-          React.createElement("span",{style:{fontSize:11,fontWeight:700,color:TM,minWidth:28,textAlign:"center"}}, hm ? (hm.score||"") : ""),
-          hm && hm.away_logo && React.createElement("img",{src:hm.away_logo,style:{width:20,height:20,objectFit:"contain",flexShrink:0},onError:function(e){e.target.style.display="none";}})
+          hm&&hm.home_logo&&React.createElement("img",{src:hm.home_logo,style:{width:18,height:18,objectFit:"contain",flexShrink:0},onError:function(e){e.target.style.display="none";}}),
+          React.createElement("span",{style:{fontSize:11,color:INK,flex:1,overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap",padding:"0 4px"}},hm?(hm.score||""):""),
+          hm&&hm.away_logo&&React.createElement("img",{src:hm.away_logo,style:{width:18,height:18,objectFit:"contain",flexShrink:0},onError:function(e){e.target.style.display="none";}})
         ),
-        // Home badge
-        hm ? RBadge(hm.result) : React.createElement("div",{style:{width:30,height:30}}),
-        // Away badge
-        am ? RBadge(am.result) : React.createElement("div",{style:{width:30,height:30}}),
-        // Away match
+        React.createElement("div",{style:{display:"flex",gap:4,flexShrink:0}},
+          hm?RBadge(hm.result,24):React.createElement("div",{style:{width:24}}),
+          am?RBadge(am.result,24):React.createElement("div",{style:{width:24}})
+        ),
         React.createElement("div",{style:{display:"flex",alignItems:"center",gap:4,flex:1,minWidth:0,justifyContent:"flex-end"}},
-          am && am.home_logo && React.createElement("img",{src:am.home_logo,style:{width:20,height:20,objectFit:"contain",flexShrink:0},onError:function(e){e.target.style.display="none";}}),
-          React.createElement("span",{style:{fontSize:11,fontWeight:700,color:TM,minWidth:28,textAlign:"center"}}, am ? (am.score||"") : ""),
-          am && am.away_logo && React.createElement("img",{src:am.away_logo,style:{width:20,height:20,objectFit:"contain",flexShrink:0},onError:function(e){e.target.style.display="none";}})
+          am&&am.home_logo&&React.createElement("img",{src:am.home_logo,style:{width:18,height:18,objectFit:"contain",flexShrink:0},onError:function(e){e.target.style.display="none";}}),
+          React.createElement("span",{style:{fontSize:11,color:INK,flex:1,textAlign:"right",overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap",padding:"0 4px"}},am?(am.score||""):""),
+          am&&am.away_logo&&React.createElement("img",{src:am.away_logo,style:{width:18,height:18,objectFit:"contain",flexShrink:0},onError:function(e){e.target.style.display="none";}})
         )
       ));
     }
-
-    // Séries (streaks)
-    var streakRows = streaks.slice(0,3).map(function(s,i) {
-      var hv = parseInt(s.home)||0;
-      var av = parseInt(s.away)||0;
-      var total = hv + av || 1;
-      var hPct = Math.round(hv/total*100);
-      var aPct = 100-hPct;
+    var streakRows = streaks.slice(0,3).map(function(s,i){
+      var hv=parseInt(s.home)||0, av=parseInt(s.away)||0, tot=hv+av||1;
+      var hp=Math.round(hv/tot*100), ap=100-hp;
       return React.createElement("div",{key:i,style:{marginTop:10}},
-        React.createElement("div",{style:{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:3}},
-          React.createElement("div",{style:{textAlign:"center",minWidth:50}},
-            React.createElement("div",{style:{fontSize:12,fontWeight:700,color:TM}},s.home||"0"),
-            s.home_record && React.createElement("div",{style:{fontSize:9,color:TG}},s.home_record)
+        React.createElement("div",{style:{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:4}},
+          React.createElement("div",{style:{textAlign:"left",minWidth:48}},
+            React.createElement("div",{style:{fontSize:12,fontWeight:700,color:hv>=av?JADE:INK2}},s.home||"0"),
+            s.home_record&&React.createElement("div",{style:{fontSize:9,color:INK3}},s.home_record)
           ),
-          React.createElement("span",{style:{fontSize:10,color:TG,textAlign:"center",flex:1}},s.label||""),
-          React.createElement("div",{style:{textAlign:"center",minWidth:50}},
-            React.createElement("div",{style:{fontSize:12,fontWeight:700,color:TM}},s.away||"0"),
-            s.away_record && React.createElement("div",{style:{fontSize:9,color:TG}},s.away_record)
+          React.createElement("span",{style:{fontSize:10,color:INK3,textAlign:"center",flex:1,fontWeight:500}},s.label||""),
+          React.createElement("div",{style:{textAlign:"right",minWidth:48}},
+            React.createElement("div",{style:{fontSize:12,fontWeight:700,color:av>hv?BLUE:INK2}},s.away||"0"),
+            s.away_record&&React.createElement("div",{style:{fontSize:9,color:INK3}},s.away_record)
           )
         ),
-        React.createElement("div",{style:{height:4,borderRadius:2,background:"#e8eaef",overflow:"hidden",display:"flex"}},
-          React.createElement("div",{style:{width:hPct+"%",background:G}}),
-          React.createElement("div",{style:{width:aPct+"%",background:BLU}})
+        React.createElement("div",{style:{height:4,borderRadius:2,background:"#F5F6F8",overflow:"hidden",display:"flex"}},
+          React.createElement("div",{style:{width:hp+"%",background:hv>=av?"linear-gradient(90deg,#059669,#10B981)":"rgba(5,150,105,0.3)"}}),
+          React.createElement("div",{style:{width:ap+"%",background:av>hv?"linear-gradient(90deg,#3B82F6,#60A5FA)":"rgba(59,130,246,0.3)"}})
         )
       );
     });
-
-    var formSection = Card("🔥","Forme récente",
+    var formSection = Section("🔥 Forme récente",
       React.createElement("div",null,
-        // Noms équipes
-        React.createElement("div",{style:{display:"flex",justifyContent:"space-between",marginBottom:8}},
+        React.createElement("div",{style:{display:"flex",justifyContent:"space-between",marginBottom:8,paddingBottom:6,borderBottom:"1px solid "+BORDER}},
           React.createElement("div",{style:{display:"flex",alignItems:"center",gap:5}},
-            homeLogo && React.createElement("img",{src:homeLogo,style:{width:16,height:16,objectFit:"contain"}}),
-            React.createElement("span",{style:{fontSize:11,fontWeight:700,color:G}},homeName)
+            homeLogo&&React.createElement("img",{src:homeLogo,style:{width:16,height:16,objectFit:"contain"}}),
+            React.createElement("span",{style:{fontSize:11,fontWeight:700,color:JADE}},homeName)
           ),
           React.createElement("div",{style:{display:"flex",alignItems:"center",gap:5}},
-            React.createElement("span",{style:{fontSize:11,fontWeight:700,color:BLU}},awayName),
-            awayLogo && React.createElement("img",{src:awayLogo,style:{width:16,height:16,objectFit:"contain"}})
+            React.createElement("span",{style:{fontSize:11,fontWeight:700,color:BLUE}},awayName),
+            awayLogo&&React.createElement("img",{src:awayLogo,style:{width:16,height:16,objectFit:"contain"}})
           )
         ),
-        matchRows,
-        streakRows.length > 0 && React.createElement("div",{style:{marginTop:12,paddingTop:10,borderTop:"1px solid "+BD}},streakRows)
+        formRows,
+        streakRows.length>0&&React.createElement("div",{style:{marginTop:10,paddingTop:10,borderTop:"1px solid "+BORDER}},streakRows)
       )
     );
 
-    // ══════════════════════════════════════════════
-    // 3. FACE À FACE
-    // ══════════════════════════════════════════════
-    var h2hData = p.h2h || {matches:[],home_wins:"0",draws:"0",away_wins:"0"};
-    var h2hSection = Card("⚔️","Face à face",
+    // ── 3. FACE À FACE ────────────────────────────────────
+    var h2d = p.h2h||{matches:[],home_wins:"0",draws:"0",away_wins:"0"};
+    var h2hSection = Section("⚔️ Face à face",
       React.createElement("div",null,
-        React.createElement("div",{style:{display:"flex",justifyContent:"space-around",marginBottom:14,padding:"10px 0",borderBottom:"1px solid "+BD}},
+        React.createElement("div",{style:{display:"flex",justifyContent:"space-around",padding:"10px 0",marginBottom:12,background:BG,borderRadius:10}},
           React.createElement("div",{style:{textAlign:"center"}},
-            React.createElement("div",{style:{fontSize:22,fontWeight:800,color:G}}, ""+h2hData.home_wins),
-            React.createElement("div",{style:{fontSize:10,color:TG,marginTop:2}}, "Victoires")
+            React.createElement("div",{style:{fontSize:22,fontWeight:800,color:JADE}},""+h2d.home_wins),
+            React.createElement("div",{style:{fontSize:9,color:INK3,marginTop:2,textTransform:"uppercase",letterSpacing:"0.5px"}}, "Victoires")
           ),
           React.createElement("div",{style:{textAlign:"center"}},
-            React.createElement("div",{style:{fontSize:22,fontWeight:800,color:"#f59e0b"}}, ""+h2hData.draws),
-            React.createElement("div",{style:{fontSize:10,color:TG,marginTop:2}}, "Nuls")
+            React.createElement("div",{style:{fontSize:22,fontWeight:800,color:GOLD}},""+h2d.draws),
+            React.createElement("div",{style:{fontSize:9,color:INK3,marginTop:2,textTransform:"uppercase",letterSpacing:"0.5px"}},"Nuls")
           ),
           React.createElement("div",{style:{textAlign:"center"}},
-            React.createElement("div",{style:{fontSize:22,fontWeight:800,color:BLU}}, ""+h2hData.away_wins),
-            React.createElement("div",{style:{fontSize:10,color:TG,marginTop:2}}, "Victoires")
+            React.createElement("div",{style:{fontSize:22,fontWeight:800,color:BLUE}},""+h2d.away_wins),
+            React.createElement("div",{style:{fontSize:9,color:INK3,marginTop:2,textTransform:"uppercase",letterSpacing:"0.5px"}},"Victoires")
           )
         ),
-        (h2hData.matches||[]).slice(0,5).map(function(m,i) {
-          var rBg = m.result==="G"||m.result==="W" ? G : m.result==="P"||m.result==="L" ? "#c62828" : "#f59e0b";
-          return React.createElement("div",{key:i,style:{display:"flex",alignItems:"center",justifyContent:"space-between",padding:"7px 0",borderBottom:i<4?"1px solid "+BD:"none"}},
+        (h2d.matches||[]).slice(0,5).map(function(m,i){
+          var bg = m.result==="G"||m.result==="W" ? JADE : m.result==="P"||m.result==="L" ? RED : GOLD;
+          return React.createElement("div",{key:i,
+            style:{display:"flex",alignItems:"center",padding:"7px 0",
+                   borderBottom:i<4?"1px solid "+BORDER:"none"}
+          },
             React.createElement("div",{style:{display:"flex",alignItems:"center",gap:4,flex:1,minWidth:0}},
-              m.home_logo && React.createElement("img",{src:m.home_logo,style:{width:18,height:18,objectFit:"contain"},onError:function(e){e.target.style.display="none";}}),
-              React.createElement("span",{style:{fontSize:11,color:TM,overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap",maxWidth:90}},m.home||"")
+              m.home_logo&&React.createElement("img",{src:m.home_logo,style:{width:18,height:18,objectFit:"contain",flexShrink:0},onError:function(e){e.target.style.display="none";}}),
+              React.createElement("span",{style:{fontSize:11,color:INK,overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap",marginLeft:4}},m.home||"")
             ),
-            React.createElement("div",{style:{fontSize:12,fontWeight:800,color:"#fff",background:rBg,padding:"3px 8px",borderRadius:6,margin:"0 8px",whiteSpace:"nowrap"}},m.score||""),
+            React.createElement("div",{style:{fontSize:12,fontWeight:700,color:"#fff",background:bg,
+              padding:"3px 10px",borderRadius:6,margin:"0 8px",flexShrink:0}},m.score||""),
             React.createElement("div",{style:{display:"flex",alignItems:"center",gap:4,flex:1,minWidth:0,justifyContent:"flex-end"}},
-              React.createElement("span",{style:{fontSize:11,color:TM,overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap",maxWidth:90,textAlign:"right"}},m.away||""),
-              m.away_logo && React.createElement("img",{src:m.away_logo,style:{width:18,height:18,objectFit:"contain"},onError:function(e){e.target.style.display="none";}})
+              React.createElement("span",{style:{fontSize:11,color:INK,overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap",marginRight:4,textAlign:"right"}},m.away||""),
+              m.away_logo&&React.createElement("img",{src:m.away_logo,style:{width:18,height:18,objectFit:"contain",flexShrink:0},onError:function(e){e.target.style.display="none";}})
             )
           );
         })
       )
     );
 
-    // ══════════════════════════════════════════════
-    // 4. APPORT OFFENSIF
-    // ══════════════════════════════════════════════
-    var off = p.offensive_contribution && p.offensive_contribution.competition ? p.offensive_contribution.competition : {home:[],away:[]};
-    var OffPlayer = function(pl, isHome) {
-      var total = (pl.goals||0) + (pl.assists||0);
-      var gW = total ? Math.round((pl.goals||0)/total*100) : 50;
-      var aW = 100 - gW;
-      return React.createElement("div",{style:{marginBottom:10}},
-        React.createElement("div",{style:{display:"flex",alignItems:"center",gap:5,marginBottom:3,justifyContent:isHome?"flex-start":"flex-end"}},
-          pl.photo && React.createElement("img",{src:pl.photo,style:{width:22,height:22,borderRadius:"50%",objectFit:"cover"},onError:function(e){e.target.style.display="none";}}),
-          React.createElement("span",{style:{fontSize:11,fontWeight:600,color:TM}},pl.name||"")
+    // ── 4. APPORT OFFENSIF ────────────────────────────────
+    var oc = p.offensive_contribution&&p.offensive_contribution.competition ? p.offensive_contribution.competition : {home:[],away:[]};
+    var OffPl = function(pl, isHome) {
+      var tot=(pl.goals||0)+(pl.assists||0);
+      var gp=tot?Math.round((pl.goals||0)/tot*100):50, ap=100-gp;
+      var barC = isHome ? JADE : BLUE;
+      return React.createElement("div",{key:pl.name,style:{marginBottom:10}},
+        React.createElement("div",{style:{display:"flex",alignItems:"center",gap:5,marginBottom:4,
+          justifyContent:isHome?"flex-start":"flex-end"}},
+          isHome&&pl.photo&&React.createElement("img",{src:pl.photo,
+            style:{width:22,height:22,borderRadius:"50%",objectFit:"cover",
+                   border:"1.5px solid "+JADE,flexShrink:0},
+            onError:function(e){e.target.style.display="none";}}),
+          React.createElement("span",{style:{fontSize:11,fontWeight:600,color:INK}},pl.name),
+          !isHome&&pl.photo&&React.createElement("img",{src:pl.photo,
+            style:{width:22,height:22,borderRadius:"50%",objectFit:"cover",
+                   border:"1.5px solid "+BLUE,flexShrink:0},
+            onError:function(e){e.target.style.display="none";}})
         ),
-        React.createElement("div",{style:{display:"flex",height:18,borderRadius:4,overflow:"hidden",border:"1px solid "+BD}},
-          (pl.goals||0) > 0 && React.createElement("div",{style:{width:gW+"%",background:isHome?G:BLU,display:"flex",alignItems:"center",justifyContent:"center"}},
-            React.createElement("span",{style:{fontSize:9,color:"#fff",fontWeight:700}}, "⚽ "+(pl.goals||0))
-          ),
-          (pl.assists||0) > 0 && React.createElement("div",{style:{width:aW+"%",background:YEL,display:"flex",alignItems:"center",justifyContent:"center"}},
-            React.createElement("span",{style:{fontSize:9,color:"#fff",fontWeight:700}}, "🅰 "+(pl.assists||0))
-          )
+        React.createElement("div",{style:{height:5,borderRadius:3,background:BG,overflow:"hidden",display:"flex",
+          flexDirection:isHome?"row":"row-reverse"}},
+          (pl.goals||0)>0&&React.createElement("div",{style:{width:gp+"%",background:barC}}),
+          (pl.assists||0)>0&&React.createElement("div",{style:{width:ap+"%",background:GOLD}})
+        ),
+        React.createElement("div",{style:{display:"flex",gap:6,marginTop:3,
+          justifyContent:isHome?"flex-start":"flex-end"}},
+          (pl.goals||0)>0&&React.createElement("span",{style:{fontSize:10,color:barC,fontWeight:700}},"⚽ "+pl.goals),
+          (pl.assists||0)>0&&React.createElement("span",{style:{fontSize:10,color:GOLD,fontWeight:700}},"🅰️ "+pl.assists)
         )
       );
     };
-    var offSection = Card("⚽","Apport offensif (Buts + Passes décisives)",
-      React.createElement("div",null,
-        React.createElement("div",{style:{display:"flex",justifyContent:"space-between",marginBottom:8}},
-          React.createElement("span",{style:{fontSize:10,fontWeight:700,color:G}}),
-          React.createElement("span",{style:{fontSize:10,fontWeight:700,color:BLU}})
-        ),
-        React.createElement("div",{style:{display:"flex",gap:10}},
-          React.createElement("div",{style:{flex:1}},
-            React.createElement("div",{style:{display:"flex",alignItems:"center",gap:4,marginBottom:8}},
-              homeLogo && React.createElement("img",{src:homeLogo,style:{width:16,height:16,objectFit:"contain"},onError:function(e){e.target.style.display="none";}}),
-              React.createElement("span",{style:{fontSize:10,fontWeight:700,color:G}},homeName)
-            ),
-            (off.home||[]).map(function(pl,i){ return React.createElement("div",{key:i},OffPlayer(pl,true)); })
+    var offSection = Section("⚽ Apport offensif",
+      React.createElement("div",{style:{display:"flex",gap:8}},
+        React.createElement("div",{style:{flex:1}},
+          React.createElement("div",{style:{display:"flex",alignItems:"center",gap:4,marginBottom:8,paddingBottom:6,borderBottom:"2px solid "+JADE}},
+            homeLogo&&React.createElement("img",{src:homeLogo,style:{width:16,height:16,objectFit:"contain"}}),
+            React.createElement("span",{style:{fontSize:11,fontWeight:700,color:JADE}},homeName)
           ),
-          React.createElement("div",{style:{width:1,background:BD}}),
-          React.createElement("div",{style:{flex:1}},
-            React.createElement("div",{style:{display:"flex",alignItems:"center",gap:4,marginBottom:8,justifyContent:"flex-end"}},
-              React.createElement("span",{style:{fontSize:10,fontWeight:700,color:BLU}},awayName),
-              awayLogo && React.createElement("img",{src:awayLogo,style:{width:16,height:16,objectFit:"contain"},onError:function(e){e.target.style.display="none";}})
-            ),
-            (off.away||[]).map(function(pl,i){ return React.createElement("div",{key:i},OffPlayer(pl,false)); })
-          )
+          (oc.home||[]).map(function(pl){ return OffPl(pl,true); })
+        ),
+        React.createElement("div",{style:{width:1,background:BORDER}}),
+        React.createElement("div",{style:{flex:1}},
+          React.createElement("div",{style:{display:"flex",alignItems:"center",gap:4,marginBottom:8,paddingBottom:6,borderBottom:"2px solid "+BLUE,justifyContent:"flex-end"}},
+            React.createElement("span",{style:{fontSize:11,fontWeight:700,color:BLUE}},awayName),
+            awayLogo&&React.createElement("img",{src:awayLogo,style:{width:16,height:16,objectFit:"contain"}})
+          ),
+          (oc.away||[]).map(function(pl){ return OffPl(pl,false); })
         )
       )
     );
 
-    // ══════════════════════════════════════════════
-    // 5. JOUEURS VEDETTES
-    // ══════════════════════════════════════════════
-    var feat = p.featured_players && p.featured_players.competition ? p.featured_players.competition : {};
-    var labelMap = {
-      "Matchs":"Matchs","Matches":"Matchs","Partidos":"Matchs",
+    // ── 5. JOUEURS VEDETTES ───────────────────────────────
+    var fc = p.featured_players&&p.featured_players.competition ? p.featured_players.competition : {};
+    var fLabels = {"Matchs":"Matchs","Matches":"Matchs","Partidos":"Matchs",
       "Minutes":"Minutes","Minutos":"Minutes",
       "Cartons jaunes":"Cartons jaunes","Tarjetas amarillas":"Cartons jaunes","Yellow cards":"Cartons jaunes",
-      "Le plus jeune":"Le plus jeune","Youngest":"Le plus jeune","Más joven":"Le plus jeune",
-      "Le plus vieux":"Le plus vieux","Oldest":"Le plus vieux","Más viejo":"Le plus vieux"
-    };
-    var iconMap = {"Matchs":"🎮","Minutes":"⏱️","Cartons jaunes":"🟨","Le plus jeune":"👶","Le plus vieux":"🧓"};
-    var featSection = Card("🏆","Joueurs vedettes",
+      "Le plus jeune":"Plus jeune","Youngest":"Plus jeune","Más joven":"Plus jeune",
+      "Le plus vieux":"Plus vieux","Oldest":"Plus vieux","Más viejo":"Plus vieux"};
+    var fIcons = {"Matchs":"🎮","Minutes":"⏱️","Cartons jaunes":"🟨","Plus jeune":"👶","Plus vieux":"🧓"};
+    var featSection = Section("🏆 Joueurs vedettes",
       React.createElement("div",null,
-        Object.keys(feat).map(function(cat) {
-          var d = feat[cat];
-          if(!d) return null;
-          var lbl = labelMap[cat] || cat;
-          var ico = iconMap[lbl] || "📌";
-          return React.createElement("div",{key:cat,style:{display:"flex",alignItems:"center",padding:"9px 0",borderBottom:"1px solid "+BD}},
-            React.createElement("div",{style:{flex:1,display:"flex",alignItems:"center",gap:8}},
-              d.home && d.home.photo && React.createElement("img",{src:d.home.photo,style:{width:32,height:32,borderRadius:"50%",objectFit:"cover"},onError:function(e){e.target.style.display="none";}}),
-              React.createElement("div",null,
-                React.createElement("div",{style:{fontSize:12,fontWeight:700,color:G}},d.home&&d.home.value||""),
-                React.createElement("div",{style:{fontSize:10,color:TM}},d.home&&d.home.name||"")
+        Object.keys(fc).map(function(cat){
+          var d=fc[cat]; if(!d) return null;
+          var lbl=fLabels[cat]||cat, icon=fIcons[lbl]||"📌";
+          var hv=parseFloat((d.home&&d.home.value)||0), av=parseFloat((d.away&&d.away.value)||0);
+          var hWin=hv>av, aWin=av>hv;
+          return React.createElement("div",{key:cat,
+            style:{display:"flex",alignItems:"center",padding:"9px 0",borderBottom:"1px solid "+BORDER}
+          },
+            React.createElement("div",{style:{display:"flex",alignItems:"center",gap:6,flex:1,minWidth:0}},
+              d.home&&d.home.photo&&React.createElement("img",{src:d.home.photo,
+                style:{width:32,height:32,borderRadius:"50%",objectFit:"cover",
+                       border:"2px solid "+(hWin?JADE:BORDER),flexShrink:0},
+                onError:function(e){e.target.style.display="none";}}),
+              React.createElement("div",{style:{minWidth:0}},
+                React.createElement("div",{style:{fontSize:11,fontWeight:600,color:INK,overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap",maxWidth:80}},d.home&&d.home.name),
+                React.createElement("div",{style:{fontSize:13,fontWeight:800,color:hWin?JADE:INK}},(d.home&&d.home.value)||"")
               )
             ),
-            React.createElement("div",{style:{textAlign:"center",padding:"0 10px",minWidth:60}},
-              React.createElement("div",{style:{fontSize:16}},ico),
-              React.createElement("div",{style:{fontSize:9,color:TG,marginTop:2}},lbl)
+            React.createElement("div",{style:{display:"flex",flexDirection:"column",alignItems:"center",gap:1,padding:"0 8px",flexShrink:0}},
+              React.createElement("span",{style:{fontSize:17}},icon),
+              React.createElement("span",{style:{fontSize:9,color:INK3,textTransform:"uppercase",letterSpacing:"0.3px"}},lbl)
             ),
-            React.createElement("div",{style:{flex:1,display:"flex",alignItems:"center",gap:8,justifyContent:"flex-end"}},
-              React.createElement("div",{style:{textAlign:"right"}},
-                React.createElement("div",{style:{fontSize:12,fontWeight:700,color:BLU}},d.away&&d.away.value||""),
-                React.createElement("div",{style:{fontSize:10,color:TM}},d.away&&d.away.name||"")
+            React.createElement("div",{style:{display:"flex",alignItems:"center",gap:6,flex:1,minWidth:0,justifyContent:"flex-end"}},
+              React.createElement("div",{style:{textAlign:"right",minWidth:0}},
+                React.createElement("div",{style:{fontSize:11,fontWeight:600,color:INK,overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap",maxWidth:80}},d.away&&d.away.name),
+                React.createElement("div",{style:{fontSize:13,fontWeight:800,color:aWin?BLUE:INK}},(d.away&&d.away.value)||"")
               ),
-              d.away && d.away.photo && React.createElement("img",{src:d.away.photo,style:{width:32,height:32,borderRadius:"50%",objectFit:"cover"},onError:function(e){e.target.style.display="none";}})
+              d.away&&d.away.photo&&React.createElement("img",{src:d.away.photo,
+                style:{width:32,height:32,borderRadius:"50%",objectFit:"cover",
+                       border:"2px solid "+(aWin?BLUE:BORDER),flexShrink:0},
+                onError:function(e){e.target.style.display="none";}})
             )
           );
         })
       )
     );
 
-    return React.createElement("div",{style:{padding:"8px 10px 20px",background:"#f4f6f8",minHeight:"100%"}},
+    return React.createElement("div",{style:{padding:"10px 12px 24px",background:BG,minHeight:"100%"}},
       statsSection,
       formSection,
       h2hSection,
@@ -9100,6 +9098,7 @@ function MatchDetail({state,onClose,onTeam}){
       featSection
     );
   };
+
 
   const renderH2H = ()=>{
     if(!h2h.length) return React.createElement("div",{className:"md-empty"},"⚔️ Aucune confrontation disponible");
