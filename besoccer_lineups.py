@@ -411,7 +411,6 @@ def scrape_lineup(match):
 
     sub_in_minutes = scrape_events(url)
     print(f"  Changements: {sub_in_minutes}")
-
     result = {
         "match_id":       match["match_id"],
         "home_team":      match.get("home_team", ""),
@@ -476,65 +475,34 @@ def scrape_lineup(match):
     hs = len(result["home_subs"])
     as_ = len(result["away_subs"])
     print(f"  ✅ Compo : {h} vs {a} titulaires | {hs} vs {as_} remplaçants")
+
+    # Ne sauvegarder que si les notes sont présentes (match terminé + BeSoccer calculé)
+    all_players = result["home_players"] + result["away_players"]
+    has_notes = any(p.get("rating") for p in all_players)
+    if not has_notes:
+        print("  ⏳ Notes absentes → match pas encore terminé, on attend")
+        return None
+
     return result
 
 # ══════════════════════════════════════════════
 # SUPABASE
 # ══════════════════════════════════════════════
 
-def delete_lineup(match_id):
-    requests.delete(
-        SB_URL + f"/rest/v1/besoccer_lineups?match_id=eq.{match_id}",
-        headers=SB_HEADERS
-    )
-
 def already_scraped(match_id):
-    """
-    Logique simple et stable :
-    - Pas de données → False (scraper)
-    - Away manquant → DELETE + False (re-scraper)
-    - Match d'un autre jour → True (ne jamais toucher)
-    - Match d'aujourd'hui sans notes → False (DELETE + re-scraper)
-    - Match d'aujourd'hui avec notes → True (complet)
-    """
     try:
         r = requests.get(
-            SB_URL + f"/rest/v1/besoccer_lineups?match_id=eq.{match_id}&select=id,home_players,away_players,match_date",
+            SB_URL + f"/rest/v1/besoccer_lineups?match_id=eq.{match_id}&select=id,home_players",
             headers={**SB_HEADERS, "Prefer": ""}
         ).json()
-
-        # Pas encore en base
-        if not r or not r[0].get("home_players") or len(r[0]["home_players"]) == 0:
-            return False
-
-        # Compo partielle (away manquant) → re-scraper
-        if not r[0].get("away_players") or len(r[0]["away_players"]) == 0:
-            print("  ⚠️ Away manquant → re-scrape")
-            delete_lineup(match_id)
-            return False
-
-        # Match d'un autre jour → ne jamais re-scraper
-        if r[0].get("match_date") != date.today().isoformat():
-            return True
-
-        # Match d'aujourd'hui : re-scraper seulement si aucune note
-        # (BeSoccer n'a pas encore calculé les notes = match pas terminé ou trop tôt)
-        all_players = (r[0].get("home_players") or []) + (r[0].get("away_players") or [])
-        has_notes = any(p.get("rating") for p in all_players)
-        if not has_notes:
-            print("  ⚠️ Pas de notes → re-scrape (match pas encore terminé ou notes pas calculées)")
-            delete_lineup(match_id)
-            return False
-
-        return True
-
+        return bool(r and r[0].get("home_players") and len(r[0]["home_players"]) > 0)
     except:
         return False
 
 def save_lineup(lineup):
     res = requests.post(
         SB_URL + "/rest/v1/besoccer_lineups",
-        headers={**SB_HEADERS, "Prefer": "resolution=ignore-duplicates"},
+        headers={**SB_HEADERS, "Prefer": "resolution=merge-duplicates"},
         params={"on_conflict": "match_id"},
         json=lineup
     )
