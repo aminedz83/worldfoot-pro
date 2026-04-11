@@ -2,8 +2,6 @@
 besoccer_lineups.py
 ===================
 Scrape les compositions Ligue 1 Algérie depuis BeSoccer.
-Stratégie : URLs des matchs construites depuis algeria_lineups (Flashscore)
-+ lookup BeSoccer via /match/home-slug/away-slug/ID
 """
 
 import os, re, time, requests, json
@@ -24,7 +22,6 @@ SB_HEADERS   = {
     "Prefer":        "resolution=merge-duplicates"
 }
 
-# Mapping Supabase → slugs BeSoccer (home/away dans l'URL)
 TEAM_SLUG = {
     "MC Alger":        "mc-alger",
     "CR Belouizdad":   "belouizdad",
@@ -43,10 +40,6 @@ TEAM_SLUG = {
     "MB Rouissat":     "mb-rouisset",
     "ES Ben Aknoun":   "ben-aknoun",
 }
-
-# ══════════════════════════════════════════════
-# CLOUDSCRAPER
-# ══════════════════════════════════════════════
 
 scraper = cloudscraper.create_scraper(
     browser={"browser": "chrome", "platform": "windows", "mobile": False}
@@ -73,18 +66,12 @@ def extract_player_id(href):
 # ══════════════════════════════════════════════
 
 def find_besoccer_match_id(home_team, away_team, match_date):
-    """
-    Cherche l'ID BeSoccer d'un match via la page de l'équipe domicile.
-    URL format : /team/matches/slug/id/
-    On connaît le format de l'ID BeSoccer : 2026XXXXXX (6 chiffres après 2026)
-    """
     home_slug = TEAM_SLUG.get(home_team, "")
     away_slug = TEAM_SLUG.get(away_team, "")
     if not home_slug or not away_slug:
         print(f"  ⚠️  Slug manquant: {home_team} / {away_team}")
         return None, None
 
-    # Chercher dans la page matches de l'équipe domicile
     club_ids = {
         "MC Alger": 11505, "CR Belouizdad": 11507, "JS Kabylie": 11506,
         "USM Alger": 11504, "ES Setif": 11501, "CS Constantine": 11510,
@@ -102,29 +89,7 @@ def find_besoccer_match_id(home_team, away_team, match_date):
     if not r:
         return None, None
 
-    # Chercher les liens de matchs contenant away_slug
     soup = BeautifulSoup(r.text, "html.parser")
-    for a in soup.select(f"a[href*='/match/'][href*='{away_slug}']"):
-        href = a.get("href", "")
-        # Extraire l'ID numérique
-        m = re.search(r"/match/[^/]+/[^/]+/(\d+)/?", href)
-        if m:
-            match_id = m.group(1)
-            match_url = "https://www.besoccer.com" + href if href.startswith("/") else href
-            # Vérifier que c'est bien le bon match (date dans le texte parent)
-            parent = a.find_parent(["tr", "li", "div"])
-            row_text = parent.get_text(" ") if parent else ""
-            # Chercher la date
-            date_formats = [
-                date.today().strftime("%-d %b. %Y"),
-                date.today().strftime("%d/%m/%Y"),
-                date.today().strftime("%Y-%m-%d"),
-            ]
-            if any(d in row_text for d in date_formats) or match_date in match_id[:4]:
-                print(f"  ✅ Trouvé: {match_url}")
-                return match_id, match_url
-
-    # Fallback : prendre l'ID le plus grand (matchs de ligue > matchs de coupe)
     best_id = None
     best_url = None
     for a in soup.select(f"a[href*='/match/'][href*='{away_slug}']"):
@@ -139,13 +104,13 @@ def find_besoccer_match_id(home_team, away_team, match_date):
             except:
                 pass
     if best_id:
-        print(f"  ✅ Trouvé (best id): {best_url}")
+        print(f"  ✅ Trouvé: {best_url}")
         return best_id, best_url
 
     return None, None
 
 # ══════════════════════════════════════════════
-# MATCHS DU JOUR depuis Supabase algeria_lineups
+# MATCHS DU JOUR
 # ══════════════════════════════════════════════
 
 def get_today_matches():
@@ -155,7 +120,6 @@ def get_today_matches():
 
     print(f"\nRecherche matchs du {today}...")
 
-    # Chercher les matchs du jour dans algeria_lineups (source Flashscore)
     try:
         r = requests.get(
             SB_URL + f"/rest/v1/algeria_lineups?match_date=eq.{today}&select=home_team,away_team,fixture_id",
@@ -167,63 +131,60 @@ def get_today_matches():
         print(f"  Erreur Supabase: {e}")
         rows = []
 
-    # IDs BeSoccer connus pour chaque journée
     KNOWN_IDS = {
-            "2026-04-10": [
-                {"home_team": "ES Ben Aknoun",   "away_team": "ASO Chlef",       "bs_id": "2026264208", "bs_home": "ben-aknoun",    "bs_away": "chlef"},
-                {"home_team": "ES Mostaganem",   "away_team": "USM Khenchela",   "bs_id": "2026264210", "bs_home": "es-mostaganem", "bs_away": "usm-khenchela"},
-                {"home_team": "JS Kabylie",      "away_team": "CS Constantine",  "bs_id": "2026264214", "bs_home": "kabylie",       "bs_away": "cs-constantine"},
-            ],
-            "2026-04-11": [
-                {"home_team": "Olympique Akbou", "away_team": "ES Setif",        "bs_id": "2026264207", "bs_home": "oued-akbou",    "bs_away": "es-setif"},
-                {"home_team": "Paradou AC",      "away_team": "JS Saoura",       "bs_id": "2026264211", "bs_home": "paradou",       "bs_away": "js-saoura"},
-            ],
-            "2026-04-16": [
-                {"home_team": "CS Constantine",  "away_team": "MC Alger",        "bs_id": "2026264221", "bs_home": "cs-constantine","bs_away": "mc-alger"},
-            ],
-            "2026-04-17": [
-                {"home_team": "MB Rouissat",     "away_team": "JS Kabylie",      "bs_id": "2026264220", "bs_home": "mb-rouisset",   "bs_away": "kabylie"},
-                {"home_team": "ASO Chlef",       "away_team": "Olympique Akbou", "bs_id": "2026264215", "bs_home": "chlef",         "bs_away": "oued-akbou"},
-                {"home_team": "MC El Bayadh",    "away_team": "Paradou AC",      "bs_id": "2026264216", "bs_home": "el-bayadh",     "bs_away": "paradou"},
-                {"home_team": "JS Saoura",       "away_team": "USM Khenchela",   "bs_id": "2026264219", "bs_home": "js-saoura",     "bs_away": "usm-khenchela"},
-                {"home_team": "ES Setif",        "away_team": "MC Oran",         "bs_id": "2026264222", "bs_home": "es-setif",      "bs_away": "mc-oran"},
-            ],
-            "2026-05-09": [
-                {"home_team": "JS Kabylie",      "away_team": "ES Setif",        "bs_id": "2026264223", "bs_home": "kabylie",       "bs_away": "es-setif"},
-                {"home_team": "ES Mostaganem",   "away_team": "JS Saoura",       "bs_id": "2026264224", "bs_home": "es-mostaganem", "bs_away": "js-saoura"},
-                {"home_team": "MC Alger",        "away_team": "MB Rouissat",     "bs_id": "2026264225", "bs_home": "mc-alger",      "bs_away": "mb-rouisset"},
-                {"home_team": "Paradou AC",      "away_team": "CS Constantine",  "bs_id": "2026264226", "bs_home": "paradou",       "bs_away": "cs-constantine"},
-                {"home_team": "USM Khenchela",   "away_team": "MC El Bayadh",    "bs_id": "2026264227", "bs_home": "usm-khenchela", "bs_away": "el-bayadh"},
-                {"home_team": "ES Ben Aknoun",   "away_team": "USM Alger",       "bs_id": "2026264228", "bs_home": "ben-aknoun",    "bs_away": "usm-alger"},
-                {"home_team": "MC Oran",         "away_team": "ASO Chlef",       "bs_id": "2026264229", "bs_home": "mc-oran",       "bs_away": "chlef"},
-                {"home_team": "Olympique Akbou", "away_team": "CR Belouizdad",   "bs_id": "2026264230", "bs_home": "oued-akbou",    "bs_away": "belouizdad"},
-            ],
-            "2026-05-15": [
-                {"home_team": "MC El Bayadh",    "away_team": "JS Saoura",       "bs_id": "2026264231", "bs_home": "el-bayadh",     "bs_away": "js-saoura"},
-                {"home_team": "CS Constantine",  "away_team": "USM Khenchela",   "bs_id": "2026264232", "bs_home": "cs-constantine","bs_away": "usm-khenchela"},
-                {"home_team": "ES Setif",        "away_team": "MC Alger",        "bs_id": "2026264233", "bs_home": "es-setif",      "bs_away": "mc-alger"},
-                {"home_team": "CR Belouizdad",   "away_team": "MC Oran",         "bs_id": "2026264234", "bs_home": "belouizdad",    "bs_away": "mc-oran"},
-                {"home_team": "USM Alger",       "away_team": "Olympique Akbou", "bs_id": "2026264235", "bs_home": "usm-alger",     "bs_away": "oued-akbou"},
-                {"home_team": "ASO Chlef",       "away_team": "JS Kabylie",      "bs_id": "2026264236", "bs_home": "chlef",         "bs_away": "kabylie"},
-                {"home_team": "ES Ben Aknoun",   "away_team": "ES Mostaganem",   "bs_id": "2026264237", "bs_home": "ben-aknoun",    "bs_away": "es-mostaganem"},
-                {"home_team": "MB Rouissat",     "away_team": "Paradou AC",      "bs_id": "2026264238", "bs_home": "mb-rouisset",   "bs_away": "paradou"},
-            ],
-            "2026-05-22": [
-                {"home_team": "ES Mostaganem",   "away_team": "MC El Bayadh",    "bs_id": "2026264432", "bs_home": "es-mostaganem", "bs_away": "el-bayadh"},
-                {"home_team": "JS Saoura",       "away_team": "CS Constantine",  "bs_id": "2026264433", "bs_home": "js-saoura",     "bs_away": "cs-constantine"},
-                {"home_team": "USM Khenchela",   "away_team": "MB Rouissat",     "bs_id": "2026264434", "bs_home": "usm-khenchela", "bs_away": "mb-rouisset"},
-                {"home_team": "Paradou AC",      "away_team": "ES Setif",        "bs_id": "2026264435", "bs_home": "paradou",       "bs_away": "es-setif"},
-                {"home_team": "MC Alger",        "away_team": "ASO Chlef",       "bs_id": "2026264436", "bs_home": "mc-alger",      "bs_away": "chlef"},
-                {"home_team": "JS Kabylie",      "away_team": "CR Belouizdad",   "bs_id": "2026264437", "bs_home": "kabylie",       "bs_away": "belouizdad"},
-                {"home_team": "MC Oran",         "away_team": "USM Alger",       "bs_id": "2026264438", "bs_home": "mc-oran",       "bs_away": "usm-alger"},
-                {"home_team": "Olympique Akbou", "away_team": "ES Ben Aknoun",   "bs_id": "2026264439", "bs_home": "oued-akbou",    "bs_away": "ben-aknoun"},
-            ],
-        }
+        "2026-04-10": [
+            {"home_team": "ES Ben Aknoun",   "away_team": "ASO Chlef",       "bs_id": "2026264208", "bs_home": "ben-aknoun",    "bs_away": "chlef"},
+            {"home_team": "ES Mostaganem",   "away_team": "USM Khenchela",   "bs_id": "2026264210", "bs_home": "es-mostaganem", "bs_away": "usm-khenchela"},
+            {"home_team": "JS Kabylie",      "away_team": "CS Constantine",  "bs_id": "2026264214", "bs_home": "kabylie",       "bs_away": "cs-constantine"},
+        ],
+        "2026-04-11": [
+            {"home_team": "Olympique Akbou", "away_team": "ES Setif",        "bs_id": "2026264207", "bs_home": "oued-akbou",    "bs_away": "es-setif"},
+            {"home_team": "Paradou AC",      "away_team": "JS Saoura",       "bs_id": "2026264211", "bs_home": "paradou",       "bs_away": "js-saoura"},
+        ],
+        "2026-04-16": [
+            {"home_team": "CS Constantine",  "away_team": "MC Alger",        "bs_id": "2026264221", "bs_home": "cs-constantine","bs_away": "mc-alger"},
+        ],
+        "2026-04-17": [
+            {"home_team": "MB Rouissat",     "away_team": "JS Kabylie",      "bs_id": "2026264220", "bs_home": "mb-rouisset",   "bs_away": "kabylie"},
+            {"home_team": "ASO Chlef",       "away_team": "Olympique Akbou", "bs_id": "2026264215", "bs_home": "chlef",         "bs_away": "oued-akbou"},
+            {"home_team": "MC El Bayadh",    "away_team": "Paradou AC",      "bs_id": "2026264216", "bs_home": "el-bayadh",     "bs_away": "paradou"},
+            {"home_team": "JS Saoura",       "away_team": "USM Khenchela",   "bs_id": "2026264219", "bs_home": "js-saoura",     "bs_away": "usm-khenchela"},
+            {"home_team": "ES Setif",        "away_team": "MC Oran",         "bs_id": "2026264222", "bs_home": "es-setif",      "bs_away": "mc-oran"},
+        ],
+        "2026-05-09": [
+            {"home_team": "JS Kabylie",      "away_team": "ES Setif",        "bs_id": "2026264223", "bs_home": "kabylie",       "bs_away": "es-setif"},
+            {"home_team": "ES Mostaganem",   "away_team": "JS Saoura",       "bs_id": "2026264224", "bs_home": "es-mostaganem", "bs_away": "js-saoura"},
+            {"home_team": "MC Alger",        "away_team": "MB Rouissat",     "bs_id": "2026264225", "bs_home": "mc-alger",      "bs_away": "mb-rouisset"},
+            {"home_team": "Paradou AC",      "away_team": "CS Constantine",  "bs_id": "2026264226", "bs_home": "paradou",       "bs_away": "cs-constantine"},
+            {"home_team": "USM Khenchela",   "away_team": "MC El Bayadh",    "bs_id": "2026264227", "bs_home": "usm-khenchela", "bs_away": "el-bayadh"},
+            {"home_team": "ES Ben Aknoun",   "away_team": "USM Alger",       "bs_id": "2026264228", "bs_home": "ben-aknoun",    "bs_away": "usm-alger"},
+            {"home_team": "MC Oran",         "away_team": "ASO Chlef",       "bs_id": "2026264229", "bs_home": "mc-oran",       "bs_away": "chlef"},
+            {"home_team": "Olympique Akbou", "away_team": "CR Belouizdad",   "bs_id": "2026264230", "bs_home": "oued-akbou",    "bs_away": "belouizdad"},
+        ],
+        "2026-05-15": [
+            {"home_team": "MC El Bayadh",    "away_team": "JS Saoura",       "bs_id": "2026264231", "bs_home": "el-bayadh",     "bs_away": "js-saoura"},
+            {"home_team": "CS Constantine",  "away_team": "USM Khenchela",   "bs_id": "2026264232", "bs_home": "cs-constantine","bs_away": "usm-khenchela"},
+            {"home_team": "ES Setif",        "away_team": "MC Alger",        "bs_id": "2026264233", "bs_home": "es-setif",      "bs_away": "mc-alger"},
+            {"home_team": "CR Belouizdad",   "away_team": "MC Oran",         "bs_id": "2026264234", "bs_home": "belouizdad",    "bs_away": "mc-oran"},
+            {"home_team": "USM Alger",       "away_team": "Olympique Akbou", "bs_id": "2026264235", "bs_home": "usm-alger",     "bs_away": "oued-akbou"},
+            {"home_team": "ASO Chlef",       "away_team": "JS Kabylie",      "bs_id": "2026264236", "bs_home": "chlef",         "bs_away": "kabylie"},
+            {"home_team": "ES Ben Aknoun",   "away_team": "ES Mostaganem",   "bs_id": "2026264237", "bs_home": "ben-aknoun",    "bs_away": "es-mostaganem"},
+            {"home_team": "MB Rouissat",     "away_team": "Paradou AC",      "bs_id": "2026264238", "bs_home": "mb-rouisset",   "bs_away": "paradou"},
+        ],
+        "2026-05-22": [
+            {"home_team": "ES Mostaganem",   "away_team": "MC El Bayadh",    "bs_id": "2026264432", "bs_home": "es-mostaganem", "bs_away": "el-bayadh"},
+            {"home_team": "JS Saoura",       "away_team": "CS Constantine",  "bs_id": "2026264433", "bs_home": "js-saoura",     "bs_away": "cs-constantine"},
+            {"home_team": "USM Khenchela",   "away_team": "MB Rouissat",     "bs_id": "2026264434", "bs_home": "usm-khenchela", "bs_away": "mb-rouisset"},
+            {"home_team": "Paradou AC",      "away_team": "ES Setif",        "bs_id": "2026264435", "bs_home": "paradou",       "bs_away": "es-setif"},
+            {"home_team": "MC Alger",        "away_team": "ASO Chlef",       "bs_id": "2026264436", "bs_home": "mc-alger",      "bs_away": "chlef"},
+            {"home_team": "JS Kabylie",      "away_team": "CR Belouizdad",   "bs_id": "2026264437", "bs_home": "kabylie",       "bs_away": "belouizdad"},
+            {"home_team": "MC Oran",         "away_team": "USM Alger",       "bs_id": "2026264438", "bs_home": "mc-oran",       "bs_away": "usm-alger"},
+            {"home_team": "Olympique Akbou", "away_team": "ES Ben Aknoun",   "bs_id": "2026264439", "bs_home": "oued-akbou",    "bs_away": "ben-aknoun"},
+        ],
+    }
 
-    # Toujours enrichir avec les IDs connus du jour
     today_known = KNOWN_IDS.get(today, [])
     if today_known:
-        # Construire index des matchs déjà dans rows
         existing = {f"{r.get('home_team')}_{r.get('away_team')}" for r in rows}
         for m in today_known:
             key = f"{m['home_team']}_{m['away_team']}"
@@ -234,24 +195,19 @@ def get_today_matches():
     elif not rows:
         print("  ⚠️  Aucun match connu pour aujourd'hui")
 
-    # Construire l'index des IDs connus pour aujourd'hui
-    known_today = {f"{m['home_team']}_{m['away_team']}": m
-                   for m in KNOWN_IDS.get(today, [])}
+    known_today = {f"{m['home_team']}_{m['away_team']}": m for m in KNOWN_IDS.get(today, [])}
 
     for row in rows:
         home = row.get("home_team", "")
         away = row.get("away_team", "")
         if not home or not away:
             continue
-
         key = f"{home}_{away}"
         if key in seen:
             continue
         seen.add(key)
-
         print(f"\n  🔍 {home} vs {away}")
 
-        # Priorité 1 : ID connu dans KNOWN_IDS
         known = known_today.get(key)
         if known and known.get("bs_id"):
             bs_id   = known["bs_id"]
@@ -260,7 +216,6 @@ def get_today_matches():
             match_url = f"https://www.besoccer.com/match/{bs_home}/{bs_away}/{bs_id}"
             print(f"  ✅ ID connu: {match_url}")
             match_id = bs_id
-        # Priorité 2 : ID dans le row (depuis Supabase)
         elif row.get("bs_id"):
             bs_id   = row["bs_id"]
             bs_home = row.get("bs_home", TEAM_SLUG.get(home, ""))
@@ -268,7 +223,6 @@ def get_today_matches():
             match_url = f"https://www.besoccer.com/match/{bs_home}/{bs_away}/{bs_id}"
             print(f"  ✅ ID direct: {match_url}")
             match_id = bs_id
-        # Priorité 3 : chercher sur BeSoccer
         else:
             match_id, match_url = find_besoccer_match_id(home, away, today[:4])
 
@@ -288,30 +242,26 @@ def get_today_matches():
     return matches
 
 # ══════════════════════════════════════════════
-# DÉTECTION COMPO OFFICIELLE
+# PARSE PLAYER
 # ══════════════════════════════════════════════
 
 def parse_player(link):
-    """Extrait les infos d'un joueur depuis un <a class='col-bench'>."""
     href = link.get("href", "")
     player_id = extract_player_id(href)
-    
-    # Nom
+
     nom_el = link.select_one("p.name")
     nom = nom_el.get_text(strip=True) if nom_el else link.get_text(strip=True)
-    
+
     if not player_id or not nom:
         return None
-    
-    # Photo
+
     img = link.select_one("div.bench-player img")
     photo = img["src"] if img and img.get("src") else ""
     if photo and photo.startswith("//"):
         photo = "https:" + photo
     if not photo or "nofoto" in photo:
         photo = f"https://cdn.resfu.com/img_data/players/medium/{player_id}.jpg?size=120x&lossy=1"
-    
-    # Numéro et position depuis role-box
+
     number = ""
     pos = ""
     role_box = link.select_one("div.role-box span.t-up")
@@ -319,13 +269,11 @@ def parse_player(link):
         num_el = role_box.select_one("span.number")
         if num_el:
             number = num_el.get_text(strip=True)
-        # Position = texte après le numéro
         role_text = role_box.get_text(strip=True)
         if num_el:
             role_text = role_text.replace(number, "").strip()
         pos = role_text
-    
-    # Événements depuis info-wrapper (buts, cartons, changements)
+
     info_wrapper = link.select_one("div.info-wrapper")
     goals = 0
     goal_minutes = []
@@ -333,27 +281,18 @@ def parse_player(link):
     yellow_minute = None
     red = False
     red_minute = None
-    sub_out_minute = None  # minute de sortie
+    sub_out_minute = None
 
     if info_wrapper:
-        # Chercher directement toutes les img.ic-bench dans info-wrapper
-        # Structure BeSoccer: <div class="row row-reverse..."><div><img class="ic-bench"><p class="min">
-        for img in info_wrapper.select("img.ic-bench"):
-            # La minute est dans le <p class="min"> frère de l'img (même parent <div>)
-            parent = img.parent
+        for img_ev in info_wrapper.select("img.ic-bench"):
+            parent = img_ev.parent
             min_el = parent.select_one("p.min") if parent else None
             minute_str = min_el.get_text(strip=True) if min_el else ""
-            # Nettoyer: "+1" → 46, "19'" → 19, "45+2" → 47, "90+3" → 93, "92'" → 92
             try:
                 clean = minute_str.replace("'","").strip()
                 if clean.startswith("+"):
-                    # Temps additionnel seul (ex: "+1", "+2") → BeSoccer l'affiche pendant le match
-                    # On ne peut pas savoir si c'est 45+X ou 90+X sans contexte
-                    # On met None pour ne pas créer de faux buts avec minute incorrecte
-                    extra = int(clean[1:]) if clean[1:] else 0
-                    minute_val = extra  # sera 1, 2, etc. — corrigé plus bas si besoin
+                    minute_val = int(clean[1:]) if clean[1:] else 0
                 elif "+" in clean:
-                    # "45+2" → 47, "90+3" → 93
                     parts = clean.split("+")
                     base = int(parts[0]) if parts[0] else 0
                     extra = int(parts[1]) if len(parts) > 1 and parts[1] else 0
@@ -363,11 +302,10 @@ def parse_player(link):
             except:
                 minute_val = None
 
-            alt = img.get("alt","").lower()
-            src = img.get("src","").lower()
-            # Exiger une minute valide pour buts et cartons (évite les icônes décoratives sans minute)
+            alt = img_ev.get("alt","").lower()
+            src = img_ev.get("src","").lower()
             if "goal" in alt or "gol" in alt or "accion1" in src:
-                if minute_val is not None:  # ← exiger minute valide
+                if minute_val is not None:
                     goals += 1
                     goal_minutes.append(minute_val)
             elif "yellow" in alt or "amarilla" in alt or "tarjeta_a" in src or "event-5" in src:
@@ -379,7 +317,6 @@ def parse_player(link):
             elif "sub" in alt or "cambio" in src or "event-6" in src:
                 sub_out_minute = minute_val
 
-    # Note joueur — BeSoccer utilise "match-points" (dans bench-player)
     note_el = link.select_one("div.match-points")
     note = None
     if note_el:
@@ -389,34 +326,28 @@ def parse_player(link):
             pass
 
     return {
-        "name":          nom,
-        "id":            player_id,
-        "number":        number,
-        "pos":           pos,
-        "photo":         photo,
-        "goals":         goals,
-        "goal_minutes":  goal_minutes,
-        "yellow":        yellow,
-        "yellow_minute": yellow_minute,
-        "red":           red,
-        "red_minute":    red_minute,
-        "sub_out":       sub_out_minute is not None,
-        "sub_out_minute":sub_out_minute,
-        "minutes":       90,
-        "rating":        note,
+        "name":           nom,
+        "id":             player_id,
+        "number":         number,
+        "pos":            pos,
+        "photo":          photo,
+        "goals":          goals,
+        "goal_minutes":   goal_minutes,
+        "yellow":         yellow,
+        "yellow_minute":  yellow_minute,
+        "red":            red,
+        "red_minute":     red_minute,
+        "sub_out":        sub_out_minute is not None,
+        "sub_out_minute": sub_out_minute,
+        "minutes":        90,
+        "rating":         note,
     }
 
+# ══════════════════════════════════════════════
+# SCRAPE EVENTS (changements)
+# ══════════════════════════════════════════════
+
 def scrape_events(base_url):
-    """
-    Scrape la page /events BeSoccer pour extraire les minutes d'entrée des remplaçants.
-    Structure réelle:
-      div.table-played-match.all-events
-        div.col-mid-rows > div.min  → "83'"
-        img[alt="Substitution"]
-        a[data-cy="eventOrd"]       → joueur ENTRANT
-        a[data-cy="event"]          → joueur SORTANT
-    Retourne dict: {nom_entrant: minute}
-    """
     url = base_url.rstrip("/").replace("/lineups","") + "/events"
     r = fetch(url)
     if not r:
@@ -426,12 +357,10 @@ def scrape_events(base_url):
     sub_in_minutes = {}
 
     for row in soup.select("div.table-played-match.all-events"):
-        # Vérifier que c'est un changement
         cambio_img = row.select_one("img[src*='ico_event_cambio'], img[alt='Substitution']")
         if not cambio_img:
             continue
 
-        # Minute
         min_el = row.select_one("div.col-mid-rows div.min")
         minute_str = min_el.get_text(strip=True) if min_el else ""
         try:
@@ -446,7 +375,6 @@ def scrape_events(base_url):
         except:
             continue
 
-        # Joueur entrant = premier lien data-cy="eventOrd"
         entrant_link = row.select_one("a[data-cy='eventOrd']")
         if entrant_link:
             nom = entrant_link.get_text(strip=True)
@@ -456,32 +384,31 @@ def scrape_events(base_url):
 
     return sub_in_minutes
 
+# ══════════════════════════════════════════════
+# SCRAPE LINEUP
+# ══════════════════════════════════════════════
 
 def scrape_lineup(match):
-    """
-    Scrape la page /lineups de BeSoccer.
-    """
     url = match["url"]
     if not url.endswith("/lineups") and not url.endswith("/lineups/"):
         url = url.rstrip("/") + "/lineups"
-    
+
     r = fetch(url)
     if not r:
         r = fetch(match["url"])
     if not r:
         return None
-    
+
     soup = BeautifulSoup(r.text, "html.parser")
     print(f"  HTML size: {len(r.text)} chars")
 
     starters_all = soup.select('a.col-bench[data-cy="starterPlayer"]')
     print(f"  Titulaires trouvés: {len(starters_all)}")
-    
+
     if len(starters_all) < 11:
         print(f"  ⏳ Compos pas encore officielles ({len(starters_all)} joueurs)")
         return None
 
-    # Scraper les minutes d'entrée depuis /events
     sub_in_minutes = scrape_events(url)
     print(f"  Changements: {sub_in_minutes}")
 
@@ -516,7 +443,6 @@ def scrape_lineup(match):
         p = parse_player(link)
         if p:
             sub_min = sub_in_minutes.get(p["name"])
-            # Fallback: chercher par nom court (ex: "A. Mammeri" vs "Ahmed Mammeri")
             if not sub_min:
                 for key, val in sub_in_minutes.items():
                     if p["name"] and key and (
@@ -556,47 +482,56 @@ def scrape_lineup(match):
 # SUPABASE
 # ══════════════════════════════════════════════
 
+def delete_lineup(match_id):
+    requests.delete(
+        SB_URL + f"/rest/v1/besoccer_lineups?match_id=eq.{match_id}",
+        headers=SB_HEADERS
+    )
+
 def already_scraped(match_id):
+    """
+    Logique simple et stable :
+    - Pas de données → False (scraper)
+    - Away manquant → DELETE + False (re-scraper)
+    - Match d'un autre jour → True (ne jamais toucher)
+    - Match d'aujourd'hui sans notes → False (DELETE + re-scraper)
+    - Match d'aujourd'hui avec notes → True (complet)
+    """
     try:
         r = requests.get(
-            SB_URL + f"/rest/v1/besoccer_lineups?match_id=eq.{match_id}&select=id,home_players,away_players,home_subs,away_subs,match_date",
+            SB_URL + f"/rest/v1/besoccer_lineups?match_id=eq.{match_id}&select=id,home_players,away_players,match_date",
             headers={**SB_HEADERS, "Prefer": ""}
         ).json()
+
+        # Pas encore en base
         if not r or not r[0].get("home_players") or len(r[0]["home_players"]) == 0:
             return False
 
-        # Re-scraper si l'équipe extérieure manque (compo partielle)
+        # Compo partielle (away manquant) → re-scraper
         if not r[0].get("away_players") or len(r[0]["away_players"]) == 0:
-            print("  ⚠️ Équipe extérieure manquante → re-scrape")
-            requests.delete(SB_URL + f"/rest/v1/besoccer_lineups?match_id=eq.{match_id}", headers=SB_HEADERS)
+            print("  ⚠️ Away manquant → re-scrape")
+            delete_lineup(match_id)
             return False
 
         # Match d'un autre jour → ne jamais re-scraper
         if r[0].get("match_date") != date.today().isoformat():
             return True
 
-        # Match d'aujourd'hui → re-scraper si les titulaires n'ont pas de notes
-        home_players = r[0].get("home_players") or []
-        away_players = r[0].get("away_players") or []
-        all_players = home_players + away_players
-        if all_players and not any(p.get("rating") for p in all_players):
-            print("  ⚠️ Titulaires sans notes → re-scrape")
-            requests.delete(SB_URL + f"/rest/v1/besoccer_lineups?match_id=eq.{match_id}", headers=SB_HEADERS)
-            return False
-
-        # Re-scraper si remplaçants entrés sans notes
-        all_subs = (r[0].get("home_subs") or []) + (r[0].get("away_subs") or [])
-        entered = [s for s in all_subs if s.get("sub_in_minute")]
-        if entered and not any(s.get("rating") for s in entered):
-            print("  ⚠️ Remplaçants sans notes → re-scrape")
+        # Match d'aujourd'hui : re-scraper seulement si aucune note
+        # (BeSoccer n'a pas encore calculé les notes = match pas terminé ou trop tôt)
+        all_players = (r[0].get("home_players") or []) + (r[0].get("away_players") or [])
+        has_notes = any(p.get("rating") for p in all_players)
+        if not has_notes:
+            print("  ⚠️ Pas de notes → re-scrape (match pas encore terminé ou notes pas calculées)")
+            delete_lineup(match_id)
             return False
 
         return True
+
     except:
         return False
 
 def save_lineup(lineup):
-    # INSERT seulement — ne jamais écraser des données existantes
     res = requests.post(
         SB_URL + "/rest/v1/besoccer_lineups",
         headers={**SB_HEADERS, "Prefer": "resolution=ignore-duplicates"},
