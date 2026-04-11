@@ -6887,6 +6887,8 @@ function MatchDetail({state,onClose,onTeam}){
   const[algeriaLineups,setAlgeriaLineups]=React.useState(null);
   const[bsPreview,setBsPreview]=React.useState(null);
   const[bsPreviewLoading,setBsPreviewLoading]=React.useState(false);
+  const[apiPreview,setApiPreview]=React.useState(null);
+  const[apiPreviewLoading,setApiPreviewLoading]=React.useState(false);
   const contentRef=React.useRef(null);
 
   const [refereeStats, setRefereeStats] = useState(null);
@@ -7436,11 +7438,19 @@ function MatchDetail({state,onClose,onTeam}){
 
   },[tab, fix&&fix.fixture&&fix.fixture.id]);
 
-  // Fetch avant-match (besoccer_preview) quand l'onglet est ouvert
+  // Fetch avant-match (besoccer_preview) quand l'onglet est ouvert — Ligue 1 Algérie uniquement
   React.useEffect(function() {
     if (tab !== "avant-match") return;
     if (bsPreview) return; // déjà chargé
     if (!fix) return;
+
+    // Seulement pour la Ligue 1 Algérie (league ID = 186)
+    var leagueId = fix.league && fix.league.id;
+    if (leagueId !== 186) {
+      setBsPreview(null);
+      setBsPreviewLoading(false);
+      return;
+    }
 
     var matchDate = fix.fixture && fix.fixture.date
       ? fix.fixture.date.substring(0, 10)
@@ -7474,6 +7484,56 @@ function MatchDetail({state,onClose,onTeam}){
         setBsPreview(null);
         setBsPreviewLoading(false);
       });
+  }, [tab, fix && fix.fixture && fix.fixture.id]);
+
+  // Fetch avant-match API Football pour les autres ligues
+  React.useEffect(function() {
+    if (tab !== "avant-match") return;
+    if (!fix) return;
+    var leagueId = fix.league && fix.league.id;
+    if (leagueId === 186) return; // Algérie → BeSoccer
+    if (apiPreview) return; // déjà chargé
+
+    var hid = fix.teams && fix.teams.home && fix.teams.home.id;
+    var aid = fix.teams && fix.teams.away && fix.teams.away.id;
+    var lid = fix.league && fix.league.id;
+    var season = fix.league && fix.league.season;
+    var fid = fix.fixture && fix.fixture.id;
+    if (!hid || !aid || !lid) return;
+
+    setApiPreviewLoading(true);
+
+    // Fetch H2H + stats équipe home + stats équipe away + forme récente
+    Promise.all([
+      // H2H
+      api("/fixtures/headtohead?h2h="+hid+"-"+aid+"&last=10", 86400000),
+      // Stats équipe home
+      api("/teams/statistics?team="+hid+"&league="+lid+"&season="+season, 86400000),
+      // Stats équipe away
+      api("/teams/statistics?team="+aid+"&league="+lid+"&season="+season, 86400000),
+      // Derniers matchs home
+      api("/fixtures?team="+hid+"&last=5", 86400000),
+      // Derniers matchs away
+      api("/fixtures?team="+aid+"&last=5", 86400000)
+    ]).then(function(results) {
+      var h2hFixtures = results[0] || [];
+      var homeStats   = results[1] || null;
+      var awayStats   = results[2] || null;
+      var homeForm    = results[3] || [];
+      var awayForm    = results[4] || [];
+
+      setApiPreview({
+        h2h:       h2hFixtures,
+        homeStats: homeStats,
+        awayStats: awayStats,
+        homeForm:  homeForm,
+        awayForm:  awayForm
+      });
+      setApiPreviewLoading(false);
+    }).catch(function() {
+      setApiPreview(null);
+      setApiPreviewLoading(false);
+    });
   }, [tab, fix && fix.fixture && fix.fixture.id]);
 
   React.useEffect(()=>{
@@ -8768,7 +8828,241 @@ function MatchDetail({state,onClose,onTeam}){
   // ══════════════════════════════════════════════
   // RENDER AVANT-MATCH (BeSoccer Preview)
   // ══════════════════════════════════════════════
+  // ══════════════════════════════════════════════
+  // RENDER AVANT-MATCH API FOOTBALL (autres ligues)
+  // ══════════════════════════════════════════════
+  const renderApiPreview = function() {
+    var d = apiPreview;
+    var homeName = fix&&fix.teams&&fix.teams.home ? fix.teams.home.name : "";
+    var awayName = fix&&fix.teams&&fix.teams.away ? fix.teams.away.name : "";
+    var homeLogo = fix&&fix.teams&&fix.teams.home ? fix.teams.home.logo : "";
+    var awayLogo = fix&&fix.teams&&fix.teams.away ? fix.teams.away.logo : "";
+    var hid = fix&&fix.teams&&fix.teams.home ? fix.teams.home.id : null;
+
+    var BG="#F5F6F8", SURFACE="#FFFFFF", BORDER="rgba(15,23,42,0.07)";
+    var INK="#0F1629", INK2="rgba(15,22,41,0.60)", INK3="rgba(15,22,41,0.38)";
+    var JADE="#059669", JADE_D="rgba(5,150,105,0.10)";
+    var BLUE="#3B82F6", BLUE_D="rgba(59,130,246,0.10)";
+    var RED="#E53E3E", GOLD="#B7791F";
+
+    var Section = function(title, children) {
+      return React.createElement("div",{
+        style:{background:SURFACE,borderRadius:16,margin:"0 0 10px",
+               padding:"14px 16px",border:"1px solid "+BORDER,
+               boxShadow:"0 1px 4px rgba(15,23,42,0.06)"}
+      },
+        React.createElement("div",{style:{fontSize:13,fontWeight:700,color:INK,marginBottom:12,paddingBottom:8,borderBottom:"1px solid "+BORDER}},title),
+        children
+      );
+    };
+
+    // ── STATS GÉNÉRALES ─────────────────────────────────
+    var hs = d.homeStats, as_ = d.awayStats;
+    var statsSection = null;
+    if (hs && as_) {
+      var hPlayed = hs.fixtures&&hs.fixtures.played&&hs.fixtures.played.total || 0;
+      var aPlayed = as_.fixtures&&as_.fixtures.played&&as_.fixtures.played.total || 0;
+      var statDefs = [
+        { label:"Victoires", hv: hs.fixtures&&hs.fixtures.wins&&hs.fixtures.wins.total||0,
+                              av: as_.fixtures&&as_.fixtures.wins&&as_.fixtures.wins.total||0 },
+        { label:"Nuls",      hv: hs.fixtures&&hs.fixtures.draws&&hs.fixtures.draws.total||0,
+                              av: as_.fixtures&&as_.fixtures.draws&&as_.fixtures.draws.total||0 },
+        { label:"Défaites",  hv: hs.fixtures&&hs.fixtures.loses&&hs.fixtures.loses.total||0,
+                              av: as_.fixtures&&as_.fixtures.loses&&as_.fixtures.loses.total||0 }
+      ];
+      statsSection = Section("📊 Statistiques générales",
+        React.createElement("div",null,
+          // Header
+          React.createElement("div",{style:{display:"flex",justifyContent:"space-between",marginBottom:12}},
+            React.createElement("div",{style:{display:"flex",alignItems:"center",gap:6}},
+              homeLogo&&React.createElement("img",{src:homeLogo,style:{width:22,height:22,objectFit:"contain"}}),
+              React.createElement("span",{style:{fontSize:12,fontWeight:700,color:JADE}},homeName)
+            ),
+            React.createElement("div",{style:{display:"flex",alignItems:"center",gap:6}},
+              React.createElement("span",{style:{fontSize:12,fontWeight:700,color:BLUE}},awayName),
+              awayLogo&&React.createElement("img",{src:awayLogo,style:{width:22,height:22,objectFit:"contain"}})
+            )
+          ),
+          statDefs.map(function(def) {
+            var tot = def.hv+def.av||1;
+            var hp = Math.round(def.hv/tot*100), ap = 100-hp;
+            var hWin=def.hv>def.av, aWin=def.av>def.hv;
+            return React.createElement("div",{key:def.label,style:{marginBottom:10}},
+              React.createElement("div",{style:{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:5}},
+                React.createElement("span",{style:{fontSize:15,fontWeight:800,color:hWin?JADE:INK,
+                  background:hWin?JADE_D:"transparent",padding:"2px 8px",borderRadius:8,minWidth:32,textAlign:"center"}},def.hv),
+                React.createElement("span",{style:{fontSize:11,color:INK3,textTransform:"uppercase",letterSpacing:"0.3px",fontWeight:500}},def.label),
+                React.createElement("span",{style:{fontSize:15,fontWeight:800,color:aWin?BLUE:INK,
+                  background:aWin?BLUE_D:"transparent",padding:"2px 8px",borderRadius:8,minWidth:32,textAlign:"center"}},def.av)
+              ),
+              React.createElement("div",{style:{height:4,borderRadius:2,overflow:"hidden",display:"flex",background:BG}},
+                React.createElement("div",{style:{width:hp+"%",background:hWin?"linear-gradient(90deg,#059669,#10B981)":"rgba(5,150,105,0.3)"}}),
+                React.createElement("div",{style:{width:ap+"%",background:aWin?"linear-gradient(90deg,#3B82F6,#60A5FA)":"rgba(59,130,246,0.3)"}})
+              )
+            );
+          }),
+          // Buts marqués/concédés
+          React.createElement("div",{style:{display:"flex",gap:8,marginTop:10}},
+            React.createElement("div",{style:{flex:1,padding:"8px 10px",background:BG,borderRadius:10,textAlign:"center"}},
+              React.createElement("div",{style:{fontSize:14,fontWeight:800,color:JADE}},hs.goals&&hs.goals.for&&hs.goals.for.total&&hs.goals.for.total.total||0),
+              React.createElement("div",{style:{fontSize:9,color:INK3,marginTop:1}}, "Buts marqués")
+            ),
+            React.createElement("div",{style:{flex:1,padding:"8px 10px",background:BG,borderRadius:10,textAlign:"center"}},
+              React.createElement("div",{style:{fontSize:14,fontWeight:800,color:RED}},hs.goals&&hs.goals.against&&hs.goals.against.total&&hs.goals.against.total.total||0),
+              React.createElement("div",{style:{fontSize:9,color:INK3,marginTop:1}}, "Buts concédés")
+            ),
+            React.createElement("div",{style:{flex:1,padding:"8px 10px",background:BG,borderRadius:10,textAlign:"center"}},
+              React.createElement("div",{style:{fontSize:14,fontWeight:800,color:BLUE}},as_&&as_.goals&&as_.goals.for&&as_.goals.for.total&&as_.goals.for.total.total||0),
+              React.createElement("div",{style:{fontSize:9,color:INK3,marginTop:1}}, "Buts marqués")
+            )
+          )
+        )
+      );
+    }
+
+    // ── FORME RÉCENTE ────────────────────────────────────
+    var RBadge = function(r, sz) {
+      var s=sz||24;
+      var bg = r==="W"||r==="G" ? JADE : r==="L"||r==="P" ? RED : GOLD;
+      var lbl = r==="W"||r==="G" ? "V" : r==="L"||r==="P" ? "D" : "N";
+      return React.createElement("div",{style:{width:s,height:s,borderRadius:"50%",background:bg,
+        display:"flex",alignItems:"center",justifyContent:"center",
+        fontSize:s*0.42,fontWeight:800,color:"#fff",flexShrink:0}},lbl);
+    };
+    var getResult = function(fixture, teamId) {
+      if (!fixture||!fixture.teams) return "D";
+      var isHome = fixture.teams.home&&fixture.teams.home.id===teamId;
+      var hg = fixture.goals&&fixture.goals.home!=null?fixture.goals.home:0;
+      var ag = fixture.goals&&fixture.goals.away!=null?fixture.goals.away:0;
+      if (hg===ag) return "N";
+      if (isHome) return hg>ag?"G":"P";
+      return ag>hg?"G":"P";
+    };
+    var homeFormRows = (d.homeForm||[]).slice(-5).map(function(fx,i){
+      var r = getResult(fx, hid);
+      var opp = fx.teams&&fx.teams.home&&fx.teams.home.id===hid ? fx.teams.away : fx.teams&&fx.teams.home;
+      var score = fx.goals ? fx.goals.home+"-"+fx.goals.away : "";
+      return React.createElement("div",{key:i,style:{display:"flex",alignItems:"center",gap:6,padding:"5px 0",
+        borderBottom:i<4?"1px solid "+BORDER:"none"}},
+        opp&&opp.logo&&React.createElement("img",{src:opp.logo,style:{width:18,height:18,objectFit:"contain",flexShrink:0},onError:function(e){e.target.style.display="none";}}),
+        React.createElement("span",{style:{fontSize:11,color:INK,flex:1}},opp&&opp.name||""),
+        React.createElement("span",{style:{fontSize:11,fontWeight:700,color:INK2,minWidth:32,textAlign:"center"}},score),
+        RBadge(r)
+      );
+    });
+    var awayFormRows = (d.awayForm||[]).slice(-5).map(function(fx,i){
+      var aid2 = fix&&fix.teams&&fix.teams.away&&fix.teams.away.id;
+      var r = getResult(fx, aid2);
+      var opp = fx.teams&&fx.teams.home&&fx.teams.home.id===aid2 ? fx.teams.away : fx.teams&&fx.teams.home;
+      var score = fx.goals ? fx.goals.home+"-"+fx.goals.away : "";
+      return React.createElement("div",{key:i,style:{display:"flex",alignItems:"center",gap:6,padding:"5px 0",
+        borderBottom:i<4?"1px solid "+BORDER:"none",justifyContent:"flex-end"}},
+        RBadge(r),
+        React.createElement("span",{style:{fontSize:11,fontWeight:700,color:INK2,minWidth:32,textAlign:"center"}},score),
+        React.createElement("span",{style:{fontSize:11,color:INK,flex:1,textAlign:"right"}},opp&&opp.name||""),
+        opp&&opp.logo&&React.createElement("img",{src:opp.logo,style:{width:18,height:18,objectFit:"contain",flexShrink:0},onError:function(e){e.target.style.display="none";}})
+      );
+    });
+    var formSection = Section("🔥 Forme récente",
+      React.createElement("div",null,
+        React.createElement("div",{style:{display:"flex",gap:8}},
+          React.createElement("div",{style:{flex:1}},
+            React.createElement("div",{style:{display:"flex",alignItems:"center",gap:4,marginBottom:8,paddingBottom:6,borderBottom:"2px solid "+JADE}},
+              homeLogo&&React.createElement("img",{src:homeLogo,style:{width:16,height:16,objectFit:"contain"}}),
+              React.createElement("span",{style:{fontSize:11,fontWeight:700,color:JADE}},homeName)
+            ),
+            homeFormRows
+          ),
+          React.createElement("div",{style:{width:1,background:BORDER}}),
+          React.createElement("div",{style:{flex:1}},
+            React.createElement("div",{style:{display:"flex",alignItems:"center",gap:4,marginBottom:8,paddingBottom:6,borderBottom:"2px solid "+BLUE,justifyContent:"flex-end"}},
+              React.createElement("span",{style:{fontSize:11,fontWeight:700,color:BLUE}},awayName),
+              awayLogo&&React.createElement("img",{src:awayLogo,style:{width:16,height:16,objectFit:"contain"}})
+            ),
+            awayFormRows
+          )
+        )
+      )
+    );
+
+    // ── FACE À FACE ───────────────────────────────────────
+    var h2hFix = (d.h2h||[]).slice(0,8).sort(function(a,b){
+      return new Date(b.fixture&&b.fixture.date||0) - new Date(a.fixture&&a.fixture.date||0);
+    });
+    var hW=0, aW=0, draws=0;
+    h2hFix.forEach(function(fx){
+      var hg=fx.goals&&fx.goals.home!=null?fx.goals.home:0;
+      var ag=fx.goals&&fx.goals.away!=null?fx.goals.away:0;
+      var isHome=fx.teams&&fx.teams.home&&fx.teams.home.id===hid;
+      var myG=isHome?hg:ag, opG=isHome?ag:hg;
+      if(myG>opG) hW++; else if(opG>myG) aW++; else draws++;
+    });
+    var h2hSection = Section("⚔️ Face à face",
+      React.createElement("div",null,
+        React.createElement("div",{style:{display:"flex",justifyContent:"space-around",padding:"10px 0",marginBottom:12,background:BG,borderRadius:10}},
+          React.createElement("div",{style:{textAlign:"center"}},
+            React.createElement("div",{style:{fontSize:22,fontWeight:800,color:JADE}},hW),
+            React.createElement("div",{style:{fontSize:9,color:INK3,textTransform:"uppercase",letterSpacing:"0.5px",marginTop:2}},"Victoires")
+          ),
+          React.createElement("div",{style:{textAlign:"center"}},
+            React.createElement("div",{style:{fontSize:22,fontWeight:800,color:GOLD}},draws),
+            React.createElement("div",{style:{fontSize:9,color:INK3,textTransform:"uppercase",letterSpacing:"0.5px",marginTop:2}},"Nuls")
+          ),
+          React.createElement("div",{style:{textAlign:"center"}},
+            React.createElement("div",{style:{fontSize:22,fontWeight:800,color:BLUE}},aW),
+            React.createElement("div",{style:{fontSize:9,color:INK3,textTransform:"uppercase",letterSpacing:"0.5px",marginTop:2}},"Victoires")
+          )
+        ),
+        h2hFix.slice(0,5).map(function(fx,i){
+          var hg=fx.goals&&fx.goals.home!=null?fx.goals.home:0;
+          var ag=fx.goals&&fx.goals.away!=null?fx.goals.away:0;
+          var isHome=fx.teams&&fx.teams.home&&fx.teams.home.id===hid;
+          var myG=isHome?hg:ag, opG=isHome?ag:hg;
+          var bg = myG>opG?JADE:myG<opG?RED:GOLD;
+          return React.createElement("div",{key:i,style:{display:"flex",alignItems:"center",padding:"7px 0",
+            borderBottom:i<4?"1px solid "+BORDER:"none"}},
+            React.createElement("div",{style:{display:"flex",alignItems:"center",gap:4,flex:1,minWidth:0}},
+              fx.teams&&fx.teams.home&&fx.teams.home.logo&&React.createElement("img",{src:fx.teams.home.logo,style:{width:18,height:18,objectFit:"contain",flexShrink:0},onError:function(e){e.target.style.display="none";}}),
+              React.createElement("span",{style:{fontSize:11,color:INK,overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap",marginLeft:4}},fx.teams&&fx.teams.home&&fx.teams.home.name||"")
+            ),
+            React.createElement("div",{style:{fontSize:12,fontWeight:700,color:"#fff",background:bg,padding:"3px 10px",borderRadius:6,margin:"0 8px",flexShrink:0}},hg+"-"+ag),
+            React.createElement("div",{style:{display:"flex",alignItems:"center",gap:4,flex:1,minWidth:0,justifyContent:"flex-end"}},
+              React.createElement("span",{style:{fontSize:11,color:INK,overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap",textAlign:"right",marginRight:4}},fx.teams&&fx.teams.away&&fx.teams.away.name||""),
+              fx.teams&&fx.teams.away&&fx.teams.away.logo&&React.createElement("img",{src:fx.teams.away.logo,style:{width:18,height:18,objectFit:"contain",flexShrink:0},onError:function(e){e.target.style.display="none";}})
+            )
+          );
+        })
+      )
+    );
+
+    return React.createElement("div",{style:{padding:"10px 12px 24px",background:BG,minHeight:"100%"}},
+      statsSection,
+      formSection,
+      h2hSection
+    );
+  };
+
   const renderAvantMatch = function() {
+    var isAlgeria = fix && fix.league && fix.league.id === 186;
+
+    // ── Autres ligues → API Football ──────────────────────
+    if (!isAlgeria) {
+      if (apiPreviewLoading) {
+        return React.createElement("div",{style:{display:"flex",flexDirection:"column",alignItems:"center",padding:"60px 20px",gap:10}},
+          React.createElement("div",{style:{width:36,height:36,border:"3px solid #059669",borderTopColor:"transparent",borderRadius:"50%"}}),
+          React.createElement("span",{style:{fontSize:13,color:"rgba(15,22,41,0.38)"}}, "Chargement...")
+        );
+      }
+      if (!apiPreview) {
+        return React.createElement("div",{style:{display:"flex",flexDirection:"column",alignItems:"center",padding:"60px 20px",gap:10}},
+          React.createElement("div",{style:{fontSize:32}},"📋"),
+          React.createElement("span",{style:{fontSize:13,color:"rgba(15,22,41,0.38)",textAlign:"center"}},"Données non disponibles")
+        );
+      }
+      return renderApiPreview();
+    }
+
+    // ── Ligue 1 Algérie → BeSoccer ────────────────────────
     if (bsPreviewLoading) {
       return React.createElement("div",{style:{display:"flex",flexDirection:"column",alignItems:"center",padding:"60px 20px",gap:10}},
         React.createElement("div",{style:{width:36,height:36,border:"3px solid #059669",borderTopColor:"transparent",borderRadius:"50%"}}),
@@ -8778,7 +9072,7 @@ function MatchDetail({state,onClose,onTeam}){
     if (!bsPreview) {
       return React.createElement("div",{style:{display:"flex",flexDirection:"column",alignItems:"center",padding:"60px 20px",gap:10}},
         React.createElement("div",{style:{fontSize:32}},"📋"),
-        React.createElement("span",{style:{fontSize:13,color:"rgba(15,22,41,0.38)"}}, "Données non disponibles")
+        React.createElement("span",{style:{fontSize:13,color:"rgba(15,22,41,0.38)",textAlign:"center"}},"Données non disponibles")
       );
     }
 
