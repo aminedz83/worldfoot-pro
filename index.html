@@ -1349,6 +1349,294 @@ const getRatingColor = (rating) => {
   return "#9e9e9e";
 };
 
+// ══════════════════════════════════════════════
+// TÉLÉCHARGEMENT CARTE COMPO PRO
+// ══════════════════════════════════════════════
+function downloadLineupCard(fix, hLu, aLu, format) {
+  var isMobile = format === "mobile";
+  var W = isMobile ? 540 : 1200;
+  var H = isMobile ? 960 : 700;
+
+  var canvas = document.createElement("canvas");
+  canvas.width = W * 2;
+  canvas.height = H * 2;
+  var ctx = canvas.getContext("2d");
+  ctx.scale(2, 2);
+
+  var homeName = fix && fix.teams && fix.teams.home ? fix.teams.home.name : (hLu && hLu.team ? hLu.team.name : "");
+  var awayName = fix && fix.teams && fix.teams.away ? fix.teams.away.name : (aLu && aLu.team ? aLu.team.name : "");
+  var homeLogo = fix && fix.teams && fix.teams.home ? fix.teams.home.logo : "";
+  var awayLogo = fix && fix.teams && fix.teams.away ? fix.teams.away.logo : "";
+  var homeGoals = fix && fix.goals && fix.goals.home !== null ? fix.goals.home : null;
+  var awayGoals = fix && fix.goals && fix.goals.away !== null ? fix.goals.away : null;
+
+  var homeFormation = hLu ? hLu.formation || "" : "";
+  var awayFormation = aLu ? aLu.formation || "" : "";
+
+  var homePlayers = hLu ? (hLu.startXI || []).map(function(i) { return i.player; }) : [];
+  var awayPlayers = aLu ? (aLu.startXI || []).map(function(i) { return i.player; }) : [];
+
+  // Grouper par position
+  function groupByPos(players) {
+    var gk = players.filter(function(p) { return p.pos === "G"; });
+    var df = players.filter(function(p) { return p.pos === "D"; });
+    var mf = players.filter(function(p) { return p.pos === "M"; });
+    var fw = players.filter(function(p) { return p.pos === "F" || p.pos === "A"; });
+    if (gk.length > 0 && (df.length + mf.length + fw.length) >= 9) {
+      var lines = [gk];
+      if (df.length) lines.push(df);
+      if (mf.length) lines.push(mf);
+      if (fw.length) lines.push(fw);
+      return lines;
+    }
+    return null;
+  }
+
+  function getRatingColor(r) {
+    var v = parseFloat(r) || 0;
+    if (v >= 7.5) return "#22c55e";
+    if (v >= 6.5) return "#f59e0b";
+    return "#ef4444";
+  }
+
+  function drawTerrain(ctx, x, y, w, h) {
+    // Fond vert
+    ctx.fillStyle = "#3B811F";
+    ctx.fillRect(x, y, w, h);
+    // Bandes alternées
+    for (var band = 0; band < 8; band++) {
+      if (band % 2 === 0) {
+        ctx.fillStyle = "rgba(0,0,0,0.06)";
+        ctx.fillRect(x, y + band * h/8, w, h/8);
+      }
+    }
+    // Lignes blanches
+    ctx.strokeStyle = "rgba(255,255,255,0.85)";
+    ctx.lineWidth = 1.5;
+    // Bordure
+    ctx.strokeRect(x + 10, y + 8, w - 20, h - 16);
+    // Ligne médiane
+    ctx.beginPath(); ctx.moveTo(x + 10, y + h/2); ctx.lineTo(x + w - 10, y + h/2); ctx.stroke();
+    // Cercle central
+    ctx.beginPath(); ctx.arc(x + w/2, y + h/2, h * 0.08, 0, Math.PI * 2); ctx.stroke();
+    // Grande surface haut
+    var bw = w * 0.45, bh = h * 0.12;
+    ctx.strokeRect(x + (w - bw)/2, y + 8, bw, bh);
+    // Grande surface bas
+    ctx.strokeRect(x + (w - bw)/2, y + h - 8 - bh, bw, bh);
+  }
+
+  function drawPlayer(ctx, player, px, py, isHome) {
+    if (!player) return;
+    // Cercle photo
+    var r = 22;
+    ctx.save();
+    ctx.beginPath();
+    ctx.arc(px, py, r, 0, Math.PI * 2);
+    ctx.fillStyle = isHome ? "#1a472a" : "#1a1d4a";
+    ctx.fill();
+    ctx.strokeStyle = "rgba(255,255,255,0.9)";
+    ctx.lineWidth = 2;
+    ctx.stroke();
+    ctx.clip();
+    // Essayer de charger la photo
+    if (player.photo && player.photo.includes("cdn.resfu.com")) {
+      var img = new Image();
+      img.crossOrigin = "anonymous";
+      img.src = player.photo;
+      try { ctx.drawImage(img, px - r, py - r, r*2, r*2); } catch(e) {}
+    }
+    ctx.restore();
+    // Numéro
+    ctx.fillStyle = "rgba(0,0,0,0.7)";
+    ctx.beginPath(); ctx.arc(px + r - 6, py + r - 6, 9, 0, Math.PI * 2); ctx.fill();
+    ctx.fillStyle = "#fff";
+    ctx.font = "bold 8px Arial";
+    ctx.textAlign = "center";
+    ctx.fillText(player.number || "", px + r - 6, py + r - 3);
+    // Note
+    if (player.rating) {
+      ctx.fillStyle = getRatingColor(player.rating);
+      ctx.beginPath(); ctx.roundRect(px - 18, py - r - 16, 36, 13, 4); ctx.fill();
+      ctx.fillStyle = "#fff";
+      ctx.font = "bold 9px Arial";
+      ctx.textAlign = "center";
+      ctx.fillText(parseFloat(player.rating).toFixed(1), px, py - r - 7);
+    }
+    // Nom
+    ctx.fillStyle = "#fff";
+    ctx.font = "bold 9px Arial";
+    ctx.textAlign = "center";
+    ctx.shadowColor = "rgba(0,0,0,0.8)";
+    ctx.shadowBlur = 3;
+    var shortName = player.name ? player.name.split(" ").pop() : "";
+    ctx.fillText(shortName, px, py + r + 12);
+    ctx.shadowBlur = 0;
+    // Events
+    var evtY = py + r + 22;
+    var evtX = px - 10;
+    var goals = player.goals || (player.events && player.events.goals) || 0;
+    var yellow = player.yellow || (player.events && player.events.yellow);
+    var red = player.red || (player.events && player.events.red);
+    ctx.font = "10px Arial";
+    if (goals > 0) { ctx.fillText("⚽", evtX, evtY); evtX += 14; }
+    if (yellow) { ctx.fillText("🟨", evtX, evtY); evtX += 14; }
+    if (red) { ctx.fillText("🟥", evtX, evtY); }
+  }
+
+  function drawTeamOnTerrain(ctx, lines, terrainX, terrainY, terrainW, terrainH, isHome) {
+    if (!lines || !lines.length) return;
+    var totalLines = lines.length;
+    // Zone de l'équipe = moitié du terrain
+    var zoneY = isHome ? terrainY + 10 : terrainY + terrainH/2;
+    var zoneH = terrainH/2 - 10;
+
+    lines.forEach(function(line, li) {
+      var lineY;
+      if (isHome) {
+        // Équipe domicile : du bas vers le milieu
+        lineY = terrainY + terrainH/2 - 15 - (li * zoneH / (totalLines));
+      } else {
+        // Équipe extérieure : du milieu vers le haut
+        lineY = terrainY + terrainH/2 + 15 + (li * zoneH / (totalLines));
+      }
+      var count = line.length;
+      line.forEach(function(player, pi) {
+        var lineX = terrainX + terrainW * (pi + 1) / (count + 1);
+        drawPlayer(ctx, player, lineX, lineY, isHome);
+      });
+    });
+  }
+
+  // Fond global
+  ctx.fillStyle = "#0f1923";
+  ctx.fillRect(0, 0, W, H);
+
+  if (isMobile) {
+    // ── MOBILE : vertical ──────────────────────────────
+    var headerH = 80;
+
+    // Header
+    var grad = ctx.createLinearGradient(0, 0, W, headerH);
+    grad.addColorStop(0, "#1a472a");
+    grad.addColorStop(1, "#0f1923");
+    ctx.fillStyle = grad;
+    ctx.fillRect(0, 0, W, headerH);
+
+    // Logos et noms
+    ctx.font = "bold 18px Arial";
+    ctx.fillStyle = "#fff";
+    ctx.textAlign = "center";
+    ctx.fillText(homeName, W/4, 35);
+    ctx.fillText(awayName, 3*W/4, 35);
+
+    if (homeGoals !== null && awayGoals !== null) {
+      ctx.font = "bold 28px Arial";
+      ctx.fillStyle = "#3B811F";
+      ctx.fillText(homeGoals + " - " + awayGoals, W/2, 55);
+    }
+
+    ctx.font = "11px Arial";
+    ctx.fillStyle = "rgba(255,255,255,0.5)";
+    if (homeFormation) ctx.fillText(homeFormation, W/4, 60);
+    if (awayFormation) ctx.fillText(awayFormation, 3*W/4, 60);
+
+    // Terrain
+    var tX = 20, tY = headerH + 10, tW = W - 40, tH = H - headerH - 20;
+    drawTerrain(ctx, tX, tY, tW, tH);
+
+    var homeLines = groupByPos(homePlayers);
+    var awayLines = groupByPos(awayPlayers);
+    if (!homeLines) {
+      homeLines = [];
+      var formation = homeFormation.split("-").map(Number);
+      var idx = 0;
+      [1].concat(formation).forEach(function(n) {
+        homeLines.push(homePlayers.slice(idx, idx+n)); idx += n;
+      });
+    }
+    if (!awayLines) {
+      awayLines = [];
+      var formation2 = awayFormation.split("-").map(Number);
+      var idx2 = 0;
+      [1].concat(formation2).forEach(function(n) {
+        awayLines.push(awayPlayers.slice(idx2, idx2+n)); idx2 += n;
+      });
+    }
+    drawTeamOnTerrain(ctx, homeLines, tX, tY, tW, tH, true);
+    drawTeamOnTerrain(ctx, awayLines, tX, tY, tW, tH, false);
+
+    // Watermark
+    ctx.font = "10px Arial";
+    ctx.fillStyle = "rgba(255,255,255,0.3)";
+    ctx.textAlign = "right";
+    ctx.fillText("WorldFoot Pro", W - 12, H - 8);
+
+  } else {
+    // ── DESKTOP : horizontal ──────────────────────────
+    var sideW = (W - 40) / 2;
+    var tH2 = H - 20;
+
+    // Header central
+    ctx.font = "bold 22px Arial";
+    ctx.fillStyle = "#fff";
+    ctx.textAlign = "center";
+    ctx.fillText(homeName + "  " + (homeGoals !== null ? homeGoals + " - " + awayGoals : "vs") + "  " + awayName, W/2, 30);
+    ctx.font = "12px Arial";
+    ctx.fillStyle = "rgba(255,255,255,0.5)";
+    ctx.fillText(homeFormation + "                              " + awayFormation, W/2, 50);
+
+    // Terrain gauche (domicile)
+    drawTerrain(ctx, 10, 60, sideW, tH2 - 60);
+    var homeLines2 = groupByPos(homePlayers);
+    if (!homeLines2) {
+      homeLines2 = [];
+      var fmt = homeFormation.split("-").map(Number);
+      var i2 = 0;
+      [1].concat(fmt).forEach(function(n) { homeLines2.push(homePlayers.slice(i2, i2+n)); i2+=n; });
+    }
+    // Pour desktop, terrain horizontal → adapter
+    homeLines2.forEach(function(line, li) {
+      var lineX = 10 + sideW * (li + 1) / (homeLines2.length + 1);
+      line.forEach(function(player, pi) {
+        var lineY = 60 + (tH2 - 60) * (pi + 1) / (line.length + 1);
+        drawPlayer(ctx, player, lineX, lineY, true);
+      });
+    });
+
+    // Terrain droit (extérieur) — miroir
+    var tX2 = W/2 + 10;
+    drawTerrain(ctx, tX2, 60, sideW, tH2 - 60);
+    var awayLines2 = groupByPos(awayPlayers);
+    if (!awayLines2) {
+      awayLines2 = [];
+      var fmt2 = awayFormation.split("-").map(Number);
+      var i3 = 0;
+      [1].concat(fmt2).forEach(function(n) { awayLines2.push(awayPlayers.slice(i3, i3+n)); i3+=n; });
+    }
+    awayLines2.forEach(function(line, li) {
+      var lineX = tX2 + sideW - sideW * (li + 1) / (awayLines2.length + 1);
+      line.forEach(function(player, pi) {
+        var lineY = 60 + (tH2 - 60) * (pi + 1) / (line.length + 1);
+        drawPlayer(ctx, player, lineX, lineY, false);
+      });
+    });
+
+    // Watermark
+    ctx.font = "10px Arial";
+    ctx.fillStyle = "rgba(255,255,255,0.3)";
+    ctx.textAlign = "right";
+    ctx.fillText("WorldFoot Pro", W - 12, H - 8);
+  }
+
+  // Télécharger
+  var link = document.createElement("a");
+  var score = homeGoals !== null ? homeGoals + "-" + awayGoals : "vs";
+  link.download = homeName + "_" + awayName + "_" + score + "_" + format + ".png";
+  link.href = canvas.toDataURL("image/png");
+  link.click();
+}
+
 const PlayerFlash = ({ player, rating, isHome }) => {
   const photo = player?.photo;
   const name = player?.name || "";
@@ -1479,40 +1767,46 @@ const PlayerFlash = ({ player, rating, isHome }) => {
 const organizePlayersByLine = (players, formation) => {
   if (!players || players.length === 0) return [];
 
-  const defaultFormation = [1, 4, 3, 3];
+  // Séparer par position
+  const gk  = players.filter(p => p.pos === "G");
+  const defs = players.filter(p => p.pos === "D");
+  const mids = players.filter(p => p.pos === "M");
+  const fwds = players.filter(p => p.pos === "F" || p.pos === "A");
 
-  let lines = [];
+  // Si on a des positions valides → utiliser la vraie disposition
+  if (gk.length > 0 && (defs.length + mids.length + fwds.length) >= 9) {
+    const lines = [gk];
+    if (defs.length > 0) lines.push(defs);
+    if (mids.length > 0) lines.push(mids);
+    if (fwds.length > 0) lines.push(fwds);
+    return lines;
+  }
+
+  // Fallback : formation string
+  const defaultFormation = [1, 4, 3, 3];
+  let lineSizes = [];
   if (formation) {
     const parts = formation.split("-").map(Number);
-    lines = [1, ...parts];
+    lineSizes = [1, ...parts];
   } else {
-    lines = defaultFormation;
+    lineSizes = defaultFormation;
   }
 
   const result = [];
   let playerIndex = 0;
-
-  for (let i = 0; i < lines.length; i++) {
-    const lineSize = lines[i];
+  for (let i = 0; i < lineSizes.length; i++) {
     const line = [];
-
-    for (let j = 0; j < lineSize && playerIndex < players.length; j++) {
+    for (let j = 0; j < lineSizes[i] && playerIndex < players.length; j++) {
       line.push(players[playerIndex]);
       playerIndex++;
     }
-
     result.push(line);
   }
-
   if (playerIndex < players.length) {
     const subs = [];
-    while (playerIndex < players.length) {
-      subs.push(players[playerIndex]);
-      playerIndex++;
-    }
+    while (playerIndex < players.length) subs.push(players[playerIndex++]);
     result.push(subs);
   }
-
   return result;
 };
 
@@ -2966,7 +3260,35 @@ function ComposPanel({lineups, players, homeTeam, awayTeam, isPartial, fix, even
           injuries || [],
           homeTeam?.id,
           awayTeam?.id
-        )
+        ),
+
+    // Bouton téléchargement carte pro
+    (hLu || aLu) && React.createElement("div", {
+      style: { padding: "10px 12px 4px", display: "flex", gap: 8 }
+    },
+      React.createElement("button", {
+        onClick: function() { downloadLineupCard(fix, hLu, aLu, "mobile"); },
+        style: {
+          flex: 1, padding: "10px 0",
+          background: "linear-gradient(135deg, #3B811F, #2d6317)",
+          border: "none", borderRadius: 10,
+          color: "#fff", fontSize: 12, fontWeight: 700,
+          cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center", gap: 6,
+          boxShadow: "0 2px 8px rgba(59,129,31,0.4)"
+        }
+      }, "📱 Télécharger (Mobile)"),
+      React.createElement("button", {
+        onClick: function() { downloadLineupCard(fix, hLu, aLu, "desktop"); },
+        style: {
+          flex: 1, padding: "10px 0",
+          background: "linear-gradient(135deg, #1a1d23, #2d3340)",
+          border: "none", borderRadius: 10,
+          color: "#fff", fontSize: 12, fontWeight: 700,
+          cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center", gap: 6,
+          boxShadow: "0 2px 8px rgba(0,0,0,0.3)"
+        }
+      }, "🖥️ Télécharger (PC)")
+    )
   );
 }
 
