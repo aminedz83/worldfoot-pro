@@ -1,0 +1,24 @@
+name: BeSoccer Preview Scraper
+
+on:
+  schedule:
+    # Tourne tous les jours à 8h, 12h, 18h UTC
+    # Pour scraper la veille et le jour J des matchs
+    - cron: '0 8,12,18 * * *'
+  workflow_dispatch:
+
+jobs:
+  scrape:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v3
+      - name: Setup Python
+        uses: actions/setup-python@v4
+        with:
+          python-version: '3.11'
+      - name: Install dependencies
+        run: pip install requests beautifulsoup4 cloudscraper
+      - name: Run scraper
+        env:
+          SUPABASE_KEY: ${{ secrets.SUPABASE_KEY }}
+        run: python3 besoccer_preview.py
