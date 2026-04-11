@@ -3010,7 +3010,8 @@ function ComposPanel({lineups, players, homeTeam, awayTeam, isPartial, fix, even
   var hLu = lineups?.find(l => l.team?.id === homeTeam?.id);
   var aLu = lineups?.find(l => l.team?.id === awayTeam?.id);
 
-  if(algeriaLineups && (!hLu || !hLu.startXI || hLu.startXI.length===0)) {
+  // Toujours prioritiser BeSoccer quand disponible (notes + buts + cartons + changements)
+  if(algeriaLineups && algeriaLineups.home_players && algeriaLineups.home_players.length > 0) {
     // Matcher un joueur Soccerway avec les données API football via le squad
     var matchWithSquad = function(swPlayer, squadPlayers) {
       if(!squadPlayers || !squadPlayers.length) return null;
