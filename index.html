@@ -7404,33 +7404,38 @@ function MatchDetail({state,onClose,onTeam}){
     if (bsPreview) return; // déjà chargé
     if (!fix) return;
 
-    // Chercher le match_id BeSoccer via le match_date et les équipes
     var matchDate = fix.fixture && fix.fixture.date
       ? fix.fixture.date.substring(0, 10)
       : null;
     if (!matchDate) return;
 
     setBsPreviewLoading(true);
-    var previewUrl = SB_BASE + 'besoccer_preview?match_date=eq.' + matchDate + '&select=*';
-    fetch(previewUrl, { headers: { apikey: SB_KEY, Authorization: "Bearer " + SB_KEY } })
+    var SB_URL = "https://iqeqlsxjiklygywjirqs.supabase.co/rest/v1/";
+    var previewUrl = SB_URL + "besoccer_preview?match_date=eq." + matchDate + "&select=*";
+    fetch(previewUrl, {
+      headers: { apikey: SB_KEY, Authorization: "Bearer " + SB_KEY }
+    })
       .then(function(r) { return r.json(); })
       .then(function(rows) {
         if (!rows || rows.length === 0) { setBsPreview(null); setBsPreviewLoading(false); return; }
-        // Trouver le bon match par équipes
         var homeName = fix.teams && fix.teams.home ? fix.teams.home.name : "";
         var awayName = fix.teams && fix.teams.away ? fix.teams.away.name : "";
         var found = rows.find(function(r) {
           var h = (r.home_team||"").toLowerCase();
           var a = (r.away_team||"").toLowerCase();
-          var hn = homeName.toLowerCase();
-          var an = awayName.toLowerCase();
-          return (h.includes(hn.split(" ")[0]) || hn.includes(h.split(" ")[0])) &&
-                 (a.includes(an.split(" ")[0]) || an.includes(a.split(" ")[0]));
+          var hn = homeName.toLowerCase().split(" ")[0];
+          var an = awayName.toLowerCase().split(" ")[0];
+          return (h.includes(hn) || hn.includes(h.split(" ")[0])) &&
+                 (a.includes(an) || an.includes(a.split(" ")[0]));
         }) || rows[0];
         setBsPreview(found);
         setBsPreviewLoading(false);
       })
-      .catch(function() { setBsPreview(null); setBsPreviewLoading(false); });
+      .catch(function(e) {
+        console.log("Preview fetch error:", e);
+        setBsPreview(null);
+        setBsPreviewLoading(false);
+      });
   }, [tab, fix && fix.fixture && fix.fixture.id]);
 
   React.useEffect(()=>{
@@ -8726,6 +8731,7 @@ function MatchDetail({state,onClose,onTeam}){
   // RENDER AVANT-MATCH (BeSoccer Preview)
   // ══════════════════════════════════════════════
   const renderAvantMatch = function() {
+    try {
     if (bsPreviewLoading) {
       return React.createElement("div", {
         style: { display:"flex", flexDirection:"column", alignItems:"center", padding:"50px 20px", gap:12, color:"#8E96A8" }
@@ -9056,6 +9062,12 @@ function MatchDetail({state,onClose,onTeam}){
       offSection,
       featSection
     );
+    } catch(e) {
+      console.error("renderAvantMatch error:", e);
+      return React.createElement("div", {
+        style:{ padding:20, color:"#666", fontSize:13, textAlign:"center" }
+      }, "Erreur d'affichage: " + e.message);
+    }
   };
 
   const renderH2H = ()=>{
