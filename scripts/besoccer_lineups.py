@@ -559,10 +559,18 @@ def scrape_lineup(match):
 def already_scraped(match_id):
     try:
         r = requests.get(
-            SB_URL + f"/rest/v1/besoccer_lineups?match_id=eq.{match_id}&select=id,home_players,home_subs,away_subs,match_date",
+            SB_URL + f"/rest/v1/besoccer_lineups?match_id=eq.{match_id}&select=id,home_players,away_players,home_subs,away_subs,match_date",
             headers={**SB_HEADERS, "Prefer": ""}
         ).json()
         if not r or not r[0].get("home_players") or len(r[0]["home_players"]) == 0:
+            return False
+        # Re-scraper si l'équipe extérieure manque (compo partielle)
+        if not r[0].get("away_players") or len(r[0]["away_players"]) == 0:
+            print("  ⚠️ Équipe extérieure manquante → re-scrape")
+            requests.delete(
+                SB_URL + f"/rest/v1/besoccer_lineups?match_id=eq.{match_id}",
+                headers=SB_HEADERS
+            )
             return False
         # Match d'un autre jour → ne jamais re-scraper
         if r[0].get("match_date") != date.today().isoformat():
