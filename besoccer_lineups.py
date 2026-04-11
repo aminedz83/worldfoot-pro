@@ -54,7 +54,10 @@ scraper = cloudscraper.create_scraper(
 
 def fetch(url):
     try:
-        r = scraper.get(url, timeout=20)
+        r = scraper.get(url, timeout=20, headers={
+            "Accept-Language": "en-US,en;q=0.9",
+            "Accept": "text/html,application/xhtml+xml"
+        })
         print(f"  GET {r.status_code} : {url}")
         return r if r.status_code == 200 else None
     except Exception as e:
