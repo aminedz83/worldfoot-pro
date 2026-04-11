@@ -559,10 +559,21 @@ def scrape_lineup(match):
 def already_scraped(match_id):
     try:
         r = requests.get(
-            SB_URL + f"/rest/v1/besoccer_lineups?match_id=eq.{match_id}&select=id,home_players",
+            SB_URL + f"/rest/v1/besoccer_lineups?match_id=eq.{match_id}&select=id,home_players,home_subs,away_subs,match_date",
             headers={**SB_HEADERS, "Prefer": ""}
         ).json()
-        return bool(r and r[0].get("home_players") and len(r[0]["home_players"]) > 0)
+        if not r or not r[0].get("home_players") or len(r[0]["home_players"]) == 0:
+            return False
+        # Match d'un autre jour → ne jamais re-scraper
+        if r[0].get("match_date") != date.today().isoformat():
+            return True
+        # Match d'aujourd'hui → re-scraper si remplaçants entrés sans notes
+        all_subs = (r[0].get("home_subs") or []) + (r[0].get("away_subs") or [])
+        entered = [s for s in all_subs if s.get("sub_in_minute")]
+        if entered and not any(s.get("rating") for s in entered):
+            print("  ⚠️ Remplaçants sans notes → re-scrape")
+            return False
+        return True
     except:
         return False
 
