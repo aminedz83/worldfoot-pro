@@ -6885,6 +6885,8 @@ function MatchDetail({state,onClose,onTeam}){
   const[showLeagueSheet,setShowLeagueSheet]=React.useState(false);
   const[leagueInfo,setLeagueInfo]=React.useState(null);
   const[algeriaLineups,setAlgeriaLineups]=React.useState(null);
+  const[debugLog,setDebugLog]=React.useState([]);
+  const[showDebug,setShowDebug]=React.useState(false);
   const[bsPreview,setBsPreview]=React.useState(null);
   const[bsPreviewLoading,setBsPreviewLoading]=React.useState(false);
   const[apiPreview,setApiPreview]=React.useState(null);
@@ -7170,7 +7172,7 @@ function MatchDetail({state,onClose,onTeam}){
       "CR Belouizdad":"CR Belouizdad","Belouizdad":"CR Belouizdad",
       "JS Kabylie":"JS Kabylie","Kabylie":"JS Kabylie",
       "USM Alger":"USM Alger",
-      "ES Setif":"ES Sétif","Setif":"ES Sétif","ES Sétif":"ES Sétif",
+      "ES Setif":"ES Setif","ES Sétif":"ES Setif","Setif":"ES Setif",
       "CS Constantine":"CS Constantine","Constantine":"CS Constantine",
       "Paradou AC":"Paradou AC","Paradou":"Paradou AC",
       "ASO Chlef":"ASO Chlef","Chlef":"ASO Chlef",
@@ -7265,7 +7267,11 @@ function MatchDetail({state,onClose,onTeam}){
     // ══════════════════════════════════════════════════════════
     // ÉTAPE 1 — Chercher dans besoccer_lineups
     // ══════════════════════════════════════════════════════════
-    console.log("🔵 BeSoccer lineups fetch:", homeBS, "vs", awayBS, matchDate);
+    var addLog = function(msg) {
+      setDebugLog(function(prev) { return prev.concat([new Date().toTimeString().slice(0,8)+" "+msg]); });
+    };
+    addLog("🔵 Cherche: '"+homeBS+"' vs '"+awayBS+"' ("+matchDate+")");
+    addLog("📌 API: '"+homeTeam+"' vs '"+awayTeam+"'");
 
     var bsUrl1 = SB_BASE + 'besoccer_lineups?match_date=eq.' + matchDate +
       '&home_team=eq.' + encodeURIComponent(homeBS) +
@@ -7273,10 +7279,15 @@ function MatchDetail({state,onClose,onTeam}){
     var bsUrl2 = SB_BASE + 'besoccer_lineups?match_date=eq.' + matchDate + '&select=*';
 
     tryFetch(bsUrl1).then(function(d) {
-      if(d&&d.length>0) return d;
+      if(d&&d.length>0) {
+        addLog("✅ Match direct trouvé");
+        return d;
+      }
+      addLog("⚠️ Match direct non trouvé → fallback tous matchs du jour");
       // Fallback : chercher tous les matchs du jour et trouver par noms
       return tryFetch(bsUrl2).then(function(rows) {
-        if(!rows||!rows.length) return [];
+        if(!rows||!rows.length) { addLog("❌ Aucun match du jour en base"); return []; }
+        addLog("📋 Matchs du jour: "+rows.map(function(r){return r.home_team+"/"+r.away_team;}).join(", "));
         var hLow = homeBS.toLowerCase();
         var aLow = awayBS.toLowerCase();
         var found = rows.find(function(r) {
@@ -7285,13 +7296,14 @@ function MatchDetail({state,onClose,onTeam}){
           return (rh.includes(hLow.split(" ").pop()) || hLow.includes(rh.split(" ").pop())) &&
                  (ra.includes(aLow.split(" ").pop()) || aLow.includes(ra.split(" ").pop()));
         });
+        if (found) addLog("✅ Match trouvé par fallback: "+found.home_team+"/"+found.away_team);
+        else addLog("❌ Aucun match trouvé même en fallback");
         return found ? [found] : [];
       });
     }).then(function(bsData) {
 
       if(bsData && bsData.length > 0) {
-        // ✅ BeSoccer a les données → enrichir avec photos
-        console.log("✅ BeSoccer lineups trouvées");
+        addLog("✅ BeSoccer lineups trouvées: "+bsData[0].home_team+" vs "+bsData[0].away_team);
         var row = bsData[0];
         var hp  = row.home_players || [];
         var ap  = row.away_players || [];
@@ -7372,7 +7384,7 @@ function MatchDetail({state,onClose,onTeam}){
         // ══════════════════════════════════════════════════════
         // ÉTAPE 2 — Fallback : Flashscore (algeria_lineups)
         // ══════════════════════════════════════════════════════
-        console.log("🟡 Fallback Flashscore lineups:", homeAlg, "vs", awayAlg);
+        addLog("🟡 Fallback Flashscore: '"+homeAlg+"' vs '"+awayAlg+"'");
         var SB = SB_BASE + 'algeria_lineups';
         var url1 = fixtureId ? SB+'?fixture_id=eq.'+fixtureId+'&select=*' : null;
         var url2 = SB+'?home_team=eq.'+encodeURIComponent(homeAlg)+'&away_team=eq.'+encodeURIComponent(awayAlg)+'&match_date=eq.'+matchDate+'&select=*';
@@ -10075,6 +10087,24 @@ function MatchDetail({state,onClose,onTeam}){
       ):null,
 
       tab==="compos"?React.createElement("div",{className:"md-panel"},
+
+        // ── Bouton debug ──
+        React.createElement("div",{style:{padding:"0 12px 8px"}},
+          React.createElement("button",{
+            onClick:function(){ setShowDebug(function(v){return !v;}); },
+            style:{fontSize:10,color:"#999",background:"none",border:"1px solid #e5e7eb",
+                   borderRadius:6,padding:"3px 10px",cursor:"pointer"}
+          }, showDebug ? "🐛 Masquer debug" : "🐛 Debug"),
+          showDebug && React.createElement("div",{
+            style:{marginTop:6,background:"#0f172a",borderRadius:8,padding:"10px 12px",
+                   fontFamily:"monospace",fontSize:10,color:"#94a3b8",
+                   maxHeight:180,overflowY:"auto",lineHeight:1.6}
+          },
+            debugLog.length === 0
+              ? React.createElement("span",{style:{color:"#64748b"}},"Aucun log — ouvrir un match algérien")
+              : debugLog.map(function(l,i){ return React.createElement("div",{key:i},l); })
+          )
+        ),
 
         React.createElement(ComposPanel, {
           lineups: lineups,
