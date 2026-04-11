@@ -567,9 +567,10 @@ def already_scraped(match_id):
         return False
 
 def save_lineup(lineup):
+    # INSERT seulement — ne jamais écraser des données existantes
     res = requests.post(
         SB_URL + "/rest/v1/besoccer_lineups",
-        headers={**SB_HEADERS, "Prefer": "resolution=merge-duplicates"},
+        headers={**SB_HEADERS, "Prefer": "resolution=ignore-duplicates"},
         params={"on_conflict": "match_id"},
         json=lineup
     )
