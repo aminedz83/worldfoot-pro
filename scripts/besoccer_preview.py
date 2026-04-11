@@ -193,26 +193,24 @@ def parse_goals_progression(soup):
     if not container:
         return progression
     
-    # Home
-    home_row = container.select_one("div.row.align-center:not(.visitor)")
-    if home_row:
-        for bar in home_row.select("div.bar"):
+    # Toutes les rows avec barres
+    all_rows = container.select("div.row.align-center")
+    for row in all_rows:
+        bars = row.select("div.bar")
+        if not bars:
+            continue
+        is_visitor = "visitor" in row.get("class", [])
+        key = "away" if is_visitor else "home"
+        if progression[key]:  # déjà rempli
+            continue
+        for bar in bars:
             num_el = bar.select_one("span.num")
-            width = bar.get("style", "").replace("width:", "").replace("%", "").replace(";", "").strip()
-            progression["home"].append({
+            style = bar.get("style", "")
+            width_match = re.search(r"width:([\d.]+)%", style)
+            width = float(width_match.group(1)) if width_match else 0
+            progression[key].append({
                 "count": int(num_el.get_text(strip=True)) if num_el else 0,
-                "width": float(width) if width else 0
-            })
-    
-    # Away
-    away_row = container.select_one("div.row.align-center.visitor")
-    if away_row:
-        for bar in away_row.select("div.bar"):
-            num_el = bar.select_one("span.num")
-            width = bar.get("style", "").replace("width:", "").replace("%", "").replace(";", "").strip()
-            progression["away"].append({
-                "count": int(num_el.get_text(strip=True)) if num_el else 0,
-                "width": float(width) if width else 0
+                "width": width
             })
     
     return progression
@@ -421,13 +419,28 @@ def scrape_preview(match):
 # SUPABASE
 # ══════════════════════════════════════════════
 
+def delete_preview(match_id):
+    """Supprime un preview pour permettre le re-scrape"""
+    requests.delete(
+        SB_URL + f"/rest/v1/besoccer_preview?match_id=eq.{match_id}",
+        headers=SB_HEADERS
+    )
+
 def already_scraped(match_id):
     try:
         r = requests.get(
-            SB_URL + f"/rest/v1/besoccer_preview?match_id=eq.{match_id}&select=id",
+            SB_URL + f"/rest/v1/besoccer_preview?match_id=eq.{match_id}&select=id,goals_progression",
             headers={**SB_HEADERS, "Prefer": ""}
         ).json()
-        return bool(r and len(r) > 0)
+        if not r or len(r) == 0:
+            return False
+        # Re-scraper si la progression des buts est vide
+        gp = r[0].get("goals_progression", {})
+        if not gp or not gp.get("home"):
+            print("  ⚠️ Progression buts vide → re-scrape")
+            delete_preview(match_id)
+            return False
+        return True
     except:
         return False
 
