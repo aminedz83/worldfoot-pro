@@ -2090,7 +2090,20 @@ const renderListeFlash = (fix, hLu, aLu, players, events, injuries, hid, aid) =>
       if (!photo || photo.includes("media.api-sports.io/football/players/0")) {
         photo = getPlayerPhoto(player.id) || player.photo;
       }
-      return { ...player, photo, rating, events: evts };
+      return {
+        id: player.id, name: player.name, number: player.number,
+        pos: player.pos, grid: player.grid, captain: player.captain,
+        photo: photo, rating: rating, events: evts,
+        goals: player.goals || 0,
+        goal_minutes: player.goal_minutes || [],
+        yellow: player.yellow || false,
+        yellow_minute: player.yellow_minute || null,
+        red: player.red || false,
+        red_minute: player.red_minute || null,
+        sub_out: player.sub_out || false,
+        sub_out_minute: player.sub_out_minute || null,
+        minutes: player.minutes || 90
+      };
     });
 
     const subs = (lineup.substitutes || []).map(item => {
@@ -2098,7 +2111,6 @@ const renderListeFlash = (fix, hLu, aLu, players, events, injuries, hid, aid) =>
       const apiRating = getPlayerRating(player.id);
       const rating = apiRating || player.rating || null;
       const apiEvts = getPlayerEvents(player.id, player.name);
-      // Fusionner: prioriser BeSoccer si API retourne 0
       const bsGoals = player.events && player.events.goals > 0 ? player.events.goals : 0;
       const bsYellow = player.events && player.events.yellow > 0 ? player.events.yellow : 0;
       const bsRed = player.events && player.events.red > 0 ? player.events.red : 0;
@@ -2113,7 +2125,21 @@ const renderListeFlash = (fix, hLu, aLu, players, events, injuries, hid, aid) =>
       if (!photo || photo.includes("media.api-sports.io/football/players/0")) {
         photo = getPlayerPhoto(player.id) || player.photo;
       }
-      return { ...player, photo, rating, events: evts };
+      return {
+        id: player.id, name: player.name, number: player.number,
+        pos: player.pos, grid: player.grid, captain: player.captain,
+        photo: photo, rating: rating, events: evts,
+        goals: player.goals || 0,
+        goal_minutes: player.goal_minutes || [],
+        yellow: player.yellow || false,
+        yellow_minute: player.yellow_minute || null,
+        red: player.red || false,
+        red_minute: player.red_minute || null,
+        sub_in_minute: player.sub_in_minute || null,
+        sub_out: player.sub_out || false,
+        sub_out_minute: player.sub_out_minute || null,
+        minutes: player.minutes || 0
+      };
     });
 
     return { starters, subs };
@@ -2438,8 +2464,8 @@ const renderListeFlash = (fix, hLu, aLu, players, events, injuries, hid, aid) =>
                   flexWrap: "wrap"
                 }
               },
-                (awayPlayer.red || (awayPlayer.events && awayPlayer.events.red > 0)) && React.createElement("span", { style:{fontSize:10} }, "🟥"),
-                (awayPlayer.yellow || (awayPlayer.events && awayPlayer.events.yellow > 0)) && React.createElement("span", { style:{fontSize:10} }, "🟨"),
+                (awayPlayer.red || (awayPlayer.events && awayPlayer.events.red > 0)) && React.createElement("span", { style:{fontSize:10} }, "🟥" + (awayPlayer.red_minute ? " "+awayPlayer.red_minute+"'" : "")),
+                (awayPlayer.yellow || (awayPlayer.events && awayPlayer.events.yellow > 0)) && React.createElement("span", { style:{fontSize:10} }, "🟨" + (awayPlayer.yellow_minute ? " "+awayPlayer.yellow_minute+"'" : "")),
                 ((awayPlayer.goals > 0) || (awayPlayer.events && awayPlayer.events.goals > 0)) && React.createElement("span", { style:{fontSize:10} },
                   "⚽ " + (awayPlayer.goal_minutes && awayPlayer.goal_minutes.length ? awayPlayer.goal_minutes.join("' ⚽ ")+"'" : ((awayPlayer.goals||awayPlayer.events.goals)+"x"))),
                 awayPlayer.pos === "G" && React.createElement("span", {
