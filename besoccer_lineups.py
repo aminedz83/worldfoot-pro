@@ -561,19 +561,24 @@ def scrape_lineup(match):
 
 def already_scraped(match_id):
     """
-    Retourne True si le match est déjà scrapé ET complet (subs avec ratings).
-    Retourne False si pas encore scrapé OU si les subs n'ont pas de notes
-    (match terminé depuis peu, notes pas encore calculées par BeSoccer).
+    Retourne True si le match est déjà scrapé ET complet.
+    Re-scrape uniquement si les subs n'ont pas de notes ET le match date d'aujourd'hui.
     """
     try:
         r = requests.get(
-            SB_URL + f"/rest/v1/besoccer_lineups?match_id=eq.{match_id}&select=id,home_players,home_subs,away_subs",
+            SB_URL + f"/rest/v1/besoccer_lineups?match_id=eq.{match_id}&select=id,home_players,home_subs,away_subs,match_date,scraped_at",
             headers={**SB_HEADERS, "Prefer": ""}
         ).json()
         if not r or not r[0].get("home_players") or len(r[0]["home_players"]) == 0:
             return False
-        # Vérifier si les remplaçants entrés (sub_in_minute > 0) ont des notes
-        # Si aucune note → re-scraper pour récupérer les notes post-match
+
+        # Vérifier si c'est un match d'aujourd'hui
+        today = date.today().isoformat()
+        match_date = r[0].get("match_date", "")
+        if match_date != today:
+            return True  # Match ancien → ne pas re-scraper
+
+        # Match d'aujourd'hui → vérifier si subs entrés ont des notes
         home_subs = r[0].get("home_subs") or []
         away_subs = r[0].get("away_subs") or []
         all_subs = home_subs + away_subs
