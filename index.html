@@ -1373,24 +1373,11 @@ function downloadLineupCard(fix, hLu, aLu, format) {
   var homeFormation = hLu ? hLu.formation || "" : "";
   var awayFormation = aLu ? aLu.formation || "" : "";
 
+  // Même disposition que la vue Terrain — utilise organizePlayersByLine
   var homePlayers = hLu ? (hLu.startXI || []).map(function(i) { return i.player; }) : [];
   var awayPlayers = aLu ? (aLu.startXI || []).map(function(i) { return i.player; }) : [];
-
-  // Grouper par position
-  function groupByPos(players) {
-    var gk = players.filter(function(p) { return p.pos === "G"; });
-    var df = players.filter(function(p) { return p.pos === "D"; });
-    var mf = players.filter(function(p) { return p.pos === "M"; });
-    var fw = players.filter(function(p) { return p.pos === "F" || p.pos === "A"; });
-    if (gk.length > 0 && (df.length + mf.length + fw.length) >= 9) {
-      var lines = [gk];
-      if (df.length) lines.push(df);
-      if (mf.length) lines.push(mf);
-      if (fw.length) lines.push(fw);
-      return lines;
-    }
-    return null;
-  }
+  var homeLines = organizePlayersByLine(homePlayers, homeFormation);
+  var awayLines = organizePlayersByLine(awayPlayers, awayFormation);
 
   function getRatingColor(r) {
     var v = parseFloat(r) || 0;
@@ -1545,24 +1532,6 @@ function downloadLineupCard(fix, hLu, aLu, format) {
     var tX = 20, tY = headerH + 10, tW = W - 40, tH = H - headerH - 20;
     drawTerrain(ctx, tX, tY, tW, tH);
 
-    var homeLines = groupByPos(homePlayers);
-    var awayLines = groupByPos(awayPlayers);
-    if (!homeLines) {
-      homeLines = [];
-      var formation = homeFormation.split("-").map(Number);
-      var idx = 0;
-      [1].concat(formation).forEach(function(n) {
-        homeLines.push(homePlayers.slice(idx, idx+n)); idx += n;
-      });
-    }
-    if (!awayLines) {
-      awayLines = [];
-      var formation2 = awayFormation.split("-").map(Number);
-      var idx2 = 0;
-      [1].concat(formation2).forEach(function(n) {
-        awayLines.push(awayPlayers.slice(idx2, idx2+n)); idx2 += n;
-      });
-    }
     drawTeamOnTerrain(ctx, homeLines, tX, tY, tW, tH, true);
     drawTeamOnTerrain(ctx, awayLines, tX, tY, tW, tH, false);
 
@@ -1586,36 +1555,21 @@ function downloadLineupCard(fix, hLu, aLu, format) {
     ctx.fillStyle = "rgba(255,255,255,0.5)";
     ctx.fillText(homeFormation + "                              " + awayFormation, W/2, 50);
 
-    // Terrain gauche (domicile)
+    // Terrain gauche (domicile) — même disposition que vue Terrain
     drawTerrain(ctx, 10, 60, sideW, tH2 - 60);
-    var homeLines2 = groupByPos(homePlayers);
-    if (!homeLines2) {
-      homeLines2 = [];
-      var fmt = homeFormation.split("-").map(Number);
-      var i2 = 0;
-      [1].concat(fmt).forEach(function(n) { homeLines2.push(homePlayers.slice(i2, i2+n)); i2+=n; });
-    }
-    // Pour desktop, terrain horizontal → adapter
-    homeLines2.forEach(function(line, li) {
-      var lineX = 10 + sideW * (li + 1) / (homeLines2.length + 1);
+    homeLines.forEach(function(line, li) {
+      var lineX = 10 + sideW * (li + 1) / (homeLines.length + 1);
       line.forEach(function(player, pi) {
         var lineY = 60 + (tH2 - 60) * (pi + 1) / (line.length + 1);
         drawPlayer(ctx, player, lineX, lineY, true);
       });
     });
 
-    // Terrain droit (extérieur) — miroir
+    // Terrain droit (extérieur) — même disposition que vue Terrain
     var tX2 = W/2 + 10;
     drawTerrain(ctx, tX2, 60, sideW, tH2 - 60);
-    var awayLines2 = groupByPos(awayPlayers);
-    if (!awayLines2) {
-      awayLines2 = [];
-      var fmt2 = awayFormation.split("-").map(Number);
-      var i3 = 0;
-      [1].concat(fmt2).forEach(function(n) { awayLines2.push(awayPlayers.slice(i3, i3+n)); i3+=n; });
-    }
-    awayLines2.forEach(function(line, li) {
-      var lineX = tX2 + sideW - sideW * (li + 1) / (awayLines2.length + 1);
+    awayLines.forEach(function(line, li) {
+      var lineX = tX2 + sideW - sideW * (li + 1) / (awayLines.length + 1);
       line.forEach(function(player, pi) {
         var lineY = 60 + (tH2 - 60) * (pi + 1) / (line.length + 1);
         drawPlayer(ctx, player, lineX, lineY, false);
