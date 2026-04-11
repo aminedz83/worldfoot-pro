@@ -26,6 +26,10 @@ SB_HEADERS   = {
 
 # IDs BeSoccer connus (même structure que besoccer_lineups.py)
 KNOWN_IDS = {
+    "2026-04-11": [
+        {"home_team": "Olympique Akbou", "away_team": "ES Setif",        "bs_id": "2026264207", "bs_home": "oued-akbou",    "bs_away": "es-setif"},
+        {"home_team": "Paradou AC",      "away_team": "JS Saoura",       "bs_id": "2026264211", "bs_home": "paradou",       "bs_away": "js-saoura"},
+    ],
     "2026-04-17": [
         {"home_team": "MB Rouissat",     "away_team": "JS Kabylie",      "bs_id": "2026264220", "bs_home": "mb-rouisset",   "bs_away": "kabylie"},
         {"home_team": "ASO Chlef",       "away_team": "Olympique Akbou", "bs_id": "2026264215", "bs_home": "chlef",         "bs_away": "oued-akbou"},
@@ -446,7 +450,7 @@ print(datetime.now().strftime("%Y-%m-%d %H:%M:%S"))
 
 # Chercher les matchs de demain ET après-demain (pour couvrir les 2 journées)
 targets = []
-for delta in [0, 1, 2]:
+for delta in range(8):
     target_date = (date.today() + timedelta(days=delta)).isoformat()
     if target_date in KNOWN_IDS:
         for m in KNOWN_IDS[target_date]:
