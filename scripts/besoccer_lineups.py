@@ -54,10 +54,7 @@ scraper = cloudscraper.create_scraper(
 
 def fetch(url):
     try:
-        r = scraper.get(url, timeout=20, headers={
-            "Accept-Language": "en-US,en;q=0.9",
-            "Accept": "text/html,application/xhtml+xml"
-        })
+        r = scraper.get(url, timeout=20)
         print(f"  GET {r.status_code} : {url}")
         return r if r.status_code == 200 else None
     except Exception as e:
@@ -560,35 +557,12 @@ def scrape_lineup(match):
 # ══════════════════════════════════════════════
 
 def already_scraped(match_id):
-    """
-    Retourne True si le match est déjà scrapé ET complet.
-    Re-scrape uniquement si les subs n'ont pas de notes ET le match date d'aujourd'hui.
-    """
     try:
         r = requests.get(
-            SB_URL + f"/rest/v1/besoccer_lineups?match_id=eq.{match_id}&select=id,home_players,home_subs,away_subs,match_date,scraped_at",
+            SB_URL + f"/rest/v1/besoccer_lineups?match_id=eq.{match_id}&select=id,home_players",
             headers={**SB_HEADERS, "Prefer": ""}
         ).json()
-        if not r or not r[0].get("home_players") or len(r[0]["home_players"]) == 0:
-            return False
-
-        # Vérifier si c'est un match d'aujourd'hui
-        today = date.today().isoformat()
-        match_date = r[0].get("match_date", "")
-        if match_date != today:
-            return True  # Match ancien → ne pas re-scraper
-
-        # Match d'aujourd'hui → vérifier si subs entrés ont des notes
-        home_subs = r[0].get("home_subs") or []
-        away_subs = r[0].get("away_subs") or []
-        all_subs = home_subs + away_subs
-        entered_subs = [s for s in all_subs if s.get("sub_in_minute") or s.get("minutes", 0) > 0]
-        if entered_subs:
-            has_ratings = any(s.get("rating") for s in entered_subs)
-            if not has_ratings:
-                print(f"  ⚠️ Remplaçants sans notes → re-scrape")
-                return False
-        return True
+        return bool(r and r[0].get("home_players") and len(r[0]["home_players"]) > 0)
     except:
         return False
 
