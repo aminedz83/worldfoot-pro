@@ -564,23 +564,33 @@ def already_scraped(match_id):
         ).json()
         if not r or not r[0].get("home_players") or len(r[0]["home_players"]) == 0:
             return False
+
         # Re-scraper si l'équipe extérieure manque (compo partielle)
         if not r[0].get("away_players") or len(r[0]["away_players"]) == 0:
             print("  ⚠️ Équipe extérieure manquante → re-scrape")
-            requests.delete(
-                SB_URL + f"/rest/v1/besoccer_lineups?match_id=eq.{match_id}",
-                headers=SB_HEADERS
-            )
+            requests.delete(SB_URL + f"/rest/v1/besoccer_lineups?match_id=eq.{match_id}", headers=SB_HEADERS)
             return False
+
         # Match d'un autre jour → ne jamais re-scraper
         if r[0].get("match_date") != date.today().isoformat():
             return True
-        # Match d'aujourd'hui → re-scraper si remplaçants entrés sans notes
+
+        # Match d'aujourd'hui → re-scraper si les titulaires n'ont pas de notes
+        home_players = r[0].get("home_players") or []
+        away_players = r[0].get("away_players") or []
+        all_players = home_players + away_players
+        if all_players and not any(p.get("rating") for p in all_players):
+            print("  ⚠️ Titulaires sans notes → re-scrape")
+            requests.delete(SB_URL + f"/rest/v1/besoccer_lineups?match_id=eq.{match_id}", headers=SB_HEADERS)
+            return False
+
+        # Re-scraper si remplaçants entrés sans notes
         all_subs = (r[0].get("home_subs") or []) + (r[0].get("away_subs") or [])
         entered = [s for s in all_subs if s.get("sub_in_minute")]
         if entered and not any(s.get("rating") for s in entered):
             print("  ⚠️ Remplaçants sans notes → re-scrape")
             return False
+
         return True
     except:
         return False
