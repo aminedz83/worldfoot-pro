@@ -7167,24 +7167,109 @@ function MatchDetail({state,onClose,onTeam}){
     };
 
     // ── Mapping noms API → noms BeSoccer ──────────────────────
-    var BS_TEAM_MAP = {
-      "MC Alger":"MC Alger","Alger":"MC Alger",
-      "CR Belouizdad":"CR Belouizdad","Belouizdad":"CR Belouizdad",
-      "JS Kabylie":"JS Kabylie","Kabylie":"JS Kabylie",
-      "USM Alger":"USM Alger",
-      "ES Setif":"ES Setif","ES Sétif":"ES Setif","Setif":"ES Setif",
-      "CS Constantine":"CS Constantine","Constantine":"CS Constantine",
-      "Paradou AC":"Paradou AC","Paradou":"Paradou AC",
-      "ASO Chlef":"ASO Chlef","Chlef":"ASO Chlef",
-      "MC Oran":"MC Oran","Oran":"MC Oran",
-      "JS Saoura":"JS Saoura","Saoura":"JS Saoura",
-      "MC El Bayadh":"MC El Bayadh","El Bayadh":"MC El Bayadh",
-      "USM Khenchela":"USM Khenchela","Khenchela":"USM Khenchela",
-      "Olympique Akbou":"Olympique Akbou","Akbou":"Olympique Akbou",
-      "ES Mostaganem":"ES Mostaganem","Mostaganem":"ES Mostaganem",
-      "MB Rouissat":"MB Rouissat","Rouissat":"MB Rouissat","Rouisset":"MB Rouissat",
-      "ES Ben Aknoun":"ES Ben Aknoun","Ben Aknoun":"ES Ben Aknoun"
+    // ── IDs BeSoccer connus — recherche par match_id (plus fiable que les noms) ──
+    var BS_KNOWN_IDS = {
+      "2026-04-10": [
+        {home:"ES Ben Aknoun", away:"ASO Chlef",      id:"2026264208"},
+        {home:"ES Mostaganem", away:"USM Khenchela",  id:"2026264210"},
+        {home:"JS Kabylie",    away:"CS Constantine", id:"2026264214"},
+      ],
+      "2026-04-11": [
+        {home:"Olympique Akbou", away:"ES Setif",  id:"2026264207"},
+        {home:"Paradou AC",      away:"JS Saoura", id:"2026264211"},
+      ],
+      "2026-04-16": [
+        {home:"CS Constantine", away:"MC Alger", id:"2026264221"},
+      ],
+      "2026-04-17": [
+        {home:"MB Rouissat",   away:"JS Kabylie",      id:"2026264220"},
+        {home:"ASO Chlef",     away:"Olympique Akbou", id:"2026264215"},
+        {home:"MC El Bayadh",  away:"Paradou AC",      id:"2026264216"},
+        {home:"JS Saoura",     away:"USM Khenchela",   id:"2026264219"},
+        {home:"ES Setif",      away:"MC Oran",         id:"2026264222"},
+        {home:"CS Constantine",away:"MC Alger",        id:"2026264221"},
+      ],
+      "2026-05-09": [
+        {home:"JS Kabylie",     away:"ES Setif",        id:"2026264223"},
+        {home:"ES Mostaganem",  away:"JS Saoura",       id:"2026264224"},
+        {home:"MC Alger",       away:"MB Rouissat",     id:"2026264225"},
+        {home:"Paradou AC",     away:"CS Constantine",  id:"2026264226"},
+        {home:"USM Khenchela",  away:"MC El Bayadh",    id:"2026264227"},
+        {home:"ES Ben Aknoun",  away:"USM Alger",       id:"2026264228"},
+        {home:"MC Oran",        away:"ASO Chlef",       id:"2026264229"},
+        {home:"Olympique Akbou",away:"CR Belouizdad",   id:"2026264230"},
+      ],
+      "2026-05-15": [
+        {home:"MC El Bayadh",   away:"JS Saoura",       id:"2026264231"},
+        {home:"CS Constantine", away:"USM Khenchela",   id:"2026264232"},
+        {home:"ES Setif",       away:"MC Alger",        id:"2026264233"},
+        {home:"CR Belouizdad",  away:"MC Oran",         id:"2026264234"},
+        {home:"USM Alger",      away:"Olympique Akbou", id:"2026264235"},
+        {home:"ASO Chlef",      away:"JS Kabylie",      id:"2026264236"},
+        {home:"ES Ben Aknoun",  away:"ES Mostaganem",   id:"2026264237"},
+        {home:"MB Rouissat",    away:"Paradou AC",      id:"2026264238"},
+      ],
+      "2026-05-22": [
+        {home:"ES Mostaganem",  away:"MC El Bayadh",    id:"2026264432"},
+        {home:"JS Saoura",      away:"CS Constantine",  id:"2026264433"},
+        {home:"USM Khenchela",  away:"MB Rouissat",     id:"2026264434"},
+        {home:"Paradou AC",     away:"ES Setif",        id:"2026264435"},
+        {home:"MC Alger",       away:"ASO Chlef",       id:"2026264436"},
+        {home:"JS Kabylie",     away:"CR Belouizdad",   id:"2026264437"},
+        {home:"MC Oran",        away:"USM Alger",       id:"2026264438"},
+        {home:"Olympique Akbou",away:"ES Ben Aknoun",   id:"2026264439"},
+      ],
     };
+
+    // ── Mapping noms API Football → noms BeSoccer (pour trouver le match_id) ──
+    var API_TO_BS = {
+      "MC Alger":"MC Alger", "Alger":"MC Alger",
+      "CR Belouizdad":"CR Belouizdad", "Belouizdad":"CR Belouizdad",
+      "JS Kabylie":"JS Kabylie", "Kabylie":"JS Kabylie",
+      "USM Alger":"USM Alger",
+      "ES Setif":"ES Setif", "ES Sétif":"ES Setif", "Setif":"ES Setif",
+      "CS Constantine":"CS Constantine", "Constantine":"CS Constantine",
+      "Paradou AC":"Paradou AC", "Paradou":"Paradou AC",
+      "ASO Chlef":"ASO Chlef", "Chlef":"ASO Chlef",
+      "MC Oran":"MC Oran", "Oran":"MC Oran",
+      "JS Saoura":"JS Saoura", "Saoura":"JS Saoura",
+      "MC El Bayadh":"MC El Bayadh", "El Bayadh":"MC El Bayadh",
+      "USM Khenchela":"USM Khenchela", "Khenchela":"USM Khenchela",
+      "Olympique Akbou":"Olympique Akbou", "Akbou":"Olympique Akbou",
+      "ES Mostaganem":"ES Mostaganem", "Mostaganem":"ES Mostaganem",
+      "MB Rouissat":"MB Rouissat", "Rouissat":"MB Rouissat", "Rouisset":"MB Rouissat", "MB Rouisset":"MB Rouissat",
+      "ES Ben Aknoun":"ES Ben Aknoun", "Ben Aknoun":"ES Ben Aknoun",
+    };
+
+    // Chercher le match_id BeSoccer — comparaison exacte après mapping
+    var knownMatchId = null;
+    var dayMatches = BS_KNOWN_IDS[matchDate] || [];
+    var homeBSName = API_TO_BS[homeTeam] || homeTeam;
+    var awayBSName = API_TO_BS[awayTeam] || awayTeam;
+    addLog("📌 API: '"+homeTeam+"' → BS: '"+homeBSName+"'");
+    addLog("📌 API: '"+awayTeam+"' → BS: '"+awayBSName+"'");
+
+    var matched = dayMatches.find(function(m) {
+      return m.home === homeBSName && m.away === awayBSName;
+    });
+    // Fallback matching souple si exact échoue
+    if (!matched) {
+      matched = dayMatches.find(function(m) {
+        var mh = m.home.toLowerCase();
+        var ma = m.away.toLowerCase();
+        var hL = homeBSName.toLowerCase();
+        var aL = awayBSName.toLowerCase();
+        return (mh.includes(hL.split(" ").pop()) || hL.includes(mh.split(" ").pop())) &&
+               (ma.includes(aL.split(" ").pop()) || aL.includes(ma.split(" ").pop()));
+      });
+      if (matched) addLog("⚠️ Trouvé par matching souple");
+    }
+    if (matched) {
+      knownMatchId = matched.id;
+      addLog("🎯 match_id: "+knownMatchId+" ("+matched.home+" vs "+matched.away+")");
+    } else {
+      addLog("❌ match_id non trouvé pour cette date");
+    }
 
     // ── Mapping noms API → noms Flashscore ────────────────────
     var ALG_TEAM_MAP = {
@@ -7267,39 +7352,47 @@ function MatchDetail({state,onClose,onTeam}){
     // ══════════════════════════════════════════════════════════
     // ÉTAPE 1 — Chercher dans besoccer_lineups
     // ══════════════════════════════════════════════════════════
-    var addLog = function(msg) {
-      setDebugLog(function(prev) { return prev.concat([new Date().toTimeString().slice(0,8)+" "+msg]); });
-    };
-    addLog("🔵 Cherche: '"+homeBS+"' vs '"+awayBS+"' ("+matchDate+")");
-    addLog("📌 API: '"+homeTeam+"' vs '"+awayTeam+"'");
+    addLog("🔵 Cherche: '"+homeBSName+"' vs '"+awayBSName+"' ("+matchDate+")");
+    if (knownMatchId) addLog("🎯 Via match_id: "+knownMatchId);
 
-    var bsUrl1 = SB_BASE + 'besoccer_lineups?match_date=eq.' + matchDate +
-      '&home_team=eq.' + encodeURIComponent(homeBS) +
-      '&away_team=eq.' + encodeURIComponent(awayBS) + '&select=*';
+    // Priorité 1 : par match_id (le plus fiable)
+    var bsUrl0 = knownMatchId
+      ? SB_BASE + 'besoccer_lineups?match_id=eq.' + knownMatchId + '&select=*'
+      : null;
+    // Priorité 2 : par date uniquement → on prend tous et on filtre
     var bsUrl2 = SB_BASE + 'besoccer_lineups?match_date=eq.' + matchDate + '&select=*';
 
-    tryFetch(bsUrl1).then(function(d) {
-      if(d&&d.length>0) {
-        addLog("✅ Match direct trouvé");
-        return d;
-      }
-      addLog("⚠️ Match direct non trouvé → fallback tous matchs du jour");
-      // Fallback : chercher tous les matchs du jour et trouver par noms
-      return tryFetch(bsUrl2).then(function(rows) {
-        if(!rows||!rows.length) { addLog("❌ Aucun match du jour en base"); return []; }
-        addLog("📋 Matchs du jour: "+rows.map(function(r){return r.home_team+"/"+r.away_team;}).join(", "));
-        var hLow = homeBS.toLowerCase();
-        var aLow = awayBS.toLowerCase();
+    var fetchPromise = bsUrl0
+      ? tryFetch(bsUrl0).then(function(d) {
+          if (d && d.length > 0) { addLog("✅ Trouvé par match_id"); return d; }
+          addLog("⚠️ match_id non trouvé → fallback par date");
+          return tryFetch(bsUrl2);
+        })
+      : tryFetch(bsUrl2);
+
+    fetchPromise.then(function(d) {
+      if(d&&d.length>0) return d;
+      addLog("❌ Aucun match du jour en base");
+      return [];
+    }).then(function(rows) {
+      // Si plusieurs résultats, trouver le bon par matching souple
+      var bsData = rows;
+      if (rows.length > 1) {
+        addLog("📋 "+rows.length+" matchs: "+rows.map(function(r){return r.home_team+"/"+r.away_team;}).join(", "));
+        var hL = homeTeam.toLowerCase();
+        var aL = awayTeam.toLowerCase();
         var found = rows.find(function(r) {
           var rh = (r.home_team||"").toLowerCase();
           var ra = (r.away_team||"").toLowerCase();
-          return (rh.includes(hLow.split(" ").pop()) || hLow.includes(rh.split(" ").pop())) &&
-                 (ra.includes(aLow.split(" ").pop()) || aLow.includes(ra.split(" ").pop()));
+          return (rh.includes(hL.split(" ").pop()) || hL.includes(rh.split(" ").pop())) &&
+                 (ra.includes(aL.split(" ").pop()) || aL.includes(ra.split(" ").pop()));
         });
-        if (found) addLog("✅ Match trouvé par fallback: "+found.home_team+"/"+found.away_team);
-        else addLog("❌ Aucun match trouvé même en fallback");
-        return found ? [found] : [];
-      });
+        if (found) { addLog("✅ Trouvé: "+found.home_team+" vs "+found.away_team); bsData = [found]; }
+        else { addLog("❌ Aucun match correspondant"); bsData = []; }
+      } else if (rows.length === 1) {
+        addLog("✅ Trouvé: "+rows[0].home_team+" vs "+rows[0].away_team);
+      }
+      return bsData;
     }).then(function(bsData) {
 
       if(bsData && bsData.length > 0) {
