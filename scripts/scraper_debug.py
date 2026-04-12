@@ -76,7 +76,7 @@ def parse_player(link):
             mv     = parse_minute(min_el.get_text(strip=True) if min_el else "")
             alt = img_ev.get("alt","").lower()
             src = img_ev.get("src","").lower()
-            if "goal" in alt or "accion1" in src:
+            if ("goal" in alt or "accion1" in src) and "cambio" not in src and "sub" not in alt:
                 if mv is not None: goals+=1; goal_minutes.append(mv)
             elif "yellow" in alt or "accion5" in src:
                 yellow=True; yellow_minute=mv
