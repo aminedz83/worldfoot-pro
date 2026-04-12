@@ -309,7 +309,7 @@ def parse_player(link):
 
             alt = img_ev.get("alt", "").lower()
             src = img_ev.get("src", "").lower()
-            if "goal" in alt or "gol" in alt or "accion1" in src:
+            if ("goal" in alt or "gol" in alt or "accion1" in src) and "cambio" not in src and "sub" not in alt:
                 if minute_val is not None:
                     goals += 1
                     goal_minutes.append(minute_val)
