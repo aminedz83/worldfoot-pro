@@ -355,8 +355,8 @@ def parse_player(link):
 def scrape_events_live(base_url, home_team, away_team):
     """
     Scrape la page /events de BeSoccer et retourne:
-    - sub_in_minutes: dict nom_joueur → minute d'entrée
-    - events: liste d'événements formatés pour la PWA
+    - sub_in_minutes: dict player_id → minute d'entrée
+    - events: liste d'événements (buts/cartons)
     - score: {home, away}
     """
     url = base_url.rstrip("/").replace("/lineups", "") + "/events"
@@ -364,70 +364,101 @@ def scrape_events_live(base_url, home_team, away_team):
     if not r:
         return {}, [], {"home": 0, "away": 0}
 
-    soup          = BeautifulSoup(r.text, "html.parser")
+    soup           = BeautifulSoup(r.text, "html.parser")
     sub_in_minutes = {}
-    events        = []
+    events         = []
+    seen           = set()
 
-    # ── Score live depuis l'en-tête ──────────────────────────
+    # ── Score : premier mini-result = score final ─────────────
     score = {"home": 0, "away": 0}
-    score_el = soup.select_one("div.match-score, span.match-score, div.score-cont")
-    if score_el:
-        nums = re.findall(r"\d+", score_el.get_text())
-        if len(nums) >= 2:
-            score["home"] = int(nums[0])
-            score["away"] = int(nums[1])
+    all_mini = soup.select("div.mini-result")
+    if all_mini:
+        m = re.search(r"(\d+)\s*-\s*(\d+)", all_mini[0].get_text(strip=True))
+        if m:
+            score["home"] = int(m.group(1))
+            score["away"] = int(m.group(2))
+    if score["home"] == 0 and score["away"] == 0:
+        result_el = soup.select_one("div.result")
+        if result_el:
+            nums = re.findall(r"\b(\d{1,2})\s*-\s*(\d{1,2})\b", result_el.get_text(strip=True))
+            if nums:
+                score["home"] = int(nums[-1][0])
+                score["away"] = int(nums[-1][1])
 
-    # ── Parse chaque ligne d'événement ──────────────────────
-    for row in soup.select("div.table-played-match.all-events, li.event-row, div.event-item"):
-        min_el     = row.select_one("div.col-mid-rows div.min, span.min, div.minute")
-        minute_str = min_el.get_text(strip=True) if min_el else ""
-        minute     = parse_minute(minute_str)
+    # ── Events : format 1 uniquement (all-events) ────────────
+    for row in soup.select("div.table-played-match.all-events"):
+        min_el = row.select_one("div.col-mid-rows div.min")
+        if not min_el: continue
+        minute = parse_minute(min_el.get_text(strip=True))
+        if minute is None: continue
 
-        # Détecter le type d'événement via l'image
-        imgs = row.select("img")
+        img_ev = row.select_one("img[src*='events/']")
+        if not img_ev: continue
+        src = img_ev.get("src", "").lower()
+        alt = img_ev.get("alt", "").lower()
+
         event_type = None
-        for img in imgs:
-            src = img.get("src", "").lower()
-            alt = img.get("alt", "").lower()
-            if "accion1" in src or "goal" in alt or "gol" in alt:
-                event_type = "goal"
-            elif "cambio" in src or "substitution" in alt or "event-8" in src:
-                event_type = "sub"
-            elif "tarjeta_a" in src or "event-5" in src or "yellow" in alt or "amarilla" in alt:
-                event_type = "yellow"
-            elif "tarjeta_r" in src or "event-3" in src or ("red" in alt and "yellow" not in alt):
-                event_type = "red"
-            if event_type:
-                break
+        if "accion1" in src or "goal" in alt:           event_type = "goal"
+        elif "accion5" in src or "yellow card" in alt:  event_type = "yellow"
+        elif "tarjeta_r" in src or "red card" in alt:   event_type = "red"
+        elif "cambio" in src or "substitution" in alt:  event_type = "sub"
+        if not event_type: continue
 
-        if not event_type or minute is None:
+        # Côté domicile/extérieur
+        left  = row.select_one("div.col-side.left")
+        right = row.select_one("div.col-side.right")
+        left_has  = left  and (left.select_one("a[data-cy='eventOrd']") or left.select_one("div.name-wrapper"))
+        right_has = right and (right.select_one("a[data-cy='eventOrd']") or right.select_one("div.name-wrapper"))
+        is_home = bool(left_has) and not bool(right_has)
+
+        if event_type == "sub":
+            # Méthode 1 : popup avec player_id dans l'ID
+            popup = row.select_one("div[id^='popup_event_order']")
+            if popup:
+                pid_m = re.search(r"_(\d+)_(\d+)$", popup.get("id", ""))
+                if pid_m:
+                    sub_min = int(pid_m.group(1))
+                    sub_pid = pid_m.group(2)
+                    key = f"sub_{sub_min}_{sub_pid}"
+                    if key not in seen:
+                        seen.add(key)
+                        sub_in_minutes[sub_pid] = sub_min
+                        print(f"    🔄 {sub_min}' pid={sub_pid} ({'dom' if is_home else 'ext'})")
+            else:
+                # Méthode 2 : player_id depuis href
+                side = left if is_home else right
+                if side:
+                    for lnk in side.select("a[href*='/player/']"):
+                        pid2 = extract_player_id(lnk.get("href", ""))
+                        if pid2:
+                            key = f"sub_{minute}_{pid2}"
+                            if key not in seen:
+                                seen.add(key)
+                                sub_in_minutes[pid2] = minute
+                                print(f"    🔄 {minute}' pid={pid2} ({'dom' if is_home else 'ext'})")
             continue
 
-        # Noms des joueurs impliqués
-        player_links = row.select("a[data-cy='eventOrd'], a.player-link, a[href*='/player/']")
-        player_name  = player_links[0].get_text(strip=True) if len(player_links) > 0 else ""
-        assist_name  = player_links[1].get_text(strip=True) if len(player_links) > 1 else ""
+        # Buts / cartons
+        side = left if is_home else right
+        player_link = side.select_one("a[data-cy='eventOrd']") if side else None
+        player_name = player_link.get_text(strip=True) if player_link else ""
 
-        # Détecter équipe (home/away) via classe CSS ou position
-        is_home = "local" in row.get("class", []) or "home" in row.get("class", [])
+        key = f"{event_type}_{minute}_{player_name}"
+        if key in seen: continue
+        seen.add(key)
 
-        # Construire l'event
-        evt = {
+        mini = row.select_one("div.mini-result")
+        events.append({
             "type":    event_type,
             "minute":  minute,
             "team":    home_team if is_home else away_team,
             "is_home": is_home,
             "player":  player_name,
-            "assist":  assist_name,
-        }
-        events.append(evt)
-        print(f"    {'⚽' if event_type=='goal' else '🔄' if event_type=='sub' else '🟨' if event_type=='yellow' else '🟥'} {minute}' {player_name}" + (f" ↔ {assist_name}" if assist_name else ""))
-
-        # Garder sub_in_minutes pour matcher avec les remplaçants
-        if event_type == "sub" and assist_name:
-            # BeSoccer: player = sortant, assist = entrant (ou inverse selon le site)
-            sub_in_minutes[assist_name] = minute
-            sub_in_minutes[player_name] = minute  # garder les deux au cas où
+            "assist":  "",
+            "score":   mini.get_text(strip=True) if mini else ""
+        })
+        icon = {"goal": "⚽", "yellow": "🟨", "red": "🟥"}.get(event_type, "?")
+        print(f"    {icon} {minute}' {player_name} ({'dom' if is_home else 'ext'})") 
 
     print(f"  📊 Events: {len(events)} | Score: {score['home']}-{score['away']}")
     return sub_in_minutes, events, score
@@ -493,25 +524,16 @@ def scrape_lineup(match):
         p = parse_player(link)
         if p: result["away_players"].append(p)
 
-    def match_sub_minute(player_name, sub_dict):
-        """Cherche la minute d'entrée d'un remplaçant par nom (exact ou partiel)"""
-        if not player_name:
+    def match_sub_minute(player_id, sub_dict):
+        """Cherche la minute d'entrée d'un remplaçant par player_id"""
+        if not player_id:
             return None
-        if player_name in sub_dict:
-            return sub_dict[player_name]
-        name_lower = player_name.lower()
-        for key, val in sub_dict.items():
-            key_lower = key.lower() if key else ""
-            last_p = name_lower.split(".")[-1].strip()
-            last_k = key_lower.split(".")[-1].strip()
-            if (last_p and last_p in key_lower) or (last_k and last_k in name_lower):
-                return val
-        return None
+        return sub_dict.get(player_id)
 
     for link in home_subs:
         p = parse_player(link)
         if p:
-            sub_min = match_sub_minute(p["name"], sub_in_minutes)
+            sub_min = match_sub_minute(p["id"], sub_in_minutes)
             p["minutes"]        = sub_min if sub_min else 0
             p["sub_in_minute"]  = sub_min
             result["home_subs"].append(p)
@@ -519,7 +541,7 @@ def scrape_lineup(match):
     for link in away_subs:
         p = parse_player(link)
         if p:
-            sub_min = match_sub_minute(p["name"], sub_in_minutes)
+            sub_min = match_sub_minute(p["id"], sub_in_minutes)
             p["minutes"]        = sub_min if sub_min else 0
             p["sub_in_minute"]  = sub_min
             result["away_subs"].append(p)
