@@ -1766,111 +1766,96 @@ const organizePlayersByLine = (players, formation) => {
 
 
 
-// ══ Heatmap précise — grille formation réelle ══════════════════════
+// ══ Heatmap précise — grille formation réelle ════════════════════════
 function generateHeatmapPoints(pos, stats, minutes, grid) {
   var mins = minutes || (stats && stats.games && stats.games.minutes) || 90;
   var intensity = Math.min(1.0, mins / 90);
 
-  // ── Décoder la grille "ligne:colonne" de l'API Football ───────────
-  // Ligne 1 = gardien (x proche de 0), ligne 6+ = attaquant (x proche de 1)
-  // Colonne = position latérale (1=gauche, 2=centre, 3=droite selon la ligne)
-  var gridX = null; // 0→1, gauche de son camp→droite
-  var gridY = null; // 0→1, haut→bas
+  // ── Décoder grille API Football "ligne:colonne" ──────────────────
+  // ligne 1=GK, 2=DEF, 3=MID, 4=MID-OFF, 5=ATT
+  // colonne: 1=gauche, 2=centre-gauche, 3=centre, 4=centre-droit, 5=droite
+  var cx = null;
+  var cy = null;
 
   if (grid && typeof grid === "string" && grid.indexOf(":") !== -1) {
     var parts = grid.split(":");
-    var line  = parseInt(parts[0]) || 1;  // 1=GK, 2=DEF, 3-4=MID, 5+=ATT
-    var col   = parseInt(parts[1]) || 1;
-    // Mapper ligne → position X sur le terrain (GK=0.07, ATT=0.78)
-    // API Football: ligne 1=GK, lignes 2-3=DEF, 3-4=MID, 4-5=ATT
-    var lineToX = {1:0.07, 2:0.22, 3:0.38, 4:0.55, 5:0.70, 6:0.80};
-    gridX = lineToX[line] || (line * 0.15);
-    gridX = Math.min(0.90, gridX);
-    // Colonne → Y latéral (dépend du nb de joueurs sur la ligne)
-    // Col 1=gauche, 2=milieu, 3=droite — approximation
-    var colMap = {1:0.18, 2:0.38, 3:0.50, 4:0.62, 5:0.82};
-    gridY = colMap[col] || 0.50;
+    var line = parseInt(parts[0]) || 1;
+    var col  = parseInt(parts[1]) || 1;
+
+    // X = profondeur sur le terrain (GK=gauche, ATT=droite)
+    var lineToX = {1:0.07, 2:0.22, 3:0.40, 4:0.57, 5:0.73, 6:0.82};
+    cx = lineToX[line] !== undefined ? lineToX[line] : Math.min(0.85, line * 0.15);
+
+    // Y = position latérale — dépend du nb de joueurs sur la ligne
+    // col 1 = toujours gauche, colonne max = toujours droite
+    // On normalise: colonne 1 sur N joueurs → y proportionnel
+    // Mais on ne connaît pas N, donc on utilise une table
+    var colToY = {
+      1: {1:0.50},
+      2: {1:0.25, 2:0.75},
+      3: {1:0.18, 2:0.50, 3:0.82},
+      4: {1:0.14, 2:0.38, 3:0.62, 4:0.86},
+      5: {1:0.10, 2:0.28, 3:0.50, 4:0.72, 5:0.90}
+    };
+    // Essayer de déterminer le nb de joueurs sur la ligne depuis la formation
+    // Sans info supplémentaire, approximation conservative
+    if (col === 1)      cy = 0.20;
+    else if (col === 2) cy = 0.42;
+    else if (col === 3) cy = 0.58;
+    else if (col === 4) cy = 0.80;
+    else                cy = 0.50;
   }
 
-  // ── Zone principale basée sur grid ou poste ─────────────────────
+  // Fallback par poste
   var posKey = (pos || "M").toUpperCase();
-  if (posKey==="DEF"||posKey==="CB"||posKey==="LB"||posKey==="RB") posKey="D";
-  else if (posKey==="MID"||posKey==="MF"||posKey==="CM"||posKey==="DM"||posKey==="AM") posKey="M";
-  else if (posKey==="ATT"||posKey==="FWD"||posKey==="ST"||posKey==="LW"||posKey==="RW") posKey="F";
-  else if (posKey==="GK"||posKey==="GS") posKey="G";
+  if (posKey==="DEF"||posKey==="CB"||posKey==="LB"||posKey==="RB"||posKey==="D") posKey="D";
+  else if (posKey==="MID"||posKey==="MF"||posKey==="CM"||posKey==="DM"||posKey==="AM"||posKey==="M") posKey="M";
+  else if (posKey==="ATT"||posKey==="FWD"||posKey==="ST"||posKey==="LW"||posKey==="RW"||posKey==="F"||posKey==="A") posKey="F";
+  else if (posKey==="GK"||posKey==="G"||posKey==="GS") posKey="G";
 
-  // Fallback si pas de grid
-  var defaultZone = {
-    "G": {cx:0.07, cy:0.50, sxPri:0.04, syPri:0.15, sxSec:0.07, sySec:0.20},
-    "D": {cx:0.22, cy:0.50, sxPri:0.06, syPri:0.18, sxSec:0.10, sySec:0.25},
-    "M": {cx:0.45, cy:0.50, sxPri:0.08, syPri:0.20, sxSec:0.14, sySec:0.28},
-    "F": {cx:0.72, cy:0.50, sxPri:0.07, syPri:0.18, sxSec:0.12, sySec:0.24}
-  };
-  var def = defaultZone[posKey] || defaultZone["M"];
-  var cx  = gridX !== null ? gridX : def.cx;
-  var cy  = gridY !== null ? gridY : def.cy;
+  var fallback = {"G":{cx:0.07,cy:0.50},"D":{cx:0.22,cy:0.50},"M":{cx:0.45,cy:0.50},"F":{cx:0.72,cy:0.50}};
+  if (cx === null) cx = (fallback[posKey]||fallback["M"]).cx;
+  if (cy === null) cy = (fallback[posKey]||fallback["M"]).cy;
 
-  // Dispersions — plus larges si pas de grid précis
-  var sxPri = gridX !== null ? 0.06 : def.sxPri;
-  var syPri = gridY !== null ? 0.15 : def.syPri;
-  var sxSec = gridX !== null ? 0.12 : def.sxSec;
-  var sySec = gridY !== null ? 0.24 : def.sySec;
+  // Dispersions selon poste
+  var dispX = {"G":0.04,"D":0.06,"M":0.09,"F":0.07}[posKey] || 0.08;
+  var dispY = {"G":0.12,"D":0.18,"M":0.22,"F":0.18}[posKey] || 0.18;
 
-  // ── Générateur pseudo-aléatoire déterministe ─────────────────────
+  // ── Générateur déterministe ──────────────────────────────────────
   var seed = Math.round(
-    (mins * 17 + ((stats&&stats.passes&&stats.passes.total)||0) * 7 +
-     ((stats&&stats.shots&&stats.shots.total)||0) * 13 +
-     ((stats&&stats.tackles&&stats.tackles.total)||0) * 11) % 99991
+    (mins*17 + ((stats&&stats.passes&&stats.passes.total)||0)*7 +
+     ((stats&&stats.shots&&stats.shots.total)||0)*13 +
+     ((stats&&stats.tackles&&stats.tackles.total)||0)*11) % 99991
   ) || 42;
-  function rand() {
-    seed = (seed * 1664525 + 1013904223) & 0xFFFFFFFF;
-    return (seed >>> 0) / 4294967295;
-  }
+  function rand() { seed=(seed*1664525+1013904223)&0xFFFFFFFF; return (seed>>>0)/4294967295; }
   function gauss() {
-    var u=0,v=0;
-    while(u===0) u=rand(); while(v===0) v=rand();
+    var u=0,v=0; while(u===0)u=rand(); while(v===0)v=rand();
     return Math.sqrt(-2.0*Math.log(u))*Math.cos(6.2832*v);
   }
 
   var points = [];
-  var baseCnt = Math.round((20 + intensity*30));
+  var baseCnt = Math.round(22 + intensity*28);
 
-  // Zone principale (70% des points)
-  for (var i=0; i<Math.round(baseCnt*0.70); i++) {
-    var x = cx + gauss()*sxPri;
-    var y = cy + gauss()*syPri;
-    points.push({
-      x: Math.max(0.02,Math.min(0.97,x)),
-      y: Math.max(0.02,Math.min(0.97,y)),
-      w: 0.7 + rand()*0.3
-    });
+  // Zone principale (65%)
+  for (var i=0; i<Math.round(baseCnt*0.65); i++) {
+    var x = cx + gauss()*dispX;
+    var y = cy + gauss()*dispY;
+    points.push({x:Math.max(0.02,Math.min(0.97,x)), y:Math.max(0.02,Math.min(0.97,y)), w:0.65+rand()*0.35});
   }
-  // Zone secondaire dispersée (30% des points) — déplacements courts
-  for (var j=0; j<Math.round(baseCnt*0.30); j++) {
-    var x2 = cx + gauss()*sxSec;
-    var y2 = cy + gauss()*sySec;
-    points.push({
-      x: Math.max(0.02,Math.min(0.97,x2)),
-      y: Math.max(0.02,Math.min(0.97,y2)),
-      w: 0.3 + rand()*0.4
-    });
+  // Zone secondaire dispersée (35%)
+  for (var j=0; j<Math.round(baseCnt*0.35); j++) {
+    var x2 = cx + gauss()*dispX*2.2;
+    var y2 = cy + gauss()*dispY*1.8;
+    points.push({x:Math.max(0.02,Math.min(0.97,x2)), y:Math.max(0.02,Math.min(0.97,y2)), w:0.30+rand()*0.35});
   }
 
-  // ── Points spéciaux basés sur stats réelles ──────────────────────
+  // Points spéciaux stats réelles
   var shots = Math.min((stats&&stats.shots&&stats.shots.total)||0, 5);
-  for (var s=0; s<shots; s++) {
-    // Tir → vers la surface adverse (droite)
+  for (var s=0; s<shots; s++)
     points.push({x:0.78+gauss()*0.06, y:0.48+gauss()*0.14, w:0.95});
-  }
   var tacks = Math.min((stats&&stats.tackles&&stats.tackles.total)||0, 4);
-  for (var t=0; t<tacks; t++) {
-    // Tacle → zone proche du joueur mais légèrement avancée
-    points.push({x:cx+gauss()*0.08, y:cy+gauss()*0.18, w:0.80});
-  }
-  var intercepts = Math.min((stats&&stats.tackles&&stats.tackles.interceptions)||0, 3);
-  for (var n=0; n<intercepts; n++) {
-    points.push({x:cx-0.03+gauss()*0.07, y:cy+gauss()*0.16, w:0.75});
-  }
+  for (var t=0; t<tacks; t++)
+    points.push({x:cx+gauss()*0.07, y:cy+gauss()*0.16, w:0.80});
 
   return points;
 }
@@ -1970,7 +1955,7 @@ function HeatmapSection(props) {
   var open     = props.open;
   var onToggle = props.onToggle;
 
-  var grid    = props.grid;
+  var grid   = props.grid;
   var points = React.useMemo(function() {
     return generateHeatmapPoints(pos, stats, minutes, grid);
   }, [pos, grid, minutes,
@@ -2210,6 +2195,7 @@ const renderTerrainFlash = (fix, hLu, aLu, players, events, hid, aid, has, hg, a
                 onClick: () => onPlayerClick && onPlayerClick({
                   id: player.id, name: player.name, photo: player.photo,
                   pos: player.pos || player.position, number: player.number,
+                  grid: player.grid || null,
                   nationality: player.nationality,
                   teamLogo: fix?.teams?.home?.logo,
                   stats: players.flatMap(t=>t.players||[]).find(p=>p.player?.id===player.id)?.statistics?.[0]
@@ -2253,6 +2239,7 @@ const renderTerrainFlash = (fix, hLu, aLu, players, events, hid, aid, has, hg, a
                 onClick: () => onPlayerClick && onPlayerClick({
                   id: player.id, name: player.name, photo: player.photo,
                   pos: player.pos || player.position, number: player.number,
+                  grid: player.grid || null,
                   nationality: player.nationality,
                   teamLogo: fix?.teams?.away?.logo,
                   stats: players.flatMap(t=>t.players||[]).find(p=>p.player?.id===player.id)?.statistics?.[0]
