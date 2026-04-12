@@ -1933,12 +1933,22 @@ function HeatmapCanvas(props) {
       ctx.fillRect(si*stripeW, 0, stripeW, H);
     }
 
-    // ── Heatmap : petits points dispersés style SofaScore ───────────
-    // Rayon petit = dispersion réaliste
+    // ── Passe 1 : fond diffus pour fusion des zones proches ──────────
+    pts.forEach(function(pt) {
+      var px=pt.x*W, py=pt.y*H;
+      var rd = W * 0.09 * pt.w;
+      var gd = ctx.createRadialGradient(px,py,0,px,py,rd);
+      gd.addColorStop(0,   "rgba(255,252,32," + (0.08*pt.w) + ")");
+      gd.addColorStop(0.5, "rgba(203,237,191,"+ (0.05*pt.w) + ")");
+      gd.addColorStop(1,   "rgba(203,237,191,0)");
+      ctx.fillStyle=gd; ctx.beginPath(); ctx.arc(px,py,rd,0,Math.PI*2); ctx.fill();
+    });
+
+    // ── Passe 2 : points chauds concentrés ───────────────────────────
     pts.forEach(function(pt) {
       var px = pt.x * W;
       var py = pt.y * H;
-      var r  = W * 0.032 * pt.w;   // petits points précis style SofaScore
+      var r  = W * 0.048 * pt.w;   // rayon optimal SofaScore
       var g  = ctx.createRadialGradient(px, py, 0, px, py, r);
       // Couleurs chaudes mais transparentes → se superposent naturellement
       if (pt.w > 0.75) {
