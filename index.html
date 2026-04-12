@@ -7602,7 +7602,8 @@ function MatchDetail({state,onClose,onTeam}){
           var an = awayName.toLowerCase().split(" ")[0];
           return (h.includes(hn) || hn.includes(h.split(" ")[0])) &&
                  (a.includes(an) || an.includes(a.split(" ")[0]));
-        }) || rows[0];
+        });
+        if (!found) { setBsPreview(null); setBsPreviewLoading(false); return; }
         setBsPreview(found);
         setBsPreviewLoading(false);
       })
@@ -9497,8 +9498,8 @@ function MatchDetail({state,onClose,onTeam}){
               React.createElement("span",{style:{fontSize:9,color:INK3,textTransform:"uppercase",letterSpacing:"0.3px"}},lbl)
             ),
             React.createElement("div",{style:{display:"flex",alignItems:"center",gap:6,flex:1,minWidth:0,justifyContent:"flex-end"}},
-              React.createElement("div",{style:{minWidth:0,textAlign:"right",flex:1}},
-                React.createElement("div",{style:{fontSize:11,fontWeight:600,color:INK,overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap"}},d.away&&d.away.name),
+              React.createElement("div",{style:{textAlign:"right",minWidth:0}},
+                React.createElement("div",{style:{fontSize:11,fontWeight:600,color:INK,overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap",maxWidth:80}},d.away&&d.away.name),
                 React.createElement("div",{style:{fontSize:13,fontWeight:800,color:aWin?BLUE:INK}},(d.away&&d.away.value)||"")
               ),
               d.away&&d.away.photo&&React.createElement("img",{src:d.away.photo,
