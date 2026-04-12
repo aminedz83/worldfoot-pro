@@ -1,21 +1,18 @@
 name: Debug Scraper
-
 on:
   workflow_dispatch:
-
 jobs:
   debug:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v3
-
       - name: Setup Python
         uses: actions/setup-python@v4
         with:
           python-version: '3.11'
-
       - name: Install dependencies
         run: pip install requests beautifulsoup4 cloudscraper
-
       - name: Run debug
         run: python3 scripts/scraper_debug.py
+        env:
+          SUPABASE_KEY: ${{ secrets.SUPABASE_KEY }}
