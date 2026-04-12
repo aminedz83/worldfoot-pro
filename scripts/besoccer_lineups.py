@@ -467,6 +467,38 @@ def scrape_events_live(base_url, home_team, away_team):
 # SCRAPE LINEUP
 # ══════════════════════════════════════════════
 
+
+def enrich_players_from_events(players, events):
+    """Croise les events (buts/cartons) avec les players par nom."""
+    for evt in events:
+        pname  = evt.get("player", "")
+        etype  = evt.get("type", "")
+        minute = evt.get("minute")
+        if not pname or not minute:
+            continue
+        for p in players:
+            pn     = p.get("name", "").lower()
+            en     = pname.lower()
+            last_p = pn.split(".")[-1].strip()
+            last_e = en.split(".")[-1].strip()
+            match  = (pn == en) or                      (last_p and last_p in en) or                      (last_e and last_e in pn)
+            if not match:
+                continue
+            if etype == "goal":
+                if minute not in p.get("goal_minutes", []):
+                    p["goals"] = p.get("goals", 0) + 1
+                    gm = p.get("goal_minutes", [])
+                    gm.append(minute)
+                    p["goal_minutes"] = gm
+            elif etype == "yellow" and not p.get("yellow"):
+                p["yellow"]        = True
+                p["yellow_minute"] = minute
+            elif etype == "red" and not p.get("red"):
+                p["red"]        = True
+                p["red_minute"] = minute
+            break
+    return players
+
 def scrape_lineup(match):
     url = match["url"]
     if not url.endswith("/lineups") and not url.endswith("/lineups/"):
@@ -546,11 +578,20 @@ def scrape_lineup(match):
             p["sub_in_minute"]  = sub_min
             result["away_subs"].append(p)
 
+    # ── Enrichir players avec events (buts/cartons depuis /events) ──
+    home_evts = [e for e in live_events if e.get("is_home")]
+    away_evts = [e for e in live_events if not e.get("is_home")]
+    result["home_players"] = enrich_players_from_events(result["home_players"], home_evts)
+    result["away_players"] = enrich_players_from_events(result["away_players"], away_evts)
+    result["home_subs"]    = enrich_players_from_events(result["home_subs"],    home_evts)
+    result["away_subs"]    = enrich_players_from_events(result["away_subs"],    away_evts)
+
     h  = len(result["home_players"])
     a  = len(result["away_players"])
     hs = len(result["home_subs"])
     as_= len(result["away_subs"])
-    print(f"  ✅ Compo : {h} vs {a} titulaires | {hs} vs {as_} remplaçants | {len(live_events)} events")
+    gc = sum(p.get("goals",0) for p in result["home_players"]+result["away_players"]+result["home_subs"]+result["away_subs"])
+    print(f"  ✅ Compo : {h} vs {a} titulaires | {hs} vs {as_} remplaçants | {gc} buts | {len(live_events)} events")
 
     # ── PLUS DE BLOCAGE has_notes — on sauvegarde toujours ──
     return result
