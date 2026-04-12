@@ -1923,7 +1923,7 @@ function HeatmapCanvas(props) {
     ctx.scale(dpr, dpr);
 
     // ── Fond clair style SofaScore ──────────────────────────────────
-    ctx.fillStyle = "#e8f5e9";
+    ctx.fillStyle = "#f0faf0";
     ctx.fillRect(0, 0, W, H);
 
     // Stries légères
@@ -1938,7 +1938,7 @@ function HeatmapCanvas(props) {
     pts.forEach(function(pt) {
       var px = pt.x * W;
       var py = pt.y * H;
-      var r  = W * 0.055 * pt.w;   // petits points — clé du style SofaScore
+      var r  = W * 0.032 * pt.w;   // petits points précis style SofaScore
       var g  = ctx.createRadialGradient(px, py, 0, px, py, r);
       // Couleurs chaudes mais transparentes → se superposent naturellement
       if (pt.w > 0.75) {
@@ -1958,7 +1958,7 @@ function HeatmapCanvas(props) {
     // ── Lignes terrain style clair ───────────────────────────────────
     ctx.strokeStyle = "rgba(0,100,0,0.45)";
     ctx.lineWidth   = 1.1;
-    var pad=10, pw=W-pad*2, ph=H-pad*2;
+    var pad=6, pw=W-pad*2, ph=H-pad*2;
 
     ctx.strokeRect(pad, pad, pw, ph);
     ctx.beginPath(); ctx.moveTo(W/2, pad); ctx.lineTo(W/2, H-pad); ctx.stroke();
@@ -2063,7 +2063,7 @@ function HeatmapSection(props) {
           border:"1px solid #e2e8f0",
           boxShadow:"0 1px 8px rgba(0,0,0,0.08)"
         }},
-          React.createElement(HeatmapCanvas,{points:displayPoints,width:340,height:215})
+          React.createElement(HeatmapCanvas,{points:displayPoints,width:340,height:230})
         ),
         React.createElement("div",{style:{
           display:"flex",alignItems:"center",justifyContent:"center",
