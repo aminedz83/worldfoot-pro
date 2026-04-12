@@ -825,208 +825,6 @@ const NS_ST    = new Set(["NS","TBD","PST","CANC"]);
 const SUSP_ST  = new Set(["SUSP","INT","ABD"]);
 const CANCEL_ST = new Set(["CANC"]);
 
-
-// ══════════════════════════════════════════════════════════
-// HEATMAP JOUEUR — génération intelligente par poste + stats
-// ══════════════════════════════════════════════════════════
-function generateHeatmapPoints(pos, stats) {
-  var points = [];
-  var isGK  = pos==="G"||pos==="GK"||pos==="Goalkeeper";
-  var isDEF = pos==="D"||pos==="DEF"||pos==="Defender";
-  var isMID = pos==="M"||pos==="MF"||pos==="MID"||pos==="Midfielder";
-  var isFWD = pos==="F"||pos==="FW"||pos==="ATT"||pos==="Forward";
-
-  // Zones de base selon poste (x=0 gauche/attaque, x=1 droite/but propre)
-  // pitch: 0-100 width, 0-100 height, direction de jeu → droite
-  var baseZones;
-  if(isGK) {
-    baseZones = [
-      {cx:8,  cy:50, r:12, w:8},
-      {cx:15, cy:50, r:8,  w:4},
-      {cx:12, cy:30, r:6,  w:2},
-      {cx:12, cy:70, r:6,  w:2},
-    ];
-  } else if(isDEF) {
-    baseZones = [
-      {cx:22, cy:50, r:14, w:6},
-      {cx:18, cy:25, r:10, w:4},
-      {cx:18, cy:75, r:10, w:4},
-      {cx:30, cy:50, r:8,  w:3},
-      {cx:25, cy:35, r:7,  w:2},
-      {cx:25, cy:65, r:7,  w:2},
-    ];
-  } else if(isMID) {
-    baseZones = [
-      {cx:48, cy:50, r:14, w:6},
-      {cx:38, cy:45, r:10, w:4},
-      {cx:55, cy:55, r:10, w:4},
-      {cx:42, cy:30, r:8,  w:3},
-      {cx:42, cy:70, r:8,  w:3},
-      {cx:60, cy:45, r:7,  w:2},
-    ];
-  } else { // FWD
-    baseZones = [
-      {cx:72, cy:50, r:14, w:7},
-      {cx:80, cy:40, r:10, w:5},
-      {cx:80, cy:60, r:10, w:5},
-      {cx:65, cy:50, r:8,  w:3},
-      {cx:85, cy:50, r:7,  w:2},
-      {cx:75, cy:35, r:6,  w:2},
-    ];
-  }
-
-  // Amplifier selon stats
-  var touches  = (stats&&stats.games&&stats.games.minutes)||45;
-  var passes   = (stats&&stats.passes&&stats.passes.total)||10;
-  var shots    = (stats&&stats.shots&&stats.shots.total)||0;
-  var tackles  = (stats&&stats.tackles&&stats.tackles.total)||0;
-  var dribbles = (stats&&stats.dribbles&&stats.dribbles.attempts)||0;
-
-  var intensity = Math.min(3, 1 + (passes/20) + (shots/5) + (tackles/5));
-
-  var rng = function(seed) {
-    var x = Math.sin(seed+1)*10000;
-    return x - Math.floor(x);
-  };
-
-  baseZones.forEach(function(z, zi) {
-    var count = Math.round(z.w * intensity);
-    for(var i=0; i<count; i++) {
-      var seed = zi*100+i;
-      var angle = rng(seed*1.3)*Math.PI*2;
-      var dist  = rng(seed*2.7)*z.r;
-      var px = z.cx + Math.cos(angle)*dist;
-      var py = z.cy + Math.sin(angle)*dist;
-      px = Math.max(2, Math.min(98, px));
-      py = Math.max(2, Math.min(98, py));
-      points.push({x:px, y:py});
-    }
-  });
-
-  // Ajouter points spéciaux selon stats
-  if(shots>0 && !isGK) {
-    for(var s=0; s<Math.min(shots,4); s++) {
-      points.push({x:85+rng(s*7)*8, y:40+rng(s*13)*20});
-    }
-  }
-  if(tackles>2 && isDEF) {
-    for(var t=0; t<Math.min(tackles,3); t++) {
-      points.push({x:25+rng(t*11)*15, y:20+rng(t*17)*60});
-    }
-  }
-  return points;
-}
-
-
-function HeatmapSection(props) {
-  var pos   = props.pos;
-  var stats = props.stats;
-  var [open, setOpen] = React.useState(false);
-
-  return React.createElement("div", {style:{borderBottom:"1px solid #f1f5f9"}},
-    // Header cliquable
-    React.createElement("div", {
-      onClick: function(){ setOpen(!open); },
-      style:{
-        display:"flex", alignItems:"center", justifyContent:"space-between",
-        padding:"14px 16px", cursor:"pointer", userSelect:"none"
-      }
-    },
-      React.createElement("div", {style:{display:"flex", alignItems:"center", gap:8}},
-        React.createElement("span", {style:{fontSize:16}}, "🏟️"),
-        React.createElement("span", {style:{fontSize:14, fontWeight:700, color:"#0f172a"}}, "Carte thermique du match")
-      ),
-      React.createElement("span", {style:{
-        fontSize:18, color:"#94a3b8",
-        transform: open?"rotate(180deg)":"rotate(0deg)",
-        transition:"transform 0.2s",
-        display:"inline-block"
-      }}, "⌄")
-    ),
-    // Heatmap terrain (visible si open)
-    open && React.createElement("div", {style:{paddingBottom:14}},
-      React.createElement(PlayerHeatmap, {pos:pos, stats:stats})
-    )
-  );
-}
-
-function PlayerHeatmap(props) {
-  var pos   = props.pos;
-  var stats = props.stats;
-  var W = 300, H = 180;
-
-  var points = generateHeatmapPoints(pos, stats);
-
-  // Render heatmap via canvas-like SVG avec radial gradients superposés
-  var gradients = points.map(function(p, i) {
-    var gx = (p.x/100)*W;
-    var gy = (p.y/100)*H;
-    var r  = 28;
-    return React.createElement("radialGradient", {
-      key:"g"+i, id:"hg"+i,
-      cx:"50%", cy:"50%", r:"50%",
-      gradientUnits:"userSpaceOnUse",
-      fx: gx, fy: gy, cx: gx, cy: gy, r: r
-    },
-      React.createElement("stop", {offset:"0%",   stopColor:"#ef4444", stopOpacity:"0.7"}),
-      React.createElement("stop", {offset:"40%",  stopColor:"#f97316", stopOpacity:"0.4"}),
-      React.createElement("stop", {offset:"70%",  stopColor:"#eab308", stopOpacity:"0.2"}),
-      React.createElement("stop", {offset:"100%", stopColor:"#22c55e", stopOpacity:"0"})
-    );
-  });
-
-  var circles = points.map(function(p, i) {
-    return React.createElement("circle", {
-      key:"c"+i,
-      cx: (p.x/100)*W, cy: (p.y/100)*H,
-      r: 28,
-      fill: "url(#hg"+i+")",
-    });
-  });
-
-  // Terrain SVG simplifié (lignes blanches sur vert)
-  var pitch = React.createElement("g", {stroke:"rgba(255,255,255,0.6)", strokeWidth:"1", fill:"none"},
-    // Contour
-    React.createElement("rect", {x:8, y:6, width:W-16, height:H-12, rx:2}),
-    // Ligne médiane
-    React.createElement("line", {x1:W/2, y1:6, x2:W/2, y2:H-6}),
-    // Cercle central
-    React.createElement("circle", {cx:W/2, cy:H/2, r:28}),
-    React.createElement("circle", {cx:W/2, cy:H/2, r:2, fill:"rgba(255,255,255,0.6)"}),
-    // Surface gauche
-    React.createElement("rect", {x:8, y:H/2-30, width:40, height:60}),
-    React.createElement("rect", {x:8, y:H/2-15, width:18, height:30}),
-    // Surface droite
-    React.createElement("rect", {x:W-48, y:H/2-30, width:40, height:60}),
-    React.createElement("rect", {x:W-26, y:H/2-15, width:18, height:30}),
-    // Points penalty
-    React.createElement("circle", {cx:38, cy:H/2, r:2, fill:"rgba(255,255,255,0.6)"}),
-    React.createElement("circle", {cx:W-38, cy:H/2, r:2, fill:"rgba(255,255,255,0.6)"}),
-    // Flèche direction
-    React.createElement("line", {x1:W/2-20, y1:4, x2:W/2+20, y2:4, stroke:"rgba(255,255,255,0.4)"}),
-    React.createElement("polygon", {points:(W/2+20)+",2 "+(W/2+26)+",4 "+(W/2+20)+",6", fill:"rgba(255,255,255,0.4)", stroke:"none"})
-  );
-
-  return React.createElement("div", {
-    style:{
-      background:"#16a34a",
-      borderRadius:12,
-      overflow:"hidden",
-      margin:"0 16px",
-      position:"relative"
-    }
-  },
-    React.createElement("svg", {
-      width:"100%", viewBox:"0 0 "+W+" "+H,
-      style:{display:"block"}
-    },
-      React.createElement.apply(React, ["defs", null].concat(gradients)),
-      pitch,
-      React.createElement.apply(React, ["g", {style:{mixBlendMode:"screen"}}].concat(circles))
-    )
-  );
-}
-
 const _cache = new Map();
 // Cache cartons rouges par fixture id : { home: N, away: N }
 const _redCardsCache = new Map();
@@ -1965,6 +1763,253 @@ const organizePlayersByLine = (players, formation) => {
   }
   return result;
 };
+
+
+
+// ══ Heatmap style SofaScore — fond clair, points dispersés ══════════
+function generateHeatmapPoints(pos, stats, minutes) {
+  var mins = minutes || (stats && stats.games && stats.games.minutes) || 90;
+  var intensity = Math.min(1.0, mins / 90);
+  var posKey = (pos || "M").toUpperCase();
+  if (posKey==="DEF"||posKey==="D"||posKey==="CB"||posKey==="LB"||posKey==="RB") posKey="D";
+  else if (posKey==="MID"||posKey==="MF"||posKey==="M"||posKey==="CM"||posKey==="DM"||posKey==="AM") posKey="M";
+  else if (posKey==="ATT"||posKey==="FWD"||posKey==="F"||posKey==="A"||posKey==="ST"||posKey==="LW"||posKey==="RW") posKey="F";
+  else if (posKey==="GK"||posKey==="G"||posKey==="GS") posKey="G";
+
+  // Zones dispersées sur tout le terrain — style SofaScore
+  // Nombreuses petites zones au lieu de quelques grandes
+  var zoneProfiles = {
+    "G": [
+      {cx:0.06, cy:0.50, sx:0.03, sy:0.10, w:0.9, count:12},
+      {cx:0.10, cy:0.35, sx:0.04, sy:0.08, w:0.5, count:5},
+      {cx:0.10, cy:0.65, sx:0.04, sy:0.08, w:0.5, count:5},
+      {cx:0.15, cy:0.50, sx:0.05, sy:0.12, w:0.4, count:4},
+    ],
+    "D": [
+      {cx:0.20, cy:0.50, sx:0.05, sy:0.16, w:0.9, count:10},
+      {cx:0.28, cy:0.40, sx:0.06, sy:0.12, w:0.7, count:8},
+      {cx:0.28, cy:0.60, sx:0.06, sy:0.12, w:0.7, count:8},
+      {cx:0.35, cy:0.50, sx:0.07, sy:0.18, w:0.5, count:6},
+      {cx:0.42, cy:0.35, sx:0.05, sy:0.10, w:0.3, count:4},
+      {cx:0.42, cy:0.65, sx:0.05, sy:0.10, w:0.3, count:4},
+    ],
+    "M": [
+      {cx:0.35, cy:0.50, sx:0.07, sy:0.18, w:0.8, count:8},
+      {cx:0.45, cy:0.35, sx:0.08, sy:0.12, w:0.7, count:7},
+      {cx:0.45, cy:0.65, sx:0.08, sy:0.12, w:0.7, count:7},
+      {cx:0.55, cy:0.50, sx:0.07, sy:0.18, w:0.8, count:8},
+      {cx:0.62, cy:0.40, sx:0.06, sy:0.10, w:0.5, count:5},
+      {cx:0.62, cy:0.60, sx:0.06, sy:0.10, w:0.5, count:5},
+      {cx:0.28, cy:0.50, sx:0.06, sy:0.14, w:0.4, count:4},
+    ],
+    "F": [
+      {cx:0.60, cy:0.50, sx:0.07, sy:0.18, w:0.7, count:8},
+      {cx:0.70, cy:0.35, sx:0.07, sy:0.12, w:0.8, count:8},
+      {cx:0.70, cy:0.65, sx:0.07, sy:0.12, w:0.8, count:8},
+      {cx:0.78, cy:0.50, sx:0.06, sy:0.15, w:0.9, count:10},
+      {cx:0.85, cy:0.42, sx:0.05, sy:0.10, w:0.7, count:6},
+      {cx:0.85, cy:0.58, sx:0.05, sy:0.10, w:0.7, count:6},
+      {cx:0.50, cy:0.50, sx:0.06, sy:0.15, w:0.3, count:4},
+    ]
+  };
+
+  var profiles = zoneProfiles[posKey] || zoneProfiles["M"];
+  var scale = 0.6 + intensity * 0.4;
+  var points = [];
+
+  var seed = Math.round(
+    (mins * 17 + ((stats&&stats.passes&&stats.passes.total)||0) * 7 +
+     ((stats&&stats.shots&&stats.shots.total)||0) * 13) % 99991
+  ) || 42;
+  function rand() {
+    seed = (seed * 1664525 + 1013904223) & 0xFFFFFFFF;
+    return (seed >>> 0) / 4294967295;
+  }
+  function gauss() {
+    var u=0, v=0;
+    while(u===0) u=rand();
+    while(v===0) v=rand();
+    return Math.sqrt(-2.0*Math.log(u))*Math.cos(2.0*Math.PI*v);
+  }
+
+  profiles.forEach(function(z) {
+    var n = Math.round(z.count * scale);
+    for (var i=0; i<n; i++) {
+      var x = z.cx + gauss()*z.sx;
+      var y = z.cy + gauss()*z.sy;
+      x = Math.max(0.02, Math.min(0.98, x));
+      y = Math.max(0.02, Math.min(0.98, y));
+      points.push({x:x, y:y, w:z.w*(0.6+rand()*0.4)});
+    }
+  });
+
+  // Tirs → surface adverse dispersés
+  var shots = Math.min((stats&&stats.shots&&stats.shots.total)||0, 5);
+  for (var s=0; s<shots; s++)
+    points.push({x:0.78+gauss()*0.07, y:0.50+gauss()*0.15, w:0.9});
+  // Tacles → zone défensive
+  var tacks = Math.min((stats&&stats.tackles&&stats.tackles.total)||0, 4);
+  for (var t=0; t<tacks; t++) {
+    var tx = posKey==="D"?0.20+gauss()*0.08:0.38+gauss()*0.10;
+    points.push({x:tx, y:0.50+gauss()*0.22, w:0.6});
+  }
+
+  return points;
+}
+
+function HeatmapCanvas(props) {
+  var ref = React.useRef(null);
+  var pts = props.points || [];
+  var W   = props.width  || 340;
+  var H   = props.height || 215;
+
+  React.useEffect(function() {
+    var cv = ref.current;
+    if (!cv || !pts.length) return;
+    var ctx = cv.getContext("2d");
+    var dpr = window.devicePixelRatio || 1;
+    cv.width  = W * dpr;
+    cv.height = H * dpr;
+    cv.style.width  = W + "px";
+    cv.style.height = H + "px";
+    ctx.scale(dpr, dpr);
+
+    // ── Fond clair style SofaScore ──────────────────────────────────
+    ctx.fillStyle = "#e8f5e9";
+    ctx.fillRect(0, 0, W, H);
+
+    // Stries légères
+    var stripeW = W / 12;
+    for (var si=0; si<12; si++) {
+      ctx.fillStyle = si%2===0 ? "rgba(0,100,0,0.04)" : "rgba(0,100,0,0.02)";
+      ctx.fillRect(si*stripeW, 0, stripeW, H);
+    }
+
+    // ── Heatmap : petits points dispersés style SofaScore ───────────
+    // Rayon petit = dispersion réaliste
+    pts.forEach(function(pt) {
+      var px = pt.x * W;
+      var py = pt.y * H;
+      var r  = W * 0.055 * pt.w;   // petits points — clé du style SofaScore
+      var g  = ctx.createRadialGradient(px, py, 0, px, py, r);
+      // Couleurs chaudes mais transparentes → se superposent naturellement
+      if (pt.w > 0.75) {
+        g.addColorStop(0,   "rgba(255,50,0,"  + (0.55*pt.w) + ")");
+        g.addColorStop(0.35,"rgba(255,120,0," + (0.40*pt.w) + ")");
+        g.addColorStop(0.65,"rgba(255,200,0," + (0.20*pt.w) + ")");
+        g.addColorStop(1,   "rgba(255,220,0,0)");
+      } else {
+        g.addColorStop(0,   "rgba(255,160,0," + (0.45*pt.w) + ")");
+        g.addColorStop(0.5, "rgba(255,220,0," + (0.22*pt.w) + ")");
+        g.addColorStop(1,   "rgba(255,220,0,0)");
+      }
+      ctx.fillStyle = g;
+      ctx.beginPath(); ctx.arc(px, py, r, 0, Math.PI*2); ctx.fill();
+    });
+
+    // ── Lignes terrain style clair ───────────────────────────────────
+    ctx.strokeStyle = "rgba(0,100,0,0.45)";
+    ctx.lineWidth   = 1.1;
+    var pad=10, pw=W-pad*2, ph=H-pad*2;
+
+    ctx.strokeRect(pad, pad, pw, ph);
+    ctx.beginPath(); ctx.moveTo(W/2, pad); ctx.lineTo(W/2, H-pad); ctx.stroke();
+    var cr = Math.min(pw,ph)*0.13;
+    ctx.beginPath(); ctx.arc(W/2, H/2, cr, 0, Math.PI*2); ctx.stroke();
+    ctx.fillStyle="rgba(0,100,0,0.5)";
+    ctx.beginPath(); ctx.arc(W/2, H/2, 2, 0, Math.PI*2); ctx.fill();
+
+    var bw=pw*0.155, bh=ph*0.44, by=pad+(ph-bh)/2;
+    ctx.strokeRect(pad, by, bw, bh);
+    ctx.strokeRect(W-pad-bw, by, bw, bh);
+    var sw=pw*0.055, sh=ph*0.24, sy=pad+(ph-sh)/2;
+    ctx.strokeRect(pad, sy, sw, sh);
+    ctx.strokeRect(W-pad-sw, sy, sw, sh);
+
+    var ps=bw*0.65;
+    ctx.beginPath(); ctx.arc(pad+ps, H/2, 2, 0, Math.PI*2); ctx.fill();
+    ctx.beginPath(); ctx.arc(W-pad-ps, H/2, 2, 0, Math.PI*2); ctx.fill();
+    ctx.beginPath(); ctx.arc(pad+ps, H/2, cr*0.85, -0.92, 0.92); ctx.stroke();
+    ctx.beginPath(); ctx.arc(W-pad-ps, H/2, cr*0.85, Math.PI-0.92, Math.PI+0.92); ctx.stroke();
+
+    // Flèche direction
+    ctx.fillStyle="rgba(0,80,0,0.35)";
+    ctx.font="bold 10px sans-serif"; ctx.textAlign="center";
+    ctx.fillText("\u2192", W/2, pad+11);
+
+  }, [pts, W, H]);
+
+  return React.createElement("canvas", {
+    ref: ref, width: W, height: H,
+    style: {width:"100%", height:"auto", borderRadius:12, display:"block"}
+  });
+}
+
+function HeatmapSection(props) {
+  var stats    = props.stats;
+  var pos      = props.pos || "M";
+  var minutes  = props.minutes;
+  var open     = props.open;
+  var onToggle = props.onToggle;
+
+  var points = React.useMemo(function() {
+    return generateHeatmapPoints(pos, stats, minutes);
+  }, [pos, minutes,
+    stats&&stats.passes&&stats.passes.total,
+    stats&&stats.shots&&stats.shots.total,
+    stats&&stats.tackles&&stats.tackles.total
+  ]);
+
+  return React.createElement("div", {style:{borderBottom:"1px solid #f1f5f9"}},
+    React.createElement("button", {
+      onClick: onToggle,
+      style: {
+        display:"flex", alignItems:"center", justifyContent:"space-between",
+        width:"100%", padding:"13px 16px",
+        background:"none", border:"none", cursor:"pointer"
+      }
+    },
+      React.createElement("div", {style:{display:"flex",alignItems:"center",gap:10}},
+        React.createElement("div", {style:{
+          width:28, height:28, borderRadius:6, flexShrink:0,
+          background:"linear-gradient(135deg,#22c55e,#16a34a)",
+          display:"flex", alignItems:"center", justifyContent:"center"
+        }}, React.createElement("span",{style:{fontSize:14}},"\u26BD")),
+        React.createElement("span",{style:{fontSize:14,fontWeight:700,color:"#0f172a"}},
+          "Carte thermique du match")
+      ),
+      React.createElement("span",{style:{
+        fontSize:10, fontWeight:700, color:"#94a3b8",
+        background:"#f8fafc", border:"1px solid #e2e8f0",
+        borderRadius:4, padding:"3px 7px"
+      }}, open ? "\u25B2" : "\u25BC")
+    ),
+    open && React.createElement("div", {style:{padding:"0 16px 16px"}},
+      React.createElement("div", {style:{
+        borderRadius:14, overflow:"hidden",
+        border:"1px solid #e2e8f0",
+        boxShadow:"0 1px 8px rgba(0,0,0,0.08)"
+      }},
+        React.createElement(HeatmapCanvas, {points:points, width:340, height:215})
+      ),
+      React.createElement("div", {style:{
+        display:"flex", alignItems:"center", justifyContent:"center",
+        gap:6, marginTop:10
+      }},
+        React.createElement("div", {style:{
+          display:"flex", height:7, borderRadius:4, overflow:"hidden", width:100
+        }},
+          ["#ffe066","#ffaa00","#ff6600","#ff2200"].map(function(c,i){
+            return React.createElement("div",{key:i,style:{flex:1,background:c}});
+          })
+        ),
+        React.createElement("span",{style:{fontSize:11,color:"#94a3b8",marginLeft:6}},
+          "Faible \u2192 Élevé")
+      )
+    )
+  );
+}
+// ════════════════════════════════════════════════════════════════════
 
 const renderTerrainFlash = (fix, hLu, aLu, players, events, hid, aid, has, hg, ag, onPlayerClick) => {
   if (!hLu && !aLu) return null;
@@ -7076,6 +7121,7 @@ function MatchDetail({state,onClose,onTeam}){
   const[tab,setTab]=React.useState("resume");
   const[period,setPeriod]=React.useState("all");
   const[playerSheet,setPlayerSheet]=React.useState(null);
+  const[showHeatmap,setShowHeatmap]=React.useState(false);
   const[playerSheetLoading,setPlayerSheetLoading]=React.useState(false);
   const[playerPage,setPlayerPage]=React.useState(null);
   const[standings,setStandings]=React.useState([]);
@@ -10488,7 +10534,7 @@ function MatchDetail({state,onClose,onTeam}){
 
     playerSheet ? React.createElement("div",{
       style:{position:"fixed",inset:0,zIndex:550,display:"flex",flexDirection:"column",justifyContent:"flex-end",background:"rgba(0,0,0,.5)"},
-      onClick:e=>{if(e.target===e.currentTarget){setPlayerSheet(null);setPlayerSheetLoading(false);}}
+      onClick:e=>{if(e.target===e.currentTarget){setPlayerSheet(null);setPlayerSheetLoading(false);setShowHeatmap(false);}}
     },
       React.createElement("div",{style:{background:"#fff",borderRadius:"20px 20px 0 0",paddingBottom:"calc(env(safe-area-inset-bottom,0px)+16px)",maxHeight:"85vh",overflowY:"auto"}},
         // Handle
@@ -10512,6 +10558,13 @@ function MatchDetail({state,onClose,onTeam}){
           }},parseFloat(playerSheet.stats.games.rating).toFixed(1))
         ),
         // Stats du match — style Flashscore
+                playerSheet.stats && React.createElement(HeatmapSection, {
+          stats:    playerSheet.stats,
+          pos:      playerSheet.pos,
+          minutes:  playerSheet.stats && playerSheet.stats.games && playerSheet.stats.games.minutes,
+          open:     showHeatmap,
+          onToggle: function(){ setShowHeatmap(function(v){ return !v; }); }
+        }),
         (playerSheet.stats || playerSheetLoading) && React.createElement("div",{style:{padding:"0 0 4px"}},
           // Loader
           playerSheetLoading && React.createElement("div",{style:{display:"flex",alignItems:"center",gap:8,margin:"14px 16px",padding:"10px 14px",background:"#f1f5f9",borderRadius:12}},
@@ -10582,12 +10635,6 @@ function MatchDetail({state,onClose,onTeam}){
               React.createElement("span",{style:{fontSize:11,color:"#94a3b8",fontWeight:500}},"Note")
             )
           ),
-          // ── Carte thermique ──
-          playerSheet.stats && React.createElement(HeatmapSection, {
-            pos: playerSheet.pos,
-            stats: playerSheet.stats
-          }),
-
           // ── Note + Minutes ──
           playerSheet.stats && React.createElement("div",{style:{padding:"0 16px"}},
             React.createElement("div",{style:{display:"flex",justifyContent:"space-between",alignItems:"center",padding:"11px 0",borderBottom:"1px solid #f1f5f9"}},
