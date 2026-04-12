@@ -1767,107 +1767,92 @@ const organizePlayersByLine = (players, formation) => {
 
 
 // ══ Heatmap réelle SofaScore ════════════════════════════════════════
-// Cherche l'eventId SofaScore par nom d'équipe + date
-// puis le playerId SofaScore par nom du joueur
-// puis appelle /api/v1/event/{eid}/player/{pid}/heatmap
-
-function fetchSofaHeatmap(fixDate, homeTeam, awayTeam, playerName, playerPos, playerStats, playerMinutes, onResult) {
-  // Construire le slug de recherche SofaScore
-  function toSlug(s) {
-    return (s||"").toLowerCase()
-      .replace(/[àáâãäå]/g,"a").replace(/[èéêë]/g,"e")
-      .replace(/[ìíîï]/g,"i").replace(/[òóôõö]/g,"o")
-      .replace(/[ùúûü]/g,"u").replace(/[ñ]/g,"n")
-      .replace(/[^a-z0-9]+/g,"-").replace(/^-|-$/g,"");
-  }
-
-  var homeSlug = toSlug(homeTeam);
-  var awaySlug = toSlug(awayTeam);
-  var searchUrl = "https://api.sofascore.com/api/v1/event/" + homeSlug + "-" + awaySlug + "/slug/search";
-
-  // Étape 1 : trouver l'eventId via la recherche
-  var headers = {
+function fetchSofaHeatmap(fixDate, homeTeam, awayTeam, playerName, pos, stats, minutes, onResult) {
+  var SF_HEADERS = {
     "Accept": "application/json",
     "User-Agent": "Mozilla/5.0 (iPhone; CPU iPhone OS 17_0 like Mac OS X) AppleWebKit/605.1.15"
   };
 
-  // Chercher via l'API search SofaScore
-  var dateStr = fixDate ? fixDate.substring(0,10) : "";
-  var searchQ = homeTeam + " " + awayTeam;
-  var encQ = encodeURIComponent(searchQ);
-  var searchApiUrl = "https://api.sofascore.com/api/v1/search/events?q=" + encQ + "&sport=football";
+  function toSlug(s) {
+    return (s||"").toLowerCase()
+      .replace(/[àáâãäå]/g,"a").replace(/[èéêë]/g,"e").replace(/[ìíîï]/g,"i")
+      .replace(/[òóôõöø]/g,"o").replace(/[ùúûü]/g,"u").replace(/[ñ]/g,"n")
+      .replace(/[ç]/g,"c").replace(/[ß]/g,"ss").replace(/[^a-z0-9]+/g,"-")
+      .replace(/^-|-$/g,"");
+  }
 
-  fetch(searchApiUrl, {headers: headers})
+  // Chercher l'event via l'API events/slug
+  var hSlug = toSlug(homeTeam);
+  var aSlug = toSlug(awayTeam);
+  var slugUrl = "https://api.sofascore.com/api/v1/sport/football/scheduled-events/" +
+    (fixDate ? fixDate.substring(0,10) : new Date().toISOString().substring(0,10));
+
+  fetch(slugUrl, {headers: SF_HEADERS})
     .then(function(r){ return r.json(); })
     .then(function(data) {
-      var events = data && data.events ? data.events : [];
-      // Trouver le bon match par date
+      var events = (data && data.events) ? data.events : [];
       var found = null;
       for (var i=0; i<events.length; i++) {
         var ev = events[i];
-        var evDate = ev.startTimestamp ? new Date(ev.startTimestamp*1000).toISOString().substring(0,10) : "";
-        if (evDate === dateStr) { found = ev; break; }
+        var hn = toSlug(ev.homeTeam && ev.homeTeam.name || "");
+        var an = toSlug(ev.awayTeam && ev.awayTeam.name || "");
+        // Matching souple sur les 4 premiers chars
+        if ((hn.substring(0,4)===hSlug.substring(0,4) || hSlug.substring(0,4)===hn.substring(0,4)) &&
+            (an.substring(0,4)===aSlug.substring(0,4) || aSlug.substring(0,4)===an.substring(0,4))) {
+          found = ev; break;
+        }
       }
-      if (!found && events.length > 0) found = events[0];
       if (!found) { onResult(null); return; }
-
       var eventId = found.id;
 
-      // Étape 2 : trouver le playerId dans les lineups
-      var lineupsUrl = "https://api.sofascore.com/api/v1/event/" + eventId + "/lineups";
-      return fetch(lineupsUrl, {headers: headers})
+      // Chercher le playerId dans les lineups
+      return fetch("https://api.sofascore.com/api/v1/event/" + eventId + "/lineups", {headers: SF_HEADERS})
         .then(function(r){ return r.json(); })
         .then(function(ldata) {
           var allPlayers = [];
-          var home = ldata && ldata.home && ldata.home.players ? ldata.home.players : [];
-          var away = ldata && ldata.away && ldata.away.players ? ldata.away.players : [];
-          allPlayers = home.concat(away);
+          var hp = ldata && ldata.home && ldata.home.players ? ldata.home.players : [];
+          var ap = ldata && ldata.away && ldata.away.players ? ldata.away.players : [];
+          allPlayers = hp.concat(ap);
 
-          // Trouver par nom (matching souple)
           var pnLow = (playerName||"").toLowerCase();
-          var foundPlayer = null;
+          var foundP = null;
+          // Match exact
           for (var j=0; j<allPlayers.length; j++) {
             var pl = allPlayers[j].player || {};
-            var plName = (pl.name||pl.shortName||"").toLowerCase();
-            if (plName === pnLow) { foundPlayer = pl; break; }
+            if ((pl.name||"").toLowerCase() === pnLow ||
+                (pl.shortName||"").toLowerCase() === pnLow) {
+              foundP = pl; break;
+            }
           }
-          // Fallback : matching partiel
-          if (!foundPlayer) {
+          // Match partiel lastName
+          if (!foundP) {
             var lastName = pnLow.split(" ").pop();
             for (var k=0; k<allPlayers.length; k++) {
               var pl2 = allPlayers[k].player || {};
               var n2 = (pl2.name||pl2.shortName||"").toLowerCase();
-              if (n2.indexOf(lastName) !== -1 || lastName.indexOf(n2.split(" ").pop()) !== -1) {
-                foundPlayer = pl2; break;
+              if (lastName.length > 2 && n2.indexOf(lastName) !== -1) {
+                foundP = pl2; break;
               }
             }
           }
-          if (!foundPlayer) { onResult(null); return; }
+          if (!foundP) { onResult(null); return; }
 
-          var playerId = foundPlayer.id;
-
-          // Étape 3 : récupérer la heatmap
-          var hmUrl = "https://api.sofascore.com/api/v1/event/" + eventId + "/player/" + playerId + "/heatmap";
-          return fetch(hmUrl, {headers: headers})
+          return fetch("https://api.sofascore.com/api/v1/event/" + eventId + "/player/" + foundP.id + "/heatmap",
+            {headers: SF_HEADERS})
             .then(function(r){ return r.json(); })
             .then(function(hmData) {
               if (hmData && hmData.heatmap && hmData.heatmap.length > 0) {
-                // Convertir format SofaScore {x,y} (0-100) → {x,y} normalisé (0-1)
-                // SofaScore: x=longueur (0=gauche défense, 100=droite attaque), y=largeur (0=haut, 100=bas)
+                // SofaScore: x=0→100 (défense→attaque), y=0→100 (droite→gauche)
+                // Canvas: x=0→1 (gauche→droite), y=0→1 (haut→bas)
                 var pts = hmData.heatmap.map(function(p) {
                   return {x: p.x/100, y: p.y/100, w: 1.0};
                 });
                 onResult(pts);
-              } else {
-                onResult(null);
-              }
+              } else { onResult(null); }
             });
         });
     })
-    .catch(function(e) {
-      console.log("SofaScore heatmap error:", e);
-      onResult(null);
-    });
+    .catch(function(e){ console.log("SofaScore heatmap error:", e); onResult(null); });
 }
 
 function generateFallbackPoints(pos, stats, minutes, grid) {
