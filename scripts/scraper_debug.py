@@ -1,5 +1,5 @@
 """
-scraper_debug.py - Restaure JSK vs CSC depuis BeSoccer
+scraper_debug.py - Restaure JSK vs CSC avec enrichissement players depuis events
 """
 import os, re, time, requests
 import cloudscraper
@@ -98,6 +98,43 @@ def parse_player(link):
             "sub_out":sub_out_minute is not None,"sub_out_minute":sub_out_minute,
             "minutes":90,"rating":note}
 
+def enrich_players_from_events(players, events):
+    """
+    Croise les events (buts/cartons) avec les players par nom.
+    Met à jour goals, goal_minutes, yellow, yellow_minute, red, red_minute.
+    """
+    for evt in events:
+        pname = evt.get("player","")
+        etype = evt.get("type","")
+        minute = evt.get("minute")
+        if not pname or not minute: continue
+
+        for p in players:
+            # Match par nom exact ou partiel (last name)
+            pn = p.get("name","").lower()
+            en = pname.lower()
+            last_p = pn.split(".")[-1].strip()
+            last_e = en.split(".")[-1].strip()
+            match = (pn == en) or \
+                    (last_p and last_p in en) or \
+                    (last_e and last_e in pn)
+            if not match: continue
+
+            if etype == "goal":
+                if minute not in p.get("goal_minutes",[]):
+                    p["goals"] = p.get("goals",0) + 1
+                    gm = p.get("goal_minutes",[])
+                    gm.append(minute)
+                    p["goal_minutes"] = gm
+            elif etype == "yellow" and not p.get("yellow"):
+                p["yellow"] = True
+                p["yellow_minute"] = minute
+            elif etype == "red" and not p.get("red"):
+                p["red"] = True
+                p["red_minute"] = minute
+            break
+    return players
+
 def scrape_events_page(base_url, home_team, away_team):
     url = base_url.rstrip("/") + "/events"
     r   = fetch(url)
@@ -108,7 +145,6 @@ def scrape_events_page(base_url, home_team, away_team):
     sub_in_minutes = {}
     seen = set()
 
-    # Score
     score = {"home":0,"away":0}
     all_mini = soup.select("div.mini-result")
     if all_mini:
@@ -228,9 +264,18 @@ def scrape_and_save(t):
             p["minutes"]=sm if sm else 0; p["sub_in_minute"]=sm
             result["away_subs"].append(p)
 
-    # Log buts détectés
-    all_players = result["home_players"]+result["away_players"]+result["home_subs"]+result["away_subs"]
-    for p in all_players:
+    # ── Enrichir players avec les events (buts/cartons depuis /events) ──
+    home_events = [e for e in live_events if e.get("is_home")]
+    away_events = [e for e in live_events if not e.get("is_home")]
+
+    result["home_players"] = enrich_players_from_events(result["home_players"], home_events)
+    result["away_players"] = enrich_players_from_events(result["away_players"], away_events)
+    result["home_subs"]    = enrich_players_from_events(result["home_subs"],    home_events)
+    result["away_subs"]    = enrich_players_from_events(result["away_subs"],    away_events)
+
+    # Log final
+    all_p = result["home_players"]+result["away_players"]+result["home_subs"]+result["away_subs"]
+    for p in all_p:
         if p.get("goals",0) > 0:
             print(f"    ⚽ {p['name']} → {p['goal_minutes']}")
         if p.get("yellow"):
@@ -238,7 +283,7 @@ def scrape_and_save(t):
 
     hs=sum(1 for p in result["home_subs"] if p.get("sub_in_minute"))
     as_=sum(1 for p in result["away_subs"] if p.get("sub_in_minute"))
-    print(f"  ✅ {hs}+{as_} subs actifs | score {score['home']}-{score['away']}")
+    print(f"  ✅ {hs}+{as_} subs | score {score['home']}-{score['away']}")
 
     res = requests.patch(
         SB_URL+f"/rest/v1/besoccer_lineups?match_id=eq.{result['match_id']}",
@@ -254,7 +299,6 @@ def scrape_and_save(t):
         )
     print(f"  Supabase: {'✅ OK' if res.status_code in [200,201,204] else '❌ '+str(res.status_code)}")
 
-# ── Un seul match : JSK vs CSC ──
 print("=== Restauration JSK vs CS Constantine ===")
 print(datetime.now().strftime("%Y-%m-%d %H:%M:%S"))
 scrape_and_save({
