@@ -1766,94 +1766,143 @@ const organizePlayersByLine = (players, formation) => {
 
 
 
-// ══ Heatmap style SofaScore — zones concentrées ═════════════════════
-function generateHeatmapPoints(pos, stats, minutes, grid) {
-  var mins = minutes || (stats && stats.games && stats.games.minutes) || 90;
-  var intensity = Math.min(1.0, mins / 90);
+// ══ Heatmap réelle SofaScore ════════════════════════════════════════
+// Cherche l'eventId SofaScore par nom d'équipe + date
+// puis le playerId SofaScore par nom du joueur
+// puis appelle /api/v1/event/{eid}/player/{pid}/heatmap
 
-  // ── Position précise depuis grille API Football ──────────────────
-  var cx = null, cy = null;
-  if (grid && typeof grid === "string" && grid.indexOf(":") !== -1) {
-    var parts = grid.split(":");
-    var line = parseInt(parts[0]) || 1;
-    var col  = parseInt(parts[1]) || 1;
-    // Ligne → X (profondeur)
-    var xMap = {1:0.07, 2:0.22, 3:0.40, 4:0.57, 5:0.73, 6:0.82};
-    cx = xMap[line] !== undefined ? xMap[line] : 0.45;
-    // Colonne → Y (latéral) — 1=gauche, 2=centre-gauche, 3=centre, 4=centre-droit, 5=droite
-    var yMap = {1:0.18, 2:0.38, 3:0.50, 4:0.62, 5:0.82};
-    cy = yMap[col] !== undefined ? yMap[col] : 0.50;
+function fetchSofaHeatmap(fixDate, homeTeam, awayTeam, playerName, playerPos, playerStats, playerMinutes, onResult) {
+  // Construire le slug de recherche SofaScore
+  function toSlug(s) {
+    return (s||"").toLowerCase()
+      .replace(/[àáâãäå]/g,"a").replace(/[èéêë]/g,"e")
+      .replace(/[ìíîï]/g,"i").replace(/[òóôõö]/g,"o")
+      .replace(/[ùúûü]/g,"u").replace(/[ñ]/g,"n")
+      .replace(/[^a-z0-9]+/g,"-").replace(/^-|-$/g,"");
   }
 
-  // Fallback poste
+  var homeSlug = toSlug(homeTeam);
+  var awaySlug = toSlug(awayTeam);
+  var searchUrl = "https://api.sofascore.com/api/v1/event/" + homeSlug + "-" + awaySlug + "/slug/search";
+
+  // Étape 1 : trouver l'eventId via la recherche
+  var headers = {
+    "Accept": "application/json",
+    "User-Agent": "Mozilla/5.0 (iPhone; CPU iPhone OS 17_0 like Mac OS X) AppleWebKit/605.1.15"
+  };
+
+  // Chercher via l'API search SofaScore
+  var dateStr = fixDate ? fixDate.substring(0,10) : "";
+  var searchQ = homeTeam + " " + awayTeam;
+  var encQ = encodeURIComponent(searchQ);
+  var searchApiUrl = "https://api.sofascore.com/api/v1/search/events?q=" + encQ + "&sport=football";
+
+  fetch(searchApiUrl, {headers: headers})
+    .then(function(r){ return r.json(); })
+    .then(function(data) {
+      var events = data && data.events ? data.events : [];
+      // Trouver le bon match par date
+      var found = null;
+      for (var i=0; i<events.length; i++) {
+        var ev = events[i];
+        var evDate = ev.startTimestamp ? new Date(ev.startTimestamp*1000).toISOString().substring(0,10) : "";
+        if (evDate === dateStr) { found = ev; break; }
+      }
+      if (!found && events.length > 0) found = events[0];
+      if (!found) { onResult(null); return; }
+
+      var eventId = found.id;
+
+      // Étape 2 : trouver le playerId dans les lineups
+      var lineupsUrl = "https://api.sofascore.com/api/v1/event/" + eventId + "/lineups";
+      return fetch(lineupsUrl, {headers: headers})
+        .then(function(r){ return r.json(); })
+        .then(function(ldata) {
+          var allPlayers = [];
+          var home = ldata && ldata.home && ldata.home.players ? ldata.home.players : [];
+          var away = ldata && ldata.away && ldata.away.players ? ldata.away.players : [];
+          allPlayers = home.concat(away);
+
+          // Trouver par nom (matching souple)
+          var pnLow = (playerName||"").toLowerCase();
+          var foundPlayer = null;
+          for (var j=0; j<allPlayers.length; j++) {
+            var pl = allPlayers[j].player || {};
+            var plName = (pl.name||pl.shortName||"").toLowerCase();
+            if (plName === pnLow) { foundPlayer = pl; break; }
+          }
+          // Fallback : matching partiel
+          if (!foundPlayer) {
+            var lastName = pnLow.split(" ").pop();
+            for (var k=0; k<allPlayers.length; k++) {
+              var pl2 = allPlayers[k].player || {};
+              var n2 = (pl2.name||pl2.shortName||"").toLowerCase();
+              if (n2.indexOf(lastName) !== -1 || lastName.indexOf(n2.split(" ").pop()) !== -1) {
+                foundPlayer = pl2; break;
+              }
+            }
+          }
+          if (!foundPlayer) { onResult(null); return; }
+
+          var playerId = foundPlayer.id;
+
+          // Étape 3 : récupérer la heatmap
+          var hmUrl = "https://api.sofascore.com/api/v1/event/" + eventId + "/player/" + playerId + "/heatmap";
+          return fetch(hmUrl, {headers: headers})
+            .then(function(r){ return r.json(); })
+            .then(function(hmData) {
+              if (hmData && hmData.heatmap && hmData.heatmap.length > 0) {
+                // Convertir format SofaScore {x,y} (0-100) → {x,y} normalisé (0-1)
+                // SofaScore: x=longueur (0=gauche défense, 100=droite attaque), y=largeur (0=haut, 100=bas)
+                var pts = hmData.heatmap.map(function(p) {
+                  return {x: p.x/100, y: p.y/100, w: 1.0};
+                });
+                onResult(pts);
+              } else {
+                onResult(null);
+              }
+            });
+        });
+    })
+    .catch(function(e) {
+      console.log("SofaScore heatmap error:", e);
+      onResult(null);
+    });
+}
+
+function generateFallbackPoints(pos, stats, minutes, grid) {
+  var mins = minutes || (stats && stats.games && stats.games.minutes) || 90;
+  var intensity = Math.min(1.0, mins / 90);
   var posKey = (pos||"M").toUpperCase();
   if ("DEF CB LB RB D".indexOf(posKey)!==-1) posKey="D";
   else if ("MID MF CM DM AM M".indexOf(posKey)!==-1) posKey="M";
   else if ("ATT FWD ST LW RW F A".indexOf(posKey)!==-1) posKey="F";
   else if ("GK G GS".indexOf(posKey)!==-1) posKey="G";
-  var fb = {"G":{x:0.07,y:0.50},"D":{x:0.22,y:0.50},"M":{x:0.45,y:0.50},"F":{x:0.72,y:0.50}};
-  if (cx===null) cx = (fb[posKey]||fb["M"]).x;
-  if (cy===null) cy = (fb[posKey]||fb["M"]).y;
 
-  // ── Générateur déterministe ──────────────────────────────────────
-  var seed = Math.round(
-    (mins*31 + ((stats&&stats.passes&&stats.passes.total)||0)*7 +
-     ((stats&&stats.shots&&stats.shots.total)||0)*13) % 99991
-  ) || 42;
+  var cx = null, cy = null;
+  if (grid && grid.indexOf(":") !== -1) {
+    var parts = grid.split(":");
+    var line = parseInt(parts[0])||1, col = parseInt(parts[1])||1;
+    var xMap = {1:0.07,2:0.22,3:0.40,4:0.57,5:0.73,6:0.82};
+    var yMap = {1:0.18,2:0.38,3:0.50,4:0.62,5:0.82};
+    cx = xMap[line]||0.45; cy = yMap[col]||0.50;
+  }
+  var fb = {"G":{x:0.07,y:0.50},"D":{x:0.22,y:0.50},"M":{x:0.45,y:0.50},"F":{x:0.72,y:0.50}};
+  if (!cx) cx = (fb[posKey]||fb["M"]).x;
+  if (!cy) cy = (fb[posKey]||fb["M"]).y;
+
+  var seed = Math.round((mins*31+((stats&&stats.passes&&stats.passes.total)||0)*7)%99991)||42;
   function rand(){ seed=(seed*1664525+1013904223)&0xFFFFFFFF; return (seed>>>0)/4294967295; }
   function gauss(){ var u=0,v=0; while(!u)u=rand(); while(!v)v=rand(); return Math.sqrt(-2*Math.log(u))*Math.cos(6.2832*v); }
-  function clamp(v,a,b){ return Math.max(a,Math.min(b,v)); }
 
-  var points = [];
-
-  // ── STYLE SOFASCORE : 2-3 zones concentrées ─────────────────────
-  // Zone 1 : zone principale (beaucoup de points, petit rayon)
-  var n1 = Math.round(16 * intensity);
-  for (var i=0; i<n1; i++) {
-    points.push({
-      x: clamp(cx + gauss()*0.04, 0.03, 0.96),
-      y: clamp(cy + gauss()*0.08, 0.03, 0.96),
-      w: 0.80 + rand()*0.20
-    });
-  }
-
-  // Zone 2 : zone secondaire proche (moins de points, légèrement décalée)
-  // Déplacement naturel du joueur — vers l'avant ou latéral
-  var dx2 = posKey==="G" ? 0.04 : (posKey==="F" ? -0.06 : 0.08);
-  var dy2 = (rand()-0.5)*0.18;
-  var n2 = Math.round(8 * intensity);
-  for (var j=0; j<n2; j++) {
-    points.push({
-      x: clamp(cx+dx2 + gauss()*0.04, 0.03, 0.96),
-      y: clamp(cy+dy2 + gauss()*0.07, 0.03, 0.96),
-      w: 0.55 + rand()*0.25
-    });
-  }
-
-  // Zone 3 : quelques actions isolées (3-4 points max, éloignés mais pas partout)
-  var n3 = Math.round(4 * intensity);
-  for (var k=0; k<n3; k++) {
-    // Direction limitée — max 15% du terrain d'écart
-    var dx3 = (rand()-0.5)*0.22;
-    var dy3 = (rand()-0.5)*0.22;
-    points.push({
-      x: clamp(cx+dx3, 0.03, 0.96),
-      y: clamp(cy+dy3, 0.03, 0.96),
-      w: 0.30 + rand()*0.25
-    });
-  }
-
-  // Tirs → zone surface adverse (petits points chauds précis)
-  var shots = Math.min((stats&&stats.shots&&stats.shots.total)||0, 4);
-  for (var s=0; s<shots; s++)
-    points.push({x:clamp(0.80+gauss()*0.05,0.70,0.96), y:clamp(0.50+gauss()*0.12,0.20,0.80), w:1.0});
-
-  // Tacles → zone du joueur
-  var tacks = Math.min((stats&&stats.tackles&&stats.tackles.total)||0, 3);
-  for (var t=0; t<tacks; t++)
-    points.push({x:clamp(cx+gauss()*0.04,0.03,0.96), y:clamp(cy+gauss()*0.10,0.03,0.96), w:0.75});
-
-  return points;
+  var pts = [], n = Math.round(20+intensity*20);
+  for(var i=0;i<Math.round(n*0.65);i++)
+    pts.push({x:Math.max(0.02,Math.min(0.97,cx+gauss()*0.05)),y:Math.max(0.02,Math.min(0.97,cy+gauss()*0.10)),w:0.8+rand()*0.2});
+  for(var j=0;j<Math.round(n*0.35);j++)
+    pts.push({x:Math.max(0.02,Math.min(0.97,cx+gauss()*0.12)),y:Math.max(0.02,Math.min(0.97,cy+gauss()*0.22)),w:0.35+rand()*0.35});
+  var shots=Math.min((stats&&stats.shots&&stats.shots.total)||0,4);
+  for(var s=0;s<shots;s++) pts.push({x:Math.max(0.02,Math.min(0.97,0.80+gauss()*0.05)),y:Math.max(0.02,Math.min(0.97,0.50+gauss()*0.12)),w:0.95});
+  return pts;
 }
 
 function HeatmapCanvas(props) {
@@ -1947,64 +1996,89 @@ function HeatmapCanvas(props) {
 function HeatmapSection(props) {
   var stats    = props.stats;
   var pos      = props.pos || "M";
+  var grid     = props.grid;
   var minutes  = props.minutes;
   var open     = props.open;
   var onToggle = props.onToggle;
+  var fixDate  = props.fixDate;
+  var homeTeam = props.homeTeam;
+  var awayTeam = props.awayTeam;
+  var playerName = props.playerName;
 
-  var grid   = props.grid;
-  var points = React.useMemo(function() {
-    return generateHeatmapPoints(pos, stats, minutes, grid);
-  }, [pos, grid, minutes,
-    stats&&stats.passes&&stats.passes.total,
-    stats&&stats.shots&&stats.shots.total,
-    stats&&stats.tackles&&stats.tackles.total
-  ]);
+  var [points, setPoints] = React.useState(null);
+  var [loading, setLoading] = React.useState(false);
+
+  React.useEffect(function() {
+    if (!open) return;
+    if (points) return; // déjà chargé
+    setLoading(true);
+    fetchSofaHeatmap(fixDate, homeTeam, awayTeam, playerName, pos, stats, minutes, function(pts) {
+      if (pts && pts.length > 0) {
+        setPoints(pts);
+      } else {
+        setPoints(generateFallbackPoints(pos, stats, minutes, grid));
+      }
+      setLoading(false);
+    });
+  }, [open]);
+
+  var displayPoints = points || (open ? [] : null);
 
   return React.createElement("div", {style:{borderBottom:"1px solid #f1f5f9"}},
     React.createElement("button", {
       onClick: onToggle,
-      style: {
-        display:"flex", alignItems:"center", justifyContent:"space-between",
-        width:"100%", padding:"13px 16px",
-        background:"none", border:"none", cursor:"pointer"
-      }
+      style:{display:"flex",alignItems:"center",justifyContent:"space-between",
+        width:"100%",padding:"13px 16px",background:"none",border:"none",cursor:"pointer"}
     },
-      React.createElement("div", {style:{display:"flex",alignItems:"center",gap:10}},
-        React.createElement("div", {style:{
-          width:28, height:28, borderRadius:6, flexShrink:0,
+      React.createElement("div",{style:{display:"flex",alignItems:"center",gap:10}},
+        React.createElement("div",{style:{
+          width:28,height:28,borderRadius:6,flexShrink:0,
           background:"linear-gradient(135deg,#22c55e,#16a34a)",
-          display:"flex", alignItems:"center", justifyContent:"center"
+          display:"flex",alignItems:"center",justifyContent:"center"
         }}, React.createElement("span",{style:{fontSize:14}},"\u26BD")),
         React.createElement("span",{style:{fontSize:14,fontWeight:700,color:"#0f172a"}},
           "Carte thermique du match")
       ),
       React.createElement("span",{style:{
-        fontSize:10, fontWeight:700, color:"#94a3b8",
-        background:"#f8fafc", border:"1px solid #e2e8f0",
-        borderRadius:4, padding:"3px 7px"
+        fontSize:10,fontWeight:700,color:"#94a3b8",
+        background:"#f8fafc",border:"1px solid #e2e8f0",
+        borderRadius:4,padding:"3px 7px"
       }}, open ? "\u25B2" : "\u25BC")
     ),
-    open && React.createElement("div", {style:{padding:"0 16px 16px"}},
-      React.createElement("div", {style:{
-        borderRadius:14, overflow:"hidden",
-        border:"1px solid #e2e8f0",
-        boxShadow:"0 1px 8px rgba(0,0,0,0.08)"
+    open && React.createElement("div",{style:{padding:"0 16px 16px"}},
+      loading && React.createElement("div",{style:{
+        display:"flex",alignItems:"center",justifyContent:"center",
+        gap:8,padding:"24px 0",color:"#94a3b8",fontSize:13
       }},
-        React.createElement(HeatmapCanvas, {points:points, width:340, height:215})
+        React.createElement("div",{style:{
+          width:16,height:16,border:"2px solid #e2e8f0",
+          borderTopColor:"#22c55e",borderRadius:"50%",
+          animation:"spin 0.7s linear infinite"
+        }}),
+        React.createElement("span",null,"Chargement de la heatmap...")
       ),
-      React.createElement("div", {style:{
-        display:"flex", alignItems:"center", justifyContent:"center",
-        gap:6, marginTop:10
-      }},
-        React.createElement("div", {style:{
-          display:"flex", height:7, borderRadius:4, overflow:"hidden", width:100
+      !loading && displayPoints && React.createElement("div",null,
+        React.createElement("div",{style:{
+          borderRadius:14,overflow:"hidden",
+          border:"1px solid #e2e8f0",
+          boxShadow:"0 1px 8px rgba(0,0,0,0.08)"
         }},
-          ["#ffe066","#ffaa00","#ff6600","#ff2200"].map(function(c,i){
-            return React.createElement("div",{key:i,style:{flex:1,background:c}});
-          })
+          React.createElement(HeatmapCanvas,{points:displayPoints,width:340,height:215})
         ),
-        React.createElement("span",{style:{fontSize:11,color:"#94a3b8",marginLeft:6}},
-          "Faible \u2192 Élevé")
+        React.createElement("div",{style:{
+          display:"flex",alignItems:"center",justifyContent:"center",
+          gap:6,marginTop:10
+        }},
+          React.createElement("div",{style:{
+            display:"flex",height:7,borderRadius:4,overflow:"hidden",width:100
+          }},
+            ["#cbedbf","#d5eb86","#fffc20","#ff8111","#ff1f1f"].map(function(c,i){
+              return React.createElement("div",{key:i,style:{flex:1,background:c}});
+            })
+          ),
+          React.createElement("span",{style:{fontSize:11,color:"#94a3b8",marginLeft:6}},
+            "Faible \u2192 \u00c9lev\u00e9")
+        )
       )
     )
   );
@@ -2191,7 +2265,6 @@ const renderTerrainFlash = (fix, hLu, aLu, players, events, hid, aid, has, hg, a
                 onClick: () => onPlayerClick && onPlayerClick({
                   id: player.id, name: player.name, photo: player.photo,
                   pos: player.pos || player.position, number: player.number,
-                  grid: player.grid || null,
                   nationality: player.nationality,
                   teamLogo: fix?.teams?.home?.logo,
                   stats: players.flatMap(t=>t.players||[]).find(p=>p.player?.id===player.id)?.statistics?.[0]
@@ -2235,7 +2308,6 @@ const renderTerrainFlash = (fix, hLu, aLu, players, events, hid, aid, has, hg, a
                 onClick: () => onPlayerClick && onPlayerClick({
                   id: player.id, name: player.name, photo: player.photo,
                   pos: player.pos || player.position, number: player.number,
-                  grid: player.grid || null,
                   nationality: player.nationality,
                   teamLogo: fix?.teams?.away?.logo,
                   stats: players.flatMap(t=>t.players||[]).find(p=>p.player?.id===player.id)?.statistics?.[0]
@@ -10561,12 +10633,16 @@ function MatchDetail({state,onClose,onTeam}){
         ),
         // Stats du match — style Flashscore
                 playerSheet.stats && React.createElement(HeatmapSection, {
-          stats:    playerSheet.stats,
-          pos:      playerSheet.pos,
-          grid:     playerSheet.grid,
-          minutes:  playerSheet.stats && playerSheet.stats.games && playerSheet.stats.games.minutes,
-          open:     showHeatmap,
-          onToggle: function(){ setShowHeatmap(function(v){ return !v; }); }
+          stats:      playerSheet.stats,
+          pos:        playerSheet.pos,
+          grid:       playerSheet.grid,
+          minutes:    playerSheet.stats && playerSheet.stats.games && playerSheet.stats.games.minutes,
+          fixDate:    fix && fix.fixture && fix.fixture.date,
+          homeTeam:   fix && fix.teams && fix.teams.home && fix.teams.home.name,
+          awayTeam:   fix && fix.teams && fix.teams.away && fix.teams.away.name,
+          playerName: playerSheet.name,
+          open:       showHeatmap,
+          onToggle:   function(){ setShowHeatmap(function(v){ return !v; }); }
         }),
         (playerSheet.stats || playerSheetLoading) && React.createElement("div",{style:{padding:"0 0 4px"}},
           // Loader
