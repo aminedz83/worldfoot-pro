@@ -1,5 +1,5 @@
 """
-scraper_debug.py - Fix score regex + subs format alternatif
+scraper_debug.py - Restaure JSK vs CSC depuis BeSoccer
 """
 import os, re, time, requests
 import cloudscraper
@@ -108,26 +108,15 @@ def scrape_events_page(base_url, home_team, away_team):
     sub_in_minutes = {}
     seen = set()
 
-    # ── Score : prendre le DERNIER mini-result (= score final) ──
+    # Score
     score = {"home":0,"away":0}
     all_mini = soup.select("div.mini-result")
     if all_mini:
-        # Le premier mini-result = dernier event chronologique = score final
-        txt = all_mini[0].get_text(strip=True)
-        m = re.search(r"(\d+)\s*-\s*(\d+)", txt)
+        m = re.search(r"(\d+)\s*-\s*(\d+)", all_mini[0].get_text(strip=True))
         if m:
             score["home"]=int(m.group(1)); score["away"]=int(m.group(2))
-    if score["home"]==0 and score["away"]==0:
-        # Fallback: div.result
-        result_el = soup.select_one("div.result")
-        if result_el:
-            txt = result_el.get_text(strip=True)
-            nums = re.findall(r"\b(\d{1,2})\s*-\s*(\d{1,2})\b", txt)
-            if nums:
-                score["home"]=int(nums[-1][0]); score["away"]=int(nums[-1][1])
     print(f"  Score: {score['home']}-{score['away']}")
 
-    # ── Events : format 1 (all-events) ──────────────────────
     for row in soup.select("div.table-played-match.all-events"):
         min_el = row.select_one("div.col-mid-rows div.min")
         if not min_el: continue
@@ -140,13 +129,12 @@ def scrape_events_page(base_url, home_team, away_team):
         alt = img_ev.get("alt","").lower()
 
         event_type = None
-        if "accion1" in src or "goal" in alt: event_type = "goal"
+        if "accion1" in src or "goal" in alt:          event_type = "goal"
         elif "accion5" in src or "yellow card" in alt: event_type = "yellow"
-        elif "tarjeta_r" in src or ("red card" in alt): event_type = "red"
+        elif "tarjeta_r" in src or "red card" in alt:  event_type = "red"
         elif "cambio" in src or "substitution" in alt: event_type = "sub"
         if not event_type: continue
 
-        # Côté domicile/extérieur
         left  = row.select_one("div.col-side.left")
         right = row.select_one("div.col-side.right")
         left_has  = left  and (left.select_one("a[data-cy='eventOrd']") or left.select_one("div.name-wrapper"))
@@ -154,7 +142,6 @@ def scrape_events_page(base_url, home_team, away_team):
         is_home = bool(left_has) and not bool(right_has)
 
         if event_type == "sub":
-            # Méthode 1: popup avec player_id dans l'ID
             popup = row.select_one("div[id^='popup_event_order']")
             if popup:
                 pid_m = re.search(r"_(\d+)_(\d+)$", popup.get("id",""))
@@ -165,9 +152,8 @@ def scrape_events_page(base_url, home_team, away_team):
                     if key not in seen:
                         seen.add(key)
                         sub_in_minutes[sub_pid] = sub_min
-                        print(f"    🔄 {sub_min}' pid={sub_pid} ({'dom' if is_home else 'ext'})")
+                        print(f"    🔄 {sub_min}' pid={sub_pid}")
             else:
-                # Méthode 2: extraire player_id depuis href du lien joueur
                 side = left if is_home else right
                 if side:
                     for lnk in side.select("a[href*='/player/']"):
@@ -177,11 +163,9 @@ def scrape_events_page(base_url, home_team, away_team):
                             if key not in seen:
                                 seen.add(key)
                                 sub_in_minutes[pid2] = minute
-                                nm = lnk.get_text(strip=True)
-                                print(f"    🔄 {minute}' pid={pid2} nom={nm} ({'dom' if is_home else 'ext'})")
+                                print(f"    🔄 {minute}' pid={pid2}")
             continue
 
-        # Buts / cartons
         side = left if is_home else right
         player_link = side.select_one("a[data-cy='eventOrd']") if side else None
         player_name = player_link.get_text(strip=True) if player_link else ""
@@ -198,20 +182,20 @@ def scrape_events_page(base_url, home_team, away_team):
             "score":mini.get_text(strip=True) if mini else ""
         })
         icon = {"goal":"⚽","yellow":"🟨","red":"🟥"}.get(event_type,"?")
-        print(f"    {icon} {minute}' {player_name} ({'dom' if is_home else 'ext'})")
+        print(f"    {icon} {minute}' {player_name}")
 
-    print(f"  📊 {len(events)} events | {len(sub_in_minutes)} subs")
+    print(f"  📊 {len(events)} events | {len(sub_in_minutes)} subs | {score['home']}-{score['away']}")
     return sub_in_minutes, events, score
 
-def scrape_match(t):
+def scrape_and_save(t):
     base = f"https://www.besoccer.com/match/{t['bs_home']}/{t['bs_away']}/{t['match_id']}"
     r    = fetch(base+"/lineups")
-    if not r: return None
+    if not r: return
 
     soup = BeautifulSoup(r.text, "html.parser")
     starters = soup.select('a.col-bench[data-cy="starterPlayer"]')
-    print(f"  Titulaires: {len(starters)}")
-    if len(starters) < 11: return None
+    if len(starters) < 11:
+        print("  ⏳ Compos incomplètes"); return
 
     sub_in_minutes, live_events, score = scrape_events_page(base, t["home_team"], t["away_team"])
 
@@ -226,7 +210,7 @@ def scrape_match(t):
     }
 
     for link in soup.select('a.col-bench.local[data-cy="starterPlayer"]'):
-        p=parse_player(link); 
+        p=parse_player(link)
         if p: result["home_players"].append(p)
     for link in soup.select('a.col-bench.visitor[data-cy="starterPlayer"]'):
         p=parse_player(link)
@@ -244,43 +228,41 @@ def scrape_match(t):
             p["minutes"]=sm if sm else 0; p["sub_in_minute"]=sm
             result["away_subs"].append(p)
 
+    # Log buts détectés
+    all_players = result["home_players"]+result["away_players"]+result["home_subs"]+result["away_subs"]
+    for p in all_players:
+        if p.get("goals",0) > 0:
+            print(f"    ⚽ {p['name']} → {p['goal_minutes']}")
+        if p.get("yellow"):
+            print(f"    🟨 {p['name']} → {p['yellow_minute']}'")
+
     hs=sum(1 for p in result["home_subs"] if p.get("sub_in_minute"))
     as_=sum(1 for p in result["away_subs"] if p.get("sub_in_minute"))
-    yc=sum(1 for p in result["home_players"]+result["away_players"] if p.get("yellow"))
-    gc=sum(p.get("goals",0) for p in result["home_players"]+result["away_players"]+result["home_subs"]+result["away_subs"])
-    print(f"  ✅ {hs}+{as_} subs | {gc} buts | {yc} cartons | {score['home']}-{score['away']}")
-    return result
+    print(f"  ✅ {hs}+{as_} subs actifs | score {score['home']}-{score['away']}")
 
-def force_save(lineup):
     res = requests.patch(
-        SB_URL+f"/rest/v1/besoccer_lineups?match_id=eq.{lineup['match_id']}",
+        SB_URL+f"/rest/v1/besoccer_lineups?match_id=eq.{result['match_id']}",
         headers={**SB_HEADERS,"Prefer":""},
-        json=lineup
+        json=result
     )
     if res.status_code not in [200,201,204]:
         res = requests.post(
             SB_URL+"/rest/v1/besoccer_lineups",
             headers={**SB_HEADERS,"Prefer":"resolution=merge-duplicates"},
             params={"on_conflict":"match_id"},
-            json=lineup
+            json=result
         )
-    print(f"  Supabase: {'✅ OK' if res.status_code in [200,201,204] else '❌ '+str(res.status_code)+' '+res.text[:100]}")
+    print(f"  Supabase: {'✅ OK' if res.status_code in [200,201,204] else '❌ '+str(res.status_code)}")
 
-TARGETS = [
-    {"match_id":"2026264207","bs_home":"oued-akbou","bs_away":"es-setif",
-     "home_team":"Olympique Akbou","away_team":"ES Setif","match_date":"2026-04-11"},
-    {"match_id":"2026264211","bs_home":"paradou","bs_away":"js-saoura",
-     "home_team":"Paradou AC","away_team":"JS Saoura","match_date":"2026-04-11"},
-    {"match_id":"2026264214","bs_home":"kabylie","bs_away":"cs-constantine",
-     "home_team":"JS Kabylie","away_team":"CS Constantine","match_date":"2026-04-10"},
-]
-
-print("=== DEBUG: Re-scrape fix score + subs ===")
+# ── Un seul match : JSK vs CSC ──
+print("=== Restauration JSK vs CS Constantine ===")
 print(datetime.now().strftime("%Y-%m-%d %H:%M:%S"))
-for t in TARGETS:
-    print(f"\n--- {t['home_team']} vs {t['away_team']} ---")
-    lineup = scrape_match(t)
-    if lineup: force_save(lineup)
-    else: print("  ❌ Scrape échoué")
-    time.sleep(3)
+scrape_and_save({
+    "match_id":  "2026264214",
+    "bs_home":   "kabylie",
+    "bs_away":   "cs-constantine",
+    "home_team": "JS Kabylie",
+    "away_team": "CS Constantine",
+    "match_date": "2026-04-10"
+})
 print("\n=== Terminé ===")
