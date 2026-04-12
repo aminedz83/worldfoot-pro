@@ -1766,96 +1766,92 @@ const organizePlayersByLine = (players, formation) => {
 
 
 
-// ══ Heatmap précise — grille formation réelle ════════════════════════
+// ══ Heatmap style SofaScore — zones concentrées ═════════════════════
 function generateHeatmapPoints(pos, stats, minutes, grid) {
   var mins = minutes || (stats && stats.games && stats.games.minutes) || 90;
   var intensity = Math.min(1.0, mins / 90);
 
-  // ── Décoder grille API Football "ligne:colonne" ──────────────────
-  // ligne 1=GK, 2=DEF, 3=MID, 4=MID-OFF, 5=ATT
-  // colonne: 1=gauche, 2=centre-gauche, 3=centre, 4=centre-droit, 5=droite
-  var cx = null;
-  var cy = null;
-
+  // ── Position précise depuis grille API Football ──────────────────
+  var cx = null, cy = null;
   if (grid && typeof grid === "string" && grid.indexOf(":") !== -1) {
     var parts = grid.split(":");
     var line = parseInt(parts[0]) || 1;
     var col  = parseInt(parts[1]) || 1;
-
-    // X = profondeur sur le terrain (GK=gauche, ATT=droite)
-    var lineToX = {1:0.07, 2:0.22, 3:0.40, 4:0.57, 5:0.73, 6:0.82};
-    cx = lineToX[line] !== undefined ? lineToX[line] : Math.min(0.85, line * 0.15);
-
-    // Y = position latérale — dépend du nb de joueurs sur la ligne
-    // col 1 = toujours gauche, colonne max = toujours droite
-    // On normalise: colonne 1 sur N joueurs → y proportionnel
-    // Mais on ne connaît pas N, donc on utilise une table
-    var colToY = {
-      1: {1:0.50},
-      2: {1:0.25, 2:0.75},
-      3: {1:0.18, 2:0.50, 3:0.82},
-      4: {1:0.14, 2:0.38, 3:0.62, 4:0.86},
-      5: {1:0.10, 2:0.28, 3:0.50, 4:0.72, 5:0.90}
-    };
-    // Essayer de déterminer le nb de joueurs sur la ligne depuis la formation
-    // Sans info supplémentaire, approximation conservative
-    if (col === 1)      cy = 0.20;
-    else if (col === 2) cy = 0.42;
-    else if (col === 3) cy = 0.58;
-    else if (col === 4) cy = 0.80;
-    else                cy = 0.50;
+    // Ligne → X (profondeur)
+    var xMap = {1:0.07, 2:0.22, 3:0.40, 4:0.57, 5:0.73, 6:0.82};
+    cx = xMap[line] !== undefined ? xMap[line] : 0.45;
+    // Colonne → Y (latéral) — 1=gauche, 2=centre-gauche, 3=centre, 4=centre-droit, 5=droite
+    var yMap = {1:0.18, 2:0.38, 3:0.50, 4:0.62, 5:0.82};
+    cy = yMap[col] !== undefined ? yMap[col] : 0.50;
   }
 
-  // Fallback par poste
-  var posKey = (pos || "M").toUpperCase();
-  if (posKey==="DEF"||posKey==="CB"||posKey==="LB"||posKey==="RB"||posKey==="D") posKey="D";
-  else if (posKey==="MID"||posKey==="MF"||posKey==="CM"||posKey==="DM"||posKey==="AM"||posKey==="M") posKey="M";
-  else if (posKey==="ATT"||posKey==="FWD"||posKey==="ST"||posKey==="LW"||posKey==="RW"||posKey==="F"||posKey==="A") posKey="F";
-  else if (posKey==="GK"||posKey==="G"||posKey==="GS") posKey="G";
-
-  var fallback = {"G":{cx:0.07,cy:0.50},"D":{cx:0.22,cy:0.50},"M":{cx:0.45,cy:0.50},"F":{cx:0.72,cy:0.50}};
-  if (cx === null) cx = (fallback[posKey]||fallback["M"]).cx;
-  if (cy === null) cy = (fallback[posKey]||fallback["M"]).cy;
-
-  // Dispersions selon poste
-  var dispX = {"G":0.04,"D":0.06,"M":0.09,"F":0.07}[posKey] || 0.08;
-  var dispY = {"G":0.12,"D":0.18,"M":0.22,"F":0.18}[posKey] || 0.18;
+  // Fallback poste
+  var posKey = (pos||"M").toUpperCase();
+  if ("DEF CB LB RB D".indexOf(posKey)!==-1) posKey="D";
+  else if ("MID MF CM DM AM M".indexOf(posKey)!==-1) posKey="M";
+  else if ("ATT FWD ST LW RW F A".indexOf(posKey)!==-1) posKey="F";
+  else if ("GK G GS".indexOf(posKey)!==-1) posKey="G";
+  var fb = {"G":{x:0.07,y:0.50},"D":{x:0.22,y:0.50},"M":{x:0.45,y:0.50},"F":{x:0.72,y:0.50}};
+  if (cx===null) cx = (fb[posKey]||fb["M"]).x;
+  if (cy===null) cy = (fb[posKey]||fb["M"]).y;
 
   // ── Générateur déterministe ──────────────────────────────────────
   var seed = Math.round(
-    (mins*17 + ((stats&&stats.passes&&stats.passes.total)||0)*7 +
-     ((stats&&stats.shots&&stats.shots.total)||0)*13 +
-     ((stats&&stats.tackles&&stats.tackles.total)||0)*11) % 99991
+    (mins*31 + ((stats&&stats.passes&&stats.passes.total)||0)*7 +
+     ((stats&&stats.shots&&stats.shots.total)||0)*13) % 99991
   ) || 42;
-  function rand() { seed=(seed*1664525+1013904223)&0xFFFFFFFF; return (seed>>>0)/4294967295; }
-  function gauss() {
-    var u=0,v=0; while(u===0)u=rand(); while(v===0)v=rand();
-    return Math.sqrt(-2.0*Math.log(u))*Math.cos(6.2832*v);
-  }
+  function rand(){ seed=(seed*1664525+1013904223)&0xFFFFFFFF; return (seed>>>0)/4294967295; }
+  function gauss(){ var u=0,v=0; while(!u)u=rand(); while(!v)v=rand(); return Math.sqrt(-2*Math.log(u))*Math.cos(6.2832*v); }
+  function clamp(v,a,b){ return Math.max(a,Math.min(b,v)); }
 
   var points = [];
-  var baseCnt = Math.round(22 + intensity*28);
 
-  // Zone principale (65%)
-  for (var i=0; i<Math.round(baseCnt*0.65); i++) {
-    var x = cx + gauss()*dispX;
-    var y = cy + gauss()*dispY;
-    points.push({x:Math.max(0.02,Math.min(0.97,x)), y:Math.max(0.02,Math.min(0.97,y)), w:0.65+rand()*0.35});
-  }
-  // Zone secondaire dispersée (35%)
-  for (var j=0; j<Math.round(baseCnt*0.35); j++) {
-    var x2 = cx + gauss()*dispX*2.2;
-    var y2 = cy + gauss()*dispY*1.8;
-    points.push({x:Math.max(0.02,Math.min(0.97,x2)), y:Math.max(0.02,Math.min(0.97,y2)), w:0.30+rand()*0.35});
+  // ── STYLE SOFASCORE : 2-3 zones concentrées ─────────────────────
+  // Zone 1 : zone principale (beaucoup de points, petit rayon)
+  var n1 = Math.round(16 * intensity);
+  for (var i=0; i<n1; i++) {
+    points.push({
+      x: clamp(cx + gauss()*0.04, 0.03, 0.96),
+      y: clamp(cy + gauss()*0.08, 0.03, 0.96),
+      w: 0.80 + rand()*0.20
+    });
   }
 
-  // Points spéciaux stats réelles
-  var shots = Math.min((stats&&stats.shots&&stats.shots.total)||0, 5);
+  // Zone 2 : zone secondaire proche (moins de points, légèrement décalée)
+  // Déplacement naturel du joueur — vers l'avant ou latéral
+  var dx2 = posKey==="G" ? 0.04 : (posKey==="F" ? -0.06 : 0.08);
+  var dy2 = (rand()-0.5)*0.18;
+  var n2 = Math.round(8 * intensity);
+  for (var j=0; j<n2; j++) {
+    points.push({
+      x: clamp(cx+dx2 + gauss()*0.04, 0.03, 0.96),
+      y: clamp(cy+dy2 + gauss()*0.07, 0.03, 0.96),
+      w: 0.55 + rand()*0.25
+    });
+  }
+
+  // Zone 3 : quelques actions isolées (3-4 points max, éloignés mais pas partout)
+  var n3 = Math.round(4 * intensity);
+  for (var k=0; k<n3; k++) {
+    // Direction limitée — max 15% du terrain d'écart
+    var dx3 = (rand()-0.5)*0.22;
+    var dy3 = (rand()-0.5)*0.22;
+    points.push({
+      x: clamp(cx+dx3, 0.03, 0.96),
+      y: clamp(cy+dy3, 0.03, 0.96),
+      w: 0.30 + rand()*0.25
+    });
+  }
+
+  // Tirs → zone surface adverse (petits points chauds précis)
+  var shots = Math.min((stats&&stats.shots&&stats.shots.total)||0, 4);
   for (var s=0; s<shots; s++)
-    points.push({x:0.78+gauss()*0.06, y:0.48+gauss()*0.14, w:0.95});
-  var tacks = Math.min((stats&&stats.tackles&&stats.tackles.total)||0, 4);
+    points.push({x:clamp(0.80+gauss()*0.05,0.70,0.96), y:clamp(0.50+gauss()*0.12,0.20,0.80), w:1.0});
+
+  // Tacles → zone du joueur
+  var tacks = Math.min((stats&&stats.tackles&&stats.tackles.total)||0, 3);
   for (var t=0; t<tacks; t++)
-    points.push({x:cx+gauss()*0.07, y:cy+gauss()*0.16, w:0.80});
+    points.push({x:clamp(cx+gauss()*0.04,0.03,0.96), y:clamp(cy+gauss()*0.10,0.03,0.96), w:0.75});
 
   return points;
 }
