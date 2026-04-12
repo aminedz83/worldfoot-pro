@@ -1766,92 +1766,110 @@ const organizePlayersByLine = (players, formation) => {
 
 
 
-// ══ Heatmap style SofaScore — fond clair, points dispersés ══════════
-function generateHeatmapPoints(pos, stats, minutes) {
+// ══ Heatmap précise — grille formation réelle ══════════════════════
+function generateHeatmapPoints(pos, stats, minutes, grid) {
   var mins = minutes || (stats && stats.games && stats.games.minutes) || 90;
   var intensity = Math.min(1.0, mins / 90);
+
+  // ── Décoder la grille "ligne:colonne" de l'API Football ───────────
+  // Ligne 1 = gardien (x proche de 0), ligne 6+ = attaquant (x proche de 1)
+  // Colonne = position latérale (1=gauche, 2=centre, 3=droite selon la ligne)
+  var gridX = null; // 0→1, gauche de son camp→droite
+  var gridY = null; // 0→1, haut→bas
+
+  if (grid && typeof grid === "string" && grid.indexOf(":") !== -1) {
+    var parts = grid.split(":");
+    var line  = parseInt(parts[0]) || 1;  // 1=GK, 2=DEF, 3-4=MID, 5+=ATT
+    var col   = parseInt(parts[1]) || 1;
+    // Mapper ligne → position X sur le terrain (GK=0.07, ATT=0.78)
+    // API Football: ligne 1=GK, lignes 2-3=DEF, 3-4=MID, 4-5=ATT
+    var lineToX = {1:0.07, 2:0.22, 3:0.38, 4:0.55, 5:0.70, 6:0.80};
+    gridX = lineToX[line] || (line * 0.15);
+    gridX = Math.min(0.90, gridX);
+    // Colonne → Y latéral (dépend du nb de joueurs sur la ligne)
+    // Col 1=gauche, 2=milieu, 3=droite — approximation
+    var colMap = {1:0.18, 2:0.38, 3:0.50, 4:0.62, 5:0.82};
+    gridY = colMap[col] || 0.50;
+  }
+
+  // ── Zone principale basée sur grid ou poste ─────────────────────
   var posKey = (pos || "M").toUpperCase();
-  if (posKey==="DEF"||posKey==="D"||posKey==="CB"||posKey==="LB"||posKey==="RB") posKey="D";
-  else if (posKey==="MID"||posKey==="MF"||posKey==="M"||posKey==="CM"||posKey==="DM"||posKey==="AM") posKey="M";
-  else if (posKey==="ATT"||posKey==="FWD"||posKey==="F"||posKey==="A"||posKey==="ST"||posKey==="LW"||posKey==="RW") posKey="F";
-  else if (posKey==="GK"||posKey==="G"||posKey==="GS") posKey="G";
+  if (posKey==="DEF"||posKey==="CB"||posKey==="LB"||posKey==="RB") posKey="D";
+  else if (posKey==="MID"||posKey==="MF"||posKey==="CM"||posKey==="DM"||posKey==="AM") posKey="M";
+  else if (posKey==="ATT"||posKey==="FWD"||posKey==="ST"||posKey==="LW"||posKey==="RW") posKey="F";
+  else if (posKey==="GK"||posKey==="GS") posKey="G";
 
-  // Zones dispersées sur tout le terrain — style SofaScore
-  // Nombreuses petites zones au lieu de quelques grandes
-  var zoneProfiles = {
-    "G": [
-      {cx:0.06, cy:0.50, sx:0.03, sy:0.10, w:0.9, count:12},
-      {cx:0.10, cy:0.35, sx:0.04, sy:0.08, w:0.5, count:5},
-      {cx:0.10, cy:0.65, sx:0.04, sy:0.08, w:0.5, count:5},
-      {cx:0.15, cy:0.50, sx:0.05, sy:0.12, w:0.4, count:4},
-    ],
-    "D": [
-      {cx:0.20, cy:0.50, sx:0.05, sy:0.16, w:0.9, count:10},
-      {cx:0.28, cy:0.40, sx:0.06, sy:0.12, w:0.7, count:8},
-      {cx:0.28, cy:0.60, sx:0.06, sy:0.12, w:0.7, count:8},
-      {cx:0.35, cy:0.50, sx:0.07, sy:0.18, w:0.5, count:6},
-      {cx:0.42, cy:0.35, sx:0.05, sy:0.10, w:0.3, count:4},
-      {cx:0.42, cy:0.65, sx:0.05, sy:0.10, w:0.3, count:4},
-    ],
-    "M": [
-      {cx:0.35, cy:0.50, sx:0.07, sy:0.18, w:0.8, count:8},
-      {cx:0.45, cy:0.35, sx:0.08, sy:0.12, w:0.7, count:7},
-      {cx:0.45, cy:0.65, sx:0.08, sy:0.12, w:0.7, count:7},
-      {cx:0.55, cy:0.50, sx:0.07, sy:0.18, w:0.8, count:8},
-      {cx:0.62, cy:0.40, sx:0.06, sy:0.10, w:0.5, count:5},
-      {cx:0.62, cy:0.60, sx:0.06, sy:0.10, w:0.5, count:5},
-      {cx:0.28, cy:0.50, sx:0.06, sy:0.14, w:0.4, count:4},
-    ],
-    "F": [
-      {cx:0.60, cy:0.50, sx:0.07, sy:0.18, w:0.7, count:8},
-      {cx:0.70, cy:0.35, sx:0.07, sy:0.12, w:0.8, count:8},
-      {cx:0.70, cy:0.65, sx:0.07, sy:0.12, w:0.8, count:8},
-      {cx:0.78, cy:0.50, sx:0.06, sy:0.15, w:0.9, count:10},
-      {cx:0.85, cy:0.42, sx:0.05, sy:0.10, w:0.7, count:6},
-      {cx:0.85, cy:0.58, sx:0.05, sy:0.10, w:0.7, count:6},
-      {cx:0.50, cy:0.50, sx:0.06, sy:0.15, w:0.3, count:4},
-    ]
+  // Fallback si pas de grid
+  var defaultZone = {
+    "G": {cx:0.07, cy:0.50, sxPri:0.04, syPri:0.15, sxSec:0.07, sySec:0.20},
+    "D": {cx:0.22, cy:0.50, sxPri:0.06, syPri:0.18, sxSec:0.10, sySec:0.25},
+    "M": {cx:0.45, cy:0.50, sxPri:0.08, syPri:0.20, sxSec:0.14, sySec:0.28},
+    "F": {cx:0.72, cy:0.50, sxPri:0.07, syPri:0.18, sxSec:0.12, sySec:0.24}
   };
+  var def = defaultZone[posKey] || defaultZone["M"];
+  var cx  = gridX !== null ? gridX : def.cx;
+  var cy  = gridY !== null ? gridY : def.cy;
 
-  var profiles = zoneProfiles[posKey] || zoneProfiles["M"];
-  var scale = 0.6 + intensity * 0.4;
-  var points = [];
+  // Dispersions — plus larges si pas de grid précis
+  var sxPri = gridX !== null ? 0.06 : def.sxPri;
+  var syPri = gridY !== null ? 0.15 : def.syPri;
+  var sxSec = gridX !== null ? 0.12 : def.sxSec;
+  var sySec = gridY !== null ? 0.24 : def.sySec;
 
+  // ── Générateur pseudo-aléatoire déterministe ─────────────────────
   var seed = Math.round(
     (mins * 17 + ((stats&&stats.passes&&stats.passes.total)||0) * 7 +
-     ((stats&&stats.shots&&stats.shots.total)||0) * 13) % 99991
+     ((stats&&stats.shots&&stats.shots.total)||0) * 13 +
+     ((stats&&stats.tackles&&stats.tackles.total)||0) * 11) % 99991
   ) || 42;
   function rand() {
     seed = (seed * 1664525 + 1013904223) & 0xFFFFFFFF;
     return (seed >>> 0) / 4294967295;
   }
   function gauss() {
-    var u=0, v=0;
-    while(u===0) u=rand();
-    while(v===0) v=rand();
-    return Math.sqrt(-2.0*Math.log(u))*Math.cos(2.0*Math.PI*v);
+    var u=0,v=0;
+    while(u===0) u=rand(); while(v===0) v=rand();
+    return Math.sqrt(-2.0*Math.log(u))*Math.cos(6.2832*v);
   }
 
-  profiles.forEach(function(z) {
-    var n = Math.round(z.count * scale);
-    for (var i=0; i<n; i++) {
-      var x = z.cx + gauss()*z.sx;
-      var y = z.cy + gauss()*z.sy;
-      x = Math.max(0.02, Math.min(0.98, x));
-      y = Math.max(0.02, Math.min(0.98, y));
-      points.push({x:x, y:y, w:z.w*(0.6+rand()*0.4)});
-    }
-  });
+  var points = [];
+  var baseCnt = Math.round((20 + intensity*30));
 
-  // Tirs → surface adverse dispersés
+  // Zone principale (70% des points)
+  for (var i=0; i<Math.round(baseCnt*0.70); i++) {
+    var x = cx + gauss()*sxPri;
+    var y = cy + gauss()*syPri;
+    points.push({
+      x: Math.max(0.02,Math.min(0.97,x)),
+      y: Math.max(0.02,Math.min(0.97,y)),
+      w: 0.7 + rand()*0.3
+    });
+  }
+  // Zone secondaire dispersée (30% des points) — déplacements courts
+  for (var j=0; j<Math.round(baseCnt*0.30); j++) {
+    var x2 = cx + gauss()*sxSec;
+    var y2 = cy + gauss()*sySec;
+    points.push({
+      x: Math.max(0.02,Math.min(0.97,x2)),
+      y: Math.max(0.02,Math.min(0.97,y2)),
+      w: 0.3 + rand()*0.4
+    });
+  }
+
+  // ── Points spéciaux basés sur stats réelles ──────────────────────
   var shots = Math.min((stats&&stats.shots&&stats.shots.total)||0, 5);
-  for (var s=0; s<shots; s++)
-    points.push({x:0.78+gauss()*0.07, y:0.50+gauss()*0.15, w:0.9});
-  // Tacles → zone défensive
+  for (var s=0; s<shots; s++) {
+    // Tir → vers la surface adverse (droite)
+    points.push({x:0.78+gauss()*0.06, y:0.48+gauss()*0.14, w:0.95});
+  }
   var tacks = Math.min((stats&&stats.tackles&&stats.tackles.total)||0, 4);
   for (var t=0; t<tacks; t++) {
-    var tx = posKey==="D"?0.20+gauss()*0.08:0.38+gauss()*0.10;
-    points.push({x:tx, y:0.50+gauss()*0.22, w:0.6});
+    // Tacle → zone proche du joueur mais légèrement avancée
+    points.push({x:cx+gauss()*0.08, y:cy+gauss()*0.18, w:0.80});
+  }
+  var intercepts = Math.min((stats&&stats.tackles&&stats.tackles.interceptions)||0, 3);
+  for (var n=0; n<intercepts; n++) {
+    points.push({x:cx-0.03+gauss()*0.07, y:cy+gauss()*0.16, w:0.75});
   }
 
   return points;
@@ -1952,9 +1970,10 @@ function HeatmapSection(props) {
   var open     = props.open;
   var onToggle = props.onToggle;
 
+  var grid    = props.grid;
   var points = React.useMemo(function() {
-    return generateHeatmapPoints(pos, stats, minutes);
-  }, [pos, minutes,
+    return generateHeatmapPoints(pos, stats, minutes, grid);
+  }, [pos, grid, minutes,
     stats&&stats.passes&&stats.passes.total,
     stats&&stats.shots&&stats.shots.total,
     stats&&stats.tackles&&stats.tackles.total
@@ -10561,6 +10580,7 @@ function MatchDetail({state,onClose,onTeam}){
                 playerSheet.stats && React.createElement(HeatmapSection, {
           stats:    playerSheet.stats,
           pos:      playerSheet.pos,
+          grid:     playerSheet.grid,
           minutes:  playerSheet.stats && playerSheet.stats.games && playerSheet.stats.games.minutes,
           open:     showHeatmap,
           onToggle: function(){ setShowHeatmap(function(v){ return !v; }); }
