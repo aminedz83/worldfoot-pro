@@ -1766,95 +1766,128 @@ const organizePlayersByLine = (players, formation) => {
 
 
 
-// ══ Heatmap style SofaScore — fond clair, points dispersés ══════════
-function generateHeatmapPoints(pos, stats, minutes) {
-  var mins = minutes || (stats && stats.games && stats.games.minutes) || 90;
-  var intensity = Math.min(1.0, mins / 90);
-  var posKey = (pos || "M").toUpperCase();
-  if (posKey==="DEF"||posKey==="D"||posKey==="CB"||posKey==="LB"||posKey==="RB") posKey="D";
-  else if (posKey==="MID"||posKey==="MF"||posKey==="M"||posKey==="CM"||posKey==="DM"||posKey==="AM") posKey="M";
-  else if (posKey==="ATT"||posKey==="FWD"||posKey==="F"||posKey==="A"||posKey==="ST"||posKey==="LW"||posKey==="RW") posKey="F";
-  else if (posKey==="GK"||posKey==="G"||posKey==="GS") posKey="G";
-
-  // Zones dispersées sur tout le terrain — style SofaScore
-  // Nombreuses petites zones au lieu de quelques grandes
-  var zoneProfiles = {
-    "G": [
-      {cx:0.06, cy:0.50, sx:0.03, sy:0.10, w:0.9, count:12},
-      {cx:0.10, cy:0.35, sx:0.04, sy:0.08, w:0.5, count:5},
-      {cx:0.10, cy:0.65, sx:0.04, sy:0.08, w:0.5, count:5},
-      {cx:0.15, cy:0.50, sx:0.05, sy:0.12, w:0.4, count:4},
-    ],
-    "D": [
-      {cx:0.20, cy:0.50, sx:0.05, sy:0.16, w:0.9, count:10},
-      {cx:0.28, cy:0.40, sx:0.06, sy:0.12, w:0.7, count:8},
-      {cx:0.28, cy:0.60, sx:0.06, sy:0.12, w:0.7, count:8},
-      {cx:0.35, cy:0.50, sx:0.07, sy:0.18, w:0.5, count:6},
-      {cx:0.42, cy:0.35, sx:0.05, sy:0.10, w:0.3, count:4},
-      {cx:0.42, cy:0.65, sx:0.05, sy:0.10, w:0.3, count:4},
-    ],
-    "M": [
-      {cx:0.35, cy:0.50, sx:0.07, sy:0.18, w:0.8, count:8},
-      {cx:0.45, cy:0.35, sx:0.08, sy:0.12, w:0.7, count:7},
-      {cx:0.45, cy:0.65, sx:0.08, sy:0.12, w:0.7, count:7},
-      {cx:0.55, cy:0.50, sx:0.07, sy:0.18, w:0.8, count:8},
-      {cx:0.62, cy:0.40, sx:0.06, sy:0.10, w:0.5, count:5},
-      {cx:0.62, cy:0.60, sx:0.06, sy:0.10, w:0.5, count:5},
-      {cx:0.28, cy:0.50, sx:0.06, sy:0.14, w:0.4, count:4},
-    ],
-    "F": [
-      {cx:0.60, cy:0.50, sx:0.07, sy:0.18, w:0.7, count:8},
-      {cx:0.70, cy:0.35, sx:0.07, sy:0.12, w:0.8, count:8},
-      {cx:0.70, cy:0.65, sx:0.07, sy:0.12, w:0.8, count:8},
-      {cx:0.78, cy:0.50, sx:0.06, sy:0.15, w:0.9, count:10},
-      {cx:0.85, cy:0.42, sx:0.05, sy:0.10, w:0.7, count:6},
-      {cx:0.85, cy:0.58, sx:0.05, sy:0.10, w:0.7, count:6},
-      {cx:0.50, cy:0.50, sx:0.06, sy:0.15, w:0.3, count:4},
-    ]
+// ══ Heatmap réelle SofaScore ════════════════════════════════════════
+function fetchSofaHeatmap(fixDate, homeTeam, awayTeam, playerName, pos, stats, minutes, onResult) {
+  var SF_HEADERS = {
+    "Accept": "application/json",
+    "User-Agent": "Mozilla/5.0 (iPhone; CPU iPhone OS 17_0 like Mac OS X) AppleWebKit/605.1.15"
   };
 
-  var profiles = zoneProfiles[posKey] || zoneProfiles["M"];
-  var scale = 0.6 + intensity * 0.4;
-  var points = [];
-
-  var seed = Math.round(
-    (mins * 17 + ((stats&&stats.passes&&stats.passes.total)||0) * 7 +
-     ((stats&&stats.shots&&stats.shots.total)||0) * 13) % 99991
-  ) || 42;
-  function rand() {
-    seed = (seed * 1664525 + 1013904223) & 0xFFFFFFFF;
-    return (seed >>> 0) / 4294967295;
-  }
-  function gauss() {
-    var u=0, v=0;
-    while(u===0) u=rand();
-    while(v===0) v=rand();
-    return Math.sqrt(-2.0*Math.log(u))*Math.cos(2.0*Math.PI*v);
+  function toSlug(s) {
+    return (s||"").toLowerCase()
+      .replace(/[àáâãäå]/g,"a").replace(/[èéêë]/g,"e").replace(/[ìíîï]/g,"i")
+      .replace(/[òóôõöø]/g,"o").replace(/[ùúûü]/g,"u").replace(/[ñ]/g,"n")
+      .replace(/[ç]/g,"c").replace(/[ß]/g,"ss").replace(/[^a-z0-9]+/g,"-")
+      .replace(/^-|-$/g,"");
   }
 
-  profiles.forEach(function(z) {
-    var n = Math.round(z.count * scale);
-    for (var i=0; i<n; i++) {
-      var x = z.cx + gauss()*z.sx;
-      var y = z.cy + gauss()*z.sy;
-      x = Math.max(0.02, Math.min(0.98, x));
-      y = Math.max(0.02, Math.min(0.98, y));
-      points.push({x:x, y:y, w:z.w*(0.6+rand()*0.4)});
-    }
-  });
+  // Chercher l'event via l'API events/slug
+  var hSlug = toSlug(homeTeam);
+  var aSlug = toSlug(awayTeam);
+  var slugUrl = "https://api.sofascore.com/api/v1/sport/football/scheduled-events/" +
+    (fixDate ? fixDate.substring(0,10) : new Date().toISOString().substring(0,10));
 
-  // Tirs → surface adverse dispersés
-  var shots = Math.min((stats&&stats.shots&&stats.shots.total)||0, 5);
-  for (var s=0; s<shots; s++)
-    points.push({x:0.78+gauss()*0.07, y:0.50+gauss()*0.15, w:0.9});
-  // Tacles → zone défensive
-  var tacks = Math.min((stats&&stats.tackles&&stats.tackles.total)||0, 4);
-  for (var t=0; t<tacks; t++) {
-    var tx = posKey==="D"?0.20+gauss()*0.08:0.38+gauss()*0.10;
-    points.push({x:tx, y:0.50+gauss()*0.22, w:0.6});
+  fetch(slugUrl, {headers: SF_HEADERS})
+    .then(function(r){ return r.json(); })
+    .then(function(data) {
+      var events = (data && data.events) ? data.events : [];
+      var found = null;
+      for (var i=0; i<events.length; i++) {
+        var ev = events[i];
+        var hn = toSlug(ev.homeTeam && ev.homeTeam.name || "");
+        var an = toSlug(ev.awayTeam && ev.awayTeam.name || "");
+        // Matching souple sur les 4 premiers chars
+        if ((hn.substring(0,4)===hSlug.substring(0,4) || hSlug.substring(0,4)===hn.substring(0,4)) &&
+            (an.substring(0,4)===aSlug.substring(0,4) || aSlug.substring(0,4)===an.substring(0,4))) {
+          found = ev; break;
+        }
+      }
+      if (!found) { onResult(null); return; }
+      var eventId = found.id;
+
+      // Chercher le playerId dans les lineups
+      return fetch("https://api.sofascore.com/api/v1/event/" + eventId + "/lineups", {headers: SF_HEADERS})
+        .then(function(r){ return r.json(); })
+        .then(function(ldata) {
+          var allPlayers = [];
+          var hp = ldata && ldata.home && ldata.home.players ? ldata.home.players : [];
+          var ap = ldata && ldata.away && ldata.away.players ? ldata.away.players : [];
+          allPlayers = hp.concat(ap);
+
+          var pnLow = (playerName||"").toLowerCase();
+          var foundP = null;
+          // Match exact
+          for (var j=0; j<allPlayers.length; j++) {
+            var pl = allPlayers[j].player || {};
+            if ((pl.name||"").toLowerCase() === pnLow ||
+                (pl.shortName||"").toLowerCase() === pnLow) {
+              foundP = pl; break;
+            }
+          }
+          // Match partiel lastName
+          if (!foundP) {
+            var lastName = pnLow.split(" ").pop();
+            for (var k=0; k<allPlayers.length; k++) {
+              var pl2 = allPlayers[k].player || {};
+              var n2 = (pl2.name||pl2.shortName||"").toLowerCase();
+              if (lastName.length > 2 && n2.indexOf(lastName) !== -1) {
+                foundP = pl2; break;
+              }
+            }
+          }
+          if (!foundP) { onResult(null); return; }
+
+          return fetch("https://api.sofascore.com/api/v1/event/" + eventId + "/player/" + foundP.id + "/heatmap",
+            {headers: SF_HEADERS})
+            .then(function(r){ return r.json(); })
+            .then(function(hmData) {
+              if (hmData && hmData.heatmap && hmData.heatmap.length > 0) {
+                // SofaScore: x=0→100 (défense→attaque), y=0→100 (droite→gauche)
+                // Canvas: x=0→1 (gauche→droite), y=0→1 (haut→bas)
+                var pts = hmData.heatmap.map(function(p) {
+                  return {x: p.x/100, y: p.y/100, w: 1.0};
+                });
+                onResult(pts);
+              } else { onResult(null); }
+            });
+        });
+    })
+    .catch(function(e){ console.log("SofaScore heatmap error:", e); onResult(null); });
+}
+
+function generateFallbackPoints(pos, stats, minutes, grid) {
+  var mins = minutes || (stats && stats.games && stats.games.minutes) || 90;
+  var intensity = Math.min(1.0, mins / 90);
+  var posKey = (pos||"M").toUpperCase();
+  if ("DEF CB LB RB D".indexOf(posKey)!==-1) posKey="D";
+  else if ("MID MF CM DM AM M".indexOf(posKey)!==-1) posKey="M";
+  else if ("ATT FWD ST LW RW F A".indexOf(posKey)!==-1) posKey="F";
+  else if ("GK G GS".indexOf(posKey)!==-1) posKey="G";
+
+  var cx = null, cy = null;
+  if (grid && grid.indexOf(":") !== -1) {
+    var parts = grid.split(":");
+    var line = parseInt(parts[0])||1, col = parseInt(parts[1])||1;
+    var xMap = {1:0.07,2:0.22,3:0.40,4:0.57,5:0.73,6:0.82};
+    var yMap = {1:0.18,2:0.38,3:0.50,4:0.62,5:0.82};
+    cx = xMap[line]||0.45; cy = yMap[col]||0.50;
   }
+  var fb = {"G":{x:0.07,y:0.50},"D":{x:0.22,y:0.50},"M":{x:0.45,y:0.50},"F":{x:0.72,y:0.50}};
+  if (!cx) cx = (fb[posKey]||fb["M"]).x;
+  if (!cy) cy = (fb[posKey]||fb["M"]).y;
 
-  return points;
+  var seed = Math.round((mins*31+((stats&&stats.passes&&stats.passes.total)||0)*7)%99991)||42;
+  function rand(){ seed=(seed*1664525+1013904223)&0xFFFFFFFF; return (seed>>>0)/4294967295; }
+  function gauss(){ var u=0,v=0; while(!u)u=rand(); while(!v)v=rand(); return Math.sqrt(-2*Math.log(u))*Math.cos(6.2832*v); }
+
+  var pts = [], n = Math.round(20+intensity*20);
+  for(var i=0;i<Math.round(n*0.65);i++)
+    pts.push({x:Math.max(0.02,Math.min(0.97,cx+gauss()*0.05)),y:Math.max(0.02,Math.min(0.97,cy+gauss()*0.10)),w:0.8+rand()*0.2});
+  for(var j=0;j<Math.round(n*0.35);j++)
+    pts.push({x:Math.max(0.02,Math.min(0.97,cx+gauss()*0.12)),y:Math.max(0.02,Math.min(0.97,cy+gauss()*0.22)),w:0.35+rand()*0.35});
+  var shots=Math.min((stats&&stats.shots&&stats.shots.total)||0,4);
+  for(var s=0;s<shots;s++) pts.push({x:Math.max(0.02,Math.min(0.97,0.80+gauss()*0.05)),y:Math.max(0.02,Math.min(0.97,0.50+gauss()*0.12)),w:0.95});
+  return pts;
 }
 
 function HeatmapCanvas(props) {
@@ -1875,7 +1908,7 @@ function HeatmapCanvas(props) {
     ctx.scale(dpr, dpr);
 
     // ── Fond clair style SofaScore ──────────────────────────────────
-    ctx.fillStyle = "#e8f5e9";
+    ctx.fillStyle = "#f0faf0";
     ctx.fillRect(0, 0, W, H);
 
     // Stries légères
@@ -1885,12 +1918,22 @@ function HeatmapCanvas(props) {
       ctx.fillRect(si*stripeW, 0, stripeW, H);
     }
 
-    // ── Heatmap : petits points dispersés style SofaScore ───────────
-    // Rayon petit = dispersion réaliste
+    // ── Passe 1 : fond diffus pour fusion des zones proches ──────────
+    pts.forEach(function(pt) {
+      var px=pt.x*W, py=pt.y*H;
+      var rd = W * 0.09 * pt.w;
+      var gd = ctx.createRadialGradient(px,py,0,px,py,rd);
+      gd.addColorStop(0,   "rgba(255,252,32," + (0.08*pt.w) + ")");
+      gd.addColorStop(0.5, "rgba(203,237,191,"+ (0.05*pt.w) + ")");
+      gd.addColorStop(1,   "rgba(203,237,191,0)");
+      ctx.fillStyle=gd; ctx.beginPath(); ctx.arc(px,py,rd,0,Math.PI*2); ctx.fill();
+    });
+
+    // ── Passe 2 : points chauds concentrés ───────────────────────────
     pts.forEach(function(pt) {
       var px = pt.x * W;
       var py = pt.y * H;
-      var r  = W * 0.055 * pt.w;   // petits points — clé du style SofaScore
+      var r  = W * 0.048 * pt.w;   // rayon optimal SofaScore
       var g  = ctx.createRadialGradient(px, py, 0, px, py, r);
       // Couleurs chaudes mais transparentes → se superposent naturellement
       if (pt.w > 0.75) {
@@ -1910,7 +1953,7 @@ function HeatmapCanvas(props) {
     // ── Lignes terrain style clair ───────────────────────────────────
     ctx.strokeStyle = "rgba(0,100,0,0.45)";
     ctx.lineWidth   = 1.1;
-    var pad=10, pw=W-pad*2, ph=H-pad*2;
+    var pad=6, pw=W-pad*2, ph=H-pad*2;
 
     ctx.strokeRect(pad, pad, pw, ph);
     ctx.beginPath(); ctx.moveTo(W/2, pad); ctx.lineTo(W/2, H-pad); ctx.stroke();
@@ -1948,63 +1991,89 @@ function HeatmapCanvas(props) {
 function HeatmapSection(props) {
   var stats    = props.stats;
   var pos      = props.pos || "M";
+  var grid     = props.grid;
   var minutes  = props.minutes;
   var open     = props.open;
   var onToggle = props.onToggle;
+  var fixDate  = props.fixDate;
+  var homeTeam = props.homeTeam;
+  var awayTeam = props.awayTeam;
+  var playerName = props.playerName;
 
-  var points = React.useMemo(function() {
-    return generateHeatmapPoints(pos, stats, minutes);
-  }, [pos, minutes,
-    stats&&stats.passes&&stats.passes.total,
-    stats&&stats.shots&&stats.shots.total,
-    stats&&stats.tackles&&stats.tackles.total
-  ]);
+  var [points, setPoints] = React.useState(null);
+  var [loading, setLoading] = React.useState(false);
+
+  React.useEffect(function() {
+    if (!open) return;
+    if (points) return; // déjà chargé
+    setLoading(true);
+    fetchSofaHeatmap(fixDate, homeTeam, awayTeam, playerName, pos, stats, minutes, function(pts) {
+      if (pts && pts.length > 0) {
+        setPoints(pts);
+      } else {
+        setPoints(generateFallbackPoints(pos, stats, minutes, grid));
+      }
+      setLoading(false);
+    });
+  }, [open]);
+
+  var displayPoints = points || (open ? [] : null);
 
   return React.createElement("div", {style:{borderBottom:"1px solid #f1f5f9"}},
     React.createElement("button", {
       onClick: onToggle,
-      style: {
-        display:"flex", alignItems:"center", justifyContent:"space-between",
-        width:"100%", padding:"13px 16px",
-        background:"none", border:"none", cursor:"pointer"
-      }
+      style:{display:"flex",alignItems:"center",justifyContent:"space-between",
+        width:"100%",padding:"13px 16px",background:"none",border:"none",cursor:"pointer"}
     },
-      React.createElement("div", {style:{display:"flex",alignItems:"center",gap:10}},
-        React.createElement("div", {style:{
-          width:28, height:28, borderRadius:6, flexShrink:0,
+      React.createElement("div",{style:{display:"flex",alignItems:"center",gap:10}},
+        React.createElement("div",{style:{
+          width:28,height:28,borderRadius:6,flexShrink:0,
           background:"linear-gradient(135deg,#22c55e,#16a34a)",
-          display:"flex", alignItems:"center", justifyContent:"center"
+          display:"flex",alignItems:"center",justifyContent:"center"
         }}, React.createElement("span",{style:{fontSize:14}},"\u26BD")),
         React.createElement("span",{style:{fontSize:14,fontWeight:700,color:"#0f172a"}},
           "Carte thermique du match")
       ),
       React.createElement("span",{style:{
-        fontSize:10, fontWeight:700, color:"#94a3b8",
-        background:"#f8fafc", border:"1px solid #e2e8f0",
-        borderRadius:4, padding:"3px 7px"
+        fontSize:10,fontWeight:700,color:"#94a3b8",
+        background:"#f8fafc",border:"1px solid #e2e8f0",
+        borderRadius:4,padding:"3px 7px"
       }}, open ? "\u25B2" : "\u25BC")
     ),
-    open && React.createElement("div", {style:{padding:"0 16px 16px"}},
-      React.createElement("div", {style:{
-        borderRadius:14, overflow:"hidden",
-        border:"1px solid #e2e8f0",
-        boxShadow:"0 1px 8px rgba(0,0,0,0.08)"
+    open && React.createElement("div",{style:{padding:"0 16px 16px"}},
+      loading && React.createElement("div",{style:{
+        display:"flex",alignItems:"center",justifyContent:"center",
+        gap:8,padding:"24px 0",color:"#94a3b8",fontSize:13
       }},
-        React.createElement(HeatmapCanvas, {points:points, width:340, height:215})
+        React.createElement("div",{style:{
+          width:16,height:16,border:"2px solid #e2e8f0",
+          borderTopColor:"#22c55e",borderRadius:"50%",
+          animation:"spin 0.7s linear infinite"
+        }}),
+        React.createElement("span",null,"Chargement de la heatmap...")
       ),
-      React.createElement("div", {style:{
-        display:"flex", alignItems:"center", justifyContent:"center",
-        gap:6, marginTop:10
-      }},
-        React.createElement("div", {style:{
-          display:"flex", height:7, borderRadius:4, overflow:"hidden", width:100
+      !loading && displayPoints && React.createElement("div",null,
+        React.createElement("div",{style:{
+          borderRadius:14,overflow:"hidden",
+          border:"1px solid #e2e8f0",
+          boxShadow:"0 1px 8px rgba(0,0,0,0.08)"
         }},
-          ["#ffe066","#ffaa00","#ff6600","#ff2200"].map(function(c,i){
-            return React.createElement("div",{key:i,style:{flex:1,background:c}});
-          })
+          React.createElement(HeatmapCanvas,{points:displayPoints,width:340,height:230})
         ),
-        React.createElement("span",{style:{fontSize:11,color:"#94a3b8",marginLeft:6}},
-          "Faible \u2192 Élevé")
+        React.createElement("div",{style:{
+          display:"flex",alignItems:"center",justifyContent:"center",
+          gap:6,marginTop:10
+        }},
+          React.createElement("div",{style:{
+            display:"flex",height:7,borderRadius:4,overflow:"hidden",width:100
+          }},
+            ["#cbedbf","#d5eb86","#fffc20","#ff8111","#ff1f1f"].map(function(c,i){
+              return React.createElement("div",{key:i,style:{flex:1,background:c}});
+            })
+          ),
+          React.createElement("span",{style:{fontSize:11,color:"#94a3b8",marginLeft:6}},
+            "Faible \u2192 \u00c9lev\u00e9")
+        )
       )
     )
   );
@@ -10559,11 +10628,16 @@ function MatchDetail({state,onClose,onTeam}){
         ),
         // Stats du match — style Flashscore
                 playerSheet.stats && React.createElement(HeatmapSection, {
-          stats:    playerSheet.stats,
-          pos:      playerSheet.pos,
-          minutes:  playerSheet.stats && playerSheet.stats.games && playerSheet.stats.games.minutes,
-          open:     showHeatmap,
-          onToggle: function(){ setShowHeatmap(function(v){ return !v; }); }
+          stats:      playerSheet.stats,
+          pos:        playerSheet.pos,
+          grid:       playerSheet.grid,
+          minutes:    playerSheet.stats && playerSheet.stats.games && playerSheet.stats.games.minutes,
+          fixDate:    fix && fix.fixture && fix.fixture.date,
+          homeTeam:   fix && fix.teams && fix.teams.home && fix.teams.home.name,
+          awayTeam:   fix && fix.teams && fix.teams.away && fix.teams.away.name,
+          playerName: playerSheet.name,
+          open:       showHeatmap,
+          onToggle:   function(){ setShowHeatmap(function(v){ return !v; }); }
         }),
         (playerSheet.stats || playerSheetLoading) && React.createElement("div",{style:{padding:"0 0 4px"}},
           // Loader
