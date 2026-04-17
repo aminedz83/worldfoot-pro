@@ -2,7 +2,7 @@
 <html lang="fr">
 <head>
     <meta charset="UTF-8" />
-    <!-- v313 -->
+    <!-- v314 -->
     <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate" />
     <meta http-equiv="Pragma" content="no-cache" />
     <meta http-equiv="Expires" content="0" />
@@ -1985,15 +1985,20 @@ function HeatmapCanvas(props) {
     var drawList = [];
     for (var i=0; i<pts.length; i++) {
       var pt = pts[i];
-      drawList.push({x: pt.x, y: pt.y, w: pt.w||1, a: props.isGK ? 0.70 : 0.22});
-      // GK: ajouter points satellites autour pour forme organique
+      drawList.push({x: pt.x, y: pt.y, w: pt.w||1, a: props.isGK ? 0.35 : 0.22});
+      // GK: satellites dispersés loin du centre pour éviter rond central
       if (props.isGK) {
-        for (var j=0; j<12; j++) {
+        for (var j=0; j<16; j++) {
+          var rx = (Math.random() - 0.5);
+          var ry = (Math.random() - 0.5);
+          // Forcer distance minimale du centre (pas de satellite trop proche)
+          var dist = Math.sqrt(rx*rx + ry*ry);
+          if (dist < 0.3) { rx *= 2.5; ry *= 2.5; }
           drawList.push({
-            x: pt.x + (Math.random() - 0.5) * 0.12,
-            y: pt.y + (Math.random() - 0.5) * 0.10,
-            w: (pt.w||1) * (0.3 + Math.random() * 0.5),
-            a: 0.25 + Math.random() * 0.2
+            x: pt.x + rx * 0.14,
+            y: pt.y + ry * 0.11,
+            w: (pt.w||1) * (0.2 + Math.random() * 0.4),
+            a: 0.15 + Math.random() * 0.15
           });
         }
       }
