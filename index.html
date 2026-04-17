@@ -2,7 +2,7 @@
 <html lang="fr">
 <head>
     <meta charset="UTF-8" />
-    <!-- v302 -->
+    <!-- v303 -->
     <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate" />
     <meta http-equiv="Pragma" content="no-cache" />
     <meta http-equiv="Expires" content="0" />
@@ -1955,13 +1955,13 @@ function HeatmapCanvas(props) {
     ctx.scale(dpr, dpr);
 
     // ── Fond terrain ─────────────────────────────────────────────────
-    ctx.fillStyle = "#d4edda";
+    ctx.fillStyle = "#3d7a3d";
     ctx.fillRect(0, 0, W, H);
 
     // Stries légères
     var stripeW = W / 10;
     for (var si=0; si<10; si++) {
-      ctx.fillStyle = si%2===0 ? "rgba(0,100,0,0.04)" : "rgba(0,100,0,0.02)";
+      ctx.fillStyle = si%2===0 ? "rgba(0,0,0,0.06)" : "rgba(0,0,0,0.03)";
       ctx.fillRect(si*stripeW, 0, stripeW, H);
     }
 
@@ -1973,7 +1973,7 @@ function HeatmapCanvas(props) {
     octx.scale(dpr, dpr);
 
     // Rayon de base = grosse tache style SofaScore
-    var baseR = Math.min(W, H) * 0.10;
+    var baseR = Math.min(W, H) * 0.13;
 
     // Canvas offscreen noir
     octx.fillStyle = "#000";
@@ -1985,7 +1985,7 @@ function HeatmapCanvas(props) {
       var pt  = pts[i];
       var px  = pt.x * W, py = pt.y * H;
       var r   = baseR * (0.7 + (pt.w||1) * 0.6);
-      var a   = 0.08;
+      var a   = 0.22;
       var g   = octx.createRadialGradient(px, py, 0, px, py, r);
       g.addColorStop(0,   "rgba(255,255,255," + a + ")");
       g.addColorStop(0.4, "rgba(255,255,255," + (a*0.5) + ")");
@@ -2022,7 +2022,7 @@ function HeatmapCanvas(props) {
     ctx.drawImage(off, 0, 0, W*dpr, H*dpr, 0, 0, W, H);
 
     // ── Lignes terrain ────────────────────────────────────────────────
-    ctx.strokeStyle = "rgba(0,100,0,0.5)";
+    ctx.strokeStyle = "rgba(255,255,255,0.75)";
     ctx.lineWidth   = 1.2;
     var pad=6, pw=W-pad*2, ph=H-pad*2;
 
@@ -2030,7 +2030,7 @@ function HeatmapCanvas(props) {
     ctx.beginPath(); ctx.moveTo(W/2, pad); ctx.lineTo(W/2, H-pad); ctx.stroke();
     var cr = Math.min(pw,ph)*0.13;
     ctx.beginPath(); ctx.arc(W/2, H/2, cr, 0, Math.PI*2); ctx.stroke();
-    ctx.fillStyle="rgba(0,100,0,0.6)";
+    ctx.fillStyle="rgba(255,255,255,0.8)";
     ctx.beginPath(); ctx.arc(W/2, H/2, 2.5, 0, Math.PI*2); ctx.fill();
 
     var bw=pw*0.155, bh=ph*0.44, by=pad+(ph-bh)/2;
