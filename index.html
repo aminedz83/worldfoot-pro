@@ -2,7 +2,7 @@
 <html lang="fr">
 <head>
     <meta charset="UTF-8" />
-    <!-- v317 -->
+    <!-- v318 -->
     <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate" />
     <meta http-equiv="Pragma" content="no-cache" />
     <meta http-equiv="Expires" content="0" />
@@ -1985,29 +1985,16 @@ function HeatmapCanvas(props) {
     var drawList = [];
     for (var i=0; i<pts.length; i++) {
       var pt = pts[i];
-      // Pour GK: ancrer le point central au milieu de la surface si trop excentré
-      var gkLeft = props.isGK && ((props.isHome && props.period !== 2) || (!props.isHome && props.period === 2));
-      var gkRight = props.isGK && !gkLeft;
-      // Limites de la surface en coordonnées normalisées [0-1]
-      var sxMin = gkLeft  ? 0    : (1 - 0.155);
-      var sxMax = gkLeft  ? 0.155: 1;
-      var syMin = (1 - 0.44) / 2;
-      var syMax = syMin + 0.44;
-      // Point central: clamper dans la surface
-      var cx = props.isGK ? Math.max(sxMin, Math.min(sxMax, pt.x)) : pt.x;
-      var cy = props.isGK ? Math.max(syMin, Math.min(syMax, pt.y)) : pt.y;
-      drawList.push({x: cx, y: cy, w: pt.w||1, a: props.isGK ? 0.35 : 0.22});
-      // GK: satellites dispersés mais contraints dans la surface
+      drawList.push({x: pt.x, y: pt.y, w: pt.w||1, a: props.isGK ? 0.35 : 0.22});
       if (props.isGK) {
         for (var j=0; j<16; j++) {
           var rx = (Math.random() - 0.5);
           var ry = (Math.random() - 0.5);
           var dist = Math.sqrt(rx*rx + ry*ry);
           if (dist < 0.3) { rx *= 2.5; ry *= 2.5; }
-          var sx = Math.max(sxMin, Math.min(sxMax, cx + rx * 0.12));
-          var sy = Math.max(syMin, Math.min(syMax, cy + ry * 0.11));
           drawList.push({
-            x: sx, y: sy,
+            x: pt.x + rx * 0.12,
+            y: pt.y + ry * 0.11,
             w: (pt.w||1) * (0.2 + Math.random() * 0.4),
             a: 0.15 + Math.random() * 0.15
           });
