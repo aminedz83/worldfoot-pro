@@ -2,7 +2,7 @@
 <html lang="fr">
 <head>
     <meta charset="UTF-8" />
-    <!-- v295 -->
+    <!-- v297 -->
     <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate" />
     <meta http-equiv="Pragma" content="no-cache" />
     <meta http-equiv="Expires" content="0" />
@@ -1769,7 +1769,7 @@ const organizePlayersByLine = (players, formation) => {
 // ══ Heatmap SofaScore ═══════════════════════════════════════════════
 
 var HEATMAP_ZONES = {
-  "GK":{base:{x:[42,58],y:[2,18],w:0.6}},
+  "GK":{base:{x:[35,65],y:[2,25],w:1.2}},
   "CB":{base:{x:[25,75],y:[8,35],w:1.0}},
   "LB":{base:{x:[3,28],y:[12,55],w:1.3},offensive:{x:[3,30],y:[15,70],w:1.6}},
   "RB":{base:{x:[72,97],y:[12,55],w:1.3},offensive:{x:[70,97],y:[15,70],w:1.6}},
@@ -1782,7 +1782,7 @@ var HEATMAP_ZONES = {
   "D": {base:{x:[25,75],y:[8,35],w:1.0}},
   "M": {base:{x:[25,75],y:[35,70],w:1.5}},
   "F": {base:{x:[30,75],y:[62,95],w:1.8}},
-  "G": {base:{x:[42,58],y:[2,18],w:0.6}}
+  "G": {base:{x:[35,65],y:[2,25],w:1.2}}
 };
 
 function getZoneForPos(posRaw, stats) {
@@ -1809,7 +1809,9 @@ function calibrateZone(zone, stats, fix, isHome) {
   if(!stats) return z;
   var r=parseFloat(stats.games&&stats.games.rating)||6.5;
   var posUp=(stats.games&&stats.games.position||"").toUpperCase();
-  var isGKzone = (posUp==="G"||posUp==="GK"||posUp==="GS");
+  // isHome passé comme 4ème arg, fix est 3ème — vérifier aussi via zone coords
+  var isGKzone = (posUp==="G"||posUp==="GK"||posUp==="GS")||
+    (zone&&zone.x&&zone.x[0]>=35&&zone.x[1]<=65&&zone.y&&zone.y[1]<=25);
   if(!isGKzone) {
     if(r>=8.0){z.x=[Math.max(0,z.x[0]-8),Math.min(100,z.x[1]+8)];z.y=[z.y[0]+5,Math.min(98,z.y[1]+10)];z.w*=1.3;}
     else if(r>=7.0){z.x=[Math.max(0,z.x[0]-3),Math.min(100,z.x[1]+3)];z.y=[z.y[0]+2,Math.min(98,z.y[1]+5)];z.w*=1.1;}
@@ -1834,10 +1836,11 @@ function calibrateDensity(stats) {
   var den=Math.floor(t*2.5+p*1.8+d*3.5+du*1.2+m*2.0);
   if(r>=7.5) den=Math.floor(den*1.3);
   // GK a peu de stats mais doit rester visible
-  var isGK = false;
-  if(stats&&stats.games&&stats.games.position) isGK = (stats.games.position||"").toUpperCase()==="G";
-  var minPts = isGK ? 45 : 30;
-  return Math.max(minPts, Math.min(80, Math.floor((den||400)/8)));
+  var posUpD=(stats&&stats.games&&stats.games.position||"").toUpperCase();
+  var isGK=(posUpD==="G"||posUpD==="GK"||posUpD==="GS");
+  // GK: toujours minimum 45 points et densité fixe visible
+  if(isGK) return 50;
+  return Math.max(30, Math.min(80, Math.floor((den||400)/8)));
 }
 
 function generateFallbackPoints(posRaw, stats, minutes, grid, fix, isHome, period) {
@@ -1951,67 +1954,97 @@ function HeatmapCanvas(props) {
     cv.style.height = H + "px";
     ctx.scale(dpr, dpr);
 
-    // ── Fond clair style SofaScore ──────────────────────────────────
-    ctx.fillStyle = "#f0faf0";
+    // ── Fond terrain ─────────────────────────────────────────────────
+    ctx.fillStyle = "#eaf7ea";
     ctx.fillRect(0, 0, W, H);
 
     // Stries légères
-    var stripeW = W / 12;
-    for (var si=0; si<12; si++) {
+    var stripeW = W / 10;
+    for (var si=0; si<10; si++) {
       ctx.fillStyle = si%2===0 ? "rgba(0,100,0,0.04)" : "rgba(0,100,0,0.02)";
       ctx.fillRect(si*stripeW, 0, stripeW, H);
     }
 
-    // ── Passe 1 : fond diffus pour fusion des zones proches ──────────
-    pts.forEach(function(pt) {
-      var px=pt.x*W, py=pt.y*H;
-      var rd = W * 0.09 * pt.w;
-      var gd = ctx.createRadialGradient(px,py,0,px,py,rd);
-      gd.addColorStop(0,   "rgba(255,252,32," + (0.08*pt.w) + ")");
-      gd.addColorStop(0.5, "rgba(203,237,191,"+ (0.05*pt.w) + ")");
-      gd.addColorStop(1,   "rgba(203,237,191,0)");
-      ctx.fillStyle=gd; ctx.beginPath(); ctx.arc(px,py,rd,0,Math.PI*2); ctx.fill();
-    });
+    // ── Rendu heatmap sur canvas offscreen ───────────────────────────
+    var off = document.createElement("canvas");
+    off.width  = W * dpr;
+    off.height = H * dpr;
+    var octx = off.getContext("2d");
+    octx.scale(dpr, dpr);
 
-    // ── Passe 2 : points chauds concentrés ───────────────────────────
-    pts.forEach(function(pt) {
+    // Rayon de base = grosse tache style SofaScore
+    var baseR = Math.min(W, H) * 0.16;
+
+    // Dessiner chaque point comme une grande tache gaussienne
+    for (var i=0; i<pts.length; i++) {
+      var pt = pts[i];
       var px = pt.x * W;
       var py = pt.y * H;
-      var r  = W * 0.048 * pt.w;   // rayon optimal SofaScore
-      var g  = ctx.createRadialGradient(px, py, 0, px, py, r);
-      // Couleurs chaudes mais transparentes → se superposent naturellement
-      if (pt.w > 0.75) {
-        g.addColorStop(0,   "rgba(255,50,0,"  + (0.55*pt.w) + ")");
-        g.addColorStop(0.35,"rgba(255,120,0," + (0.40*pt.w) + ")");
-        g.addColorStop(0.65,"rgba(255,200,0," + (0.20*pt.w) + ")");
-        g.addColorStop(1,   "rgba(255,220,0,0)");
-      } else {
-        g.addColorStop(0,   "rgba(255,160,0," + (0.45*pt.w) + ")");
-        g.addColorStop(0.5, "rgba(255,220,0," + (0.22*pt.w) + ")");
-        g.addColorStop(1,   "rgba(255,220,0,0)");
-      }
-      ctx.fillStyle = g;
-      ctx.beginPath(); ctx.arc(px, py, r, 0, Math.PI*2); ctx.fill();
-    });
+      var r  = baseR * (0.7 + (pt.w||1) * 0.6);
 
-    // ── Lignes terrain style clair ───────────────────────────────────
-    ctx.strokeStyle = "rgba(0,100,0,0.45)";
-    ctx.lineWidth   = 1.1;
+      var g = octx.createRadialGradient(px, py, 0, px, py, r);
+      g.addColorStop(0,   "rgba(255,255,255," + Math.min(1, 0.25*(pt.w||1)) + ")");
+      g.addColorStop(0.4, "rgba(255,255,255," + Math.min(1, 0.15*(pt.w||1)) + ")");
+      g.addColorStop(1,   "rgba(255,255,255,0)");
+
+      octx.fillStyle = g;
+      octx.beginPath();
+      octx.arc(px, py, r, 0, Math.PI*2);
+      octx.fill();
+    }
+
+    // ── Appliquer colormap sur le canvas offscreen ───────────────────
+    var imgData = octx.getImageData(0, 0, W*dpr, H*dpr);
+    var data = imgData.data;
+
+    // Colormap SofaScore: transparent → vert → jaune → orange → rouge
+    var colors = [
+      [203,237,191],  // #cbedbf vert très clair
+      [213,235,134],  // #d5eb86 vert-jaune
+      [255,252,32],   // #fffc20 jaune
+      [255,129,17],   // #ff8111 orange
+      [255,31,31]     // #ff1f1f rouge
+    ];
+
+    for (var p=0; p<data.length; p+=4) {
+      var alpha = data[p] / 255;  // utiliser canal R comme intensité
+      if (alpha < 0.01) { data[p+3]=0; continue; }
+
+      // Mapper intensité → couleur
+      var t = Math.min(1, alpha * 1.8);
+      var ci = t * (colors.length-1);
+      var c0 = Math.floor(ci), c1 = Math.min(colors.length-1, c0+1);
+      var f  = ci - c0;
+
+      data[p]   = Math.round(colors[c0][0] + f*(colors[c1][0]-colors[c0][0]));
+      data[p+1] = Math.round(colors[c0][1] + f*(colors[c1][1]-colors[c0][1]));
+      data[p+2] = Math.round(colors[c0][2] + f*(colors[c1][2]-colors[c0][2]));
+      data[p+3] = Math.round(alpha * 220);
+    }
+
+    octx.putImageData(imgData, 0, 0);
+
+    // Dessiner le canvas colorisé sur le canvas principal
+    ctx.drawImage(off, 0, 0, W*dpr, H*dpr, 0, 0, W, H);
+
+    // ── Lignes terrain ────────────────────────────────────────────────
+    ctx.strokeStyle = "rgba(0,100,0,0.5)";
+    ctx.lineWidth   = 1.2;
     var pad=6, pw=W-pad*2, ph=H-pad*2;
 
     ctx.strokeRect(pad, pad, pw, ph);
     ctx.beginPath(); ctx.moveTo(W/2, pad); ctx.lineTo(W/2, H-pad); ctx.stroke();
     var cr = Math.min(pw,ph)*0.13;
     ctx.beginPath(); ctx.arc(W/2, H/2, cr, 0, Math.PI*2); ctx.stroke();
-    ctx.fillStyle="rgba(0,100,0,0.5)";
-    ctx.beginPath(); ctx.arc(W/2, H/2, 2, 0, Math.PI*2); ctx.fill();
+    ctx.fillStyle="rgba(0,100,0,0.6)";
+    ctx.beginPath(); ctx.arc(W/2, H/2, 2.5, 0, Math.PI*2); ctx.fill();
 
     var bw=pw*0.155, bh=ph*0.44, by=pad+(ph-bh)/2;
     ctx.strokeRect(pad, by, bw, bh);
     ctx.strokeRect(W-pad-bw, by, bw, bh);
-    var sw=pw*0.055, sh=ph*0.24, sy=pad+(ph-sh)/2;
-    ctx.strokeRect(pad, sy, sw, sh);
-    ctx.strokeRect(W-pad-sw, sy, sw, sh);
+    var sw=pw*0.055, sh2=ph*0.24, sy=pad+(ph-sh2)/2;
+    ctx.strokeRect(pad, sy, sw, sh2);
+    ctx.strokeRect(W-pad-sw, sy, sw, sh2);
 
     var ps=bw*0.65;
     ctx.beginPath(); ctx.arc(pad+ps, H/2, 2, 0, Math.PI*2); ctx.fill();
@@ -2019,46 +2052,28 @@ function HeatmapCanvas(props) {
     ctx.beginPath(); ctx.arc(pad+ps, H/2, cr*0.85, -0.92, 0.92); ctx.stroke();
     ctx.beginPath(); ctx.arc(W-pad-ps, H/2, cr*0.85, Math.PI-0.92, Math.PI+0.92); ctx.stroke();
 
-    // Flèche direction
-    // Flèche direction style SofaScore
+    // ── Flèche direction ──────────────────────────────────────────────
     var arrowDir;
     if(props.isHome) {
       arrowDir = props.period===2 ? "←" : "→";
     } else {
       arrowDir = props.period===2 ? "→" : "←";
     }
-    // Dessiner une vraie flèche large
-    var aY = pad + 18;
-    var aX1 = W*0.30, aX2 = W*0.70;
-    var aMid = (aX1+aX2)/2;
-    var aH = 7;  // hauteur flèche
+    var aY=pad+18, aX1=W*0.30, aX2=W*0.70, aH=7;
     ctx.save();
-    ctx.shadowColor = "rgba(0,0,0,0.3)";
-    ctx.shadowBlur = 3;
-    ctx.fillStyle = "rgba(255,255,255,0.90)";
-    ctx.strokeStyle = "rgba(255,255,255,0.90)";
-    ctx.lineWidth = 2.5;
+    ctx.shadowColor="rgba(0,0,0,0.3)"; ctx.shadowBlur=3;
+    ctx.fillStyle="rgba(255,255,255,0.92)";
     ctx.beginPath();
-    if(arrowDir==="→") {
-      ctx.moveTo(aX1, aY);
-      ctx.lineTo(aX2-aH, aY);
-      ctx.lineTo(aX2-aH, aY-aH/2);
-      ctx.lineTo(aX2, aY+aH/2);
-      ctx.lineTo(aX2-aH, aY+aH*1.5);
-      ctx.lineTo(aX2-aH, aY+aH);
-      ctx.lineTo(aX1, aY+aH);
-      ctx.closePath();
+    if(arrowDir==="→"){
+      ctx.moveTo(aX1,aY); ctx.lineTo(aX2-aH,aY); ctx.lineTo(aX2-aH,aY-aH/2);
+      ctx.lineTo(aX2,aY+aH/2); ctx.lineTo(aX2-aH,aY+aH*1.5);
+      ctx.lineTo(aX2-aH,aY+aH); ctx.lineTo(aX1,aY+aH);
     } else {
-      ctx.moveTo(aX2, aY);
-      ctx.lineTo(aX1+aH, aY);
-      ctx.lineTo(aX1+aH, aY-aH/2);
-      ctx.lineTo(aX1, aY+aH/2);
-      ctx.lineTo(aX1+aH, aY+aH*1.5);
-      ctx.lineTo(aX1+aH, aY+aH);
-      ctx.lineTo(aX2, aY+aH);
-      ctx.closePath();
+      ctx.moveTo(aX2,aY); ctx.lineTo(aX1+aH,aY); ctx.lineTo(aX1+aH,aY-aH/2);
+      ctx.lineTo(aX1,aY+aH/2); ctx.lineTo(aX1+aH,aY+aH*1.5);
+      ctx.lineTo(aX1+aH,aY+aH); ctx.lineTo(aX2,aY+aH);
     }
-    ctx.fill();
+    ctx.closePath(); ctx.fill();
     ctx.restore();
 
   }, [pts, W, H]);
@@ -2068,7 +2083,6 @@ function HeatmapCanvas(props) {
     style: {width:"100%", height:"auto", borderRadius:12, display:"block"}
   });
 }
-
 
 function HeatmapSection(props) {
   var stats=props.stats, pos=props.pos||"M", grid=props.grid, minutes=props.minutes;
