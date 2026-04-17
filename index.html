@@ -2,7 +2,7 @@
 <html lang="fr">
 <head>
     <meta charset="UTF-8" />
-    <!-- v312 -->
+    <!-- v313 -->
     <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate" />
     <meta http-equiv="Pragma" content="no-cache" />
     <meta http-equiv="Expires" content="0" />
@@ -1988,15 +1988,12 @@ function HeatmapCanvas(props) {
       drawList.push({x: pt.x, y: pt.y, w: pt.w||1, a: props.isGK ? 0.70 : 0.22});
       // GK: ajouter points satellites autour pour forme organique
       if (props.isGK) {
-        var jitter = 0.04;
-        for (var j=0; j<6; j++) {
-          var angle = (j / 6) * Math.PI * 2;
-          var dist  = jitter * (0.5 + Math.random() * 0.5);
+        for (var j=0; j<12; j++) {
           drawList.push({
-            x: pt.x + Math.cos(angle) * dist,
-            y: pt.y + Math.sin(angle) * dist,
-            w: (pt.w||1) * 0.6,
-            a: 0.35
+            x: pt.x + (Math.random() - 0.5) * 0.12,
+            y: pt.y + (Math.random() - 0.5) * 0.10,
+            w: (pt.w||1) * (0.3 + Math.random() * 0.5),
+            a: 0.25 + Math.random() * 0.2
           });
         }
       }
