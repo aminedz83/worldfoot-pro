@@ -2,7 +2,7 @@
 <html lang="fr">
 <head>
     <meta charset="UTF-8" />
-    <!-- v318 -->
+    <!-- v319 -->
     <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate" />
     <meta http-equiv="Pragma" content="no-cache" />
     <meta http-equiv="Expires" content="0" />
@@ -2051,7 +2051,9 @@ function HeatmapCanvas(props) {
       var pby = pad + (ph - pbh) / 2;
       var gkLeft = (props.isHome && props.period !== 2) || (!props.isHome && props.period === 2);
       var pbx = gkLeft ? pad : (pad + pw - pbw);
-      ctx.rect(pbx, pby, pbw, pbh);
+      // Padding intérieur pour que les blobs ne débordent pas
+      var cp = 4;
+      ctx.rect(pbx + (gkLeft ? cp : 0), pby + cp, pbw - cp, pbh - cp*2);
     } else {
       ctx.rect(pad, pad, pw, ph);
     }
