@@ -2,7 +2,7 @@
 <html lang="fr">
 <head>
     <meta charset="UTF-8" />
-    <!-- v286 -->
+    <!-- v287 -->
     <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate" />
     <meta http-equiv="Pragma" content="no-cache" />
     <meta http-equiv="Expires" content="0" />
@@ -2032,6 +2032,11 @@ function HeatmapSection(props) {
 
   var pState=React.useState(null); var points=pState[0]; var setPoints=pState[1];
   var lState=React.useState(false); var loading=lState[0]; var setLoading=lState[1];
+
+  // Reset points si la période change (ex: 1ère → 2ème mi-temps en live)
+  React.useEffect(function() {
+    setPoints(null);
+  }, [period]);
 
   React.useEffect(function() {
     if(!open||points) return;
