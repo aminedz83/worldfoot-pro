@@ -2,7 +2,7 @@
 <html lang="fr">
 <head>
     <meta charset="UTF-8" />
-    <!-- v306 -->
+    <!-- v307 -->
     <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate" />
     <meta http-equiv="Pragma" content="no-cache" />
     <meta http-equiv="Expires" content="0" />
@@ -2022,6 +2022,9 @@ function HeatmapCanvas(props) {
     }
     octx.putImageData(imgData, 0, 0);
 
+    // ── Dimensions terrain (déclarées ici pour le clip et les lignes) ─
+    var pad=6, pw=W-pad*2, ph=H-pad*2;
+
     // ── Clip : terrain complet, ou surface de réparation pour GK ─────
     ctx.save();
     ctx.beginPath();
@@ -2042,7 +2045,6 @@ function HeatmapCanvas(props) {
     // ── Lignes terrain ────────────────────────────────────────────────
     ctx.strokeStyle = "rgba(255,255,255,0.75)";
     ctx.lineWidth   = 1.2;
-    var pad=6, pw=W-pad*2, ph=H-pad*2;
 
     ctx.strokeRect(pad, pad, pw, ph);
     ctx.beginPath(); ctx.moveTo(W/2, pad); ctx.lineTo(W/2, H-pad); ctx.stroke();
