@@ -2,7 +2,7 @@
 <html lang="fr">
 <head>
     <meta charset="UTF-8" />
-    <!-- v288 -->
+    <!-- v289 -->
     <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate" />
     <meta http-equiv="Pragma" content="no-cache" />
     <meta http-equiv="Expires" content="0" />
@@ -1999,25 +1999,46 @@ function HeatmapCanvas(props) {
     ctx.beginPath(); ctx.arc(W-pad-ps, H/2, cr*0.85, Math.PI-0.92, Math.PI+0.92); ctx.stroke();
 
     // Flèche direction
-    // Flèche direction blanche visible
+    // Flèche direction style SofaScore
     var arrowDir;
     if(props.isHome) {
       arrowDir = props.period===2 ? "←" : "→";
     } else {
       arrowDir = props.period===2 ? "→" : "←";
     }
-    var arrowY = pad + 14;
-    var arrowX = W/2;
-    // Ombre portée pour lisibilité
-    ctx.shadowColor = "rgba(0,0,0,0.4)";
-    ctx.shadowBlur = 4;
-    ctx.fillStyle = "rgba(255,255,255,0.92)";
-    ctx.font = "bold 16px sans-serif";
-    ctx.textAlign = "center";
-    ctx.textBaseline = "top";
-    ctx.fillText(arrowDir, arrowX, arrowY);
-    ctx.shadowBlur = 0;
-    ctx.textBaseline = "alphabetic";
+    // Dessiner une vraie flèche large
+    var aY = pad + 18;
+    var aX1 = W*0.30, aX2 = W*0.70;
+    var aMid = (aX1+aX2)/2;
+    var aH = 7;  // hauteur flèche
+    ctx.save();
+    ctx.shadowColor = "rgba(0,0,0,0.3)";
+    ctx.shadowBlur = 3;
+    ctx.fillStyle = "rgba(255,255,255,0.90)";
+    ctx.strokeStyle = "rgba(255,255,255,0.90)";
+    ctx.lineWidth = 2.5;
+    ctx.beginPath();
+    if(arrowDir==="→") {
+      ctx.moveTo(aX1, aY);
+      ctx.lineTo(aX2-aH, aY);
+      ctx.lineTo(aX2-aH, aY-aH/2);
+      ctx.lineTo(aX2, aY+aH/2);
+      ctx.lineTo(aX2-aH, aY+aH*1.5);
+      ctx.lineTo(aX2-aH, aY+aH);
+      ctx.lineTo(aX1, aY+aH);
+      ctx.closePath();
+    } else {
+      ctx.moveTo(aX2, aY);
+      ctx.lineTo(aX1+aH, aY);
+      ctx.lineTo(aX1+aH, aY-aH/2);
+      ctx.lineTo(aX1, aY+aH/2);
+      ctx.lineTo(aX1+aH, aY+aH*1.5);
+      ctx.lineTo(aX1+aH, aY+aH);
+      ctx.lineTo(aX2, aY+aH);
+      ctx.closePath();
+    }
+    ctx.fill();
+    ctx.restore();
 
   }, [pts, W, H]);
 
@@ -10651,7 +10672,13 @@ function MatchDetail({state,onClose,onTeam}){
           playerName:   playerSheet.name,
           playerIsHome: (function(){ var hL=fix&&fix.teams&&fix.teams.home&&fix.teams.home.logo; var aL=fix&&fix.teams&&fix.teams.away&&fix.teams.away.logo; if(!playerSheet.teamLogo)return true; if(hL&&playerSheet.teamLogo===hL)return true; if(aL&&playerSheet.teamLogo===aL)return false; return true; })(),
           fix:          fix,
-          period:       (function(){ var st=fix&&fix.fixture&&fix.fixture.status; if(!st)return 1; var sh=st.short||""; if(sh==="2H"||sh==="HT"||sh==="ET"||sh==="FT"||sh==="AET"||sh==="PEN")return 2; return (st.elapsed||0)>45?2:1; })(),
+          period:       (function(){ var st=fix&&fix.fixture&&fix.fixture.status; if(!st)return 1; var sh=st.short||""; // Match TERMINÉ → heatmap globale, pas d'inversion
+            if(sh==="FT"||sh==="AET"||sh==="PEN")return 1;
+            // Match EN COURS 2ème MT → inversion
+            if(sh==="2H"||sh==="ET"||sh==="BT")return 2;
+            // HT = mi-temps = encore 1ère MT affichée
+            if((st.elapsed||0)>45&&sh!=="HT")return 2;
+            return 1; })(),
           open:         showHeatmap,
           onToggle:     function(){ setShowHeatmap(function(v){ return !v; }); }
         }),
