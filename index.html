@@ -10659,7 +10659,7 @@ function MatchDetail({state,onClose,onTeam}){
           homeTeam:      fix && fix.teams && fix.teams.home && fix.teams.home.name,
           awayTeam:      fix && fix.teams && fix.teams.away && fix.teams.away.name,
           playerName:    playerSheet.name,
-          playerIsHome:  playerSheet.teamLogo === (fix && fix.teams && fix.teams.home && fix.teams.home.logo),
+          playerIsHome:  (function(){ var hLogo = fix && fix.teams && fix.teams.home && fix.teams.home.logo; var aLogo = fix && fix.teams && fix.teams.away && fix.teams.away.logo; if (!playerSheet.teamLogo) return true; if (hLogo && playerSheet.teamLogo === hLogo) return true; if (aLogo && playerSheet.teamLogo === aLogo) return false; return true; })(),
           open:          showHeatmap,
           onToggle:      function(){ setShowHeatmap(function(v){ return !v; }); }
         }),
