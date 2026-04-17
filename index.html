@@ -2,7 +2,7 @@
 <html lang="fr">
 <head>
     <meta charset="UTF-8" />
-    <!-- v301 -->
+    <!-- v302 -->
     <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate" />
     <meta http-equiv="Pragma" content="no-cache" />
     <meta http-equiv="Expires" content="0" />
@@ -1975,55 +1975,48 @@ function HeatmapCanvas(props) {
     // Rayon de base = grosse tache style SofaScore
     var baseR = Math.min(W, H) * 0.10;
 
-    // Dessiner sur canvas blanc → intensité accumulée
-    octx.fillStyle = "black";
+    // Canvas offscreen noir
+    octx.fillStyle = "#000";
     octx.fillRect(0, 0, W, H);
-
     octx.globalCompositeOperation = "lighter";
 
+    // Dessiner taches blanches accumulées
     for (var i=0; i<pts.length; i++) {
-      var pt = pts[i];
-      var px = pt.x * W;
-      var py = pt.y * H;
-      var r  = baseR * (0.8 + (pt.w||1) * 0.5);
-      var a  = 0.012 * Math.min(1.5, pt.w||1);
-      var g  = octx.createRadialGradient(px, py, 0, px, py, r);
+      var pt  = pts[i];
+      var px  = pt.x * W, py = pt.y * H;
+      var r   = baseR * (0.7 + (pt.w||1) * 0.6);
+      var a   = 0.08;
+      var g   = octx.createRadialGradient(px, py, 0, px, py, r);
       g.addColorStop(0,   "rgba(255,255,255," + a + ")");
-      g.addColorStop(0.5, "rgba(255,255,255," + (a*0.4) + ")");
+      g.addColorStop(0.4, "rgba(255,255,255," + (a*0.5) + ")");
+      g.addColorStop(0.8, "rgba(255,255,255," + (a*0.1) + ")");
       g.addColorStop(1,   "rgba(255,255,255,0)");
       octx.fillStyle = g;
-      octx.beginPath();
-      octx.arc(px, py, r, 0, Math.PI*2);
-      octx.fill();
+      octx.beginPath(); octx.arc(px, py, r, 0, Math.PI*2); octx.fill();
     }
-
     octx.globalCompositeOperation = "source-over";
 
-    // Lire intensité et appliquer colormap SofaScore
+    // Colormap sur intensité accumulée
     var imgData = octx.getImageData(0, 0, W*dpr, H*dpr);
-    var data = imgData.data;
-
-    // Colormap: noir→vert clair→vert→jaune→orange→rouge
-    var colors = [
-      [0,0,0,0],          // noir transparent (fond)
-      [203,237,191,60],   // vert très clair, semi-transparent
-      [213,235,134,140],  // vert-jaune
-      [255,252,32,180],   // jaune
-      [255,129,17,210],   // orange
-      [255,31,31,230]     // rouge
+    var data    = imgData.data;
+    var cm = [
+      [0,0,0,0],
+      [203,237,191,80],
+      [213,235,134,160],
+      [255,252,32,200],
+      [255,129,17,220],
+      [255,31,31,240]
     ];
-
     for (var p=0; p<data.length; p+=4) {
       var v = data[p] / 255;
-      if (v < 0.02) { data[p+3]=0; continue; }
-
-      var t  = Math.min(1, Math.pow(v, 0.55));
-      var ci = t * (colors.length-1);
-      var c0 = Math.floor(ci), c1 = Math.min(colors.length-1, c0+1), f = ci-c0;
-      data[p]   = Math.round(colors[c0][0] + f*(colors[c1][0]-colors[c0][0]));
-      data[p+1] = Math.round(colors[c0][1] + f*(colors[c1][1]-colors[c0][1]));
-      data[p+2] = Math.round(colors[c0][2] + f*(colors[c1][2]-colors[c0][2]));
-      data[p+3] = Math.round(colors[c0][3] + f*(colors[c1][3]-colors[c0][3]));
+      if (v < 0.03) { data[p+3]=0; continue; }
+      var t  = Math.min(1, Math.pow(v, 0.5));
+      var ci = t * (cm.length-1);
+      var c0 = Math.floor(ci), c1 = Math.min(cm.length-1,c0+1), f = ci-c0;
+      data[p]   = Math.round(cm[c0][0]+f*(cm[c1][0]-cm[c0][0]));
+      data[p+1] = Math.round(cm[c0][1]+f*(cm[c1][1]-cm[c0][1]));
+      data[p+2] = Math.round(cm[c0][2]+f*(cm[c1][2]-cm[c0][2]));
+      data[p+3] = Math.round(cm[c0][3]+f*(cm[c1][3]-cm[c0][3]));
     }
     octx.putImageData(imgData, 0, 0);
     ctx.drawImage(off, 0, 0, W*dpr, H*dpr, 0, 0, W, H);
