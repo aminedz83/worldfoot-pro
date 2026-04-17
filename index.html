@@ -2,7 +2,7 @@
 <html lang="fr">
 <head>
     <meta charset="UTF-8" />
-    <!-- v311 -->
+    <!-- v312 -->
     <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate" />
     <meta http-equiv="Pragma" content="no-cache" />
     <meta http-equiv="Expires" content="0" />
@@ -1979,16 +1979,34 @@ function HeatmapCanvas(props) {
     octx.fillStyle = "#000";
     octx.fillRect(0, 0, W, H);
     octx.globalCompositeOperation = "lighter";
-    // Flou pour formes organiques (GK = plus flou car peu de points)
-    octx.filter = props.isGK ? "blur(12px)" : "blur(6px)";
+    octx.filter = "none";
 
     // Dessiner taches blanches accumulées
+    var drawList = [];
     for (var i=0; i<pts.length; i++) {
-      var pt  = pts[i];
-      var px  = pt.x * W, py = pt.y * H;
-      var r   = baseR * (0.7 + (pt.w||1) * 0.6);
-      var a   = props.isGK ? 0.70 : 0.22;
-      var g   = octx.createRadialGradient(px, py, 0, px, py, r);
+      var pt = pts[i];
+      drawList.push({x: pt.x, y: pt.y, w: pt.w||1, a: props.isGK ? 0.70 : 0.22});
+      // GK: ajouter points satellites autour pour forme organique
+      if (props.isGK) {
+        var jitter = 0.04;
+        for (var j=0; j<6; j++) {
+          var angle = (j / 6) * Math.PI * 2;
+          var dist  = jitter * (0.5 + Math.random() * 0.5);
+          drawList.push({
+            x: pt.x + Math.cos(angle) * dist,
+            y: pt.y + Math.sin(angle) * dist,
+            w: (pt.w||1) * 0.6,
+            a: 0.35
+          });
+        }
+      }
+    }
+    for (var i=0; i<drawList.length; i++) {
+      var dp = drawList[i];
+      var px = dp.x * W, py = dp.y * H;
+      var r  = baseR * (0.7 + dp.w * 0.6);
+      var a  = dp.a;
+      var g  = octx.createRadialGradient(px, py, 0, px, py, r);
       g.addColorStop(0,   "rgba(255,255,255," + a + ")");
       g.addColorStop(0.4, "rgba(255,255,255," + (a*0.5) + ")");
       g.addColorStop(0.8, "rgba(255,255,255," + (a*0.1) + ")");
@@ -1997,8 +2015,6 @@ function HeatmapCanvas(props) {
       octx.beginPath(); octx.arc(px, py, r, 0, Math.PI*2); octx.fill();
     }
     octx.globalCompositeOperation = "source-over";
-    octx.filter = "none";
-
     // Colormap sur intensité accumulée
     var imgData = octx.getImageData(0, 0, W*dpr, H*dpr);
     var data    = imgData.data;
