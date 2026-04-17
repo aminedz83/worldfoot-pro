@@ -2,7 +2,7 @@
 <html lang="fr">
 <head>
     <meta charset="UTF-8" />
-    <!-- v299 -->
+    <!-- v300 -->
     <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate" />
     <meta http-equiv="Pragma" content="no-cache" />
     <meta http-equiv="Expires" content="0" />
@@ -1973,41 +1973,47 @@ function HeatmapCanvas(props) {
     octx.scale(dpr, dpr);
 
     // Rayon de base = grosse tache style SofaScore
-    var baseR = Math.min(W, H) * 0.13;
+    var baseR = Math.min(W, H) * 0.11;
 
-    // Alpha très faible → superposition douce comme SofaScore
+    // Utiliser "lighter" pour accumulation naturelle
+    octx.globalCompositeOperation = "lighter";
+
     for (var i=0; i<pts.length; i++) {
       var pt = pts[i];
       var px = pt.x * W;
       var py = pt.y * H;
-      var r  = baseR * (0.6 + (pt.w||1) * 0.8);
-      var a0 = 0.03;
+      var r  = baseR * (0.7 + (pt.w||1) * 0.6);
       var g = octx.createRadialGradient(px, py, 0, px, py, r);
-      g.addColorStop(0,   "rgba(255,255,255," + a0 + ")");
-      g.addColorStop(0.35,"rgba(255,255,255," + (a0*0.6) + ")");
-      g.addColorStop(0.7, "rgba(255,255,255," + (a0*0.15) + ")");
-      g.addColorStop(1,   "rgba(255,255,255,0)");
+      // Utiliser des couleurs réelles au lieu de blanc
+      var a = 0.018;
+      g.addColorStop(0,   "rgba(255,200,0,"  + a + ")");
+      g.addColorStop(0.4, "rgba(255,100,0,"  + (a*0.5) + ")");
+      g.addColorStop(0.8, "rgba(255,50,0,"   + (a*0.15) + ")");
+      g.addColorStop(1,   "rgba(255,0,0,0)");
       octx.fillStyle = g;
       octx.beginPath();
       octx.arc(px, py, r, 0, Math.PI*2);
       octx.fill();
     }
 
-    // Colormap pixel par pixel
+    // Lire les pixels et appliquer la vraie colormap SofaScore
+    octx.globalCompositeOperation = "source-over";
     var imgData = octx.getImageData(0, 0, W*dpr, H*dpr);
     var data = imgData.data;
     var colors = [[203,237,191],[213,235,134],[255,252,32],[255,129,17],[255,31,31]];
 
     for (var p=0; p<data.length; p+=4) {
-      var v = data[p] / 255;
-      if (v < 0.008) { data[p+3]=0; continue; }
-      var t  = Math.min(1, Math.pow(v, 0.45) * 1.3);
+      // Intensité = moyenne RGB normalisée
+      var intensity = (data[p]*0.6 + data[p+1]*0.3 + data[p+2]*0.1) / 255;
+      if (intensity < 0.005) { data[p+3]=0; continue; }
+
+      var t  = Math.min(1, Math.pow(intensity, 0.4));
       var ci = t * (colors.length-1);
       var c0 = Math.floor(ci), c1 = Math.min(colors.length-1, c0+1), f = ci-c0;
       data[p]   = Math.round(colors[c0][0] + f*(colors[c1][0]-colors[c0][0]));
       data[p+1] = Math.round(colors[c0][1] + f*(colors[c1][1]-colors[c0][1]));
       data[p+2] = Math.round(colors[c0][2] + f*(colors[c1][2]-colors[c0][2]));
-      data[p+3] = Math.round(Math.min(1, v * 7) * 215);
+      data[p+3] = Math.round(Math.min(1, intensity * 5) * 220);
     }
     octx.putImageData(imgData, 0, 0);
     ctx.drawImage(off, 0, 0, W*dpr, H*dpr, 0, 0, W, H);
