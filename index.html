@@ -2,7 +2,7 @@
 <html lang="fr">
 <head>
     <meta charset="UTF-8" />
-    <!-- v287 -->
+    <!-- v288 -->
     <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate" />
     <meta http-equiv="Pragma" content="no-cache" />
     <meta http-equiv="Expires" content="0" />
@@ -1856,7 +1856,7 @@ function generateFallbackPoints(posRaw, stats, minutes, grid, fix, isHome, perio
   for(var j=0;j<Math.round(n*0.25);j++) pts.push({x:cl(cx+gauss()*sx*2.5),y:cl(cy+gauss()*sy*2.5),w:(zone.w||1)*(0.3+rand()*0.3)/2});
   var sh=Math.min((stats&&stats.shots&&stats.shots.total)||0,4);
   for(var s=0;s<sh;s++) pts.push({x:cl(0.80+gauss()*0.05),y:cl(0.50+gauss()*0.14),w:1.0});
-  if(period===2) pts=pts.map(function(p){return{x:1-p.x,y:1-p.y,w:p.w};});
+  if(period===2) pts=pts.map(function(p){return{x:1-p.x,y:p.y,w:p.w};});
   return pts;
 }
 
@@ -1899,7 +1899,11 @@ function fetchSofaHeatmap(fixDate, homeTeam, awayTeam, playerName, isPlayerHome,
               .then(function(r){return r.json();})
               .then(function(hm){
                 if(hm&&hm.heatmap&&hm.heatmap.length>0){
-                  var pts=hm.heatmap.map(function(p){return isPlayerHome?{x:(100-p.y)/100,y:p.x/100,w:1.0}:{x:p.y/100,y:(100-p.x)/100,w:1.0};});
+                  var pts=hm.heatmap.map(function(p){
+                    return isPlayerHome
+                      ? {x:p.x/100,       y:p.y/100,       w:1.0}
+                      : {x:(100-p.x)/100, y:(100-p.y)/100, w:1.0};
+                  });
                   onResult(pts);
                 }else{onResult(null);}
               }).catch(function(){onResult(null);});
@@ -2043,7 +2047,8 @@ function HeatmapSection(props) {
     setLoading(true);
     fetchSofaHeatmap(fixDate, homeTeam, awayTeam, playerName, isHome, function(pts) {
       if(pts&&pts.length>0){
-        if(period===2) pts=pts.map(function(p){return{x:1-p.x,y:1-p.y,w:p.w};});
+        // Changement de camp: inverser seulement l'axe x (gauche↔droite)
+        if(period===2) pts=pts.map(function(p){return{x:1-p.x,y:p.y,w:p.w};});
         setPoints(pts);
       } else {
         setPoints(generateFallbackPoints(pos, stats, minutes, grid, fix, isHome, period));
