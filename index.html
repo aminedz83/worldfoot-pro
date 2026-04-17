@@ -2,7 +2,7 @@
 <html lang="fr">
 <head>
     <meta charset="UTF-8" />
-    <!-- v292 -->
+    <!-- v294 -->
     <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate" />
     <meta http-equiv="Pragma" content="no-cache" />
     <meta http-equiv="Expires" content="0" />
@@ -1864,7 +1864,7 @@ function fetchSofaHeatmap(fixDate, homeTeam, awayTeam, playerName, isPlayerHome,
   if(!setDbg) setDbg=function(){};
   var SF = {};  // Pas de headers custom → Safari utilise ses propres headers natifs
   function slug(str) {
-    var map = {"\u00e0":"a","\u00e1":"a","\u00e2":"a","\u00e8":"e","\u00e9":"e","\u00ea":"e","\u00ec":"i","\u00ed":"i","\u00f2":"o","\u00f3":"o","\u00f4":"o","\u00f9":"u","\u00fa":"u","\u00f1":"n","\u00e7":"c"};
+    var map = {"\u00e0":"a","\u00e1":"a","\u00e2":"a","\u00e4":"ae","\u00e8":"e","\u00e9":"e","\u00ea":"e","\u00eb":"e","\u00ec":"i","\u00ed":"i","\u00f2":"o","\u00f3":"o","\u00f4":"o","\u00f6":"oe","\u00f9":"u","\u00fa":"u","\u00fb":"u","\u00fc":"ue","\u00f1":"n","\u00e7":"c","\u00df":"ss"};
     return (str||"").toLowerCase().replace(/[^\x00-\x7E]/g,function(ch){return map[ch]||"";}).replace(/\s+/g,"-").replace(/[^a-z0-9-]/g,"").replace(/-+/g,"-").replace(/^-|-$/g,"");
   }
   var rawDate=fixDate||new Date().toISOString(); var dateStr=rawDate.substring(0,10);
@@ -1879,6 +1879,7 @@ function fetchSofaHeatmap(fixDate, homeTeam, awayTeam, playerName, isPlayerHome,
       .then(function(r){return r.json();})
       .then(function(data){
         var evs=(data&&data.events)||[], found=null;
+        if(evs.length===0) setDbg(function(d){return d+"\n⚠️ Réponse SofaScore vide pour "+dates[di]+" (keys:"+Object.keys(data||{}).join(",")+")";});
         for(var i=0;i<evs.length;i++){
           var ev=evs[i];
           var hn=slug((ev.homeTeam&&ev.homeTeam.name)||""), an=slug((ev.awayTeam&&ev.awayTeam.name)||"");
@@ -1886,7 +1887,17 @@ function fetchSofaHeatmap(fixDate, homeTeam, awayTeam, playerName, isPlayerHome,
           if(hn.indexOf(hSlug.substring(0,5))!==-1&&an.indexOf(aSlug.substring(0,5))!==-1){found=ev;break;}
         }
         if(!found){
-          setDbg(function(d){return d+"\n❌ "+dates[di]+": match non trouvé ("+evs.length+" events, cherche "+hSlug+" vs "+aSlug+")";});
+          // Matching souple: premier mot de chaque équipe
+          var hW=hSlug.split("-")[0], aW=aSlug.split("-")[0];
+          for(var i2=0;i2<evs.length;i2++){
+            var ev2=evs[i2];
+            var hn2=slug((ev2.homeTeam&&ev2.homeTeam.name)||""), an2=slug((ev2.awayTeam&&ev2.awayTeam.name)||"");
+            if(hn2.indexOf(hW)!==-1&&an2.indexOf(aW)!==-1){found=ev2;break;}
+            if(an2.indexOf(hW)!==-1&&hn2.indexOf(aW)!==-1){found=ev2;break;}
+          }
+        }
+        if(!found){
+          setDbg(function(d){return d+"\n❌ "+dates[di]+": non trouvé ("+evs.length+" events, "+hSlug+" vs "+aSlug+")";});
           tryDate(di+1);return;
         }
         setDbg(function(d){return d+"\n✅ Match: "+found.id+" "+found.homeTeam.name+" vs "+found.awayTeam.name;});
