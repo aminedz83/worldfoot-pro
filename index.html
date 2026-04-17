@@ -1107,7 +1107,7 @@ async function resolvePlayerPhoto(playerId,playerName){
   const key=`pph_${playerId||""}_${playerName}`;
   if(_photoCache.has(key))return _photoCache.get(key);
   try{const lc=localStorage.getItem(key);if(lc){_photoCache.set(key,lc);return lc;}}catch(e){}
-  for(const src of PHOTO_SOURCES){
+  for (var src of PHOTO_SOURCES){
     try{
       const url=await src.getUrl(playerId,playerName);
       if(!url)continue;
@@ -1156,7 +1156,7 @@ async function getCoachPhoto(coachName, coachId = null) {
       `https://images.fotmob.com/image_resources/playerimages/${coachId}.jpg`,
       `https://img.fotmob.com/image_resources/playerimages/${coachId}.jpg`,
     ];
-    for (const url of fotmobUrls) {
+    for (var url of fotmobUrls) {
       if (!coachId) break;
       const ok = await checkImg(url);
       if (ok) { _coachPhotoCache.set(cacheKey, url); return url; }
@@ -1170,7 +1170,7 @@ async function getCoachPhoto(coachName, coachId = null) {
       `https://img.a.transfermarkt.technology/portrait/header/${slug}.jpg`,
       `https://tmssl.akamaized.net/images/portrait/header/${coachId}_1.jpg`,
     ];
-    for (const url of tmUrls) {
+    for (var url of tmUrls) {
       const ok = await checkImg(url);
       if (ok) { _coachPhotoCache.set(cacheKey, url); return url; }
     }
@@ -1748,9 +1748,9 @@ const organizePlayersByLine = (players, formation) => {
 
   const result = [];
   let playerIndex = 0;
-  for (let i = 0; i < lineSizes.length; i++) {
+  for (var i = 0; i < lineSizes.length; i++) {
     const line = [];
-    for (let j = 0; j < lineSizes[i] && playerIndex < players.length; j++) {
+    for (var j = 0; j < lineSizes[i] && playerIndex < players.length; j++) {
       line.push(players[playerIndex]);
       playerIndex++;
     }
@@ -3835,7 +3835,7 @@ const getRefereeStats = async (refereeName) => {
 
     const limitedMatches = matches.slice(0, 8);
 
-    for (const match of limitedMatches) {
+    for (var match of limitedMatches) {
       try {
         const events = await api(
           `/fixtures/events?fixture=${match.fixture.id}`,
@@ -7299,7 +7299,7 @@ function MatchDetail({state,onClose,onTeam}){
             const finishedMatches = seasonMatches.filter(m => DONE_ST.has(m.fixture.status.short));
             
             // Ne garder que les matchs jusqu'au round actuel inclus
-            for (const match of finishedMatches) {
+            for (var match of finishedMatches) {
               // Trouver le round de ce match
               const matchRound = match.league?.round;
               if (matchRound) {
@@ -7314,7 +7314,7 @@ function MatchDetail({state,onClose,onTeam}){
           console.log("Erreur chargement tous les matchs", e);
           
           // Option 2: Fallback - charger round par round
-          for (let i = 0; i <= roundIndex; i++) {
+          for (var i = 0; i <= roundIndex; i++) {
             const currentRound = roundsList[i];
             try {
               const roundMatches = await api(`/fixtures?league=${lid}&season=${season}&round=${encodeURIComponent(currentRound)}`, 3600000);
@@ -7357,7 +7357,7 @@ function MatchDetail({state,onClose,onTeam}){
         }));
         
         // 6. Calculer les stats pour chaque équipe à partir de TOUS les matchs joués jusqu'à maintenant
-        for (const match of allMatches) {
+        for (var match of allMatches) {
           const homeId = match.teams.home.id;
           const awayId = match.teams.away.id;
           const homeGoals = match.goals.home || 0;
@@ -8072,7 +8072,7 @@ function MatchDetail({state,onClose,onTeam}){
 
         let totalY = 0, totalR = 0, count = 0;
 
-        for (const match of matches.slice(0,3)) {
+        for (var match of matches.slice(0,3)) {
           try {
             const events = await api(`/fixtures/events?fixture=${match.fixture.id}`, 86400000);
             totalY += events.filter(e => e.detail === "Yellow Card").length;
@@ -11674,7 +11674,7 @@ function StandingsTab({ onTeam }) {
       
       const matchesUpToRound = [];
       
-      for (let i = 0; i <= roundIndex; i++) {
+      for (var i = 0; i <= roundIndex; i++) {
         const currentRound = rounds[i];
         try {
           const roundMatches = await api(`/fixtures?league=${lid}&season=${season}&round=${encodeURIComponent(currentRound)}`, 3600000);
@@ -11690,7 +11690,7 @@ function StandingsTab({ onTeam }) {
       
       console.log(`${matchesUpToRound.length} matchs trouvés jusqu'à la J${roundIndex + 1}`);
       
-      for (const match of matchesUpToRound) {
+      for (var match of matchesUpToRound) {
         const homeId = match.teams.home.id;
         const awayId = match.teams.away.id;
         const homeGoals = match.goals.home || 0;
@@ -12279,7 +12279,7 @@ async function buildAlgerianScorers(season) {
   const allFinishedIds = finished.map(f => f.fixture.id);
 
   const BATCH = 8;
-  for (let i = 0; i < allFinishedIds.length; i += BATCH) {
+  for (var i = 0; i < allFinishedIds.length; i += BATCH) {
     const batch = allFinishedIds.slice(i, i + BATCH);
     const results = await Promise.allSettled(
       batch.map(id => api(`/fixtures/events?fixture=${id}`, 86400000))
@@ -13261,7 +13261,7 @@ function TransfersTab({ onTeam }) {
       // ─── SOURCE 1 : /coachs?team=X ───
       // Retourne tous les coaches ayant entraîné ce club + leur carrière
       const source1 = {};
-      for(const c of clubs) {
+      for (var c of clubs) {
         try {
           const data = await api(`/coachs?team=${c.id}`, 1800000);
           source1[c.id] = { club: c, coaches: data || [] };
