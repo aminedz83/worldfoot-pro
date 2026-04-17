@@ -2,7 +2,7 @@
 <html lang="fr">
 <head>
     <meta charset="UTF-8" />
-    <!-- v291 -->
+    <!-- v292 -->
     <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate" />
     <meta http-equiv="Pragma" content="no-cache" />
     <meta http-equiv="Expires" content="0" />
@@ -1862,18 +1862,12 @@ function generateFallbackPoints(posRaw, stats, minutes, grid, fix, isHome, perio
 
 function fetchSofaHeatmap(fixDate, homeTeam, awayTeam, playerName, isPlayerHome, onResult, setDbg) {
   if(!setDbg) setDbg=function(){};
-  var SF={
-    "Accept":"application/json",
-    "Accept-Language":"fr-FR,fr;q=0.9,en;q=0.8",
-    "Cache-Control":"no-cache",
-    "Referer":"https://www.sofascore.com/",
-    "Origin":"https://www.sofascore.com"
-  };
+  var SF = {};  // Pas de headers custom → Safari utilise ses propres headers natifs
   function slug(str) {
     var map = {"\u00e0":"a","\u00e1":"a","\u00e2":"a","\u00e8":"e","\u00e9":"e","\u00ea":"e","\u00ec":"i","\u00ed":"i","\u00f2":"o","\u00f3":"o","\u00f4":"o","\u00f9":"u","\u00fa":"u","\u00f1":"n","\u00e7":"c"};
     return (str||"").toLowerCase().replace(/[^\x00-\x7E]/g,function(ch){return map[ch]||"";}).replace(/\s+/g,"-").replace(/[^a-z0-9-]/g,"").replace(/-+/g,"-").replace(/^-|-$/g,"");
   }
-  var dateStr=fixDate?(fixDate.indexOf('T')!==-1?fixDate.split('T')[0]:fixDate.substring(0,10)):new Date().toISOString().substring(0,10);
+  var rawDate=fixDate||new Date().toISOString(); var dateStr=rawDate.substring(0,10);
   var d1=new Date(dateStr); d1.setDate(d1.getDate()+1);
   var d2=new Date(dateStr); d2.setDate(d2.getDate()-1);
   var dates=[dateStr, d1.toISOString().substring(0,10), d2.toISOString().substring(0,10)];
@@ -1881,7 +1875,7 @@ function fetchSofaHeatmap(fixDate, homeTeam, awayTeam, playerName, isPlayerHome,
 
   function tryDate(di) {
     if(di>=dates.length){onResult(null);return;}
-    fetch("https://api.sofascore.com/api/v1/sport/football/scheduled-events/"+dates[di],{headers:SF,mode:"cors",credentials:"omit"})
+    fetch("https://api.sofascore.com/api/v1/sport/football/scheduled-events/"+dates[di])
       .then(function(r){return r.json();})
       .then(function(data){
         var evs=(data&&data.events)||[], found=null;
@@ -1897,7 +1891,7 @@ function fetchSofaHeatmap(fixDate, homeTeam, awayTeam, playerName, isPlayerHome,
         }
         setDbg(function(d){return d+"\n✅ Match: "+found.id+" "+found.homeTeam.name+" vs "+found.awayTeam.name;});
         console.log("SF match:",found.id);
-        fetch("https://api.sofascore.com/api/v1/event/"+found.id+"/lineups",{headers:SF,mode:"cors",credentials:"omit"})
+        fetch("https://api.sofascore.com/api/v1/event/"+found.id+"/lineups")
           .then(function(r){return r.json();})
           .then(function(ld){
             var all=((ld&&ld.home&&ld.home.players)||[]).concat((ld&&ld.away&&ld.away.players)||[]);
@@ -1910,7 +1904,7 @@ function fetchSofaHeatmap(fixDate, homeTeam, awayTeam, playerName, isPlayerHome,
               onResult(null);return;
             }
             setDbg(function(d){return d+"\n✅ Joueur: "+found2.id+" "+found2.name;});
-            fetch("https://api.sofascore.com/api/v1/event/"+found.id+"/player/"+found2.id+"/heatmap",{headers:SF,mode:"cors",credentials:"omit"})
+            fetch("https://api.sofascore.com/api/v1/event/"+found.id+"/player/"+found2.id+"/heatmap")
               .then(function(r){return r.json();})
               .then(function(hm){
                 if(hm&&hm.heatmap&&hm.heatmap.length>0){
