@@ -2,7 +2,7 @@
 <html lang="fr">
 <head>
     <meta charset="UTF-8" />
-    <!-- v297 -->
+    <!-- v298 -->
     <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate" />
     <meta http-equiv="Pragma" content="no-cache" />
     <meta http-equiv="Expires" content="0" />
@@ -1955,7 +1955,7 @@ function HeatmapCanvas(props) {
     ctx.scale(dpr, dpr);
 
     // ── Fond terrain ─────────────────────────────────────────────────
-    ctx.fillStyle = "#eaf7ea";
+    ctx.fillStyle = "#d4edda";
     ctx.fillRect(0, 0, W, H);
 
     // Stries légères
@@ -1973,24 +1973,30 @@ function HeatmapCanvas(props) {
     octx.scale(dpr, dpr);
 
     // Rayon de base = grosse tache style SofaScore
-    var baseR = Math.min(W, H) * 0.16;
+    var baseR = Math.min(W, H) * 0.07;
 
     // Dessiner chaque point comme une grande tache gaussienne
     for (var i=0; i<pts.length; i++) {
       var pt = pts[i];
       var px = pt.x * W;
       var py = pt.y * H;
-      var r  = baseR * (0.7 + (pt.w||1) * 0.6);
+      var r  = baseR * (0.8 + (pt.w||1) * 0.7);
+      var w  = pt.w||1;
 
-      var g = octx.createRadialGradient(px, py, 0, px, py, r);
-      g.addColorStop(0,   "rgba(255,255,255," + Math.min(1, 0.25*(pt.w||1)) + ")");
-      g.addColorStop(0.4, "rgba(255,255,255," + Math.min(1, 0.15*(pt.w||1)) + ")");
-      g.addColorStop(1,   "rgba(255,255,255,0)");
+      // Couche 1: noyau central très intense
+      var g1 = octx.createRadialGradient(px, py, 0, px, py, r*0.35);
+      g1.addColorStop(0,   "rgba(255,255,255," + Math.min(1, 0.55*w) + ")");
+      g1.addColorStop(1,   "rgba(255,255,255,0)");
+      octx.fillStyle = g1;
+      octx.beginPath(); octx.arc(px, py, r*0.35, 0, Math.PI*2); octx.fill();
 
-      octx.fillStyle = g;
-      octx.beginPath();
-      octx.arc(px, py, r, 0, Math.PI*2);
-      octx.fill();
+      // Couche 2: halo large
+      var g2 = octx.createRadialGradient(px, py, 0, px, py, r);
+      g2.addColorStop(0,   "rgba(255,255,255," + Math.min(1, 0.35*w) + ")");
+      g2.addColorStop(0.5, "rgba(255,255,255," + Math.min(1, 0.18*w) + ")");
+      g2.addColorStop(1,   "rgba(255,255,255,0)");
+      octx.fillStyle = g2;
+      octx.beginPath(); octx.arc(px, py, r, 0, Math.PI*2); octx.fill();
     }
 
     // ── Appliquer colormap sur le canvas offscreen ───────────────────
@@ -2007,11 +2013,11 @@ function HeatmapCanvas(props) {
     ];
 
     for (var p=0; p<data.length; p+=4) {
-      var alpha = data[p] / 255;  // utiliser canal R comme intensité
-      if (alpha < 0.01) { data[p+3]=0; continue; }
+      var alpha = data[p] / 255;
+      if (alpha < 0.005) { data[p+3]=0; continue; }
 
-      // Mapper intensité → couleur
-      var t = Math.min(1, alpha * 1.8);
+      // Mapper intensité → couleur (plus contrasté)
+      var t = Math.min(1, alpha * 2.2);
       var ci = t * (colors.length-1);
       var c0 = Math.floor(ci), c1 = Math.min(colors.length-1, c0+1);
       var f  = ci - c0;
@@ -2019,7 +2025,7 @@ function HeatmapCanvas(props) {
       data[p]   = Math.round(colors[c0][0] + f*(colors[c1][0]-colors[c0][0]));
       data[p+1] = Math.round(colors[c0][1] + f*(colors[c1][1]-colors[c0][1]));
       data[p+2] = Math.round(colors[c0][2] + f*(colors[c1][2]-colors[c0][2]));
-      data[p+3] = Math.round(alpha * 220);
+      data[p+3] = Math.round(Math.min(1, alpha * 2.5) * 240);
     }
 
     octx.putImageData(imgData, 0, 0);
