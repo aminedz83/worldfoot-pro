@@ -2,7 +2,7 @@
 <html lang="fr">
 <head>
     <meta charset="UTF-8" />
-    <!-- v289 -->
+    <!-- v290 -->
     <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate" />
     <meta http-equiv="Pragma" content="no-cache" />
     <meta http-equiv="Expires" content="0" />
@@ -1860,7 +1860,8 @@ function generateFallbackPoints(posRaw, stats, minutes, grid, fix, isHome, perio
   return pts;
 }
 
-function fetchSofaHeatmap(fixDate, homeTeam, awayTeam, playerName, isPlayerHome, onResult) {
+function fetchSofaHeatmap(fixDate, homeTeam, awayTeam, playerName, isPlayerHome, onResult, setDbg) {
+  if(!setDbg) setDbg=function(){};
   var SF={"Accept":"application/json","User-Agent":"Mozilla/5.0 (iPhone; CPU iPhone OS 17_0 like Mac OS X) AppleWebKit/605.1.15"};
   function slug(str) {
     var map = {"\u00e0":"a","\u00e1":"a","\u00e2":"a","\u00e8":"e","\u00e9":"e","\u00ea":"e","\u00ec":"i","\u00ed":"i","\u00f2":"o","\u00f3":"o","\u00f4":"o","\u00f9":"u","\u00fa":"u","\u00f1":"n","\u00e7":"c"};
@@ -1884,7 +1885,11 @@ function fetchSofaHeatmap(fixDate, homeTeam, awayTeam, playerName, isPlayerHome,
           if(hn.substring(0,5)===hSlug.substring(0,5)&&an.substring(0,5)===aSlug.substring(0,5)){found=ev;break;}
           if(hn.indexOf(hSlug.substring(0,5))!==-1&&an.indexOf(aSlug.substring(0,5))!==-1){found=ev;break;}
         }
-        if(!found){tryDate(di+1);return;}
+        if(!found){
+          setDbg(function(d){return d+"\n❌ "+dates[di]+": match non trouvé ("+evs.length+" events, cherche "+hSlug+" vs "+aSlug+")";});
+          tryDate(di+1);return;
+        }
+        setDbg(function(d){return d+"\n✅ Match: "+found.id+" "+found.homeTeam.name+" vs "+found.awayTeam.name;});
         console.log("SF match:",found.id);
         fetch("https://api.sofascore.com/api/v1/event/"+found.id+"/lineups",{headers:SF})
           .then(function(r){return r.json();})
@@ -1894,21 +1899,26 @@ function fetchSofaHeatmap(fixDate, homeTeam, awayTeam, playerName, isPlayerHome,
             for(var k=0;k<all.length;k++){var pl=all[k].player||{};if((pl.name||"").toLowerCase()===pLow||(pl.shortName||"").toLowerCase()===pLow){found2=pl;break;}}
             if(!found2){var last=parts[parts.length-1];if(last.length>2){for(var m=0;m<all.length;m++){var pl2=all[m].player||{};if((pl2.name||"").toLowerCase().indexOf(last)!==-1){found2=pl2;break;}}}}
             if(!found2&&parts[0]&&parts[0].length>2){for(var n2=0;n2<all.length;n2++){var pl3=all[n2].player||{};if((pl3.name||"").toLowerCase().indexOf(parts[0])!==-1){found2=pl3;break;}}}
-            if(!found2){onResult(null);return;}
+            if(!found2){
+              setDbg(function(d){return d+"\n❌ Joueur non trouvé: "+playerName;});
+              onResult(null);return;
+            }
+            setDbg(function(d){return d+"\n✅ Joueur: "+found2.id+" "+found2.name;});
             fetch("https://api.sofascore.com/api/v1/event/"+found.id+"/player/"+found2.id+"/heatmap",{headers:SF})
               .then(function(r){return r.json();})
               .then(function(hm){
                 if(hm&&hm.heatmap&&hm.heatmap.length>0){
+                  setDbg(function(d){return d+"\n✅ Heatmap: "+hm.heatmap.length+" points (SofaScore)";});
                   var pts=hm.heatmap.map(function(p){
                     return isPlayerHome
                       ? {x:p.x/100,       y:p.y/100,       w:1.0}
                       : {x:(100-p.x)/100, y:(100-p.y)/100, w:1.0};
                   });
                   onResult(pts);
-                }else{onResult(null);}
+                }else{setDbg(function(d){return d+"\n❌ Heatmap vide";});onResult(null);}
               }).catch(function(){onResult(null);});
           }).catch(function(){onResult(null);});
-      }).catch(function(){tryDate(di+1);});
+      }).catch(function(err){setDbg(function(d){return d+"\n❌ Erreur réseau: "+err;});tryDate(di+1);});
   }
   tryDate(0);
 }
@@ -2057,6 +2067,8 @@ function HeatmapSection(props) {
 
   var pState=React.useState(null); var points=pState[0]; var setPoints=pState[1];
   var lState=React.useState(false); var loading=lState[0]; var setLoading=lState[1];
+  var dState=React.useState(""); var dbgText=dState[0]; var setDbg=dState[1];
+  var showDbgState=React.useState(false); var showDbg=showDbgState[0]; var setShowDbg=showDbgState[1];
 
   // Reset points si la période change (ex: 1ère → 2ème mi-temps en live)
   React.useEffect(function() {
@@ -2066,16 +2078,18 @@ function HeatmapSection(props) {
   React.useEffect(function() {
     if(!open||points) return;
     setLoading(true);
+    setDbg("🔍 Recherche: "+homeTeam+" vs "+awayTeam+"\n👤 Joueur: "+playerName+"\n📅 Date: "+fixDate);
     fetchSofaHeatmap(fixDate, homeTeam, awayTeam, playerName, isHome, function(pts) {
       if(pts&&pts.length>0){
-        // Changement de camp: inverser seulement l'axe x (gauche↔droite)
+        setDbg(function(d){return d+"\n✅ Source: SofaScore réel";});
         if(period===2) pts=pts.map(function(p){return{x:1-p.x,y:p.y,w:p.w};});
         setPoints(pts);
       } else {
+        setDbg(function(d){return d+"\n⚠️ Source: Fallback (poste:"+pos+" period:"+period+")";});
         setPoints(generateFallbackPoints(pos, stats, minutes, grid, fix, isHome, period));
       }
       setLoading(false);
-    });
+    }, setDbg);
   }, [open]);
 
   var displayPoints=points||(open?[]:null);
@@ -2105,7 +2119,17 @@ function HeatmapSection(props) {
           React.createElement("span",{style:{fontSize:11,color:"#94a3b8",marginLeft:6}},"Faible \u2192 \u00c9lev\u00e9")
         )
       ),
-      !loading&&(!displayPoints||displayPoints.length===0)&&React.createElement("div",{style:{padding:"20px 0",textAlign:"center",color:"#94a3b8",fontSize:13}},"Données non disponibles")
+      !loading&&(!displayPoints||displayPoints.length===0)&&React.createElement("div",{style:{padding:"20px 0",textAlign:"center",color:"#94a3b8",fontSize:13}},"Données non disponibles"),
+      dbgText&&React.createElement("div",{style:{marginTop:8}},
+        React.createElement("button",{
+          onClick:function(){setShowDbg(function(v){return !v;});},
+          style:{fontSize:11,color:"#64748b",background:"#f1f5f9",border:"1px solid #e2e8f0",borderRadius:6,padding:"4px 10px",cursor:"pointer",width:"100%",textAlign:"left"}
+        }, showDbg ? "▲ Debug SofaScore" : "▼ Debug SofaScore"),
+        showDbg&&React.createElement("pre",{style:{
+          fontSize:10,color:"#334155",background:"#f8fafc",border:"1px solid #e2e8f0",
+          borderRadius:6,padding:"8px",marginTop:4,overflowX:"auto",whiteSpace:"pre-wrap",wordBreak:"break-all"
+        }}, dbgText)
+      )
     )
   );
 }
