@@ -2,7 +2,7 @@
 <html lang="fr">
 <head>
     <meta charset="UTF-8" />
-    <!-- v270 -->
+    <!-- v282 -->
     <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate" />
     <meta http-equiv="Pragma" content="no-cache" />
     <meta http-equiv="Expires" content="0" />
@@ -1768,316 +1768,140 @@ const organizePlayersByLine = (players, formation) => {
 
 // ══ Heatmap réelle SofaScore ════════════════════════════════════════
 function fetchSofaHeatmap(fixDate, homeTeam, awayTeam, playerName, isPlayerHome, onResult) {
-  var SF = {
-    "Accept": "application/json",
-    "User-Agent": "Mozilla/5.0 (iPhone; CPU iPhone OS 17_0 like Mac OS X) AppleWebKit/605.1.15"
-  };
+  var SF={"Accept":"application/json","User-Agent":"Mozilla/5.0 (iPhone; CPU iPhone OS 17_0 like Mac OS X) AppleWebKit/605.1.15"};
+  function slug(s){return (s||"").toLowerCase().replace(/[àáâ]/g,"a").replace(/[èéê]/g,"e").replace(/[ìí]/g,"i").replace(/[òóô]/g,"o").replace(/[ùú]/g,"u").replace(/[ñ]/g,"n").replace(/[ç]/g,"c").replace(/\s+/g,"-").replace(/[^a-z0-9-]/g,"").replace(/-+/g,"-").replace(/^-|-$/g,"");}
+  var dateStr=fixDate?fixDate.substring(0,10):new Date().toISOString().substring(0,10);
+  var dates=[dateStr];
+  try{var d=new Date(dateStr);d.setDate(d.getDate()+1);dates.push(d.toISOString().substring(0,10));d.setDate(d.getDate()-2);dates.push(d.toISOString().substring(0,10));}catch(e){}
+  var hSlug=slug(homeTeam), aSlug=slug(awayTeam);
 
-  function slug(s) {
-    return (s||"").toLowerCase()
-      .replace(/[àáâ]/g,"a").replace(/[èéê]/g,"e").replace(/[ìí]/g,"i")
-      .replace(/[òóô]/g,"o").replace(/[ùú]/g,"u").replace(/[ñ]/g,"n")
-      .replace(/[ç]/g,"c").replace(/\s+/g,"-").replace(/[^a-z0-9-]/g,"")
-      .replace(/-+/g,"-").replace(/^-|-$/g,"");
-  }
-
-  var dateStr = fixDate ? fixDate.substring(0,10) : new Date().toISOString().substring(0,10);
-
-  // Essayer la date + jour suivant aussi (décalage fuseau horaire)
-  var dates = [dateStr];
-  try {
-    var d = new Date(dateStr);
-    d.setDate(d.getDate()+1);
-    dates.push(d.toISOString().substring(0,10));
-    d.setDate(d.getDate()-2);
-    dates.push(d.toISOString().substring(0,10));
-  } catch(e){}
-
-  var hSlug = slug(homeTeam);
-  var aSlug = slug(awayTeam);
-
-  function tryDate(dateIndex) {
-    if (dateIndex >= dates.length) { onResult(null); return; }
-    var date = dates[dateIndex];
-
-    fetch("https://api.sofascore.com/api/v1/sport/football/scheduled-events/" + date, {headers:SF})
-      .then(function(r){ return r.json(); })
-      .then(function(data) {
-        var events = (data && data.events) ? data.events : [];
-        var found = null;
-
-        for (var i=0; i<events.length; i++) {
-          var ev = events[i];
-          var hn = slug(ev.homeTeam && ev.homeTeam.name || "");
-          var an = slug(ev.awayTeam && ev.awayTeam.name || "");
-          var h5 = hSlug.substring(0,5), a5 = aSlug.substring(0,5);
-          if (hn.substring(0,5)===h5 && an.substring(0,5)===a5) { found=ev; break; }
-          if (hn.indexOf(h5)!==-1 && an.indexOf(a5)!==-1) { found=ev; break; }
+  function tryDate(di) {
+    if (di>=dates.length){onResult(null);return;}
+    fetch("https://api.sofascore.com/api/v1/sport/football/scheduled-events/"+dates[di],{headers:SF})
+      .then(function(r){return r.json();})
+      .then(function(data){
+        var evs=(data&&data.events)||[], found=null;
+        for(var i=0;i<evs.length;i++){
+          var ev=evs[i];
+          var hn=slug(ev.homeTeam&&ev.homeTeam.name||""), an=slug(ev.awayTeam&&ev.awayTeam.name||"");
+          if(hn.substring(0,5)===hSlug.substring(0,5)&&an.substring(0,5)===aSlug.substring(0,5)){found=ev;break;}
+          if(hn.indexOf(hSlug.substring(0,5))!==-1&&an.indexOf(aSlug.substring(0,5))!==-1){found=ev;break;}
         }
-
-        if (!found) { tryDate(dateIndex+1); return; }
-
-        var eventId = found.id;
-        console.log("SofaScore match:", eventId, found.homeTeam.name, "vs", found.awayTeam.name);
-
-        return fetch("https://api.sofascore.com/api/v1/event/"+eventId+"/lineups", {headers:SF})
-          .then(function(r){ return r.json(); })
-          .then(function(ldata) {
-            var hp = (ldata&&ldata.home&&ldata.home.players)||[];
-            var ap = (ldata&&ldata.away&&ldata.away.players)||[];
-            var all = hp.concat(ap);
-            var pLow = (playerName||"").toLowerCase();
-            var found2 = null;
-
-            // Exact
-            for (var k=0; k<all.length; k++) {
-              var pl = all[k].player||{};
-              if ((pl.name||"").toLowerCase()===pLow||(pl.shortName||"").toLowerCase()===pLow) {
-                found2=pl; break;
-              }
-            }
-            // Partiel — dernier mot
-            if (!found2) {
-              var parts = pLow.split(" ");
-              var last = parts[parts.length-1];
-              if (last.length>2) {
-                for (var m=0; m<all.length; m++) {
-                  var pl2=all[m].player||{};
-                  if ((pl2.name||"").toLowerCase().indexOf(last)!==-1) { found2=pl2; break; }
-                }
-              }
-            }
-            // Premier mot
-            if (!found2 && parts && parts[0] && parts[0].length>2) {
-              for (var n2=0; n2<all.length; n2++) {
-                var pl3=all[n2].player||{};
-                if ((pl3.name||"").toLowerCase().indexOf(parts[0])!==-1) { found2=pl3; break; }
-              }
-            }
-
-            console.log("SofaScore player:", found2 ? found2.id+" "+found2.name : "NOT FOUND");
-            if (!found2) { onResult(null); return; }
-
-            return fetch("https://api.sofascore.com/api/v1/event/"+eventId+"/player/"+found2.id+"/heatmap", {headers:SF})
-              .then(function(r){ return r.json(); })
-              .then(function(hm) {
-                if (hm && hm.heatmap && hm.heatmap.length>0) {
-                  console.log("SofaScore heatmap:", hm.heatmap.length, "points");
-                  var pts = hm.heatmap.map(function(p) {
-                    return isPlayerHome
-                      ? {x:(100-p.y)/100, y:p.x/100,       w:1.0}
-                      : {x:p.y/100,       y:(100-p.x)/100,  w:1.0};
+        if(!found){tryDate(di+1);return;}
+        console.log("SofaScore match:",found.id,found.homeTeam.name,"vs",found.awayTeam.name);
+        return fetch("https://api.sofascore.com/api/v1/event/"+found.id+"/lineups",{headers:SF})
+          .then(function(r){return r.json();})
+          .then(function(ld){
+            var all=((ld&&ld.home&&ld.home.players)||[]).concat((ld&&ld.away&&ld.away.players)||[]);
+            var pLow=(playerName||"").toLowerCase(), found2=null;
+            for(var k=0;k<all.length;k++){var pl=all[k].player||{};if((pl.name||"").toLowerCase()===pLow||(pl.shortName||"").toLowerCase()===pLow){found2=pl;break;}}
+            if(!found2){var parts=pLow.split(" ");var last=parts[parts.length-1];if(last.length>2)for(var m=0;m<all.length;m++){var pl2=all[m].player||{};if((pl2.name||"").toLowerCase().indexOf(last)!==-1){found2=pl2;break;}}}
+            if(!found2&&parts&&parts[0]&&parts[0].length>2)for(var n2=0;n2<all.length;n2++){var pl3=all[n2].player||{};if((pl3.name||"").toLowerCase().indexOf(parts[0])!==-1){found2=pl3;break;}}
+            console.log("SofaScore player:",found2?found2.id+" "+found2.name:"NOT FOUND");
+            if(!found2){onResult(null);return;}
+            return fetch("https://api.sofascore.com/api/v1/event/"+found.id+"/player/"+found2.id+"/heatmap",{headers:SF})
+              .then(function(r){return r.json();})
+              .then(function(hm){
+                if(hm&&hm.heatmap&&hm.heatmap.length>0){
+                  console.log("SofaScore heatmap:",hm.heatmap.length,"points");
+                  var pts=hm.heatmap.map(function(p){
+                    return isPlayerHome?{x:(100-p.y)/100,y:p.x/100,w:1.0}:{x:p.y/100,y:(100-p.x)/100,w:1.0};
                   });
                   onResult(pts);
-                } else { onResult(null); }
+                }else{onResult(null);}
               });
           });
       })
-      .catch(function(e){ console.log("SofaScore error:", e); tryDate(dateIndex+1); });
+      .catch(function(e){console.log("SofaScore error:",e);tryDate(di+1);});
   }
-
   tryDate(0);
 }
 
-
-// ══ Zones précises par poste (zones.js) ════════════════════════════
 var HEATMAP_ZONES = {
-  "G":   {base:{x:[42,58], y:[2,18],  w:0.6}, sweeper:{x:[35,65], y:[5,30], w:0.8}},
-  "GK":  {base:{x:[42,58], y:[2,18],  w:0.6}},
-  "CB":  {base:{x:[25,75], y:[8,35],  w:1.0}, left:{x:[20,50], y:[8,35], w:1.0}, right:{x:[50,80], y:[8,35], w:1.0}},
-  "LB":  {base:{x:[3,28],  y:[12,55], w:1.3}, defensive:{x:[3,22], y:[10,40], w:1.1}, offensive:{x:[3,30], y:[15,70], w:1.6}},
-  "RB":  {base:{x:[72,97], y:[12,55], w:1.3}, defensive:{x:[78,97], y:[10,40], w:1.1}, offensive:{x:[70,97], y:[15,70], w:1.6}},
-  "LWB": {base:{x:[3,25],  y:[15,65], w:1.5}},
-  "RWB": {base:{x:[75,97], y:[15,65], w:1.5}},
-  "DM":  {base:{x:[30,70], y:[25,55], w:1.4}, single:{x:[35,65], y:[22,50], w:1.3}, double:{x:[25,75], y:[25,55], w:1.4}},
-  "CDM": {base:{x:[32,68], y:[22,50], w:1.3}},
-  "CM":  {base:{x:[25,75], y:[35,70], w:1.5}, boxToBox:{x:[20,80], y:[30,75], w:1.7}, playmaker:{x:[30,70], y:[40,70], w:1.4}},
-  "LCM": {base:{x:[20,55], y:[35,70], w:1.5}},
-  "RCM": {base:{x:[45,80], y:[35,70], w:1.5}},
-  "AM":  {base:{x:[30,70], y:[50,82], w:1.6}, central:{x:[35,65], y:[48,80], w:1.6}},
-  "CAM": {base:{x:[32,68], y:[48,82], w:1.7}},
-  "LW":  {base:{x:[3,30],  y:[48,88], w:1.7}, inverted:{x:[10,40], y:[50,85], w:1.8}, traditional:{x:[2,25], y:[45,90], w:1.6}},
-  "RW":  {base:{x:[70,97], y:[48,88], w:1.7}, inverted:{x:[60,90], y:[50,85], w:1.8}, traditional:{x:[75,98], y:[45,90], w:1.6}},
-  "ST":  {base:{x:[30,75], y:[62,95], w:1.8}, target:{x:[35,70], y:[60,92], w:1.7}, poacher:{x:[35,70], y:[70,98], w:1.9}, complete:{x:[25,80], y:[55,95], w:2.0}},
-  "CF":  {base:{x:[32,72], y:[58,92], w:1.9}},
-  "LF":  {base:{x:[15,45], y:[55,90], w:1.8}},
-  "RF":  {base:{x:[55,85], y:[55,90], w:1.8}},
-  "SS":  {base:{x:[28,72], y:[52,85], w:1.7}},
-  "D":   {base:{x:[25,75], y:[8,35],  w:1.0}},
-  "M":   {base:{x:[25,75], y:[35,70], w:1.5}},
-  "F":   {base:{x:[30,75], y:[62,95], w:1.8}}
+  "GK": {base:{x:[42,58],y:[2,18],w:0.6}},
+  "CB": {base:{x:[25,75],y:[8,35],w:1.0},left:{x:[20,50],y:[8,35],w:1.0},right:{x:[50,80],y:[8,35],w:1.0}},
+  "LB": {base:{x:[3,28],y:[12,55],w:1.3},offensive:{x:[3,30],y:[15,70],w:1.6}},
+  "RB": {base:{x:[72,97],y:[12,55],w:1.3},offensive:{x:[70,97],y:[15,70],w:1.6}},
+  "LWB":{base:{x:[3,25],y:[15,65],w:1.5}},
+  "RWB":{base:{x:[75,97],y:[15,65],w:1.5}},
+  "DM": {base:{x:[30,70],y:[25,55],w:1.4}},
+  "CDM":{base:{x:[32,68],y:[22,50],w:1.3}},
+  "CM": {base:{x:[25,75],y:[35,70],w:1.5},boxToBox:{x:[20,80],y:[30,75],w:1.7},playmaker:{x:[30,70],y:[40,70],w:1.4}},
+  "LCM":{base:{x:[20,55],y:[35,70],w:1.5}},
+  "RCM":{base:{x:[45,80],y:[35,70],w:1.5}},
+  "AM": {base:{x:[30,70],y:[50,82],w:1.6}},
+  "CAM":{base:{x:[32,68],y:[48,82],w:1.7}},
+  "LW": {base:{x:[3,30],y:[48,88],w:1.7},inverted:{x:[10,40],y:[50,85],w:1.8},traditional:{x:[2,25],y:[45,90],w:1.6}},
+  "RW": {base:{x:[70,97],y:[48,88],w:1.7},inverted:{x:[60,90],y:[50,85],w:1.8},traditional:{x:[75,98],y:[45,90],w:1.6}},
+  "ST": {base:{x:[30,75],y:[62,95],w:1.8},target:{x:[35,70],y:[60,92],w:1.7},poacher:{x:[35,70],y:[70,98],w:1.9},complete:{x:[25,80],y:[55,95],w:2.0}},
+  "CF": {base:{x:[32,72],y:[58,92],w:1.9}},
+  "D":  {base:{x:[25,75],y:[8,35],w:1.0}},
+  "M":  {base:{x:[25,75],y:[35,70],w:1.5}},
+  "F":  {base:{x:[30,75],y:[62,95],w:1.8}},
+  "G":  {base:{x:[42,58],y:[2,18],w:0.6}}
 };
 
 function getZoneForPos(posRaw, stats) {
-  var pos = (posRaw||"M").toUpperCase().trim();
-  // Normaliser
-  if (pos==="G"||pos==="GS")  pos="GK";
-  if (pos==="DEF"||pos==="D") pos="D";
-  if (pos==="MID"||pos==="MF"||pos==="ATT") pos="M";
-  if (pos==="FWD"||pos==="A") pos="F";
-  var zoneSet = HEATMAP_ZONES[pos] || HEATMAP_ZONES["M"];
-  // Déterminer style selon stats
-  if (pos==="LB"||pos==="RB") {
-    var shots = (stats&&stats.shots&&stats.shots.total)||0;
-    var touches = (stats&&stats.touches)||0;
-    if (shots>0||touches>50) return zoneSet.offensive||zoneSet.base;
-    return zoneSet.base;
-  }
-  if (pos==="ST") {
-    var passes = (stats&&stats.passes&&stats.passes.total)||0;
-    var sh = (stats&&stats.shots&&stats.shots.total)||0;
-    if (sh<2&&passes>35) return zoneSet.target||zoneSet.base;
-    if (sh>3) return zoneSet.poacher||zoneSet.base;
-    return zoneSet.complete||zoneSet.base;
-  }
-  if (pos==="CM") {
-    var tot = (stats&&stats.passes&&stats.passes.total)||0;
-    if (tot>60) return zoneSet.playmaker||zoneSet.base;
-    return zoneSet.boxToBox||zoneSet.base;
-  }
-  if (pos==="LW"||pos==="RW") {
-    var drib = (stats&&stats.dribbles&&stats.dribbles.attempts)||0;
-    if (drib>4) return zoneSet.inverted||zoneSet.base;
-    return zoneSet.traditional||zoneSet.base;
-  }
-  return zoneSet.base||zoneSet;
+  var pos=(posRaw||"M").toUpperCase().trim();
+  if(pos==="GS"||pos==="G")pos="GK"; if(pos==="DEF")pos="D";
+  if(pos==="MID"||pos==="MF")pos="M"; if(pos==="FWD"||pos==="ATT"||pos==="A")pos="F";
+  var zs=HEATMAP_ZONES[pos]||HEATMAP_ZONES["M"];
+  if((pos==="LB"||pos==="RB")&&((stats&&stats.shots&&stats.shots.total)||0)>0)return zs.offensive||zs.base;
+  if(pos==="ST"){var sh=(stats&&stats.shots&&stats.shots.total)||0,pa=(stats&&stats.passes&&stats.passes.total)||0;if(sh>3)return zs.poacher||zs.base;if(sh<2&&pa>35)return zs.target||zs.base;return zs.complete||zs.base;}
+  if(pos==="CM"){return ((stats&&stats.passes&&stats.passes.total)||0)>60?(zs.playmaker||zs.base):(zs.boxToBox||zs.base);}
+  if(pos==="LW"||pos==="RW"){return ((stats&&stats.dribbles&&stats.dribbles.attempts)||0)>4?(zs.inverted||zs.base):(zs.traditional||zs.base);}
+  return zs.base||zs;
 }
 
-// ══ Calibration (calibration.js) ════════════════════════════════════
 function calibrateZone(zone, stats, fix, isHome) {
-  var z = {x:[zone.x[0],zone.x[1]], y:[zone.y[0],zone.y[1]], w:zone.w||1.0};
-  if (!stats) return z;
-
-  // 1. Note du match
-  var rating = parseFloat(stats.games&&stats.games.rating)||6.5;
-  if (rating>=8.0) {
-    z.x=[Math.max(0,z.x[0]-8), Math.min(100,z.x[1]+8)];
-    z.y=[z.y[0]+5, Math.min(98,z.y[1]+10)];
-    z.w*=1.3;
-  } else if (rating>=7.0) {
-    z.x=[Math.max(0,z.x[0]-3), Math.min(100,z.x[1]+3)];
-    z.y=[z.y[0]+2, Math.min(98,z.y[1]+5)];
-    z.w*=1.1;
-  } else if (rating<6.0) {
-    z.x=[z.x[0]+3, z.x[1]-3];
-    z.y=[Math.max(3,z.y[0]-5), z.y[1]-5];
-    z.w*=0.8;
-  }
-
-  // 2. Activité
-  var mins = (stats.games&&stats.games.minutes)||90;
-  var touches = (stats.touches)||0;
-  var passes  = (stats.passes&&stats.passes.total)||0;
-  var activityRate = (touches+passes) / Math.max(1, mins);
-  if (activityRate>1.0) {
-    z.x=[Math.max(0,z.x[0]-5), Math.min(100,z.x[1]+5)];
-    z.w*=1.2;
-  } else if (activityRate<0.3) {
-    z.x=[z.x[0]+5, z.x[1]-5];
-    z.w*=0.7;
-  }
-
-  // 3. Score (si on a les infos du match)
-  if (fix && fix.goals!=null) {
-    var teamScore = isHome ? (fix.goals.home||0) : (fix.goals.away||0);
-    var oppScore  = isHome ? (fix.goals.away||0) : (fix.goals.home||0);
-    var diff = teamScore - oppScore;
-    if (diff>=2) {
-      z.y=[z.y[0]+5, Math.min(98,z.y[1]+8)];
-      z.w*=1.1;
-    } else if (diff<=-2) {
-      z.y=[Math.max(3,z.y[0]-8), z.y[1]-5];
-      z.w*=0.9;
-    }
-  }
-
+  var z={x:[zone.x[0],zone.x[1]],y:[zone.y[0],zone.y[1]],w:zone.w||1.0};
+  if(!stats)return z;
+  var r=parseFloat(stats.games&&stats.games.rating)||6.5;
+  if(r>=8.0){z.x=[Math.max(0,z.x[0]-8),Math.min(100,z.x[1]+8)];z.y=[z.y[0]+5,Math.min(98,z.y[1]+10)];z.w*=1.3;}
+  else if(r>=7.0){z.x=[Math.max(0,z.x[0]-3),Math.min(100,z.x[1]+3)];z.y=[z.y[0]+2,Math.min(98,z.y[1]+5)];z.w*=1.1;}
+  else if(r<6.0){z.x=[z.x[0]+3,z.x[1]-3];z.y=[Math.max(3,z.y[0]-5),z.y[1]-5];z.w*=0.8;}
+  var mins=(stats.games&&stats.games.minutes)||90;
+  var act=((stats.touches||0)+(stats.passes&&stats.passes.total||0))/Math.max(1,mins);
+  if(act>1.0){z.x=[Math.max(0,z.x[0]-5),Math.min(100,z.x[1]+5)];z.w*=1.2;}
+  else if(act<0.3){z.x=[z.x[0]+5,z.x[1]-5];z.w*=0.7;}
+  if(fix&&fix.goals!=null){var ts=isHome?(fix.goals.home||0):(fix.goals.away||0),os=isHome?(fix.goals.away||0):(fix.goals.home||0),diff=ts-os;if(diff>=2){z.y=[z.y[0]+5,Math.min(98,z.y[1]+8)];z.w*=1.1;}else if(diff<=-2){z.y=[Math.max(3,z.y[0]-8),z.y[1]-5];z.w*=0.9;}}
   return z;
 }
 
 function calibrateDensity(stats) {
-  var touches = (stats&&stats.touches)||0;
-  var passes  = (stats&&stats.passes&&stats.passes.total)||0;
-  var drib    = (stats&&stats.dribbles&&stats.dribbles.attempts)||0;
-  var duels   = (stats&&stats.duels&&stats.duels.total)||0;
-  var mins    = (stats&&stats.games&&stats.games.minutes)||90;
-  var rating  = parseFloat(stats&&stats.games&&stats.games.rating)||6.5;
-
-  var density = Math.floor(
-    touches*2.5 + passes*1.8 + drib*3.5 + duels*1.2 + mins*2.0
-  );
-  if (rating>=7.5) density = Math.floor(density*1.3);
-  return Math.max(30, Math.min(80, Math.floor((density||400)/8)));
+  var t=(stats&&stats.touches)||0,p=(stats&&stats.passes&&stats.passes.total)||0;
+  var d=(stats&&stats.dribbles&&stats.dribbles.attempts)||0,du=(stats&&stats.duels&&stats.duels.total)||0;
+  var m=(stats&&stats.games&&stats.games.minutes)||90,r=parseFloat(stats&&stats.games&&stats.games.rating)||6.5;
+  var den=Math.floor(t*2.5+p*1.8+d*3.5+du*1.2+m*2.0);
+  if(r>=7.5)den=Math.floor(den*1.3);
+  return Math.max(30,Math.min(80,Math.floor((den||400)/8)));
 }
 
-// ══ Moteur de génération (heatmap-engine.js) ════════════════════════
 function generateFallbackPoints(posRaw, stats, minutes, grid, fix, isHome, period) {
-  var mins = minutes || (stats&&stats.games&&stats.games.minutes)||90;
-  var pos  = (posRaw||"M").toUpperCase().trim();
-  if (pos==="G"||pos==="GS") pos="GK";
-  if (pos==="DEF"||pos==="D") pos="D";
-  if (pos==="MID"||pos==="MF") pos="M";
-  if (pos==="FWD"||pos==="A") pos="F";
+  var mins=minutes||(stats&&stats.games&&stats.games.minutes)||90;
+  var baseZone=getZoneForPos(posRaw,stats);
+  var zone=calibrateZone(baseZone,stats,fix,isHome!==false);
+  var n=calibrateDensity(stats);
 
-  // Obtenir zone calibrée
-  var baseZone = getZoneForPos(posRaw, stats);
-  var zone = calibrateZone(baseZone, stats, fix, isHome !== false);
-  var density = calibrateDensity(stats);
+  var seed=Math.round((mins*17+((stats&&stats.passes&&stats.passes.total)||0)*7+
+    ((stats&&stats.shots&&stats.shots.total)||0)*13)%99991)||42;
+  function rand(){seed=(seed*1664525+1013904223)&0xFFFFFFFF;return (seed>>>0)/4294967295;}
+  function gauss(){var u=0,v=0;while(!u)u=rand();while(!v)v=rand();return Math.sqrt(-2*Math.log(u))*Math.cos(6.2832*v);}
+  function cl(v){return Math.max(0.01,Math.min(0.99,v));}
 
-  // Seed déterministe
-  var seed = Math.round(
-    (mins*17 + ((stats&&stats.passes&&stats.passes.total)||0)*7 +
-     ((stats&&stats.shots&&stats.shots.total)||0)*13 +
-     ((stats&&stats.duels&&stats.duels.total)||0)*5) % 99991
-  ) || 42;
-  function rand(){ seed=(seed*1664525+1013904223)&0xFFFFFFFF; return (seed>>>0)/4294967295; }
-  function gauss(){ var u=0,v=0; while(!u)u=rand(); while(!v)v=rand(); return Math.sqrt(-2*Math.log(u))*Math.cos(6.2832*v); }
-  function clamp(v){ return Math.max(0.01, Math.min(0.99, v)); }
+  var cx=((zone.x[0]+zone.x[1])/2)/100, cy=((zone.y[0]+zone.y[1])/2)/100;
+  var sx=(zone.x[1]-zone.x[0])/200, sy=(zone.y[1]-zone.y[0])/200;
 
-  // Convertir zone 0-100 → 0-1 canvas
-  var cx = ((zone.x[0]+zone.x[1])/2) / 100;
-  var cy = ((zone.y[0]+zone.y[1])/2) / 100;
-  var sx = (zone.x[1]-zone.x[0]) / 200;
-  var sy = (zone.y[1]-zone.y[0]) / 200;
+  var pts=[];
+  for (var i=0;i<Math.round(n*0.65);i++) pts.push({x:cl(cx+gauss()*sx),y:cl(cy+gauss()*sy),w:zone.w*(0.6+rand()*0.4)/2});
+  for (var j=0;j<Math.round(n*0.25);j++) pts.push({x:cl(cx+gauss()*sx*2.5),y:cl(cy+gauss()*sy*2.5),w:zone.w*(0.3+rand()*0.3)/2});
+  var sh=Math.min((stats&&stats.shots&&stats.shots.total)||0,4);
+  for (var s=0;s<sh;s++) pts.push({x:cl(0.80+gauss()*0.05),y:cl(0.50+gauss()*0.14),w:1.0});
+  var tk=Math.min((stats&&stats.tackles&&stats.tackles.total)||0,3);
+  for (var t=0;t<tk;t++) pts.push({x:cl(cx+gauss()*0.06),y:cl(cy+gauss()*0.14),w:0.75});
 
-  var pts = [];
-  var n = Math.min(density, 600);
-
-  // Points de zone principale (65%)
-  for (var i=0; i<Math.round(n*0.65); i++) {
-    pts.push({
-      x: clamp(cx + gauss()*sx),
-      y: clamp(cy + gauss()*sy),
-      w: zone.w * (0.6+rand()*0.4) / 2.0
-    });
-  }
-  // Points dispersés secondaires (25%)
-  for (var j=0; j<Math.round(n*0.25); j++) {
-    pts.push({
-      x: clamp(cx + gauss()*sx*2.5),
-      y: clamp(cy + gauss()*sy*2.5),
-      w: zone.w * (0.3+rand()*0.3) / 2.0
-    });
-  }
-  // Points d'actions spécifiques (10%)
-  var shots = Math.min((stats&&stats.shots&&stats.shots.total)||0, 5);
-  for (var s=0; s<shots; s++)
-    pts.push({x:clamp(0.80+gauss()*0.05), y:clamp(0.50+gauss()*0.14), w:1.0});
-  var tacks = Math.min((stats&&stats.tackles&&stats.tackles.total)||0, 4);
-  for (var t=0; t<tacks; t++)
-    pts.push({x:clamp(cx+gauss()*0.06), y:clamp(cy+gauss()*0.14), w:0.75});
-  var intercepts = Math.min((stats&&stats.tackles&&stats.tackles.interceptions)||0, 3);
-  for (var k=0; k<intercepts; k++)
-    pts.push({x:clamp(cx-0.03+gauss()*0.06), y:clamp(cy+gauss()*0.12), w:0.70});
-
-  // ── Inversion mi-temps ──────────────────────────────────────────
-  // En 2ème mi-temps les équipes changent de côté
-  // isHome: 1ère mi-temps attaque à droite → 2ème mi-temps attaque à gauche
-  var per = period || 1;
-  var shouldInvert = (per === 2);
-  if (shouldInvert) {
-    pts = pts.map(function(p){ return {x: 1-p.x, y: 1-p.y, w: p.w}; });
-  }
-
+  // Inversion mi-temps
+  if (period===2) pts=pts.map(function(p){return{x:1-p.x,y:1-p.y,w:p.w};});
   return pts;
 }
 
@@ -2169,8 +1993,7 @@ function HeatmapCanvas(props) {
     // Flèche direction
     ctx.fillStyle="rgba(0,80,0,0.35)";
     ctx.font="bold 10px sans-serif"; ctx.textAlign="center";
-    var arrowDir = props.period===2 ? "\u2190" : "\u2192";
-    ctx.fillText(arrowDir, W/2, pad+11);
+    ctx.fillText(props.period===2?"\u2190":"\u2192", W/2, pad+11);
 
   }, [pts, W, H]);
 
@@ -2187,12 +2010,10 @@ function HeatmapSection(props) {
   var minutes  = props.minutes;
   var open     = props.open;
   var onToggle = props.onToggle;
-  var fixDate    = props.fixDate;
-  var homeTeam   = props.homeTeam;
-  var awayTeam   = props.awayTeam;
+  var fixDate  = props.fixDate;
+  var homeTeam = props.homeTeam;
+  var awayTeam = props.awayTeam;
   var playerName = props.playerName;
-  var fix        = props.fix;
-  var period     = props.period || 1;
 
   var [points, setPoints] = React.useState(null);
   var [loading, setLoading] = React.useState(false);
@@ -2204,14 +2025,9 @@ function HeatmapSection(props) {
     var isHome = props.playerIsHome !== false;
     fetchSofaHeatmap(fixDate, homeTeam, awayTeam, playerName, isHome, function(pts) {
       if (pts && pts.length > 0) {
-        // Appliquer inversion mi-temps sur vraies données SofaScore aussi
-        var per = period || 1;
-        if (per === 2) {
-          pts = pts.map(function(p){ return {x:1-p.x, y:1-p.y, w:p.w}; });
-        }
         setPoints(pts);
       } else {
-        setPoints(generateFallbackPoints(pos, stats, minutes, grid, fix, isHome, period));
+        setPoints(generateFallbackPoints(pos, stats, minutes, grid));
       }
       setLoading(false);
     });
@@ -10838,18 +10654,7 @@ function MatchDetail({state,onClose,onTeam}){
           playerName:    playerSheet.name,
           playerIsHome:  (function(){ var hLogo = fix && fix.teams && fix.teams.home && fix.teams.home.logo; var aLogo = fix && fix.teams && fix.teams.away && fix.teams.away.logo; if (!playerSheet.teamLogo) return true; if (hLogo && playerSheet.teamLogo === hLogo) return true; if (aLogo && playerSheet.teamLogo === aLogo) return false; return true; })(),
           fix:           fix,
-          period:        (function(){
-            var st = fix && fix.fixture && fix.fixture.status;
-            if (!st) return 1;
-            // Match terminé → regarder le score pour deviner, sinon 2ème mi-temps
-            var short = st.short || "";
-            var elapsed = st.elapsed || 0;
-            // 2HT = deuxième mi-temps en cours, FT/AET = terminé (a eu une 2ème mi-temps)
-            if (short==="2H"||short==="HT"||short==="ET"||short==="BT"||short==="P") return 2;
-            if (short==="FT"||short==="AET"||short==="PEN") return 2;
-            if (elapsed > 45) return 2;
-            return 1;
-          })(),
+          period:        (function(){ var st=fix&&fix.fixture&&fix.fixture.status; if(!st)return 1; var sh=st.short||""; if(sh==="2H"||sh==="HT"||sh==="ET"||sh==="FT"||sh==="AET"||sh==="PEN")return 2; return (st.elapsed||0)>45?2:1; })(),
           open:          showHeatmap,
           onToggle:      function(){ setShowHeatmap(function(v){ return !v; }); }
         }),
