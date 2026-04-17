@@ -1107,7 +1107,7 @@ async function resolvePlayerPhoto(playerId,playerName){
   const key=`pph_${playerId||""}_${playerName}`;
   if(_photoCache.has(key))return _photoCache.get(key);
   try{const lc=localStorage.getItem(key);if(lc){_photoCache.set(key,lc);return lc;}}catch(e){}
-  for (var src of PHOTO_SOURCES){
+  for (var _foi1=0; _foi1<PHOTO_SOURCES.length; _foi1++) { var src = PHOTO_SOURCES[_foi1]; 
     try{
       const url=await src.getUrl(playerId,playerName);
       if(!url)continue;
@@ -1156,7 +1156,7 @@ async function getCoachPhoto(coachName, coachId = null) {
       `https://images.fotmob.com/image_resources/playerimages/${coachId}.jpg`,
       `https://img.fotmob.com/image_resources/playerimages/${coachId}.jpg`,
     ];
-    for (var url of fotmobUrls) {
+    for (var _foi2=0; _foi2<fotmobUrls.length; _foi2++) { var url = fotmobUrls[_foi2]; 
       if (!coachId) break;
       const ok = await checkImg(url);
       if (ok) { _coachPhotoCache.set(cacheKey, url); return url; }
@@ -1170,7 +1170,7 @@ async function getCoachPhoto(coachName, coachId = null) {
       `https://img.a.transfermarkt.technology/portrait/header/${slug}.jpg`,
       `https://tmssl.akamaized.net/images/portrait/header/${coachId}_1.jpg`,
     ];
-    for (var url of tmUrls) {
+    for (var _foi3=0; _foi3<tmUrls.length; _foi3++) { var url = tmUrls[_foi3]; 
       const ok = await checkImg(url);
       if (ok) { _coachPhotoCache.set(cacheKey, url); return url; }
     }
@@ -3835,7 +3835,7 @@ const getRefereeStats = async (refereeName) => {
 
     const limitedMatches = matches.slice(0, 8);
 
-    for (var match of limitedMatches) {
+    for (var _foi4=0; _foi4<limitedMatches.length; _foi4++) { var match = limitedMatches[_foi4]; 
       try {
         const events = await api(
           `/fixtures/events?fixture=${match.fixture.id}`,
@@ -7299,7 +7299,7 @@ function MatchDetail({state,onClose,onTeam}){
             const finishedMatches = seasonMatches.filter(m => DONE_ST.has(m.fixture.status.short));
             
             // Ne garder que les matchs jusqu'au round actuel inclus
-            for (var match of finishedMatches) {
+            for (var _foi5=0; _foi5<finishedMatches.length; _foi5++) { var match = finishedMatches[_foi5]; 
               // Trouver le round de ce match
               const matchRound = match.league?.round;
               if (matchRound) {
@@ -7357,7 +7357,7 @@ function MatchDetail({state,onClose,onTeam}){
         }));
         
         // 6. Calculer les stats pour chaque équipe à partir de TOUS les matchs joués jusqu'à maintenant
-        for (var match of allMatches) {
+        for (var _foi6=0; _foi6<allMatches.length; _foi6++) { var match = allMatches[_foi6]; 
           const homeId = match.teams.home.id;
           const awayId = match.teams.away.id;
           const homeGoals = match.goals.home || 0;
@@ -8072,7 +8072,7 @@ function MatchDetail({state,onClose,onTeam}){
 
         let totalY = 0, totalR = 0, count = 0;
 
-        for (var match of matches.slice(0,3)) {
+        var _sl=matches.slice(0,3); for (var _foi10=0; _foi10<_sl.length; _foi10++) { var match=_sl[_foi10];
           try {
             const events = await api(`/fixtures/events?fixture=${match.fixture.id}`, 86400000);
             totalY += events.filter(e => e.detail === "Yellow Card").length;
@@ -11690,7 +11690,7 @@ function StandingsTab({ onTeam }) {
       
       console.log(`${matchesUpToRound.length} matchs trouvés jusqu'à la J${roundIndex + 1}`);
       
-      for (var match of matchesUpToRound) {
+      for (var _foi7=0; _foi7<matchesUpToRound.length; _foi7++) { var match = matchesUpToRound[_foi7]; 
         const homeId = match.teams.home.id;
         const awayId = match.teams.away.id;
         const homeGoals = match.goals.home || 0;
@@ -13261,7 +13261,7 @@ function TransfersTab({ onTeam }) {
       // ─── SOURCE 1 : /coachs?team=X ───
       // Retourne tous les coaches ayant entraîné ce club + leur carrière
       const source1 = {};
-      for (var c of clubs) {
+      for (var _foi8=0; _foi8<clubs.length; _foi8++) { var c = clubs[_foi8]; 
         try {
           const data = await api(`/coachs?team=${c.id}`, 1800000);
           source1[c.id] = { club: c, coaches: data || [] };
