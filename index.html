@@ -2,7 +2,7 @@
 <html lang="fr">
 <head>
     <meta charset="UTF-8" />
-    <!-- v310 -->
+    <!-- v311 -->
     <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate" />
     <meta http-equiv="Pragma" content="no-cache" />
     <meta http-equiv="Expires" content="0" />
@@ -1979,6 +1979,8 @@ function HeatmapCanvas(props) {
     octx.fillStyle = "#000";
     octx.fillRect(0, 0, W, H);
     octx.globalCompositeOperation = "lighter";
+    // Flou pour formes organiques (GK = plus flou car peu de points)
+    octx.filter = props.isGK ? "blur(12px)" : "blur(6px)";
 
     // Dessiner taches blanches accumulées
     for (var i=0; i<pts.length; i++) {
@@ -1995,6 +1997,7 @@ function HeatmapCanvas(props) {
       octx.beginPath(); octx.arc(px, py, r, 0, Math.PI*2); octx.fill();
     }
     octx.globalCompositeOperation = "source-over";
+    octx.filter = "none";
 
     // Colormap sur intensité accumulée
     var imgData = octx.getImageData(0, 0, W*dpr, H*dpr);
