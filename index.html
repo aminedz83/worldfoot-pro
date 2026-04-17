@@ -2,7 +2,7 @@
 <html lang="fr">
 <head>
     <meta charset="UTF-8" />
-    <!-- v305 -->
+    <!-- v306 -->
     <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate" />
     <meta http-equiv="Pragma" content="no-cache" />
     <meta http-equiv="Expires" content="0" />
@@ -1954,6 +1954,8 @@ function HeatmapCanvas(props) {
     cv.style.height = H + "px";
     ctx.scale(dpr, dpr);
 
+    var isGK = props.isGK || false;
+
     // ── Fond terrain ─────────────────────────────────────────────────
     ctx.fillStyle = "#3d7a3d";
     ctx.fillRect(0, 0, W, H);
@@ -2019,7 +2021,23 @@ function HeatmapCanvas(props) {
       data[p+3] = Math.round(cm[c0][3]+f*(cm[c1][3]-cm[c0][3]));
     }
     octx.putImageData(imgData, 0, 0);
+
+    // ── Clip : terrain complet, ou surface de réparation pour GK ─────
+    ctx.save();
+    ctx.beginPath();
+    if (isGK) {
+      var pbw = pw * 0.19;
+      var pbh = ph * 0.44;
+      var pby = pad + (ph - pbh) / 2;
+      var gkLeft = (props.isHome && props.period !== 2) || (!props.isHome && props.period === 2);
+      var pbx = gkLeft ? pad : (pad + pw - pbw);
+      ctx.rect(pbx, pby, pbw, pbh);
+    } else {
+      ctx.rect(pad, pad, pw, ph);
+    }
+    ctx.clip();
     ctx.drawImage(off, 0, 0, W*dpr, H*dpr, 0, 0, W, H);
+    ctx.restore();
 
     // ── Lignes terrain ────────────────────────────────────────────────
     ctx.strokeStyle = "rgba(255,255,255,0.75)";
@@ -2128,7 +2146,7 @@ function HeatmapSection(props) {
       ),
       !loading&&displayPoints&&displayPoints.length>0&&React.createElement("div",null,
         React.createElement("div",{style:{borderRadius:14,overflow:"hidden",border:"1px solid #e2e8f0",boxShadow:"0 1px 8px rgba(0,0,0,0.08)"}},
-          React.createElement(HeatmapCanvas,{points:displayPoints,width:340,height:215,period:period,isHome:isHome})
+          React.createElement(HeatmapCanvas,{points:displayPoints,width:340,height:215,period:period,isHome:isHome,isGK:(pos==="G"||pos==="GK"||pos==="GS")})
         ),
         React.createElement("div",{style:{display:"flex",alignItems:"center",justifyContent:"center",gap:6,marginTop:10}},
           React.createElement("div",{style:{display:"flex",height:7,borderRadius:4,overflow:"hidden",width:100}},
