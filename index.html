@@ -1783,99 +1783,102 @@ function fetchSofaHeatmap(fixDate, homeTeam, awayTeam, playerName, isPlayerHome,
 
   var dateStr = fixDate ? fixDate.substring(0,10) : new Date().toISOString().substring(0,10);
 
-  // Étape 1: tous les matchs du jour
-  fetch("https://api.sofascore.com/api/v1/sport/football/scheduled-events/" + dateStr, {headers:SF})
-    .then(function(r){ return r.json(); })
-    .then(function(data) {
-      var events = (data && data.events) ? data.events : [];
-      var hSlug = slug(homeTeam);
-      var aSlug = slug(awayTeam);
-      var found = null;
+  // Essayer la date + jour suivant aussi (décalage fuseau horaire)
+  var dates = [dateStr];
+  try {
+    var d = new Date(dateStr);
+    d.setDate(d.getDate()+1);
+    dates.push(d.toISOString().substring(0,10));
+    d.setDate(d.getDate()-2);
+    dates.push(d.toISOString().substring(0,10));
+  } catch(e){}
 
-      // Matching sur les 5 premiers chars du slug
-      for (var i=0; i<events.length; i++) {
-        var ev = events[i];
-        var hn = slug(ev.homeTeam && ev.homeTeam.name || "");
-        var an = slug(ev.awayTeam && ev.awayTeam.name || "");
-        var hMatch = hn.substring(0,5) === hSlug.substring(0,5) || hSlug.indexOf(hn.substring(0,5)) !== -1;
-        var aMatch = an.substring(0,5) === aSlug.substring(0,5) || aSlug.indexOf(an.substring(0,5)) !== -1;
-        if (hMatch && aMatch) { found = ev; break; }
-      }
+  var hSlug = slug(homeTeam);
+  var aSlug = slug(awayTeam);
 
-      // Fallback: matching plus souple sur 3 chars
-      if (!found) {
-        for (var j=0; j<events.length; j++) {
-          var ev2 = events[j];
-          var hn2 = slug(ev2.homeTeam && ev2.homeTeam.name || "");
-          var an2 = slug(ev2.awayTeam && ev2.awayTeam.name || "");
-          if (hn2.substring(0,3) === hSlug.substring(0,3) && an2.substring(0,3) === aSlug.substring(0,3)) {
-            found = ev2; break;
-          }
+  function tryDate(dateIndex) {
+    if (dateIndex >= dates.length) { onResult(null); return; }
+    var date = dates[dateIndex];
+
+    fetch("https://api.sofascore.com/api/v1/sport/football/scheduled-events/" + date, {headers:SF})
+      .then(function(r){ return r.json(); })
+      .then(function(data) {
+        var events = (data && data.events) ? data.events : [];
+        var found = null;
+
+        for (var i=0; i<events.length; i++) {
+          var ev = events[i];
+          var hn = slug(ev.homeTeam && ev.homeTeam.name || "");
+          var an = slug(ev.awayTeam && ev.awayTeam.name || "");
+          var h5 = hSlug.substring(0,5), a5 = aSlug.substring(0,5);
+          if (hn.substring(0,5)===h5 && an.substring(0,5)===a5) { found=ev; break; }
+          if (hn.indexOf(h5)!==-1 && an.indexOf(a5)!==-1) { found=ev; break; }
         }
-      }
 
-      console.log("SofaScore match:", found ? found.id + " " + (found.homeTeam&&found.homeTeam.name) + " vs " + (found.awayTeam&&found.awayTeam.name) : "NOT FOUND");
-      if (!found) { onResult(null); return; }
+        if (!found) { tryDate(dateIndex+1); return; }
 
-      var eventId = found.id;
+        var eventId = found.id;
+        console.log("SofaScore match:", eventId, found.homeTeam.name, "vs", found.awayTeam.name);
 
-      // Étape 2: lineups pour trouver playerId
-      return fetch("https://api.sofascore.com/api/v1/event/" + eventId + "/lineups", {headers:SF})
-        .then(function(r){ return r.json(); })
-        .then(function(ldata) {
-          var hp = (ldata && ldata.home && ldata.home.players) ? ldata.home.players : [];
-          var ap = (ldata && ldata.away && ldata.away.players) ? ldata.away.players : [];
-          var all = hp.concat(ap);
-          var pLow = (playerName||"").toLowerCase();
-          var found2 = null;
+        return fetch("https://api.sofascore.com/api/v1/event/"+eventId+"/lineups", {headers:SF})
+          .then(function(r){ return r.json(); })
+          .then(function(ldata) {
+            var hp = (ldata&&ldata.home&&ldata.home.players)||[];
+            var ap = (ldata&&ldata.away&&ldata.away.players)||[];
+            var all = hp.concat(ap);
+            var pLow = (playerName||"").toLowerCase();
+            var found2 = null;
 
-          // Exact
-          for (var k=0; k<all.length; k++) {
-            var pl = all[k].player || {};
-            if ((pl.name||"").toLowerCase() === pLow || (pl.shortName||"").toLowerCase() === pLow) {
-              found2 = pl; break;
+            // Exact
+            for (var k=0; k<all.length; k++) {
+              var pl = all[k].player||{};
+              if ((pl.name||"").toLowerCase()===pLow||(pl.shortName||"").toLowerCase()===pLow) {
+                found2=pl; break;
+              }
             }
-          }
-          // Partiel
-          if (!found2) {
-            var parts = pLow.split(" ");
-            var last = parts[parts.length-1];
-            for (var m=0; m<all.length; m++) {
-              var pl2 = all[m].player || {};
-              var n2 = (pl2.name||"").toLowerCase();
-              if (last.length > 2 && n2.indexOf(last) !== -1) { found2 = pl2; break; }
+            // Partiel — dernier mot
+            if (!found2) {
+              var parts = pLow.split(" ");
+              var last = parts[parts.length-1];
+              if (last.length>2) {
+                for (var m=0; m<all.length; m++) {
+                  var pl2=all[m].player||{};
+                  if ((pl2.name||"").toLowerCase().indexOf(last)!==-1) { found2=pl2; break; }
+                }
+              }
             }
-          }
-          // Premier mot
-          if (!found2 && parts && parts[0] && parts[0].length > 2) {
-            for (var n=0; n<all.length; n++) {
-              var pl3 = all[n].player || {};
-              if ((pl3.name||"").toLowerCase().indexOf(parts[0]) !== -1) { found2 = pl3; break; }
+            // Premier mot
+            if (!found2 && parts && parts[0] && parts[0].length>2) {
+              for (var n2=0; n2<all.length; n2++) {
+                var pl3=all[n2].player||{};
+                if ((pl3.name||"").toLowerCase().indexOf(parts[0])!==-1) { found2=pl3; break; }
+              }
             }
-          }
 
-          console.log("SofaScore player:", found2 ? found2.id + " " + found2.name : "NOT FOUND");
-          if (!found2) { onResult(null); return; }
+            console.log("SofaScore player:", found2 ? found2.id+" "+found2.name : "NOT FOUND");
+            if (!found2) { onResult(null); return; }
 
-          // Étape 3: heatmap
-          return fetch("https://api.sofascore.com/api/v1/event/" + eventId + "/player/" + found2.id + "/heatmap", {headers:SF})
-            .then(function(r){ return r.json(); })
-            .then(function(hm) {
-              if (hm && hm.heatmap && hm.heatmap.length > 0) {
-                console.log("SofaScore heatmap:", hm.heatmap.length, "points");
-                // Conversion: HOME: cx=(100-y)/100, cy=x/100 | AWAY: cx=y/100, cy=(100-x)/100
-                var pts = hm.heatmap.map(function(p) {
-                  return isPlayerHome
-                    ? {x:(100-p.y)/100, y:p.x/100,       w:1.0}
-                    : {x:p.y/100,       y:(100-p.x)/100,  w:1.0};
-                });
-                onResult(pts);
-              } else { onResult(null); }
-            });
-        });
-    })
-    .catch(function(e){ console.log("SofaScore error:", e); onResult(null); });
+            return fetch("https://api.sofascore.com/api/v1/event/"+eventId+"/player/"+found2.id+"/heatmap", {headers:SF})
+              .then(function(r){ return r.json(); })
+              .then(function(hm) {
+                if (hm && hm.heatmap && hm.heatmap.length>0) {
+                  console.log("SofaScore heatmap:", hm.heatmap.length, "points");
+                  var pts = hm.heatmap.map(function(p) {
+                    return isPlayerHome
+                      ? {x:(100-p.y)/100, y:p.x/100,       w:1.0}
+                      : {x:p.y/100,       y:(100-p.x)/100,  w:1.0};
+                  });
+                  onResult(pts);
+                } else { onResult(null); }
+              });
+          });
+      })
+      .catch(function(e){ console.log("SofaScore error:", e); tryDate(dateIndex+1); });
+  }
+
+  tryDate(0);
 }
+
 
 // ══ Zones précises par poste (zones.js) ════════════════════════════
 var HEATMAP_ZONES = {
@@ -2003,7 +2006,7 @@ function calibrateDensity(stats) {
     touches*2.5 + passes*1.8 + drib*3.5 + duels*1.2 + mins*2.0
   );
   if (rating>=7.5) density = Math.floor(density*1.3);
-  return Math.max(200, Math.min(1500, density || 400));
+  return Math.max(30, Math.min(80, Math.floor((density||400)/8)));
 }
 
 // ══ Moteur de génération (heatmap-engine.js) ════════════════════════
