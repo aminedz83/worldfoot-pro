@@ -2169,7 +2169,8 @@ function HeatmapCanvas(props) {
     // Flèche direction
     ctx.fillStyle="rgba(0,80,0,0.35)";
     ctx.font="bold 10px sans-serif"; ctx.textAlign="center";
-    ctx.fillText("\u2192", W/2, pad+11);
+    var arrowDir = props.period===2 ? "\u2190" : "\u2192";
+    ctx.fillText(arrowDir, W/2, pad+11);
 
   }, [pts, W, H]);
 
@@ -2257,7 +2258,7 @@ function HeatmapSection(props) {
           border:"1px solid #e2e8f0",
           boxShadow:"0 1px 8px rgba(0,0,0,0.08)"
         }},
-          React.createElement(HeatmapCanvas,{points:displayPoints,width:340,height:230})
+          React.createElement(HeatmapCanvas,{points:displayPoints,width:340,height:230,period:period})
         ),
         React.createElement("div",{style:{
           display:"flex",alignItems:"center",justifyContent:"center",
@@ -10837,7 +10838,18 @@ function MatchDetail({state,onClose,onTeam}){
           playerName:    playerSheet.name,
           playerIsHome:  (function(){ var hLogo = fix && fix.teams && fix.teams.home && fix.teams.home.logo; var aLogo = fix && fix.teams && fix.teams.away && fix.teams.away.logo; if (!playerSheet.teamLogo) return true; if (hLogo && playerSheet.teamLogo === hLogo) return true; if (aLogo && playerSheet.teamLogo === aLogo) return false; return true; })(),
           fix:           fix,
-          period:        (function(){ var status = fix && fix.fixture && fix.fixture.status && fix.fixture.status.elapsed; return status && status > 45 ? 2 : 1; })(),
+          period:        (function(){
+            var st = fix && fix.fixture && fix.fixture.status;
+            if (!st) return 1;
+            // Match terminé → regarder le score pour deviner, sinon 2ème mi-temps
+            var short = st.short || "";
+            var elapsed = st.elapsed || 0;
+            // 2HT = deuxième mi-temps en cours, FT/AET = terminé (a eu une 2ème mi-temps)
+            if (short==="2H"||short==="HT"||short==="ET"||short==="BT"||short==="P") return 2;
+            if (short==="FT"||short==="AET"||short==="PEN") return 2;
+            if (elapsed > 45) return 2;
+            return 1;
+          })(),
           open:          showHeatmap,
           onToggle:      function(){ setShowHeatmap(function(v){ return !v; }); }
         }),
