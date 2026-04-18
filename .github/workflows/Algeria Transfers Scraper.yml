@@ -2,14 +2,9 @@ name: Algeria Transfers Scraper
 
 on:
   schedule:
-    # Quotidien à 4h UTC
-    - cron: '0 4 * * *'
+    # Chaque lundi à 4h UTC (mercato ouvert jan-fév et juin-août)
+    - cron: '0 4 * * 1'
   workflow_dispatch:
-    inputs:
-      mode:
-        description: 'Mode: clubs (par club) ou all (vue globale)'
-        required: false
-        default: 'clubs'
 
 jobs:
   scrape:
@@ -22,10 +17,17 @@ jobs:
         with:
           python-version: '3.11'
 
-      - name: Install dependencies
-        run: pip install requests cloudscraper beautifulsoup4 tqdm
+      - name: Install Chrome
+        run: |
+          wget -q -O - https://dl.google.com/linux/linux_signing_key.pub | sudo apt-key add -
+          echo "deb [arch=amd64] http://dl.google.com/linux/chrome/deb/ stable main" | sudo tee /etc/apt/sources.list.d/google-chrome.list
+          sudo apt-get update -q
+          sudo apt-get install -y google-chrome-stable
+
+      - name: Install Python dependencies
+        run: pip install selenium webdriver-manager requests beautifulsoup4
 
       - name: Run scraper
         env:
           SUPABASE_KEY: ${{ secrets.SUPABASE_KEY }}
-        run: python3 scripts/scrape_algeria_transfers.py --mode ${{ github.event.inputs.mode || 'clubs' }}
+        run: python3 scripts/scrape_algeria_transfers_selenium.py
