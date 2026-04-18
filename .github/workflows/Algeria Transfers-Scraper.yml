@@ -1,0 +1,33 @@
+name: Algeria Transfers Scraper
+
+on:
+  schedule:
+    # Chaque lundi à 4h UTC (mercato ouvert jan-fév et juin-août)
+    - cron: '0 4 * * 1'
+  workflow_dispatch:
+
+jobs:
+  scrape:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v3
+
+      - name: Setup Python
+        uses: actions/setup-python@v4
+        with:
+          python-version: '3.11'
+
+      - name: Install Chrome
+        run: |
+          wget -q -O - https://dl.google.com/linux/linux_signing_key.pub | sudo apt-key add -
+          echo "deb [arch=amd64] http://dl.google.com/linux/chrome/deb/ stable main" | sudo tee /etc/apt/sources.list.d/google-chrome.list
+          sudo apt-get update -q
+          sudo apt-get install -y google-chrome-stable
+
+      - name: Install Python dependencies
+        run: pip install selenium webdriver-manager requests beautifulsoup4
+
+      - name: Run scraper
+        env:
+          SUPABASE_KEY: ${{ secrets.SUPABASE_KEY }}
+        run: python3 scripts/scrape_algeria_transfers_selenium.py
