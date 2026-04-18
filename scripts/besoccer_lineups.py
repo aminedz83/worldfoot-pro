@@ -353,12 +353,6 @@ def parse_player(link):
 # ══════════════════════════════════════════════
 
 def scrape_events_live(base_url, home_team, away_team):
-    """
-    Scrape la page /events de BeSoccer et retourne:
-    - sub_in_minutes: dict player_id → minute d'entrée
-    - events: liste d'événements (buts/cartons)
-    - score: {home, away}
-    """
     url = base_url.rstrip("/").replace("/lineups", "") + "/events"
     r   = fetch(url)
     if not r:
@@ -369,7 +363,6 @@ def scrape_events_live(base_url, home_team, away_team):
     events         = []
     seen           = set()
 
-    # ── Score : premier mini-result = score final ─────────────
     score = {"home": 0, "away": 0}
     all_mini = soup.select("div.mini-result")
     if all_mini:
@@ -385,7 +378,6 @@ def scrape_events_live(base_url, home_team, away_team):
                 score["home"] = int(nums[-1][0])
                 score["away"] = int(nums[-1][1])
 
-    # ── Events : format 1 uniquement (all-events) ────────────
     for row in soup.select("div.table-played-match.all-events"):
         min_el = row.select_one("div.col-mid-rows div.min")
         if not min_el: continue
@@ -404,7 +396,6 @@ def scrape_events_live(base_url, home_team, away_team):
         elif "cambio" in src or "substitution" in alt:  event_type = "sub"
         if not event_type: continue
 
-        # Côté domicile/extérieur
         left  = row.select_one("div.col-side.left")
         right = row.select_one("div.col-side.right")
         left_has  = left  and (left.select_one("a[data-cy='eventOrd']") or left.select_one("div.name-wrapper"))
@@ -412,7 +403,6 @@ def scrape_events_live(base_url, home_team, away_team):
         is_home = bool(left_has) and not bool(right_has)
 
         if event_type == "sub":
-            # Méthode 1 : popup avec player_id dans l'ID
             popup = row.select_one("div[id^='popup_event_order']")
             if popup:
                 pid_m = re.search(r"_(\d+)_(\d+)$", popup.get("id", ""))
@@ -425,7 +415,6 @@ def scrape_events_live(base_url, home_team, away_team):
                         sub_in_minutes[sub_pid] = sub_min
                         print(f"    🔄 {sub_min}' pid={sub_pid} ({'dom' if is_home else 'ext'})")
             else:
-                # Méthode 2 : player_id depuis href
                 side = left if is_home else right
                 if side:
                     for lnk in side.select("a[href*='/player/']"):
@@ -438,7 +427,6 @@ def scrape_events_live(base_url, home_team, away_team):
                                 print(f"    🔄 {minute}' pid={pid2} ({'dom' if is_home else 'ext'})")
             continue
 
-        # Buts / cartons
         side = left if is_home else right
         player_link = side.select_one("a[data-cy='eventOrd']") if side else None
         player_name = player_link.get_text(strip=True) if player_link else ""
@@ -458,7 +446,7 @@ def scrape_events_live(base_url, home_team, away_team):
             "score":   mini.get_text(strip=True) if mini else ""
         })
         icon = {"goal": "⚽", "yellow": "🟨", "red": "🟥"}.get(event_type, "?")
-        print(f"    {icon} {minute}' {player_name} ({'dom' if is_home else 'ext'})") 
+        print(f"    {icon} {minute}' {player_name} ({'dom' if is_home else 'ext'})")
 
     print(f"  📊 Events: {len(events)} | Score: {score['home']}-{score['away']}")
     return sub_in_minutes, events, score
@@ -467,9 +455,7 @@ def scrape_events_live(base_url, home_team, away_team):
 # SCRAPE LINEUP
 # ══════════════════════════════════════════════
 
-
 def enrich_players_from_events(players, events):
-    """Croise les events (buts/cartons) avec les players par nom."""
     for evt in events:
         pname  = evt.get("player", "")
         etype  = evt.get("type", "")
@@ -481,7 +467,9 @@ def enrich_players_from_events(players, events):
             en     = pname.lower()
             last_p = pn.split(".")[-1].strip()
             last_e = en.split(".")[-1].strip()
-            match  = (pn == en) or                      (last_p and last_p in en) or                      (last_e and last_e in pn)
+            match  = (pn == en) or \
+                     (last_p and last_p in en) or \
+                     (last_e and last_e in pn)
             if not match:
                 continue
             if etype == "goal":
@@ -520,7 +508,6 @@ def scrape_lineup(match):
         print(f"  ⏳ Compos pas encore officielles ({len(starters_all)} joueurs)")
         return None
 
-    # ── Events live (buts, cartons, changements) ────────────
     sub_in_minutes, live_events, score = scrape_events_live(
         match["url"], match.get("home_team", ""), match.get("away_team", "")
     )
@@ -539,7 +526,7 @@ def scrape_lineup(match):
         "away_formation": "",
         "home_score":     score["home"],
         "away_score":     score["away"],
-        "events":         live_events,   # ← NOUVEAU : buts/cartons/changements
+        "events":         live_events,
         "scraped_at":     datetime.now(timezone.utc).isoformat()
     }
 
@@ -557,7 +544,6 @@ def scrape_lineup(match):
         if p: result["away_players"].append(p)
 
     def match_sub_minute(player_id, sub_dict):
-        """Cherche la minute d'entrée d'un remplaçant par player_id"""
         if not player_id:
             return None
         return sub_dict.get(player_id)
@@ -578,7 +564,6 @@ def scrape_lineup(match):
             p["sub_in_minute"]  = sub_min
             result["away_subs"].append(p)
 
-    # ── Enrichir players avec events (buts/cartons depuis /events) ──
     home_evts = [e for e in live_events if e.get("is_home")]
     away_evts = [e for e in live_events if not e.get("is_home")]
     result["home_players"] = enrich_players_from_events(result["home_players"], home_evts)
@@ -593,7 +578,6 @@ def scrape_lineup(match):
     gc = sum(p.get("goals",0) for p in result["home_players"]+result["away_players"]+result["home_subs"]+result["away_subs"])
     print(f"  ✅ Compo : {h} vs {a} titulaires | {hs} vs {as_} remplaçants | {gc} buts | {len(live_events)} events")
 
-    # ── PLUS DE BLOCAGE has_notes — on sauvegarde toujours ──
     return result
 
 # ══════════════════════════════════════════════
@@ -601,12 +585,6 @@ def scrape_lineup(match):
 # ══════════════════════════════════════════════
 
 def lineup_status(match_id):
-    """
-    Retourne:
-    - "none"     : pas encore en base
-    - "lineups"  : compos en base, pas d'events
-    - "complete" : compos + notes (match terminé) → ne plus toucher
-    """
     try:
         r = requests.get(
             SB_URL + f"/rest/v1/besoccer_lineups?match_id=eq.{match_id}&select=home_players,events",
@@ -614,7 +592,6 @@ def lineup_status(match_id):
         ).json()
         if not r or not r[0].get("home_players"):
             return "none"
-        # Si tous les joueurs ont une note → match terminé
         players = r[0].get("home_players", [])
         has_notes = any(p.get("rating") for p in players if isinstance(p, dict))
         return "complete" if has_notes else "lineups"
@@ -632,7 +609,6 @@ def save_lineup(lineup):
     print(f"  Supabase: {'✅ OK' if code in [200,201,204] else '❌ '+str(code)+' '+res.text[:120]}")
 
 def update_events(match_id, events, home_score, away_score, home_players, away_players, home_subs, away_subs):
-    """Met à jour uniquement les events + score (sans réécrire tout le lineup)"""
     payload = {
         "events":       events,
         "home_score":   home_score,
@@ -650,6 +626,30 @@ def update_events(match_id, events, home_score, away_score, home_players, away_p
     )
     code = res.status_code
     print(f"  Events update: {'✅ OK' if code in [200,201,204] else '❌ '+str(code)+' '+res.text[:120]}")
+
+# ── NOUVEAU : récupération des notes post-match ──────────────────────
+
+def has_ratings(lineup):
+    """Vérifie si le lineup contient des notes (BeSoccer les publie après le match)"""
+    players = lineup.get("home_players", []) + lineup.get("away_players", [])
+    return any(p.get("rating") is not None for p in players)
+
+def update_ratings(match_id, home_players, away_players, home_subs, away_subs):
+    """Met à jour uniquement les ratings sans toucher aux autres données"""
+    payload = {
+        "home_players": home_players,
+        "away_players": away_players,
+        "home_subs":    home_subs,
+        "away_subs":    away_subs,
+        "scraped_at":   datetime.now(timezone.utc).isoformat()
+    }
+    res = requests.patch(
+        SB_URL + f"/rest/v1/besoccer_lineups?match_id=eq.{match_id}",
+        headers={**SB_HEADERS, "Prefer": ""},
+        json=payload
+    )
+    code = res.status_code
+    print(f"  Ratings update: {'✅ OK' if code in [200,201,204] else '❌ '+str(code)+' '+res.text[:120]}")
 
 # ══════════════════════════════════════════════
 # MAIN
@@ -675,7 +675,6 @@ for match in matches:
     print(f"  Status: {status}")
 
     if status == "complete":
-        # Match terminé avec notes → on skip pour ne pas écraser
         print("  ✓ Match terminé, données complètes — skip")
         continue
 
@@ -689,7 +688,7 @@ for match in matches:
         # Première fois → sauvegarder tout
         save_lineup(lineup)
     else:
-        # Compos déjà en base → mettre à jour uniquement events + score + joueurs (cartons/buts)
+        # Compos déjà en base → mettre à jour events + score + joueurs
         update_events(
             mid,
             lineup["events"],
@@ -700,6 +699,16 @@ for match in matches:
             lineup["home_subs"],
             lineup["away_subs"]
         )
+        # ── NOUVEAU : si notes disponibles → mettre à jour ratings ──
+        if has_ratings(lineup):
+            print("  📊 Notes trouvées → update ratings")
+            update_ratings(
+                mid,
+                lineup["home_players"],
+                lineup["away_players"],
+                lineup["home_subs"],
+                lineup["away_subs"]
+            )
 
     time.sleep(2)
 
