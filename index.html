@@ -2,7 +2,7 @@
 <html lang="fr">
 <head>
     <meta charset="UTF-8" />
-    <!-- v319 -->
+    <!-- v320 -->
     <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate" />
     <meta http-equiv="Pragma" content="no-cache" />
     <meta http-equiv="Expires" content="0" />
@@ -12416,7 +12416,7 @@ async function buildAlgerianScorers(season) {
 
 function ScorersTab() {
   const [lid, setLid] = useState(186);
-  const [season, setSeason] = useState(2024);
+  const [season, setSeason] = useState(2026);
   const [type, setType] = useState("scorers");
   const [data, setData] = useState([]);
   const [status, setStatus] = useState("load");
@@ -12429,16 +12429,39 @@ function ScorersTab() {
     setNeedsBuild(false);
     try {
       if (leagueId === 186 && typ === "scorers") {
-        const apiResult = await api(`/players/topscorers?league=186&season=${seas}`, 1800000).catch(() => []);
-        const apiMax = apiResult?.[0]?.statistics?.[0]?.goals?.total || 0;
-        if (apiMax >= 5) {
-          setData(apiResult);
+        // ── Ligue 1 Algérie : lire depuis Supabase algeria_rankings ──
+        const sbKey = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImlxZXFsc3hqaWtseWd5d2ppcnFzIiwicm9sZSI6ImFub24iLCJpYXQiOjE3MTIwMDAwMDAsImV4cCI6MjAyNzAwMDAwMH0.placeholder";
+        const sbUrl = "https://iqeqlsxjiklygywjirqs.supabase.co";
+        const res = await fetch(
+          `${sbUrl}/rest/v1/algeria_rankings?type=eq.buteurs&season=eq.${seas}&order=rank.asc&limit=30`,
+          { headers: { "apikey": SB_KEY, "Authorization": "Bearer " + SB_KEY } }
+        );
+        const rows = res.ok ? await res.json() : [];
+        if (rows && rows.length > 0) {
+          // Convertir format Supabase → format attendu par le render
+          const converted = rows.map(r => ({
+            player: {
+              id:    r.player_id,
+              name:  r.name,
+              photo: r.photo,
+            },
+            statistics: [{
+              team:  { name: r.team, logo: r.team_logo },
+              goals: { total: parseInt(r.value1) || 0, assists: 0, penalty_scored: parseInt(r.value2) || 0 },
+              games: { appearences: parseInt(r.value2) || 0 },
+              penalty: { scored: 0 }
+            }]
+          }));
+          setData(converted);
           setStatus("ok");
         } else {
-          // Ne pas lancer automatiquement — demander confirmation
-          setStatus("idle");
-          setNeedsBuild(true);
+          setStatus("empty");
         }
+      } else if (leagueId === 186 && typ === "assists") {
+        // Passes décisives Algérie : API Football
+        const res = await api(`/players/topassists?league=186&season=${seas}`, 1800000);
+        setData(res || []);
+        setStatus(res?.length ? "ok" : "empty");
       } else {
         const path = typ === "assists"
           ? `/players/topassists?league=${leagueId}&season=${seas}`
