@@ -1,0 +1,31 @@
+name: Algeria Transfers Scraper
+
+on:
+  schedule:
+    # Quotidien à 4h UTC
+    - cron: '0 4 * * *'
+  workflow_dispatch:
+    inputs:
+      mode:
+        description: 'Mode: clubs (par club) ou all (vue globale)'
+        required: false
+        default: 'clubs'
+
+jobs:
+  scrape:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v3
+
+      - name: Setup Python
+        uses: actions/setup-python@v4
+        with:
+          python-version: '3.11'
+
+      - name: Install dependencies
+        run: pip install requests cloudscraper beautifulsoup4 tqdm
+
+      - name: Run scraper
+        env:
+          SUPABASE_KEY: ${{ secrets.SUPABASE_KEY }}
+        run: python3 scripts/scrape_algeria_transfers.py --mode ${{ github.event.inputs.mode || 'clubs' }}
