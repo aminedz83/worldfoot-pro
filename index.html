@@ -2,7 +2,7 @@
 <html lang="fr">
 <head>
     <meta charset="UTF-8" />
-    <!-- v322 -->
+    <!-- v323 -->
     <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate" />
     <meta http-equiv="Pragma" content="no-cache" />
     <meta http-equiv="Expires" content="0" />
@@ -13296,6 +13296,13 @@ function TransfersTab({ onTeam }) {
   const [coachTransfers, setCoachTransfers] = useState([]);
   const [coachTransfersStatus, setCoachTransfersStatus] = useState("idle");
 
+  // ── Ligue 1 Algérie transferts (Supabase) ────────────────────────
+  const [alg1Data,       setAlg1Data]       = useState([]);
+  const [alg1Status,     setAlg1Status]     = useState("idle");
+  const [alg1Season,     setAlg1Season]     = useState(2026);
+  const [alg1Dir,        setAlg1Dir]        = useState("all"); // all | in | out
+  const [alg1Club,       setAlg1Club]       = useState("all"); // all | club_name
+
   useEffect(() => {
     if (mainTab !== "coaches" || coachesStatus !== "idle") return;
     setCoachesStatus("load");
@@ -13531,6 +13538,27 @@ function TransfersTab({ onTeam }) {
     });
   }, [mainTab, clubFilter]);
 
+  // ── Charger transferts Ligue 1 Algérie depuis Supabase ───────────
+  useEffect(function() {
+    if (mainTab !== "mercato" || alg1Status !== "idle") return;
+    setAlg1Status("load");
+    var SB_BASE = "https://iqeqlsxjiklygywjirqs.supabase.co/rest/v1/";
+    var SB_H    = { "apikey": SB_KEY, "Authorization": "Bearer " + SB_KEY };
+    fetch(SB_BASE + "algeria_transfers?season=eq." + alg1Season + "&order=player_name.asc&limit=500",
+      { headers: SB_H }
+    ).then(function(r) { return r.json(); })
+    .then(function(rows) {
+      setAlg1Data(rows || []);
+      setAlg1Status(rows && rows.length ? "ok" : "empty");
+    }).catch(function() { setAlg1Status("err"); });
+  }, [mainTab, alg1Season]);
+
+  useEffect(function() {
+    if (mainTab === "mercato" && alg1Status === "ok") {
+      setAlg1Status("idle");
+    }
+  }, [alg1Season]);
+
   useEffect(() => {
     if (mainTab !== "actu" || actuData.length) return;
     setActuStatus("load");
@@ -13585,7 +13613,7 @@ function TransfersTab({ onTeam }) {
       ),
 
       React.createElement("div", { style: { display: "flex", marginTop: 10 } },
-        [{ id: "mercato", label: "⚽ Mercato" }, { id: "coaches", label: "🧑‍💼 Entraîneurs" }, { id: "actu", label: "📰 Actualités" }].map(t =>
+        [{ id: "mercato", label: "⚽ Mercato" }, { id: "ligue1", label: "🇩🇿 Ligue 1" }, { id: "coaches", label: "🧑‍💼 Entraîneurs" }, { id: "actu", label: "📰 Actualités" }].map(t =>
           React.createElement("button", {
             key: t.id, onClick: () => setMainTab(t.id),
             style: {
@@ -13654,6 +13682,110 @@ function TransfersTab({ onTeam }) {
         !hasArrivals && !hasDepartures && filteredMercato.map((t, i) =>
           React.createElement(MercatoCard, { key: i, transfer: t, onTeam: onTeam })
         )
+      ),
+      React.createElement("div", { style: { height: 20 } })
+    ),
+
+    // ── LIGUE 1 ALGÉRIE TRANSFERTS ────────────────────────────────
+    mainTab === "ligue1" && React.createElement("div", {
+      style: { background: "#fff", borderBottom: "1px solid #e8edf3", padding: "10px 12px", flexShrink: 0 }
+    },
+      React.createElement("div", { style: { display: "flex", gap: 6, marginBottom: 8 } },
+        ["all","in","out"].map(function(d) {
+          var labels = { all: "Tous", in: "✅ Arrivées", out: "🚪 Départs" };
+          return React.createElement("button", {
+            key: d, onClick: function() { setAlg1Dir(d); },
+            style: {
+              flex: 1, padding: "8px 0", borderRadius: 9, border: "none", cursor: "pointer",
+              fontWeight: 700, fontSize: 12,
+              background: alg1Dir === d ? "linear-gradient(135deg,#00c170,#009e5c)" : "#f1f5f9",
+              color: alg1Dir === d ? "#fff" : "#64748b",
+              boxShadow: alg1Dir === d ? "0 2px 8px rgba(0,193,112,.3)" : "none"
+            }
+          }, labels[d]);
+        })
+      ),
+      React.createElement("div", { style: { display: "flex", gap: 6 } },
+        React.createElement("select", {
+          value: alg1Club,
+          onChange: function(e) { setAlg1Club(e.target.value); },
+          style: { flex: 1, background: "#f8fafc", border: "1px solid #e2e8f0", color: "#0f172a", borderRadius: 10, padding: "8px 10px", fontSize: 12, fontWeight: 600, outline: "none" }
+        },
+          React.createElement("option", { value: "all" }, "Tous les clubs"),
+          Array.from(new Set((alg1Data || []).map(function(t) { return t.club_source; }))).sort().map(function(c) {
+            return React.createElement("option", { key: c, value: c }, c);
+          })
+        ),
+        React.createElement("select", {
+          value: alg1Season,
+          onChange: function(e) { setAlg1Season(Number(e.target.value)); },
+          style: { background: "#f8fafc", border: "1px solid #e2e8f0", color: "#0f172a", borderRadius: 10, padding: "8px 10px", fontSize: 12, fontWeight: 600, outline: "none", width: 100 }
+        },
+          [2026,2025,2024,2023].map(function(y) {
+            return React.createElement("option", { key: y, value: y }, (y-1) + "/" + String(y).slice(-2));
+          })
+        )
+      )
+    ),
+
+    mainTab === "ligue1" && React.createElement("div", { style: { flex: 1, overflowY: "auto", paddingTop: 4 } },
+      alg1Status === "load" && React.createElement("div", { style: { display: "flex", flexDirection: "column", alignItems: "center", padding: 50, gap: 12 } },
+        React.createElement(Spin, { s: 30, c: "#00c170" }),
+        React.createElement("span", { style: { fontSize: 13, color: "#94a3b8" } }, "Chargement des transferts…")
+      ),
+      alg1Status === "err" && React.createElement("div", { style: { textAlign: "center", padding: 50, color: "#94a3b8", fontSize: 13 } }, "Erreur de chargement"),
+      alg1Status === "empty" && React.createElement("div", { style: { textAlign: "center", padding: 50, color: "#94a3b8", fontSize: 13 } }, "Aucun transfert disponible"),
+      alg1Status === "ok" && React.createElement("div", null,
+        (function() {
+          var filtered = alg1Data.filter(function(t) {
+            if (alg1Club !== "all" && t.club_source !== alg1Club) return false;
+            if (alg1Dir === "in"  && t.direction !== "in")  return false;
+            if (alg1Dir === "out" && t.direction !== "out") return false;
+            return true;
+          });
+          if (!filtered.length) return React.createElement("div", { style: { textAlign: "center", padding: 50, color: "#94a3b8", fontSize: 13 } }, "Aucun transfert trouvé");
+          return filtered.map(function(t, i) {
+            var isIn    = t.direction === "in";
+            var dirColor = isIn ? "#00c170" : "#e53535";
+            var dirLabel = isIn ? "ARRIVÉE" : "DÉPART";
+            return React.createElement("div", {
+              key: i,
+              style: {
+                display: "flex", alignItems: "center", gap: 10,
+                padding: "11px 14px", borderBottom: "1px solid #f1f5f9",
+                background: "#fff",
+                borderLeft: "3px solid " + dirColor
+              }
+            },
+              // Photo joueur
+              React.createElement("div", { style: { width: 44, height: 44, borderRadius: 22, overflow: "hidden", flexShrink: 0, background: "#f1f5f9", border: "2px solid " + dirColor } },
+                React.createElement("img", {
+                  src: t.photo || ("https://cdn.resfu.com/img_data/players/medium/" + t.player_id + ".jpg?size=120x&lossy=1"),
+                  style: { width: "100%", height: "100%", objectFit: "cover" },
+                  onError: function(e) { e.target.style.display = "none"; },
+                  alt: ""
+                })
+              ),
+              // Infos joueur
+              React.createElement("div", { style: { flex: 1, minWidth: 0 } },
+                React.createElement("div", { style: { fontSize: 14, fontWeight: 700, color: "#0f172a", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" } }, t.player_name),
+                React.createElement("div", { style: { display: "flex", alignItems: "center", gap: 4, marginTop: 3 } },
+                  // Club départ
+                  t.club_logo && React.createElement("img", { src: isIn ? t.club_dest_logo : t.club_logo, style: { width: 14, height: 14, objectFit: "contain" }, alt: "" }),
+                  React.createElement("span", { style: { fontSize: 11, color: "#64748b" } }, isIn ? t.club_depart : t.club_arrivee),
+                  React.createElement("span", { style: { fontSize: 11, color: "#94a3b8" } }, "→"),
+                  t.club_dest_logo && React.createElement("img", { src: isIn ? t.club_logo : t.club_dest_logo, style: { width: 14, height: 14, objectFit: "contain" }, alt: "" }),
+                  React.createElement("span", { style: { fontSize: 11, color: "#64748b" } }, isIn ? t.club_arrivee : t.club_depart)
+                ),
+                t.type && React.createElement("div", { style: { fontSize: 10, color: "#94a3b8", marginTop: 2 } }, t.type + (t.montant ? " • " + t.montant : ""))
+              ),
+              // Badge direction
+              React.createElement("div", { style: { flexShrink: 0, textAlign: "center" } },
+                React.createElement("div", { style: { background: dirColor, color: "#fff", borderRadius: 6, padding: "3px 7px", fontSize: 9, fontWeight: 800 } }, dirLabel)
+              )
+            );
+          });
+        })()
       ),
       React.createElement("div", { style: { height: 20 } })
     ),
