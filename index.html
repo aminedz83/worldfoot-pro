@@ -2,7 +2,7 @@
 <html lang="fr">
 <head>
     <meta charset="UTF-8" />
-    <!-- v320 -->
+    <!-- v321 -->
     <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate" />
     <meta http-equiv="Pragma" content="no-cache" />
     <meta http-equiv="Expires" content="0" />
@@ -12415,224 +12415,163 @@ async function buildAlgerianScorers(season) {
 }
 
 function ScorersTab() {
-  const [lid, setLid] = useState(186);
+  const [lid, setLid]       = useState(186);
   const [season, setSeason] = useState(2026);
-  const [type, setType] = useState("scorers");
-  const [data, setData] = useState([]);
+  // Pour les autres ligues
+  const [type, setType]     = useState("scorers");
+  const [data, setData]     = useState([]);
   const [status, setStatus] = useState("load");
   const [lastUpdate, setLastUpdate] = useState(null);
-  const [buildProgress, setBuildProgress] = useState(null);
-  const [needsBuild, setNeedsBuild] = useState(false);
 
-  const loadScorers = useCallback(async (leagueId, seas, typ, silent=false) => {
-    if (!silent) setStatus("load");
-    setNeedsBuild(false);
+  // Pour Algérie : données multi-sections
+  const [algData, setAlgData]       = useState({});
+  const [algStatus, setAlgStatus]   = useState("load");
+  // expanded state par section
+  const [expanded, setExpanded]     = useState({});
+
+  const SB_BASE = "https://iqeqlsxjiklygywjirqs.supabase.co/rest/v1/";
+  const SB_H    = { "apikey": SB_KEY, "Authorization": "Bearer " + SB_KEY };
+
+  const SECTIONS = [
+    { key: "buteurs",           label: "Buteurs",          icon: "⚽", stat: (r) => r.value1 + " (" + r.value3 + ")", sub: (r) => r.value2 + " matchs" },
+    { key: "minutes_par_but",   label: "Minutes par but",  icon: "⏱️", stat: (r) => r.value1 + " (" + r.value2 + ")", sub: (r) => r.value3 + " buts" },
+    { key: "buteurs_penalty",   label: "Buts de pénalty",  icon: "🥅", stat: (r) => r.value1 + " (" + r.value3 + ")", sub: (r) => r.value2 + " matchs" },
+    { key: "penaltys_manques",  label: "Pénaltys manqués", icon: "❌", stat: (r) => r.value1 + " (" + r.value3 + ")", sub: (r) => r.value2 + " matchs" },
+    { key: "meilleurs_gardiens",label: "Meilleur gardien", icon: "🧤", stat: (r) => r.value1 + " (" + r.value3 + ")", sub: (r) => r.value2 + " matchs" },
+  ];
+
+  const loadAlgeria = useCallback(async (seas) => {
+    setAlgStatus("load");
     try {
-      if (leagueId === 186 && typ === "scorers") {
-        // ── Ligue 1 Algérie : lire depuis Supabase algeria_rankings ──
-        const sbKey = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImlxZXFsc3hqaWtseWd5d2ppcnFzIiwicm9sZSI6ImFub24iLCJpYXQiOjE3MTIwMDAwMDAsImV4cCI6MjAyNzAwMDAwMH0.placeholder";
-        const sbUrl = "https://iqeqlsxjiklygywjirqs.supabase.co";
-        const res = await fetch(
-          `${sbUrl}/rest/v1/algeria_rankings?type=eq.buteurs&season=eq.${seas}&order=rank.asc&limit=30`,
-          { headers: { "apikey": SB_KEY, "Authorization": "Bearer " + SB_KEY } }
+      const results = {};
+      for (var i = 0; i < SECTIONS.length; i++) {
+        var sec = SECTIONS[i];
+        var res = await fetch(
+          SB_BASE + "algeria_rankings?type=eq." + sec.key + "&season=eq." + seas + "&order=rank.asc&limit=50",
+          { headers: SB_H }
         );
-        const rows = res.ok ? await res.json() : [];
-        if (rows && rows.length > 0) {
-          // Convertir format Supabase → format attendu par le render
-          const converted = rows.map(r => ({
-            player: {
-              id:    r.player_id,
-              name:  r.name,
-              photo: r.photo,
-            },
-            statistics: [{
-              team:  { name: r.team, logo: r.team_logo },
-              goals: { total: parseInt(r.value1) || 0, assists: 0, penalty_scored: parseInt(r.value2) || 0 },
-              games: { appearences: parseInt(r.value2) || 0 },
-              penalty: { scored: 0 }
-            }]
-          }));
-          setData(converted);
-          setStatus("ok");
-        } else {
-          setStatus("empty");
-        }
-      } else if (leagueId === 186 && typ === "assists") {
-        // Passes décisives Algérie : API Football
-        const res = await api(`/players/topassists?league=186&season=${seas}`, 1800000);
-        setData(res || []);
-        setStatus(res?.length ? "ok" : "empty");
-      } else {
-        const path = typ === "assists"
-          ? `/players/topassists?league=${leagueId}&season=${seas}`
-          : `/players/topscorers?league=${leagueId}&season=${seas}`;
-        const res = await api(path, 1800000);
-        setData(res || []);
-        setStatus(res?.length ? "ok" : "empty");
+        results[sec.key] = res.ok ? await res.json() : [];
       }
-      setLastUpdate(Date.now());
-    } catch {
-      if (!silent) setStatus("err");
-      setBuildProgress(null);
+      setAlgData(results);
+      setAlgStatus("ok");
+    } catch(e) {
+      setAlgStatus("err");
     }
   }, []);
 
-  const runBuild = useCallback(async () => {
-    setNeedsBuild(false);
-    setBuildProgress("Calcul en cours…");
-    setStatus("load");
+  const loadScorers = useCallback(async (leagueId, seas, typ, silent=false) => {
+    if (!silent) setStatus("load");
     try {
-      const built = await buildAlgerianScorers(season);
-      setData(built);
-      setStatus(built.length ? "ok" : "empty");
+      var path = typ === "assists"
+        ? "/players/topassists?league=" + leagueId + "&season=" + seas
+        : "/players/topscorers?league=" + leagueId + "&season=" + seas;
+      var res = await api(path, 1800000);
+      setData(res || []);
+      setStatus(res && res.length ? "ok" : "empty");
       setLastUpdate(Date.now());
-    } catch {
-      setStatus("err");
+    } catch(e) {
+      if (!silent) setStatus("err");
     }
-    setBuildProgress(null);
-  }, [season]);
+  }, []);
 
-  useEffect(() => {
-    loadScorers(lid, season, type);
+  useEffect(function() {
+    if (lid === 186) {
+      loadAlgeria(season);
+    } else {
+      loadScorers(lid, season, type);
+    }
   }, [lid, season, type]);
 
-  useEffect(() => {
-    const onVisible = () => {
-      if (!document.hidden && lastUpdate && Date.now() - lastUpdate > 1800000) {
-        _algerianScorersCache.ts = 0;
-        loadScorers(lid, season, type, true);
-      }
-    };
-    document.addEventListener("visibilitychange", onVisible);
-    return () => document.removeEventListener("visibilitychange", onVisible);
-  }, [lid, season, type, lastUpdate, loadScorers]);
+  // ── Render section Algérie ─────────────────────────────────────────
+  function renderSection(sec) {
+    var rows = algData[sec.key] || [];
+    var isExp = !!expanded[sec.key];
+    var visible = isExp ? rows : rows.slice(0, 3);
+    if (!rows.length) return null;
 
-  useEffect(() => {
-    if (lid !== 186 || type !== "scorers") return;
-
-    let prevLiveIds = new Set();
-    let intervalId = null;
-
-    const checkAlgerianMatches = async () => {
-      try {
-        const today = new Date().toISOString().slice(0, 10);
-        const fixtures = await api(`/fixtures?league=186&season=${season}&date=${today}`, 60000);
-        if (!fixtures || fixtures.length === 0) return;
-
-        const liveNow = new Set(
-          fixtures
-            .filter(f => LIVE_ST.has(f.fixture.status.short))
-            .map(f => f.fixture.id)
-        );
-
-        const justFinished = fixtures.filter(f =>
-          DONE_ST.has(f.fixture.status.short) && prevLiveIds.has(f.fixture.id)
-        );
-
-        if (justFinished.length > 0) {
-
-          console.log(`✅ ${justFinished.length} match(s) algérien(s) terminé(s) → recalcul buteurs`);
-          _algerianScorersCache.ts = 0;
-          loadScorers(186, season, "scorers", true);
-        }
-
-        prevLiveIds = liveNow;
-
-        const nextInterval = liveNow.size > 0 ? 120000 : 600000;
-        intervalId = setTimeout(checkAlgerianMatches, nextInterval);
-      } catch {
-        intervalId = setTimeout(checkAlgerianMatches, 600000);
-      }
-    };
-
-    intervalId = setTimeout(checkAlgerianMatches, 30000);
-    return () => { if (intervalId) clearTimeout(intervalId); };
-  }, [lid, season, type, loadScorers]);
-
-  return React.createElement("div", { style: { height: "100%", display: "flex", flexDirection: "column", overflow: "hidden", background: "#f8fafc" } },
-
-    React.createElement("div", { style: { background: "#fff", borderBottom: "1px solid #f1f5f9", flexShrink: 0 } },
-      React.createElement("div", { style: { display: "flex", padding: "12px 14px 0" } },
-        React.createElement("div", { style: { display: "flex", background: "#f1f5f9", borderRadius: 12, padding: 3, gap: 2 } },
-          ["scorers","assists"].map(t =>
-            React.createElement("button", {
-              key: t, onClick: () => setType(t),
-              style: {
-                padding: "8px 20px", borderRadius: 10, border: "none",
-                background: type === t ? "#fff" : "transparent",
-                color: type === t ? "#0f172a" : "#94a3b8",
-                fontWeight: type === t ? 700 : 500, fontSize: 13, cursor: "pointer",
-                boxShadow: type === t ? "0 1px 4px rgba(15,23,42,.1)" : "none",
-                transition: "all .2s"
-              }
-            }, t === "scorers" ? "⚽ Buts" : "🎯 Passes")
-          )
+    return React.createElement("div", {
+      key: sec.key,
+      style: { background: "#fff", borderRadius: 14, margin: "12px 12px 0", boxShadow: "0 1px 6px rgba(0,0,0,0.06)", overflow: "hidden" }
+    },
+      // Header
+      React.createElement("div", {
+        style: { display: "flex", alignItems: "center", justifyContent: "space-between", padding: "12px 14px", borderBottom: "1px solid #f1f5f9" }
+      },
+        React.createElement("div", { style: { display: "flex", alignItems: "center", gap: 8 } },
+          React.createElement("span", { style: { fontSize: 18 } }, sec.icon),
+          React.createElement("span", { style: { fontSize: 14, fontWeight: 700, color: "#0f172a" } }, sec.label)
         ),
-        React.createElement("button", {
-          onClick: () => { _algerianScorersCache.ts = 0; loadScorers(lid, season, type); },
-          style: { marginLeft: "auto", background: "none", border: "none", fontSize: 20, cursor: "pointer", color: "#94a3b8", padding: "0 4px" }
-        }, "↻")
+        rows.length > 3 && React.createElement("button", {
+          onClick: function() { setExpanded(function(prev) { var n = Object.assign({}, prev); n[sec.key] = !prev[sec.key]; return n; }); },
+          style: { background: "none", border: "none", color: "#22c55e", fontWeight: 700, fontSize: 13, cursor: "pointer" }
+        }, isExp ? "MOINS" : "PLUS")
       ),
-      React.createElement("div", { style: { display: "flex", gap: 8, padding: "10px 14px 12px" } },
-        React.createElement("select", {
-          value: lid, onChange: e => setLid(Number(e.target.value)),
-          style: { flex: 1, background: "#f8fafc", border: "1px solid #e2e8f0", color: "#0f172a", borderRadius: 10, padding: "8px 10px", fontSize: 13, fontWeight: 600, outline: "none", cursor: "pointer" }
+      // Rows
+      visible.map(function(r, idx) {
+        var isTop = idx < 3 && !isExp;
+        var rankColors = ["#f59e0b", "#94a3b8", "#b45309"];
+        return React.createElement("div", {
+          key: r.rank,
+          style: {
+            display: "flex", alignItems: "center", gap: 10,
+            padding: "10px 14px",
+            borderBottom: idx < visible.length - 1 ? "1px solid #f8fafc" : "none",
+            background: isTop && idx === 0 ? "rgba(245,158,11,0.04)" : "#fff",
+            borderLeft: isTop ? "3px solid " + rankColors[idx] : "3px solid transparent"
+          }
         },
-          REGIONS.map(region =>
-            React.createElement("optgroup", { key: region, label: region },
-              LEAGUES.filter(l => l.region === region).map(l =>
-                React.createElement("option", { key: l.id, value: l.id }, `${l.flag} ${l.name}`)
-              )
+          // Photo
+          React.createElement("div", { style: { width: 42, height: 42, borderRadius: 21, overflow: "hidden", flexShrink: 0, background: "#f1f5f9", border: "2px solid " + (isTop ? rankColors[idx] : "#e2e8f0") } },
+            React.createElement("img", {
+              src: r.photo,
+              style: { width: "100%", height: "100%", objectFit: "cover" },
+              onError: function(e) { e.target.style.display = "none"; },
+              alt: ""
+            })
+          ),
+          // Infos
+          React.createElement("div", { style: { flex: 1, minWidth: 0 } },
+            React.createElement("div", { style: { fontSize: 14, fontWeight: isTop && idx === 0 ? 700 : 600, color: "#0f172a", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" } }, r.name),
+            React.createElement("div", { style: { display: "flex", alignItems: "center", gap: 5, marginTop: 2 } },
+              r.team_logo && React.createElement("img", { src: r.team_logo, style: { width: 14, height: 14, objectFit: "contain" }, alt: "" }),
+              React.createElement("span", { style: { fontSize: 11, color: "#64748b", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" } }, r.team)
             )
+          ),
+          // Stats
+          React.createElement("div", { style: { flexShrink: 0, textAlign: "right" } },
+            React.createElement("div", { style: { fontSize: 15, fontWeight: 800, color: isTop ? rankColors[idx] : "#e53535" } }, sec.stat(r)),
+            React.createElement("div", { style: { fontSize: 10, color: "#94a3b8", marginTop: 1 } }, sec.sub(r))
           )
-        ),
-        React.createElement("select", {
-          value: season, onChange: e => setSeason(Number(e.target.value)),
-          style: { background: "#f8fafc", border: "1px solid #e2e8f0", color: "#0f172a", borderRadius: 10, padding: "8px 10px", fontSize: 13, fontWeight: 600, outline: "none", cursor: "pointer", width: 115 }
-        },
-          SEASONS.map(y => React.createElement("option", { key: y, value: y }, `${y}/${String(y+1).slice(-2)}`))
-        )
-      )
-    ),
+        );
+      })
+    );
+  }
 
-    React.createElement("div", { style: { flex: 1, overflowY: "auto" } },
-      (status === "load" || buildProgress) && React.createElement("div", { style: { display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", padding: 60, gap: 12 } },
-        React.createElement(Spin, { s: 28, c: "#e53535" }),
-        React.createElement("span", { style: { fontSize: 13, color: "#94a3b8" } }, buildProgress || "Chargement…")
+  // ── Render autres ligues ───────────────────────────────────────────
+  function renderOtherLeague() {
+    var rankColors = ["#f59e0b","#94a3b8","#b45309"];
+    var rankBgs    = ["rgba(245,158,11,.06)","rgba(148,163,184,.06)","rgba(180,83,9,.06)"];
+    return React.createElement("div", { style: { flex: 1, overflowY: "auto" } },
+      status === "load" && React.createElement("div", { style: { display: "flex", alignItems: "center", justifyContent: "center", padding: 60 } },
+        React.createElement(Spin, { s: 28, c: "#e53535" })
       ),
-
-      status === "idle" && needsBuild && React.createElement("div", { style: { display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", padding: 48, gap: 16 } },
-        React.createElement("span", { style: { fontSize: 40 } }, "⚽"),
-        React.createElement("div", { style: { fontSize: 14, fontWeight: 600, color: "#0f172a", textAlign: "center" } }, "Données API indisponibles"),
-        React.createElement("div", { style: { fontSize: 12, color: "#94a3b8", textAlign: "center", maxWidth: 260 } }, "Calculer les buteurs depuis les événements de chaque match (peut prendre quelques secondes)"),
-        React.createElement("button", {
-          onClick: runBuild,
-          style: { background: "linear-gradient(135deg,#00c170,#009e5c)", border: "none", color: "#fff", borderRadius: 12, padding: "12px 28px", fontSize: 14, fontWeight: 700, cursor: "pointer", boxShadow: "0 4px 12px rgba(0,193,112,.3)" }
-        }, "🔢 Calculer les buteurs")
-      ),
-      status === "err" && React.createElement("div", { style: { textAlign: "center", padding: 40, color: "#94a3b8" } }, "Erreur de chargement"),
+      status === "err"   && React.createElement("div", { style: { textAlign: "center", padding: 40, color: "#94a3b8" } }, "Erreur de chargement"),
       status === "empty" && React.createElement("div", { style: { textAlign: "center", padding: 40, color: "#94a3b8" } }, "Aucune donnée"),
-
-      status === "ok" && !buildProgress && React.createElement("div", null,
-        data.slice(0, 30).map((item, idx) => {
-          const player = item.player;
-          const stats = item.statistics?.[0] || {};
-          const value = type === "assists" ? (stats.goals?.assists || 0) : (stats.goals?.total || 0);
-          const team = stats.team;
-          const games = stats.games?.appearences || 0;
-          const penalties = stats.penalty?.scored || 0;
-          const isTop3 = idx < 3;
-          const rankColors = ["#f59e0b","#94a3b8","#b45309"];
-          const rankBgs = ["rgba(245,158,11,.06)","rgba(148,163,184,.06)","rgba(180,83,9,.06)"];
-
+      status === "ok" && React.createElement("div", null,
+        data.slice(0, 30).map(function(item, idx) {
+          var player = item.player;
+          var stats  = item.statistics && item.statistics[0] ? item.statistics[0] : {};
+          var value  = type === "assists" ? (stats.goals && stats.goals.assists || 0) : (stats.goals && stats.goals.total || 0);
+          var team   = stats.team;
+          var games  = stats.games && stats.games.appearences || 0;
+          var isTop3 = idx < 3;
           return React.createElement("div", {
-            key: player?.id || idx,
+            key: player && player.id || idx,
             style: {
               display: "flex", alignItems: "center", gap: 12,
-              padding: "11px 14px",
-              borderBottom: "1px solid #f1f5f9",
+              padding: "11px 14px", borderBottom: "1px solid #f1f5f9",
               background: isTop3 ? rankBgs[idx] : "#fff",
-              borderLeft: isTop3 ? `3px solid ${rankColors[idx]}` : "3px solid transparent"
+              borderLeft: isTop3 ? "3px solid " + rankColors[idx] : "3px solid transparent"
             }
           },
             React.createElement("div", { style: { width: 26, flexShrink: 0, textAlign: "center" } },
@@ -12640,27 +12579,84 @@ function ScorersTab() {
                 ? React.createElement("span", { style: { fontSize: 18 } }, ["🥇","🥈","🥉"][idx])
                 : React.createElement("span", { style: { fontSize: 12, fontWeight: 700, color: "#94a3b8" } }, idx + 1)
             ),
-            React.createElement(PlayerImage, { playerId: player?.id, playerName: player?.name, size: 48, ring: isTop3 ? rankColors[idx] : "#e2e8f0" }),
+            React.createElement(PlayerImage, { playerId: player && player.id, playerName: player && player.name, size: 48, ring: isTop3 ? rankColors[idx] : "#e2e8f0" }),
             React.createElement("div", { style: { flex: 1, minWidth: 0 } },
-              React.createElement("div", { style: { fontSize: 14, fontWeight: 700, color: "#0f172a", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" } }, player?.name),
+              React.createElement("div", { style: { fontSize: 14, fontWeight: 700, color: "#0f172a", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" } }, player && player.name),
               React.createElement("div", { style: { display: "flex", alignItems: "center", gap: 5, marginTop: 3 } },
                 team && React.createElement(Logo, { src: team.logo, size: 14 }),
-                React.createElement("span", { style: { fontSize: 11, color: "#64748b", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" } }, team?.name)
+                React.createElement("span", { style: { fontSize: 11, color: "#64748b" } }, team && team.name)
               ),
-              games > 0 && React.createElement("span", { style: { fontSize: 10, color: "#94a3b8", marginTop: 2, display: "block" } }, `${games} matchs`)
+              games > 0 && React.createElement("span", { style: { fontSize: 10, color: "#94a3b8", display: "block", marginTop: 2 } }, games + " matchs")
             ),
             React.createElement("div", { style: { flexShrink: 0, textAlign: "center", minWidth: 44 } },
               React.createElement("div", { style: { fontSize: 28, fontWeight: 900, color: isTop3 ? rankColors[idx] : "#e53535", lineHeight: 1 } }, value),
-              React.createElement("div", { style: { fontSize: 9, color: "#94a3b8", fontWeight: 600, textTransform: "uppercase", letterSpacing: 0.5, marginTop: 1 } },
-                type === "assists" ? "passes" : "buts"
-              )
+              React.createElement("div", { style: { fontSize: 10, color: "#94a3b8", marginTop: 2 } }, type === "assists" ? "passes" : "buts")
             )
           );
         })
       )
-    )
+    );
+  }
+
+  return React.createElement("div", { style: { height: "100%", display: "flex", flexDirection: "column", overflow: "hidden", background: "#f8fafc" } },
+    // ── Header filtres ───────────────────────────────────────────────
+    React.createElement("div", { style: { background: "#fff", borderBottom: "1px solid #f1f5f9", flexShrink: 0 } },
+      lid !== 186 && React.createElement("div", { style: { display: "flex", padding: "12px 14px 0" } },
+        React.createElement("div", { style: { display: "flex", background: "#f1f5f9", borderRadius: 12, padding: 3, gap: 2 } },
+          ["scorers","assists"].map(function(t) {
+            return React.createElement("button", {
+              key: t, onClick: function() { setType(t); },
+              style: {
+                padding: "8px 20px", borderRadius: 10, border: "none",
+                background: type === t ? "#fff" : "transparent",
+                color: type === t ? "#0f172a" : "#94a3b8",
+                fontWeight: type === t ? 700 : 500, fontSize: 13, cursor: "pointer",
+                boxShadow: type === t ? "0 1px 4px rgba(15,23,42,.1)" : "none"
+              }
+            }, t === "scorers" ? "⚽ Buts" : "🎯 Passes");
+          })
+        ),
+        React.createElement("button", {
+          onClick: function() { loadScorers(lid, season, type); },
+          style: { marginLeft: "auto", background: "none", border: "none", fontSize: 20, cursor: "pointer", color: "#94a3b8", padding: "0 4px" }
+        }, "↻")
+      ),
+      React.createElement("div", { style: { display: "flex", gap: 8, padding: "10px 14px 12px" } },
+        React.createElement("select", {
+          value: lid, onChange: function(e) { setLid(Number(e.target.value)); },
+          style: { flex: 1, background: "#f8fafc", border: "1px solid #e2e8f0", color: "#0f172a", borderRadius: 10, padding: "8px 10px", fontSize: 13, fontWeight: 600, outline: "none", cursor: "pointer" }
+        },
+          REGIONS.map(function(region) {
+            return React.createElement("optgroup", { key: region, label: region },
+              LEAGUES.filter(function(l) { return l.region === region; }).map(function(l) {
+                return React.createElement("option", { key: l.id, value: l.id }, l.flag + " " + l.name);
+              })
+            );
+          })
+        ),
+        React.createElement("select", {
+          value: season, onChange: function(e) { setSeason(Number(e.target.value)); },
+          style: { background: "#f8fafc", border: "1px solid #e2e8f0", color: "#0f172a", borderRadius: 10, padding: "8px 10px", fontSize: 13, fontWeight: 600, outline: "none", cursor: "pointer", width: 115 }
+        },
+          SEASONS.map(function(y) { return React.createElement("option", { key: y, value: y }, y + "/" + String(y+1).slice(-2)); })
+        )
+      )
+    ),
+
+    // ── Contenu ──────────────────────────────────────────────────────
+    lid === 186
+      ? React.createElement("div", { style: { flex: 1, overflowY: "auto", paddingBottom: 16 } },
+          algStatus === "load" && React.createElement("div", { style: { display: "flex", alignItems: "center", justifyContent: "center", padding: 60 } },
+            React.createElement(Spin, { s: 28, c: "#22c55e" })
+          ),
+          algStatus === "err" && React.createElement("div", { style: { textAlign: "center", padding: 40, color: "#94a3b8" } }, "Erreur de chargement"),
+          algStatus === "ok" && SECTIONS.map(function(sec) { return renderSection(sec); }),
+          algStatus === "ok" && React.createElement("div", { style: { height: 12 } })
+        )
+      : renderOtherLeague()
   );
 }
+
 
 function CalendarTab({ favs, onFav, onTeam }) {
   const [lid, setLid] = useState(39);
