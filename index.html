@@ -2,7 +2,7 @@
 <html lang="fr">
 <head>
     <meta charset="UTF-8" />
-    <!-- v326 -->
+    <!-- v327 -->
     <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate" />
     <meta http-equiv="Pragma" content="no-cache" />
     <meta http-equiv="Expires" content="0" />
@@ -13577,8 +13577,9 @@ function TransfersTab({ onTeam }) {
 
   // ── Charger transferts Ligue 1 Algérie depuis Supabase ───────────
   useEffect(function() {
-    if (mainTab !== "ligue1" || alg1Status !== "idle") return;
+    if (mainTab !== "ligue1") return;
     setAlg1Status("load");
+    setAlg1Data([]);
     var SB_BASE = "https://iqeqlsxjiklygywjirqs.supabase.co/rest/v1/";
     var SB_H    = { "apikey": SB_KEY, "Authorization": "Bearer " + SB_KEY };
     fetch(SB_BASE + "algeria_transfers?season=eq." + alg1Season + "&order=player_name.asc&limit=500",
@@ -13589,12 +13590,6 @@ function TransfersTab({ onTeam }) {
       setAlg1Status(rows && rows.length ? "ok" : "empty");
     }).catch(function() { setAlg1Status("err"); });
   }, [mainTab, alg1Season]);
-
-  useEffect(function() {
-    if (mainTab === "ligue1") {
-      setAlg1Status("idle");
-    }
-  }, [alg1Season]);
 
   useEffect(() => {
     if (mainTab !== "actu" || actuData.length) return;
