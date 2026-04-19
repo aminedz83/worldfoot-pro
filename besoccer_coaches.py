@@ -48,16 +48,23 @@ CLUB_NAME_MAP = {
 }
 
 CLUB_LOGOS = {
-    "MC Alger":       "https://media.api-sports.io/football/teams/906.png",
-    "CR Belouizdad":  "https://media.api-sports.io/football/teams/904.png",
-    "JS Kabylie":     "https://media.api-sports.io/football/teams/918.png",
-    "USM Alger":      "https://media.api-sports.io/football/teams/910.png",
-    "ES Setif":       "https://media.api-sports.io/football/teams/905.png",
-    "CS Constantine": "https://media.api-sports.io/football/teams/911.png",
-    "Paradou AC":     "https://media.api-sports.io/football/teams/915.png",
-    "ASO Chlef":      "https://media.api-sports.io/football/teams/925.png",
-    "MC Oran":        "https://media.api-sports.io/football/teams/907.png",
-    "JS Saoura":      "https://media.api-sports.io/football/teams/914.png",
+    "MC Alger":        "https://media.api-sports.io/football/teams/906.png",
+    "CR Belouizdad":   "https://media.api-sports.io/football/teams/904.png",
+    "JS Kabylie":      "https://media.api-sports.io/football/teams/918.png",
+    "USM Alger":       "https://media.api-sports.io/football/teams/910.png",
+    "ES Setif":        "https://media.api-sports.io/football/teams/905.png",
+    "CS Constantine":  "https://media.api-sports.io/football/teams/911.png",
+    "Paradou AC":      "https://media.api-sports.io/football/teams/915.png",
+    "ASO Chlef":       "https://media.api-sports.io/football/teams/925.png",
+    "MC Oran":         "https://media.api-sports.io/football/teams/907.png",
+    "JS Saoura":       "https://media.api-sports.io/football/teams/914.png",
+    # Clubs sans ID API-sports — logos BeSoccer corrects (escudos vérifiés)
+    "MB Rouissat":     "https://cdn.resfu.com/img_data/escudos/medium/100882.jpg?size=120x&lossy=1",
+    "ES Ben Aknoun":   "https://cdn.resfu.com/img_data/escudos/medium/11519.jpg?size=120x&lossy=1",
+    "USM Khenchela":   "https://cdn.resfu.com/img_data/escudos/medium/11530.jpg?size=120x&lossy=1",
+    "ES Mostaganem":   "https://cdn.resfu.com/img_data/escudos/medium/13715.jpg?size=120x&lossy=1",
+    "Olympique Akbou": "https://cdn.resfu.com/img_data/escudos/medium/11522.jpg?size=120x&lossy=1",
+    "MC El Bayadh":    "https://cdn.resfu.com/img_data/escudos/medium/11729.jpg?size=120x&lossy=1",
 }
 
 scraper = cloudscraper.create_scraper(
@@ -123,15 +130,8 @@ def scrape_coaches():
             club_raw = ml5.get_text(strip=True)
         club_name = clean_club(club_raw)
 
-        # Logo club : API-sports en priorité, sinon escudo BeSoccer
+        # Logo club depuis mapping statique (fiable)
         club_logo = CLUB_LOGOS.get(club_name, "")
-        if not club_logo:
-            shield = a.select_one("img[src*='escudos']")
-            if shield:
-                src = shield.get("src", "")
-                if src.startswith("//"):
-                    src = "https:" + src
-                club_logo = src.replace("size=60x", "size=120x")
 
         # ID numérique pour Supabase BIGINT
         try:
