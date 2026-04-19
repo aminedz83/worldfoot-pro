@@ -1,0 +1,43 @@
+name: Sync BeSoccer Transfers
+
+on:
+  schedule:
+    # Tous les jours à 6h00 UTC (8h00 heure Algérie)
+    - cron: '0 6 * * *'
+  workflow_dispatch:
+    inputs:
+      season:
+        description: 'Saison (ex: 2026)'
+        required: false
+        default: '2026'
+
+jobs:
+  sync-transfers:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+
+      - name: Install dependencies
+        run: pip install cloudscraper beautifulsoup4 requests
+
+      - name: Run scraper
+        env:
+          SUPABASE_KEY: ${{ secrets.SUPABASE_KEY }}
+          TRANSFER_SEASON: ${{ github.event.inputs.season || '2026' }}
+        run: python besoccer_transfers.py
+
+      - name: Upload debug artifact
+        uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: transfers-debug-${{ github.run_number }}
+          path: transfers_debug.json
+          retention-days: 7
