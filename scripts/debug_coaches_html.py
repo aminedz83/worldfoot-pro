@@ -6,39 +6,50 @@ scraper = cloudscraper.create_scraper(
     browser={"browser": "chrome", "platform": "windows", "mobile": False}
 )
 
-# Page formateurs CR Belouizdad
-url = "https://www.besoccer.com/team/coaches/belouizdad/11507"
-print(f"Fetch: {url}")
-r = scraper.get(url, timeout=20)
-print(f"Status: {r.status_code} | Size: {len(r.text)} chars")
+# Tester plusieurs URLs possibles pour les coaches BeSoccer
+urls = [
+    "https://www.besoccer.com/team/staff/belouizdad/11507",
+    "https://www.besoccer.com/team/squad/belouizdad/11507",
+    "https://www.besoccer.com/team/belouizdad/11507",
+    "https://www.besoccer.com/team/trainers/belouizdad/11507",
+    "https://www.besoccer.com/team/coach/belouizdad/11507",
+]
 
-soup = BeautifulSoup(r.text, "html.parser")
+for url in urls:
+    r = scraper.get(url, timeout=15)
+    print(f"[{r.status_code}] {url}")
+    if r.status_code == 200:
+        soup = BeautifulSoup(r.text, "html.parser")
+        # Chercher liens vers staff/coach/entraineur
+        coach_links = soup.select("a[href*='/coach/'], a[href*='/staff/'], a[href*='/trainer/']")
+        print(f"  Coach links: {len(coach_links)}")
+        for a in coach_links[:3]:
+            print(f"    {a.get('href','')} → '{a.get_text(strip=True)[:40]}'")
+        # Chercher le mot "coach" ou "staff" dans le texte
+        text = soup.get_text(" ", strip=True).lower()
+        if "coach" in text or "staff" in text or "entraineur" in text or "formateur" in text:
+            print(f"  ✅ Contient coach/staff/formateur")
+            # Sauver ce HTML
+            with open("coaches_raw.html", "w", encoding="utf-8") as f:
+                f.write(r.text)
+            print(f"  HTML sauvé")
+            # Afficher les titres
+            for t in soup.find_all(["h1","h2","h3"]):
+                print(f"  <{t.name}>: '{t.get_text(strip=True)[:80]}'")
+            break
+        else:
+            print(f"  ❌ Pas de contenu coach")
 
-print("\n--- TITRES ---")
-for t in soup.find_all(["h1","h2","h3"]):
-    print(f"  <{t.name}>: '{t.get_text(strip=True)[:80]}'")
-
-print("\n--- LIENS /coach/ ou /staff/ ---")
-for a in soup.select("a[href*='/coach/'], a[href*='/staff/']")[:10]:
-    print(f"  {a.get('href','')} → '{a.get_text(strip=True)[:50]}'")
-
-print("\n--- CLASSES li ---")
-li_cls = list(set([" ".join(l.get("class",[])) for l in soup.find_all("li") if l.get("class")]))
-for c in li_cls[:15]:
-    print(f"  '{c}'")
-
-print("\n--- HTML brut premier ul avec coach (600 chars) ---")
-for ul in soup.find_all("ul"):
-    if ul.select("li") and any("coach" in str(li).lower() or "formateur" in str(li).lower() for li in ul.select("li")):
-        print(ul.decode()[:800])
-        break
-
-# Chercher entraîneur actuel
-print("\n--- TEXTE body (500 chars) ---")
-body = soup.find("body")
-if body:
-    print(body.get_text(" ", strip=True)[:500])
-
-with open("coaches_raw.html", "w", encoding="utf-8") as f:
-    f.write(r.text)
-print("\nHTML sauvé: coaches_raw.html")
+# Aussi tester la page principale de l'équipe pour voir les liens disponibles
+print("\n--- Liens nav depuis page principale ---")
+r2 = scraper.get("https://www.besoccer.com/team/belouizdad", timeout=15)
+print(f"[{r2.status_code}] page principale")
+if r2.status_code == 200:
+    soup2 = BeautifulSoup(r2.text, "html.parser")
+    nav_links = soup2.select("nav a, div.team-nav a, ul.team-menu a, a[href*='belouizdad']")
+    seen = set()
+    for a in nav_links:
+        href = a.get("href","")
+        if href and href not in seen and "belouizdad" in href:
+            seen.add(href)
+            print(f"  {href} → '{a.get_text(strip=True)[:30]}'")
