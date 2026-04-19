@@ -6,7 +6,7 @@ on:
   workflow_dispatch:
     inputs:
       season:
-        description: 'Saison (ex: 2026)'
+        description: 'Saison (ex: 2026). "all" pour scraper 2024+2025+2026'
         required: false
         default: '2026'
       mode:
@@ -21,7 +21,7 @@ on:
 jobs:
   sync-transfers:
     runs-on: ubuntu-latest
-    timeout-minutes: 30
+    timeout-minutes: 60
 
     steps:
       - name: Checkout
@@ -35,8 +35,22 @@ jobs:
       - name: Install dependencies
         run: pip install cloudscraper beautifulsoup4 requests
 
-      - name: Scrape (mode normal)
-        if: ${{ github.event.inputs.mode != 'debug' }}
+      - name: Scrape saison 2024 (si mode all)
+        if: ${{ github.event.inputs.mode != 'debug' && github.event.inputs.season == 'all' }}
+        env:
+          SUPABASE_KEY: ${{ secrets.SUPABASE_KEY }}
+          TRANSFER_SEASON: '2024'
+        run: python3 besoccer_transfers.py
+
+      - name: Scrape saison 2025 (si mode all)
+        if: ${{ github.event.inputs.mode != 'debug' && github.event.inputs.season == 'all' }}
+        env:
+          SUPABASE_KEY: ${{ secrets.SUPABASE_KEY }}
+          TRANSFER_SEASON: '2025'
+        run: python3 besoccer_transfers.py
+
+      - name: Scrape (saison normale ou cron)
+        if: ${{ github.event.inputs.mode != 'debug' && github.event.inputs.season != 'all' }}
         env:
           SUPABASE_KEY: ${{ secrets.SUPABASE_KEY }}
           TRANSFER_SEASON: ${{ github.event.inputs.season || '2026' }}
