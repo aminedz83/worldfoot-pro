@@ -1,54 +1,60 @@
 #!/usr/bin/env python3
-import cloudscraper
+import cloudscraper, re
 from bs4 import BeautifulSoup
-from datetime import date
 
 scraper = cloudscraper.create_scraper(
     browser={"browser": "chrome", "platform": "windows", "mobile": False}
 )
 
-# Tester les URLs possibles avec fr. et slugs variés
-urls = [
-    "https://fr.besoccer.com/competition/matchs/algeria-league-one",
-    "https://fr.besoccer.com/competition/matchs/ligue-1-algerienne",
-    "https://fr.besoccer.com/competition/resultats/algeria-league-one",
-    "https://fr.besoccer.com/competition/calendar/algeria-league-one",
-    "https://www.besoccer.com/competition/matches/algeria-league-one-2026",
-    "https://fr.besoccer.com/competition/algeria-league-one",
-    # Depuis la page entraîneurs on sait que algeria-league-one existe
-    # Essayons les onglets de cette compétition
-    "https://fr.besoccer.com/competition/matchs/algeria-league-one/2026",
-]
+# 1. Page resultats Ligue 1 avec saison
+url = "https://fr.besoccer.com/competition/resultats/algeria-league-one/2026"
+print(f"Fetch: {url}")
+r = scraper.get(url, timeout=20)
+print(f"Status: {r.status_code} | Size: {len(r.text)}")
 
-for url in urls:
-    r = scraper.get(url, timeout=15)
-    print(f"[{r.status_code}] {url}")
-    if r.status_code == 200:
-        soup = BeautifulSoup(r.text, "html.parser")
-        match_links = soup.select("a[href*='/match/']")
-        print(f"  → {len(match_links)} liens /match/")
-        for a in match_links[:3]:
-            print(f"    {a.get('href','')[:80]}")
-        # Chercher aussi les liens de navigation de la compétition
-        nav = soup.select("a[href*='algeria-league-one']")
-        for a in nav[:8]:
-            print(f"  NAV: {a.get('href','')} → '{a.get_text(strip=True)[:30]}'")
-        if match_links:
-            with open("match_ids_raw.html", "w") as f:
-                f.write(r.text)
-            print("  HTML sauvé ✅")
-            break
+soup = BeautifulSoup(r.text, "html.parser")
 
-# Si rien trouvé, chercher via la page du club
-print("\n--- Via page matchs d'un club ---")
-url2 = "https://www.besoccer.com/team/matches/kabylie/11506/"
-r2 = scraper.get(url2, timeout=15)
-print(f"[{r2.status_code}] {url2}")
-if r2.status_code == 200:
-    soup2 = BeautifulSoup(r2.text, "html.parser")
-    match_links2 = soup2.select("a[href*='/match/']")
-    print(f"  → {len(match_links2)} liens /match/")
-    for a in match_links2[:5]:
-        href = a.get("href","")
-        txt = a.get_text(" ", strip=True)[:50]
-        print(f"    {href} → '{txt}'")
+# Chercher les liens /match/ qui contiennent des slugs algériens
+print("\n--- Liens /match/ avec équipes algériennes ---")
+ALG_SLUGS = ["kabylie","belouizdad","mc-alger","usm-alger","es-setif","cs-constantine",
+             "mc-oran","js-saoura","paradou","chlef","el-bayadh","usm-khenchela",
+             "oued-akbou","es-mostaganem","mb-rouisset","ben-aknoun"]
+
+all_match_links = soup.select("a[href*='/match/']")
+print(f"Total liens /match/ : {len(all_match_links)}")
+
+alg_matches = []
+for a in all_match_links:
+    href = a.get("href","")
+    if any(s in href for s in ALG_SLUGS):
+        txt = a.get_text(" ", strip=True)[:60]
+        print(f"  ✅ {href}")
+        print(f"     '{txt}'")
+        # Extraire l'ID (dernier segment numérique)
+        m = re.search(r"/match/[^/]+/[^/]+/(\d+)/?$", href)
+        if m:
+            alg_matches.append({"href": href, "id": m.group(1), "text": txt})
+
+print(f"\n→ {len(alg_matches)} matchs algériens trouvés")
+
+# 2. HTML brut d'un bloc match (pour voir la structure date+équipes)
+print("\n--- HTML brut premier li/div de match (600 chars) ---")
+for a in all_match_links[:20]:
+    href = a.get("href","")
+    if any(s in href for s in ALG_SLUGS):
+        parent = a.parent
+        for _ in range(3):
+            if parent and len(parent.decode()) > 100:
+                print(parent.decode()[:600])
+                break
+            parent = parent.parent if parent else None
+        break
+
+# 3. Chercher aussi par date dans le texte
+print("\n--- Recherche dates dans les textes ---")
+for tag in soup.find_all(string=re.compile(r'\d{1,2}\s+\w+\s+2026')):
+    print(f"  Date trouvée: '{tag.strip()[:60]}'")
+
+with open("match_ids_raw.html", "w") as f:
+    f.write(r.text)
+print("\nHTML sauvé")
