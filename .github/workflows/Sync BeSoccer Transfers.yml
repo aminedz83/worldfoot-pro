@@ -20,6 +20,7 @@ on:
           - debug
           - debug-coaches
           - debug-escudos
+          - debug-matchids
 
 jobs:
   sync:
@@ -76,6 +77,10 @@ jobs:
       - name: Debug escudos
         if: ${{ github.event.inputs.mode == 'debug-escudos' }}
         run: python3 debug_escudos.py
+
+      - name: Debug match IDs
+        if: ${{ github.event.inputs.mode == 'debug-matchids' }}
+        run: python3 debug_match_ids.py
 
       - name: Upload artifact
         uses: actions/upload-artifact@v4
