@@ -10,7 +10,7 @@ on:
         required: false
         default: '2026'
       mode:
-        description: 'Mode: scrape (normal) ou debug (dump HTML)'
+        description: 'Mode'
         required: false
         default: 'scrape'
         type: choice
@@ -35,17 +35,15 @@ jobs:
       - name: Install dependencies
         run: pip install cloudscraper beautifulsoup4 requests
 
-      - name: Run scraper (mode normal)
+      - name: Scrape (mode normal)
         if: ${{ github.event.inputs.mode != 'debug' }}
         env:
           SUPABASE_KEY: ${{ secrets.SUPABASE_KEY }}
           TRANSFER_SEASON: ${{ github.event.inputs.season || '2026' }}
         run: python besoccer_transfers.py
 
-      - name: Run debug (mode debug)
+      - name: Debug HTML
         if: ${{ github.event.inputs.mode == 'debug' }}
-        env:
-          SUPABASE_KEY: ${{ secrets.SUPABASE_KEY }}
         run: python debug_transfers_html.py
 
       - name: Upload artifact
@@ -55,5 +53,5 @@ jobs:
           name: transfers-${{ github.event.inputs.mode || 'scrape' }}-${{ github.run_number }}
           path: |
             transfers_debug.json
-            transfers_html_debug.json
+            besoccer_transfers_raw.html
           retention-days: 7
