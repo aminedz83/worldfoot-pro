@@ -122,7 +122,16 @@ def scrape_coaches():
         if ml5:
             club_raw = ml5.get_text(strip=True)
         club_name = clean_club(club_raw)
+
+        # Logo club : API-sports en priorité, sinon escudo BeSoccer
         club_logo = CLUB_LOGOS.get(club_name, "")
+        if not club_logo:
+            shield = a.select_one("img[src*='escudos']")
+            if shield:
+                src = shield.get("src", "")
+                if src.startswith("//"):
+                    src = "https:" + src
+                club_logo = src.replace("size=60x", "size=120x")
 
         # ID numérique pour Supabase BIGINT
         try:
