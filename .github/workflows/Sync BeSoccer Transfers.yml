@@ -6,7 +6,7 @@ on:
   workflow_dispatch:
     inputs:
       season:
-        description: 'Saison (ex: 2026). "all" pour scraper 2024+2025+2026'
+        description: 'Saison (ex: 2026). "all" pour 2024+2025+2026'
         required: false
         default: '2026'
       mode:
@@ -17,6 +17,7 @@ on:
         options:
           - scrape
           - debug
+          - debug-coaches
 
 jobs:
   sync-transfers:
@@ -35,37 +36,42 @@ jobs:
       - name: Install dependencies
         run: pip install cloudscraper beautifulsoup4 requests
 
-      - name: Scrape saison 2024 (si mode all)
-        if: ${{ github.event.inputs.mode != 'debug' && github.event.inputs.season == 'all' }}
+      - name: Scrape saison 2024
+        if: ${{ github.event.inputs.mode != 'debug' && github.event.inputs.mode != 'debug-coaches' && github.event.inputs.season == 'all' }}
         env:
           SUPABASE_KEY: ${{ secrets.SUPABASE_KEY }}
           TRANSFER_SEASON: '2024'
         run: python3 besoccer_transfers.py
 
-      - name: Scrape saison 2025 (si mode all)
-        if: ${{ github.event.inputs.mode != 'debug' && github.event.inputs.season == 'all' }}
+      - name: Scrape saison 2025
+        if: ${{ github.event.inputs.mode != 'debug' && github.event.inputs.mode != 'debug-coaches' && github.event.inputs.season == 'all' }}
         env:
           SUPABASE_KEY: ${{ secrets.SUPABASE_KEY }}
           TRANSFER_SEASON: '2025'
         run: python3 besoccer_transfers.py
 
       - name: Scrape (saison normale ou cron)
-        if: ${{ github.event.inputs.mode != 'debug' && github.event.inputs.season != 'all' }}
+        if: ${{ github.event.inputs.mode != 'debug' && github.event.inputs.mode != 'debug-coaches' && github.event.inputs.season != 'all' }}
         env:
           SUPABASE_KEY: ${{ secrets.SUPABASE_KEY }}
           TRANSFER_SEASON: ${{ github.event.inputs.season || '2026' }}
         run: python3 besoccer_transfers.py
 
-      - name: Debug HTML
+      - name: Debug HTML transferts
         if: ${{ github.event.inputs.mode == 'debug' }}
         run: python3 debug_transfers_html.py
+
+      - name: Debug HTML coaches
+        if: ${{ github.event.inputs.mode == 'debug-coaches' }}
+        run: python3 debug_coaches_html.py
 
       - name: Upload artifact
         uses: actions/upload-artifact@v4
         if: always()
         with:
-          name: transfers-${{ github.event.inputs.mode || 'scrape' }}-${{ github.run_number }}
+          name: bs-${{ github.event.inputs.mode || 'scrape' }}-${{ github.run_number }}
           path: |
             transfers_debug.json
             besoccer_transfers_raw.html
+            coaches_raw.html
           retention-days: 7
