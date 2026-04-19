@@ -2,7 +2,7 @@
 <html lang="fr">
 <head>
     <meta charset="UTF-8" />
-    <!-- v330 -->
+    <!-- v331 -->
     <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate" />
     <meta http-equiv="Pragma" content="no-cache" />
     <meta http-equiv="Expires" content="0" />
@@ -13261,6 +13261,30 @@ const MERCATO_CLUBS = [
 ];
 const ALGERIAN_IDS = new Set(MERCATO_CLUBS.filter(c => c.algerian).map(c => c.id));
 
+// Mapping nom club → logo fiable (API-sports + BeSoccer escudos vérifiés)
+const CLUB_LOGO_MAP = {
+  "CR Belouizdad":   "https://media.api-sports.io/football/teams/904.png",
+  "ES Setif":        "https://media.api-sports.io/football/teams/905.png",
+  "ES Sétif":        "https://media.api-sports.io/football/teams/905.png",
+  "MC Alger":        "https://media.api-sports.io/football/teams/906.png",
+  "MC Oran":         "https://media.api-sports.io/football/teams/907.png",
+  "USM Alger":       "https://media.api-sports.io/football/teams/910.png",
+  "CS Constantine":  "https://media.api-sports.io/football/teams/911.png",
+  "JS Saoura":       "https://media.api-sports.io/football/teams/914.png",
+  "Paradou AC":      "https://media.api-sports.io/football/teams/915.png",
+  "JS Kabylie":      "https://media.api-sports.io/football/teams/918.png",
+  "ASO Chlef":       "https://media.api-sports.io/football/teams/925.png",
+  "MB Rouissat":     "https://cdn.resfu.com/img_data/escudos/medium/100882.jpg?size=80x&lossy=1",
+  "ES Ben Aknoun":   "https://cdn.resfu.com/img_data/escudos/medium/11519.jpg?size=80x&lossy=1",
+  "USM Khenchela":   "https://cdn.resfu.com/img_data/escudos/medium/11530.jpg?size=80x&lossy=1",
+  "ES Mostaganem":   "https://cdn.resfu.com/img_data/escudos/medium/13715.jpg?size=80x&lossy=1",
+  "Olympique Akbou": "https://cdn.resfu.com/img_data/escudos/medium/11522.jpg?size=80x&lossy=1",
+  "MC El Bayadh":    "https://cdn.resfu.com/img_data/escudos/medium/11729.jpg?size=80x&lossy=1",
+};
+function getClubLogo(name, fallback) {
+  return CLUB_LOGO_MAP[name] || fallback || "";
+}
+
 function SectionHeader({ label, color, count }) {
   return React.createElement("div", {
     style: {
@@ -13282,10 +13306,11 @@ function Alg1TransferCard({ transfer }) {
   var isIn     = t.direction === "in";
   var dirColor = isIn ? "#00c170" : "#e53535";
   var dirLabel = isIn ? "ARRIVÉE" : "DÉPART";
-  var fromClub = isIn ? t.club_depart  : t.club_arrivee;
-  var toClub   = isIn ? t.club_arrivee : t.club_depart;
-  var fromLogo = isIn ? t.club_dest_logo : t.club_logo;
-  var toLogo   = isIn ? t.club_logo : t.club_dest_logo;
+  var fromClub = t.club_depart;
+  var toClub   = t.club_arrivee;
+  // Logos : priorité au mapping statique fiable, fallback sur données Supabase
+  var fromLogo = getClubLogo(fromClub, isIn ? t.club_dest_logo : t.club_logo);
+  var toLogo   = getClubLogo(toClub,   isIn ? t.club_logo : t.club_dest_logo);
   var photo    = t.photo || ("https://cdn.resfu.com/img_data/players/medium/" + t.player_id + ".jpg?size=120x&lossy=1");
   return React.createElement("div", {
     style: {
