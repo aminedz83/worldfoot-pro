@@ -47,24 +47,24 @@ CLUB_NAME_MAP = {
     "MC El Bayadh": "MC El Bayadh", "El Bayadh": "MC El Bayadh",
 }
 
+# Logos depuis escudos BeSoccer — IDs vérifiés depuis les logs debug 19/04/2026
 CLUB_LOGOS = {
-    "MC Alger":        "https://media.api-sports.io/football/teams/906.png",
-    "CR Belouizdad":   "https://media.api-sports.io/football/teams/904.png",
-    "JS Kabylie":      "https://media.api-sports.io/football/teams/918.png",
-    "USM Alger":       "https://media.api-sports.io/football/teams/910.png",
-    "ES Setif":        "https://media.api-sports.io/football/teams/905.png",
-    "CS Constantine":  "https://media.api-sports.io/football/teams/911.png",
-    "Paradou AC":      "https://media.api-sports.io/football/teams/915.png",
-    "ASO Chlef":       "https://media.api-sports.io/football/teams/925.png",
-    "MC Oran":         "https://media.api-sports.io/football/teams/907.png",
-    "JS Saoura":       "https://media.api-sports.io/football/teams/914.png",
-    # Clubs sans ID API-sports — logos BeSoccer corrects (escudos vérifiés)
-    "MB Rouissat":     "https://cdn.resfu.com/img_data/escudos/medium/100882.jpg?size=120x&lossy=1",
-    "ES Ben Aknoun":   "https://cdn.resfu.com/img_data/escudos/medium/11519.jpg?size=120x&lossy=1",
-    "USM Khenchela":   "https://cdn.resfu.com/img_data/escudos/medium/11530.jpg?size=120x&lossy=1",
+    "ASO Chlef":       "https://cdn.resfu.com/img_data/escudos/medium/11499.jpg?size=120x&lossy=1",
+    "JS Saoura":       "https://cdn.resfu.com/img_data/escudos/medium/11501.jpg?size=120x&lossy=1",
+    "CR Belouizdad":   "https://cdn.resfu.com/img_data/escudos/medium/11502.jpg?size=120x&lossy=1",
+    "MC Alger":        "https://cdn.resfu.com/img_data/escudos/medium/11504.jpg?size=120x&lossy=1",
+    "JS Kabylie":      "https://cdn.resfu.com/img_data/escudos/medium/11506.jpg?size=120x&lossy=1",
+    "ES Setif":        "https://cdn.resfu.com/img_data/escudos/medium/11508.jpg?size=120x&lossy=1",
+    "USM Alger":       "https://cdn.resfu.com/img_data/escudos/medium/11509.jpg?size=120x&lossy=1",
+    "CS Constantine":  "https://cdn.resfu.com/img_data/escudos/medium/11510.jpg?size=120x&lossy=1",
+    "MC Oran":         "https://cdn.resfu.com/img_data/escudos/medium/11511.jpg?size=120x&lossy=1",
     "ES Mostaganem":   "https://cdn.resfu.com/img_data/escudos/medium/13715.jpg?size=120x&lossy=1",
-    "Olympique Akbou": "https://cdn.resfu.com/img_data/escudos/medium/11522.jpg?size=120x&lossy=1",
-    "MC El Bayadh":    "https://cdn.resfu.com/img_data/escudos/medium/11729.jpg?size=120x&lossy=1",
+    "Paradou AC":      "https://cdn.resfu.com/img_data/escudos/medium/59336.jpg?size=120x&lossy=1",
+    "ES Ben Aknoun":   "https://cdn.resfu.com/img_data/escudos/medium/88092.jpg?size=120x&lossy=1",
+    "MB Rouissat":     "https://cdn.resfu.com/img_data/escudos/medium/88100.jpg?size=120x&lossy=1",
+    "USM Khenchela":   "https://cdn.resfu.com/img_data/escudos/medium/99730.jpg?size=120x&lossy=1",
+    "MC El Bayadh":    "https://cdn.resfu.com/img_data/escudos/medium/108017.jpg?size=120x&lossy=1",
+    "Olympique Akbou": "https://cdn.resfu.com/img_data/escudos/medium/119178.jpg?size=120x&lossy=1",
 }
 
 scraper = cloudscraper.create_scraper(
