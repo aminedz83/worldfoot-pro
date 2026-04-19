@@ -2,7 +2,6 @@ name: Sync BeSoccer Transfers
 
 on:
   schedule:
-    # Tous les jours à 6h00 UTC (8h00 heure Algérie)
     - cron: '0 6 * * *'
   workflow_dispatch:
     inputs:
@@ -10,6 +9,14 @@ on:
         description: 'Saison (ex: 2026)'
         required: false
         default: '2026'
+      mode:
+        description: 'Mode: scrape (normal) ou debug (dump HTML)'
+        required: false
+        default: 'scrape'
+        type: choice
+        options:
+          - scrape
+          - debug
 
 jobs:
   sync-transfers:
@@ -28,16 +35,25 @@ jobs:
       - name: Install dependencies
         run: pip install cloudscraper beautifulsoup4 requests
 
-      - name: Run scraper
+      - name: Run scraper (mode normal)
+        if: ${{ github.event.inputs.mode != 'debug' }}
         env:
           SUPABASE_KEY: ${{ secrets.SUPABASE_KEY }}
           TRANSFER_SEASON: ${{ github.event.inputs.season || '2026' }}
         run: python besoccer_transfers.py
 
-      - name: Upload debug artifact
+      - name: Run debug (mode debug)
+        if: ${{ github.event.inputs.mode == 'debug' }}
+        env:
+          SUPABASE_KEY: ${{ secrets.SUPABASE_KEY }}
+        run: python debug_transfers_html.py
+
+      - name: Upload artifact
         uses: actions/upload-artifact@v4
         if: always()
         with:
-          name: transfers-debug-${{ github.run_number }}
-          path: transfers_debug.json
+          name: transfers-${{ github.event.inputs.mode || 'scrape' }}-${{ github.run_number }}
+          path: |
+            transfers_debug.json
+            transfers_html_debug.json
           retention-days: 7
