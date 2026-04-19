@@ -9,6 +9,7 @@ Pour chaque match de Ligue 1 Algérie dans les 14 prochains jours :
 """
 
 import os, re, time, unicodedata
+import cloudscraper
 from datetime import datetime, timedelta
 import requests
 from supabase import create_client
@@ -28,11 +29,11 @@ SEASON     = _now.year if _now.month >= 7 else _now.year - 1
 DAYS_AHEAD = 14
 
 HEADERS_API = {"x-apisports-key": API_FOOTBALL_KEY}
-HEADERS_BS  = {
-    "User-Agent": "Mozilla/5.0 (iPhone; CPU iPhone OS 17_0 like Mac OS X) "
-                  "AppleWebKit/605.1.15 (KHTML, like Gecko) Version/17.0 Mobile/15E148 Safari/604.1",
-    "Accept-Language": "fr-FR,fr;q=0.9",
-}
+
+# cloudscraper contourne le blocage anti-bot de BeSoccer (406)
+bs_scraper = cloudscraper.create_scraper(
+    browser={"browser": "chrome", "platform": "windows", "mobile": False}
+)
 
 # ── Mapping noms courts API football → noms complets BeSoccer ───────────────
 # L'API retourne parfois "Ben Aknoun" au lieu de "ES Ben Aknoun"
@@ -91,7 +92,7 @@ def auto_discover_slug(club_name: str) -> str | None:
     # Essai direct
     url = f"{BS_BASE}/equipo/{slug_candidate}"
     try:
-        r = requests.get(url, headers=HEADERS_BS, timeout=10, allow_redirects=True)
+        r = bs_scraper.get(url, timeout=10, allow_redirects=True)
         if r.status_code == 200 and "equipo/" in r.url:
             found = r.url.split("equipo/")[-1].rstrip("/")
             print(f"  ✅ Slug direct : {found}")
@@ -101,8 +102,7 @@ def auto_discover_slug(club_name: str) -> str | None:
 
     # Recherche BeSoccer
     try:
-        r = requests.get(f"{BS_BASE}/buscador", params={"q": club_name},
-                         headers=HEADERS_BS, timeout=10)
+        r = bs_scraper.get(f"{BS_BASE}/buscador", params={"q": club_name}, timeout=10)
         if r.status_code == 200:
             slugs = re.findall(r'/equipo/([a-z0-9\-]+)', r.text)
             norm  = normalize(club_name)
@@ -145,7 +145,7 @@ def find_match_id_via_club(home_slug: str, home_bs_id: str,
 
     url = f"{BS_BASE}/team/matches/{home_slug}/{home_bs_id}/"
     try:
-        r = requests.get(url, headers=HEADERS_BS, timeout=15)
+        r = bs_scraper.get(url, timeout=15)
         if r.status_code != 200:
             print(f"    ⚠️  Page club {r.status_code}")
             return None
