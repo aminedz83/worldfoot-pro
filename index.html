@@ -2,7 +2,7 @@
 <html lang="fr">
 <head>
     <meta charset="UTF-8" />
-    <!-- v325 -->
+    <!-- v326 -->
     <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate" />
     <meta http-equiv="Pragma" content="no-cache" />
     <meta http-equiv="Expires" content="0" />
@@ -13780,6 +13780,18 @@ function TransfersTab({ onTeam }) {
             if (alg1Dir === "out" && t.direction !== "out") return false;
             return true;
           });
+          // Déduplication : en mode "Tous clubs / Tous", un joueur apparaît
+          // comme IN chez son nouveau club ET OUT chez son ancien club.
+          // On déduplique par player_name+direction pour éviter les doublons.
+          if (alg1Club === "all") {
+            var seen = {};
+            filtered = filtered.filter(function(t) {
+              var key = t.player_name + "|" + t.direction;
+              if (seen[key]) return false;
+              seen[key] = true;
+              return true;
+            });
+          }
           if (!filtered.length) return React.createElement("div", { style: { textAlign: "center", padding: 50, color: "#94a3b8", fontSize: 13 } }, "Aucun transfert trouvé");
           return filtered.map(function(tr, i) {
             return React.createElement(Alg1TransferCard, { key: i, transfer: tr });
