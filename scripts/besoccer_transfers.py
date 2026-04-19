@@ -3,13 +3,14 @@
 besoccer_transfers.py
 =====================
 Scrape les transferts Ligue 1 Algérie depuis BeSoccer.
-Stocke dans la table Supabase `algeria_transfers`.
-Planifié via sync-transfers.yml (1x/jour à 6h UTC).
+Stocke dans Supabase `algeria_transfers`.
 
-Pattern identique à besoccer_lineups.py :
-- cloudscraper (contourne le 403 BeSoccer)
-- slugs BeSoccer réels (pas les noms API-football)
-- IDs BeSoccer internes pour construire les URLs équipes
+Structure HTML réelle BeSoccer (vérifiée 19/04/2026) :
+  - li.elem-title       → titre de section ("New signings" / "Transfers out")
+  - li.sign-list        → une ligne de transfert
+  - a[href*='/player/'] → lien joueur (dans sign-list)
+  - div.data-transfer   → type + montant ("Transfer. 0,1M.€" / "Free transfer." / "Loan.")
+  - a[href*='/team/']   → club adverse (dans sign-list)
 """
 
 import os, re, time, json, hashlib, requests
@@ -33,8 +34,7 @@ SB_HEADERS   = {
 SEASON = int(os.environ.get("TRANSFER_SEASON", datetime.now().year))
 
 # ══════════════════════════════════════════════
-# CLUBS — slugs et IDs BeSoccer réels
-# Copiés depuis besoccer_lineups.py TEAM_SLUG + club_ids
+# CLUBS — slugs + IDs BeSoccer réels
 # ══════════════════════════════════════════════
 
 CLUBS = [
@@ -57,7 +57,7 @@ CLUBS = [
 ]
 
 # ══════════════════════════════════════════════
-# CLOUDSCRAPER — même config que besoccer_lineups.py
+# CLOUDSCRAPER
 # ══════════════════════════════════════════════
 
 scraper = cloudscraper.create_scraper(
@@ -90,21 +90,34 @@ def make_uid(club_name, player_name, direction, season):
     raw = f"{club_name}|{player_name}|{direction}|{season}"
     return hashlib.md5(raw.encode()).hexdigest()[:16]
 
-def parse_transfer_type(text):
-    t = text.lower()
-    if "fin de prêt" in t or "fin de prestamo" in t or "return" in t:
-        return "Fin de prêt"
-    if "prêt" in t or "prestamo" in t or "loan" in t or "cedido" in t:
-        return "Prêt"
-    if "libre" in t or "free" in t or "agente libre" in t:
-        return "Libre"
-    if "rescisi" in t:
-        return "Résiliation"
-    return "Transfert"
+def parse_type_montant(data_transfer_text):
+    """
+    Exemples réels :
+      'Transfer. 0,1M.€'  → type='Transfert', montant='0,1M.€'
+      'Free transfer.'    → type='Libre', montant=''
+      'Loan.'             → type='Prêt', montant=''
+      'Released.'         → type='Résiliation', montant=''
+      'Free agent.'       → type='Libre', montant=''
+    """
+    t = data_transfer_text.strip().lower()
+    montant = ""
 
-def parse_amount(text):
-    m = re.search(r"[\d,.]+\s*[MmKk]?\s*[€$£]|[€$£]\s*[\d,.]+\s*[MmKk]?", text)
-    return m.group(0).strip() if m else ""
+    # Extraire montant
+    m = re.search(r"([\d,.]+\s*m\.?\s*[€$£]|[€$£]\s*[\d,.]+)", data_transfer_text, re.I)
+    if m:
+        montant = m.group(0).strip()
+
+    if "free transfer" in t or "free agent" in t:
+        return "Libre", montant
+    if "loan" in t:
+        return "Prêt", montant
+    if "released" in t:
+        return "Résiliation", montant
+    if "end of loan" in t or "fin de prêt" in t:
+        return "Fin de prêt", montant
+    if "transfer" in t:
+        return "Transfert", montant
+    return "Transfert", montant
 
 def clean_logo(src):
     if not src:
@@ -114,151 +127,118 @@ def clean_logo(src):
     return src
 
 # ══════════════════════════════════════════════
-# PARSE UN ROW DE TRANSFERT
+# PARSE UNE PAGE DE TRANSFERTS
 # ══════════════════════════════════════════════
 
-def parse_transfer_row(row, club, season, direction):
-    """Parse un <li> ou <tr> BeSoccer en dict transfert."""
-    text = row.get_text(" ", strip=True)
-    if not text or len(text) < 3:
-        return None
+# Mots-clés BeSoccer pour détecter direction
+IN_KEYWORDS  = ["new signing", "new signings", "arrivals", "signings", "in"]
+OUT_KEYWORDS = ["transfers out", "departures", "out", "left the club"]
 
-    # Lien joueur obligatoire
-    player_link = row.select_one("a[href*='/player/']")
-    if not player_link:
-        return None
-    player_name = player_link.get_text(strip=True)
-    if not player_name or len(player_name) < 2:
-        return None
-
-    player_id = extract_player_id(player_link.get("href", ""))
-
-    # Photo joueur
-    photo = ""
-    for img in row.select("img"):
-        src = img.get("src", "") or img.get("data-src", "")
-        if "img_data/players" in src or "resfu.com" in src:
-            photo = clean_logo(src)
-            break
-    if not photo and player_id:
-        photo = f"https://cdn.resfu.com/img_data/players/medium/{player_id}.jpg?size=120x&lossy=1"
-
-    # Club adverse + logo
-    other_club_name = ""
-    other_club_logo = ""
-    for a in row.select("a[href*='/team/']"):
-        href = a.get("href", "")
-        # Ignorer le club algérien lui-même
-        if club["slug"] in href:
-            continue
-        other_club_name = a.get_text(strip=True)
-        img_adj = a.find("img")
-        if img_adj:
-            src = img_adj.get("src", "") or img_adj.get("data-src", "")
-            other_club_logo = clean_logo(src)
-        break
-
-    # Fallback nom club adverse depuis texte
-    if not other_club_name:
-        m = re.search(r"(?:de|depuis|vers|→|->|from|to)\s+([A-ZÀ-Ü][^|•\n]{2,40})", text)
-        if m:
-            other_club_name = m.group(1).strip()
-
-    transfer_type = parse_transfer_type(text)
-    montant       = parse_amount(text)
-
-    # Logo du club algérien : API-sports en fallback
-    club_logo = club.get("api_logo", "")
-
-    return {
-        "id":             make_uid(club["name"], player_name, direction, season),
-        "season":         season,
-        "club_source":    club["name"],
-        "club_logo":      club_logo,
-        "player_name":    player_name,
-        "player_id":      player_id or "",
-        "photo":          photo,
-        "direction":      direction,
-        "club_depart":    club["name"]    if direction == "out" else other_club_name,
-        "club_arrivee":   other_club_name if direction == "out" else club["name"],
-        "club_dest_logo": other_club_logo,
-        "type":           transfer_type,
-        "montant":        montant,
-        "scraped_at":     datetime.now(timezone.utc).isoformat(),
-    }
-
-# ══════════════════════════════════════════════
-# SCRAPE UN CLUB
-# ══════════════════════════════════════════════
+def detect_direction(title_text):
+    t = title_text.strip().lower()
+    if any(w in t for w in OUT_KEYWORDS):
+        return "out"
+    if any(w in t for w in IN_KEYWORDS):
+        return "in"
+    return None
 
 def scrape_club_transfers(club, season):
-    """
-    URL BeSoccer : /team/transfers/{slug}/{bs_id}/{season}
-    Structure HTML : sections "Altas" (in) et "Bajas" (out)
-    avec des <li> ou <tr> pour chaque joueur.
-    """
-    # URL principale avec bs_id
     url = f"https://www.besoccer.com/team/transfers/{club['slug']}/{club['bs_id']}/{season}"
     r = fetch(url)
     if not r:
-        # Fallback sans bs_id
         url = f"https://www.besoccer.com/team/transfers/{club['slug']}/{season}"
         r = fetch(url)
         if not r:
-            print(f"  ⚠️ Impossible de charger la page pour {club['name']}")
+            print(f"  ⚠️ Page inaccessible pour {club['name']}")
             return []
 
     soup = BeautifulSoup(r.text, "html.parser")
     transfers = []
-
-    # BeSoccer utilise des sections avec titres "Altas" / "Bajas"
-    # On cherche tous les h2/h3/h4 pour détecter le sens du courant
     current_dir = None
-    for tag in soup.find_all(["h2", "h3", "h4", "div"]):
-        classes = " ".join(tag.get("class", []))
-        txt = tag.get_text(strip=True).lower()
 
-        # Détection titre de section
-        is_title = tag.name in ["h2", "h3", "h4"] or "title" in classes or "panel-title" in classes
-        if not is_title:
+    # Itérer sur les <li> dans l'ordre du document
+    # li.elem-title  → nouveau titre de section → met à jour current_dir
+    # li.sign-list   → un transfert            → parser si current_dir connu
+    for li in soup.select("li.elem-title, li.sign-list"):
+        classes = li.get("class", [])
+
+        # ── Titre de section ──────────────────────────────────────
+        if "elem-title" in classes:
+            title = li.get_text(strip=True)
+            d = detect_direction(title)
+            if d:
+                current_dir = d
+                print(f"  Section → {current_dir.upper()} : '{title}'")
             continue
 
-        if any(w in txt for w in ["alta", "arrivée", "llegada", "entradas", "signing"]):
-            current_dir = "in"
-        elif any(w in txt for w in ["baja", "départ", "salida", "salidas", "leaving"]):
-            current_dir = "out"
+        # ── Ligne de transfert ────────────────────────────────────
+        if "sign-list" not in classes or current_dir is None:
+            continue
 
-        if current_dir:
-            # Chercher les rows dans le bloc suivant
-            sibling = tag.find_next_sibling()
-            while sibling:
-                for row in sibling.select("li, tr"):
-                    t = parse_transfer_row(row, club, season, current_dir)
-                    if t:
-                        transfers.append(t)
-                sibling = sibling.find_next_sibling()
-                # S'arrêter si on tombe sur un nouveau titre
-                if sibling and sibling.name in ["h2", "h3", "h4"]:
-                    break
+        # Joueur
+        player_link = li.select_one("a[href*='/player/']")
+        if not player_link:
+            continue
+        player_href = player_link.get("href", "")
+        player_id   = extract_player_id(player_href)
+        # Le texte du lien joueur contient aussi date/type — prendre juste le nom
+        # Structure : <p class="name">N. Benzid</p> dans le lien
+        name_el = player_link.select_one("p.name") or player_link.select_one("p")
+        if name_el:
+            player_name = name_el.get_text(strip=True)
+        else:
+            # Fallback : premier texte avant la date
+            raw = player_link.get_text("|", strip=True).split("|")[0]
+            player_name = raw.strip()
+        if not player_name or len(player_name) < 2:
+            continue
 
-    # Fallback : scan linéaire si les titres n'ont rien donné
-    if not transfers:
-        current_dir = None
-        for tag in soup.find_all(True):
-            if tag.name in ["h2", "h3", "h4"]:
-                txt = tag.get_text(strip=True).lower()
-                if any(w in txt for w in ["alta", "arrivée", "llegada", "entradas"]):
-                    current_dir = "in"
-                elif any(w in txt for w in ["baja", "départ", "salida", "salidas"]):
-                    current_dir = "out"
+        # Photo joueur
+        photo = ""
+        img = li.select_one("img[src*='img_data/players'], img[src*='resfu']")
+        if img:
+            photo = clean_logo(img.get("src", "") or img.get("data-src", ""))
+        if not photo and player_id:
+            photo = f"https://cdn.resfu.com/img_data/players/medium/{player_id}.jpg?size=120x&lossy=1"
+
+        # Club adverse
+        other_club_name = ""
+        other_club_logo = ""
+        for a in li.select("a[href*='/team/']"):
+            href = a.get("href", "")
+            if club["slug"] in href:
                 continue
-            if current_dir and tag.name in ["li", "tr"]:
-                # Éviter les doublons (les li imbriqués)
-                if tag.find_parent(["li", "tr"]):
-                    continue
-                t = parse_transfer_row(tag, club, season, current_dir)
-                if t:
-                    transfers.append(t)
+            other_club_name = a.get_text(strip=True)
+            img_team = a.find("img")
+            if img_team:
+                other_club_logo = clean_logo(img_team.get("src","") or img_team.get("data-src",""))
+            break
+
+        # Type + montant depuis div.data-transfer
+        transfer_type = "Transfert"
+        montant       = ""
+        dt = li.select_one("div.data-transfer")
+        if dt:
+            transfer_type, montant = parse_type_montant(dt.get_text(strip=True))
+
+        uid = make_uid(club["name"], player_name, current_dir, season)
+
+        transfers.append({
+            "id":             uid,
+            "season":         season,
+            "club_source":    club["name"],
+            "club_logo":      club["api_logo"],
+            "player_name":    player_name,
+            "player_id":      player_id or "",
+            "photo":          photo,
+            "direction":      current_dir,
+            "club_depart":    club["name"]    if current_dir == "out" else other_club_name,
+            "club_arrivee":   other_club_name if current_dir == "out" else club["name"],
+            "club_dest_logo": other_club_logo,
+            "type":           transfer_type,
+            "montant":        montant,
+            "scraped_at":     datetime.now(timezone.utc).isoformat(),
+        })
 
     # Déduplication
     seen = set()
@@ -268,11 +248,11 @@ def scrape_club_transfers(club, season):
             seen.add(t["id"])
             unique.append(t)
 
-    print(f"  → {len(unique)} transfert(s) pour {club['name']}")
+    print(f"  → {len(unique)} transfert(s) [{club['name']}]")
     return unique
 
 # ══════════════════════════════════════════════
-# SUPABASE UPSERT
+# SUPABASE
 # ══════════════════════════════════════════════
 
 def upsert_transfers(rows):
@@ -313,7 +293,6 @@ for club in CLUBS:
 
 print(f"\n=== TOTAL : {len(all_transfers)} transferts ===")
 
-# Artifact debug pour GitHub Actions
 with open("transfers_debug.json", "w", encoding="utf-8") as f:
     json.dump(all_transfers, f, ensure_ascii=False, indent=2)
 print("Debug JSON : transfers_debug.json")
