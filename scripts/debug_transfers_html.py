@@ -13,30 +13,52 @@ print(f"Status: {r.status_code} | Size: {len(r.text)} chars")
 
 soup = BeautifulSoup(r.text, "html.parser")
 
-print("\n--- TOUS LES li.elem-title ---")
-for li in soup.select("li.elem-title"):
-    print(f"  repr: {repr(li.get_text(strip=True))}")
-
-print("\n--- TOUS LES li.elem-title.mt10 ---")
-for li in soup.select("li.elem-title.mt10"):
-    print(f"  repr: {repr(li.get_text(strip=True))}")
-
-print("\n--- PREMIERS 5 li.sign-list ---")
-for li in soup.select("li.sign-list")[:5]:
-    print(f"  TEXT: {li.get_text(' ', strip=True)[:120]}")
-    player = li.select_one("a[href*='/player/']")
-    print(f"  PLAYER LINK: {player.get('href','') if player else 'None'}")
-    print(f"  PLAYER TEXT: {player.get_text('|', strip=True)[:80] if player else 'None'}")
-    p_tag = li.select_one("p.name")
-    print(f"  p.name: {p_tag.get_text(strip=True) if p_tag else 'None'}")
-    dt = li.select_one("div.data-transfer")
-    print(f"  data-transfer: {dt.get_text(strip=True) if dt else 'None'}")
-    teams = li.select("a[href*='/team/']")
-    for t in teams:
-        print(f"  TEAM: {t.get('href','')} → '{t.get_text(strip=True)[:40]}'")
+# 1. Trouver le conteneur principal des transferts
+print("\n--- div.signing-season ---")
+for div in soup.select("div.signing-season"):
+    print(f"  classes: {div.get('class')}")
+    print(f"  text[:200]: {div.get_text(' ', strip=True)[:200]}")
     print()
 
-# Sauver HTML brut
+# 2. HTML brut autour des 3 premiers li.sign-list (parent + siblings)
+print("\n--- CONTEXTE HTML des 3 premiers li.sign-list ---")
+for i, li in enumerate(soup.select("li.sign-list")[:3]):
+    parent = li.parent
+    print(f"\n[sign-list #{i+1}]")
+    print(f"  Parent: <{parent.name} class='{' '.join(parent.get('class',[]))}'>")
+    # Chercher le titre/header le plus proche avant ce li
+    prev = li.find_previous_sibling()
+    while prev:
+        cls = " ".join(prev.get("class", []))
+        txt = prev.get_text(strip=True)[:80]
+        print(f"  Prev sibling: <{prev.name} class='{cls}'> '{txt}'")
+        if txt:
+            break
+        prev = prev.find_previous_sibling()
+    # Parent du parent
+    gp = parent.parent
+    if gp:
+        print(f"  Grandparent: <{gp.name} class='{' '.join(gp.get('class',[]))}'>")
+
+# 3. Lister TOUS les éléments dans le premier div.signing-season
+print("\n--- ENFANTS DIRECTS du premier div.signing-season ---")
+main_div = soup.select_one("div.signing-season")
+if main_div:
+    for child in main_div.children:
+        if not hasattr(child, 'name') or not child.name:
+            continue
+        cls = " ".join(child.get("class", []))
+        txt = child.get_text(" ", strip=True)[:100]
+        print(f"  <{child.name} class='{cls}'>: '{txt}'")
+
+# 4. HTML brut du premier ul contenant des li.sign-list
+print("\n--- HTML brut premier UL avec sign-list (500 chars) ---")
+for ul in soup.find_all("ul"):
+    if ul.select("li.sign-list"):
+        print(f"  UL classes: {ul.get('class')}")
+        print(ul.decode()[:800])
+        break
+
 with open("besoccer_transfers_raw.html", "w", encoding="utf-8") as f:
     f.write(r.text)
-print("HTML sauvé")
+print("\nHTML sauvé")
