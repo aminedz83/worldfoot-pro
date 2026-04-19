@@ -2,7 +2,7 @@
 <html lang="fr">
 <head>
     <meta charset="UTF-8" />
-    <!-- v328 -->
+    <!-- v329 -->
     <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate" />
     <meta http-equiv="Pragma" content="no-cache" />
     <meta http-equiv="Expires" content="0" />
@@ -13282,8 +13282,8 @@ function Alg1TransferCard({ transfer }) {
   var isIn     = t.direction === "in";
   var dirColor = isIn ? "#00c170" : "#e53535";
   var dirLabel = isIn ? "ARRIVÉE" : "DÉPART";
-  var fromClub = t.club_depart;
-  var toClub   = t.club_arrivee;
+  var fromClub = isIn ? t.club_depart  : t.club_arrivee;
+  var toClub   = isIn ? t.club_arrivee : t.club_depart;
   var fromLogo = isIn ? t.club_dest_logo : t.club_logo;
   var toLogo   = isIn ? t.club_logo : t.club_dest_logo;
   var photo    = t.photo || ("https://cdn.resfu.com/img_data/players/medium/" + t.player_id + ".jpg?size=120x&lossy=1");
@@ -13343,67 +13343,25 @@ function TransfersTab({ onTeam }) {
   useEffect(() => {
     if (mainTab !== "coaches" || coachesStatus !== "idle") return;
     setCoachesStatus("load");
-    const clubs = MERCATO_CLUBS.filter(c => coachFilter === "algerie" ? c.algerian : !c.algerian);
-    const seasonCutoff = new Date("2025-01-01"); // Seulement entraîneurs arrivés en 2025+
-
-    Promise.allSettled(
-      clubs.map(c =>
-        api(`/coachs?team=${c.id}`, 1800000)
-          .then(async res => {
-            const coachesList = res || [];
-            if (!coachesList.length) return { clubId: c.id, clubName: c.name, clubLogo: c.logo, coach: null };
-            // Prendre le premier = entraîneur actuel
-            const current = coachesList[0];
-            // Photo rapide — URL directe par ID sans vérification
-            const photo = current.photo || `https://media.api-sports.io/football/coachs/${current.id}.png`;
-            const stint = (current.career||[]).find(s => s.team?.id === c.id);
-            return { clubId: c.id, clubName: c.name, clubLogo: c.logo, coach: { ...current, photo }, stint };
-          })
-          .catch(() => ({ clubId: c.id, clubName: c.name, clubLogo: c.logo, coach: null }))
-      )
-    ).then(results => {
-      const entries = [];
-      results.forEach(r => {
-        if (r.status !== "fulfilled" || !r.value.coach) return;
-        const { clubId, clubName, clubLogo, coach, stint } = r.value;
-        const startDate = stint?.start ? new Date(stint.start) : null;
-        const endDate = stint?.end ? new Date(stint.end) : null;
-
-        // Ignorer si l'entraîneur est parti (end renseigné et récent)
-        if (endDate && endDate < new Date()) return;
-
-        // Garder seulement ceux arrivés en 2025 ou sans date (= actuel)
-        if (startDate && startDate < seasonCutoff) return;
-
-        entries.push({ coach, clubId, clubName, clubLogo, start: stint?.start || null, end: null, isCurrent: true });
-      });
-
-      // Dédupliquer par club — garder l'entrée avec photo ET date la plus récente
-      const deduped = [];
-      const seenByClub = {};
-      entries.forEach(entry => {
-        const key = entry.clubId;
-        if (!seenByClub[key]) {
-          seenByClub[key] = entry;
-        } else {
-          const existing = seenByClub[key];
-          const existingScore = (existing.isCurrent ? 100 : 0) + (existing.coach.photo ? 10 : 0);
-          const entryScore = (entry.isCurrent ? 100 : 0) + (entry.coach.photo ? 10 : 0);
-          if (entryScore > existingScore) seenByClub[key] = entry;
-          // Si même score → garder la date la plus ancienne (vraie prise de poste)
-          else if (entryScore === existingScore && new Date(entry.start||0) < new Date(existing.start||0)) seenByClub[key] = entry;
-        }
-      });
-      const dedupedEntries = Object.values(seenByClub);
-      dedupedEntries.sort((a, b) => {
-        if (a.isCurrent && !b.isCurrent) return -1;
-        if (!a.isCurrent && b.isCurrent) return 1;
-        return new Date(b.start||0) - new Date(a.start||0);
-      });
-      setCoachesData(dedupedEntries);
-      setCoachesStatus(dedupedEntries.length ? "ok" : "empty");
-    });
-  }, [mainTab, coachFilter]);
+    var SB_BASE = "https://iqeqlsxjiklygywjirqs.supabase.co/rest/v1/";
+    var SB_H    = { "apikey": SB_KEY, "Authorization": "Bearer " + SB_KEY };
+    fetch(SB_BASE + "algeria_coaches?select=*&order=club.asc", { headers: SB_H })
+      .then(function(r) { return r.json(); })
+      .then(function(rows) {
+        var entries = (rows || []).map(function(c) {
+          return {
+            coach:     { name: c.coach_name, photo: c.photo, id: c.coach_id },
+            clubName:  c.club,
+            clubLogo:  c.club_logo,
+            isCurrent: true,
+            start:     null,
+          };
+        });
+        setCoachesData(entries);
+        setCoachesStatus(entries.length ? "ok" : "empty");
+      })
+      .catch(function() { setCoachesStatus("err"); });
+  }, [mainTab, coachesStatus]);
 
   // Algorithme sophistiqué de détection des mouvements d'entraîneurs
   useEffect(() => {
@@ -13577,9 +13535,8 @@ function TransfersTab({ onTeam }) {
 
   // ── Charger transferts Ligue 1 Algérie depuis Supabase ───────────
   useEffect(function() {
-    if (mainTab !== "ligue1") return;
+    if (mainTab !== "mercato" || alg1Status !== "idle") return;
     setAlg1Status("load");
-    setAlg1Data([]);
     var SB_BASE = "https://iqeqlsxjiklygywjirqs.supabase.co/rest/v1/";
     var SB_H    = { "apikey": SB_KEY, "Authorization": "Bearer " + SB_KEY };
     fetch(SB_BASE + "algeria_transfers?season=eq." + alg1Season + "&order=player_name.asc&limit=500",
@@ -13590,6 +13547,12 @@ function TransfersTab({ onTeam }) {
       setAlg1Status(rows && rows.length ? "ok" : "empty");
     }).catch(function() { setAlg1Status("err"); });
   }, [mainTab, alg1Season]);
+
+  useEffect(function() {
+    if (mainTab === "mercato" && alg1Status === "ok") {
+      setAlg1Status("idle");
+    }
+  }, [alg1Season]);
 
   useEffect(() => {
     if (mainTab !== "actu" || actuData.length) return;
@@ -13775,18 +13738,6 @@ function TransfersTab({ onTeam }) {
             if (alg1Dir === "out" && t.direction !== "out") return false;
             return true;
           });
-          // Déduplication : en mode "Tous clubs / Tous", un joueur apparaît
-          // comme IN chez son nouveau club ET OUT chez son ancien club.
-          // On déduplique par player_name+direction pour éviter les doublons.
-          if (alg1Club === "all") {
-            var seen = {};
-            filtered = filtered.filter(function(t) {
-              var key = t.player_name + "|" + t.direction;
-              if (seen[key]) return false;
-              seen[key] = true;
-              return true;
-            });
-          }
           if (!filtered.length) return React.createElement("div", { style: { textAlign: "center", padding: 50, color: "#94a3b8", fontSize: 13 } }, "Aucun transfert trouvé");
           return filtered.map(function(tr, i) {
             return React.createElement(Alg1TransferCard, { key: i, transfer: tr });
@@ -13852,40 +13803,26 @@ function TransfersTab({ onTeam }) {
       ),
 
       // Sous-onglet EN POSTE
-      coachSubTab === "current" && (
-        coachesStatus === "idle" || coachesStatus === "load"
+      coachesStatus === "load"
         ? React.createElement("div", { style: { display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", padding: 60, gap: 12 } },
             React.createElement(Spin, { s: 28, c: "#00c170" }),
             React.createElement("span", { style: { fontSize: 13, color: "#94a3b8" } }, "Chargement des entraîneurs…")
           )
-        : coachesStatus === "empty"
+        : coachesStatus === "empty" || coachesStatus === "err"
         ? React.createElement("div", { style: { textAlign: "center", padding: 40, color: "#94a3b8" } }, "Aucun entraîneur disponible")
         : React.createElement("div", { style: { padding: "8px 12px", display: "flex", flexDirection: "column", gap: 8 } },
-
-            // Section EN POSTE
-            
-            coachesData.filter(e => e.isCurrent).length === 0
-              ? React.createElement("div", { style: { fontSize: 12, color: "#94a3b8", padding: "8px 0" } }, "Aucune donnée")
-              : coachesData.filter(e => e.isCurrent).map((entry, i) =>
-                  React.createElement("div", { key: "cur-"+i, style: { background: "#fff", borderRadius: 12, padding: "12px 14px", display: "flex", alignItems: "center", gap: 12, boxShadow: "0 1px 4px rgba(15,23,42,.06)", borderLeft: "3px solid #00c170" } },
-                    React.createElement(CoachPhoto, { coach: entry.coach, size: 56, bgColor: "linear-gradient(135deg,#00c170,#009e5c)" }),
-                    React.createElement("div", { style: { flex: 1, minWidth: 0 } },
-                      React.createElement("div", { style: { fontSize: 14, fontWeight: 700, color: "#0f172a" } }, entry.coach.name),
-                      React.createElement("div", { style: { fontSize: 11, color: "#64748b", marginTop: 2 } }, `${entry.coach.nationality||""}${entry.coach.age?` · ${entry.coach.age} ans`:""}`),
-                      entry.start && React.createElement("div", { style: { fontSize: 11, color: "#00c170", fontWeight: 600, marginTop: 3 } },
-                        `Depuis ${new Date(entry.start).toLocaleDateString("fr-FR", { month: "long", year: "numeric" })}`
-                      )
-                    ),
-                    React.createElement("div", { style: { display: "flex", flexDirection: "column", alignItems: "center", gap: 3, flexShrink: 0 } },
-                      React.createElement(Logo, { src: entry.clubLogo, size: 30 }),
-                      React.createElement("span", { style: { fontSize: 9, color: "#94a3b8", fontWeight: 600, textAlign: "center", maxWidth: 56, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" } }, entry.clubName)
-                    )
-                  )
+            coachesData.map(function(entry, i) {
+              return React.createElement("div", { key: i, style: { background: "#fff", borderRadius: 12, padding: "12px 14px", display: "flex", alignItems: "center", gap: 12, boxShadow: "0 1px 4px rgba(15,23,42,.06)", borderLeft: "3px solid #00c170" } },
+                React.createElement(CoachPhoto, { coach: entry.coach, size: 56, bgColor: "linear-gradient(135deg,#00c170,#009e5c)" }),
+                React.createElement("div", { style: { flex: 1, minWidth: 0 } },
+                  React.createElement("div", { style: { fontSize: 14, fontWeight: 700, color: "#0f172a" } }, entry.coach.name),
+                  React.createElement("div", { style: { fontSize: 11, color: "#64748b", marginTop: 2 } }, entry.clubName)
                 ),
-
+                React.createElement(Logo, { src: entry.clubLogo, size: 34 })
+              );
+            }),
             React.createElement("div", { style: { height: 20 } })
-          )
-      ),
+          ),
 
       // Sous-onglet ARRIVÉES
       coachSubTab === "arrivals" && React.createElement("div", { style: { padding: "8px 12px", display: "flex", flexDirection: "column", gap: 8, overflowY: "auto" } },
