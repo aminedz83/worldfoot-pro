@@ -26,7 +26,9 @@ supabase = create_client(SUPABASE_URL, SUPABASE_KEY)
 API_BASE    = "https://v3.football.api-sports.io"
 BS_BASE     = "https://www.besoccer.com"
 LEAGUE_ID   = 186   # Ligue 1 Algérie
-SEASON      = 2024
+# Saison dynamique : juillet = début nouvelle saison
+_now    = datetime.utcnow()
+SEASON  = _now.year if _now.month >= 7 else _now.year - 1
 DAYS_AHEAD  = 14
 
 HEADERS_API = {"x-apisports-key": API_FOOTBALL_KEY}
