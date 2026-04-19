@@ -5,27 +5,15 @@ besoccer_transfers.py
 Scrape les transferts Ligue 1 Algérie depuis BeSoccer.
 Stocke dans Supabase `algeria_transfers`.
 
-Structure HTML réelle (vérifiée 19/04/2026) :
-  div.signing-season.transfer-new
-    div.panel
-      table > tr > td.w-50p.va-t.br-right  → colonne IN (arrivées)
-                   td.w-50p.va-t            → colonne OUT (départs)
-        ul.item-list
-          li.sign-list
-            a.item-box[href=/player/...]
-              div.row-img.player > img      → photo joueur
-              div.left-content
-                p.pl-name                   → nom joueur
-                p.date                      → date
-              div.right-content.data-box
-                div.row-img.shield > img    → logo club adverse (alt=nom)
-                div.data-transfer           → type + montant
+Fix 19/04/2026 : filtrage par date réelle du transfert.
+BeSoccer pagine à 50 et mélange les saisons — on filtre
+par date : saison N = du 01/07/N-1 au 30/06/N.
 """
 
 import os, re, time, json, hashlib, requests
 import cloudscraper
 from bs4 import BeautifulSoup
-from datetime import datetime, timezone
+from datetime import datetime, timezone, date
 
 # ══════════════════════════════════════════════
 # CONFIG
@@ -41,6 +29,12 @@ SB_HEADERS   = {
 }
 
 SEASON = int(os.environ.get("TRANSFER_SEASON", datetime.now().year))
+
+# Fenêtre de date pour la saison N : 01/07/N-1 → 30/06/N
+SEASON_START = date(SEASON - 1, 7, 1)
+SEASON_END   = date(SEASON,     6, 30)
+
+print(f"Fenêtre saison {SEASON} : {SEASON_START} → {SEASON_END}")
 
 # ══════════════════════════════════════════════
 # CLUBS
@@ -86,6 +80,34 @@ def fetch(url):
 # HELPERS
 # ══════════════════════════════════════════════
 
+MONTHS_FR = {
+    "JAN":1,"FEB":2,"MAR":3,"APR":4,"MAY":5,"JUN":6,
+    "JUL":7,"AUG":8,"SEP":9,"OCT":10,"NOV":11,"DEC":12,
+    # Espagnol (BeSoccer bilingue)
+    "ENE":1,"FEB":2,"MAR":3,"ABR":4,"MAY":5,"JUN":6,
+    "JUL":7,"AGO":8,"SEP":9,"OCT":10,"NOV":11,"DIC":12,
+}
+
+def parse_date(date_str):
+    """Parse '31 JAN 2026' → date(2026,1,31). Retourne None si échec."""
+    try:
+        parts = date_str.strip().upper().split()
+        if len(parts) == 3:
+            day   = int(parts[0])
+            month = MONTHS_FR.get(parts[1][:3], 0)
+            year  = int(parts[2])
+            if month:
+                return date(year, month, day)
+    except Exception:
+        pass
+    return None
+
+def in_season(transfer_date):
+    """Vérifie si la date du transfert est dans la fenêtre de la saison."""
+    if transfer_date is None:
+        return True  # si pas de date, on garde par défaut
+    return SEASON_START <= transfer_date <= SEASON_END
+
 def extract_player_id(href):
     if not href:
         return None
@@ -100,20 +122,9 @@ def make_uid(club_name, player_name, direction, season):
     return int(hashlib.md5(raw.encode()).hexdigest()[:15], 16)
 
 def parse_type_montant(dt_text):
-    """
-    Textes réels BeSoccer :
-      'Transfer.'          → Transfert
-      'Transfer.0,1M.€'    → Transfert, 0,1M.€
-      'Free transfer.'     → Libre
-      'Free agent.'        → Libre
-      'Loan.'              → Prêt
-      'Released.'          → Résiliation
-      'End of loan.'       → Fin de prêt
-    """
     t = dt_text.strip().lower()
     m = re.search(r"([\d,.]+\s*m\.?\s*[€$£])", dt_text, re.I)
     montant = m.group(1).strip() if m else ""
-
     if "end of loan" in t or "fin de prêt" in t:
         return "Fin de prêt", montant
     if "free transfer" in t or "free agent" in t:
@@ -131,9 +142,11 @@ def clean_src(src):
         return ""
     return "https:" + src if src.startswith("//") else src
 
+# ══════════════════════════════════════════════
+# PARSE UN LI.SIGN-LIST
+# ══════════════════════════════════════════════
+
 def parse_sign_list(li, direction, club, season):
-    """Parse un li.sign-list en dict transfert."""
-    # Lien joueur
     a = li.select_one("a.item-box[href*='/player/']")
     if not a:
         return None
@@ -141,7 +154,7 @@ def parse_sign_list(li, direction, club, season):
     player_href = a.get("href", "")
     player_id   = extract_player_id(player_href)
 
-    # Nom : p.pl-name
+    # Nom
     name_el = a.select_one("p.pl-name")
     if not name_el:
         return None
@@ -149,7 +162,13 @@ def parse_sign_list(li, direction, club, season):
     if not player_name:
         return None
 
-    # Photo joueur : div.row-img.player > img
+    # Date du transfert — FILTRAGE SAISON
+    date_el = a.select_one("p.date")
+    transfer_date = parse_date(date_el.get_text(strip=True)) if date_el else None
+    if not in_season(transfer_date):
+        return None  # ← hors fenêtre saison, on ignore
+
+    # Photo
     photo = ""
     player_img = a.select_one("div.row-img.player img")
     if player_img:
@@ -157,7 +176,7 @@ def parse_sign_list(li, direction, club, season):
     if not photo and player_id:
         photo = f"https://cdn.resfu.com/img_data/players/medium/{player_id}.jpg?size=120x&lossy=1"
 
-    # Club adverse : div.row-img.shield > img  (alt = nom du club)
+    # Club adverse
     other_club_name = ""
     other_club_logo = ""
     shield_img = a.select_one("div.row-img.shield img")
@@ -165,17 +184,15 @@ def parse_sign_list(li, direction, club, season):
         other_club_name = shield_img.get("alt", "").strip()
         other_club_logo = clean_src(shield_img.get("src", "") or shield_img.get("data-src", ""))
 
-    # Type + montant : div.data-transfer
+    # Type + montant
     transfer_type = "Transfert"
     montant       = ""
     dt = a.select_one("div.data-transfer")
     if dt:
         transfer_type, montant = parse_type_montant(dt.get_text(strip=True))
 
-    uid = make_uid(club["name"], player_name, direction, season)
-
     return {
-        "id":             uid,
+        "id":             make_uid(club["name"], player_name, direction, season),
         "season":         season,
         "club_source":    club["name"],
         "club_logo":      club["api_logo"],
@@ -183,6 +200,7 @@ def parse_sign_list(li, direction, club, season):
         "player_id":      player_id or "",
         "photo":          photo,
         "direction":      direction,
+        "transfer_date":  transfer_date.isoformat() if transfer_date else None,
         "club_depart":    club["name"]    if direction == "out" else other_club_name,
         "club_arrivee":   other_club_name if direction == "out" else club["name"],
         "club_dest_logo": other_club_logo,
@@ -208,19 +226,13 @@ def scrape_club_transfers(club, season):
     soup = BeautifulSoup(r.text, "html.parser")
     transfers = []
 
-    # Structure : table > tr > td.br-right (IN) | td sans br-right (OUT)
-    # Chaque td contient un ul.item-list > li.sign-list
     for tr in soup.select("div.signing-season table tr"):
         tds = tr.find_all("td", recursive=False)
         if not tds:
             continue
-
         for td in tds:
-            classes = td.get("class", [])
-            # td.br-right = colonne gauche = IN (arrivées)
-            # td sans br-right = colonne droite = OUT (départs)
+            classes   = td.get("class", [])
             direction = "in" if "br-right" in classes else "out"
-
             for li in td.select("li.sign-list"):
                 t = parse_sign_list(li, direction, club, season)
                 if t:
@@ -234,9 +246,13 @@ def scrape_club_transfers(club, season):
             seen.add(t["id"])
             unique.append(t)
 
+    skipped = len([li for tr in soup.select("div.signing-season table tr")
+                   for td in tr.find_all("td", recursive=False)
+                   for li in td.select("li.sign-list")]) - len(unique)
+
     in_count  = sum(1 for t in unique if t["direction"] == "in")
     out_count = sum(1 for t in unique if t["direction"] == "out")
-    print(f"  → {len(unique)} transfert(s) : {in_count} IN / {out_count} OUT")
+    print(f"  → {len(unique)} transfert(s) dans la saison : {in_count} IN / {out_count} OUT (ignorés hors saison ou doublons)")
     return unique
 
 # ══════════════════════════════════════════════
@@ -279,7 +295,7 @@ for club in CLUBS:
         print(f"  ⚠️ Exception: {e}")
     time.sleep(2)
 
-print(f"\n=== TOTAL : {len(all_transfers)} transferts ===")
+print(f"\n=== TOTAL : {len(all_transfers)} transferts dans la saison {SEASON} ===")
 
 with open("transfers_debug.json", "w", encoding="utf-8") as f:
     json.dump(all_transfers, f, ensure_ascii=False, indent=2)
