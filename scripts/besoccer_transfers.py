@@ -97,7 +97,7 @@ def extract_player_id(href):
 
 def make_uid(club_name, player_name, direction, season):
     raw = f"{club_name}|{player_name}|{direction}|{season}"
-    return hashlib.md5(raw.encode()).hexdigest()[:16]
+    return int(hashlib.md5(raw.encode()).hexdigest()[:15], 16)
 
 def parse_type_montant(dt_text):
     """
