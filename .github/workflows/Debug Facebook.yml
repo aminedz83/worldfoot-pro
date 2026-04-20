@@ -1,0 +1,53 @@
+name: Debug Facebook HTML
+
+on:
+  workflow_dispatch:
+
+jobs:
+  debug:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Debug HTML structure
+        env:
+          SUPABASE_KEY: ${{ secrets.SUPABASE_KEY }}
+        run: |
+          pip install requests cloudscraper beautifulsoup4 --quiet
+          python3 - <<PYEOF
+          import cloudscraper
+          from bs4 import BeautifulSoup
+          import re
+
+          scraper = cloudscraper.create_scraper(
+              browser={"browser": "chrome", "platform": "windows", "mobile": False}
+          )
+
+          r = scraper.get("https://mbasic.facebook.com/competitionalgerie", timeout=20)
+          print(f"Status: {r.status_code} | HTML: {len(r.text)} chars")
+
+          soup = BeautifulSoup(r.text, "html.parser")
+
+          # Afficher les 30 premiers tags avec leurs attributs pour comprendre la structure
+          print("\n=== STRUCTURE HTML (premiers éléments) ===")
+          for tag in list(soup.find_all(True))[:60]:
+              attrs = dict(tag.attrs) if tag.attrs else {}
+              if attrs:
+                  print(f"<{tag.name} {attrs}>")
+
+          # Chercher tous les divs avec des attributs
+          print("\n=== DIVS AVEC ATTRIBUTS ===")
+          for div in list(soup.find_all("div"))[:30]:
+              if div.attrs:
+                  print(f"  div attrs={dict(div.attrs)}")
+
+          # Chercher le texte "la une" ou "competition"
+          print("\n=== RECHERCHE TEXTE ===")
+          full_text = soup.get_text(" ", strip=True).lower()
+          for kw in ["la une", "competition", "une de", "edition"]:
+              idx = full_text.find(kw)
+              if idx >= 0:
+                  print(f"  '{kw}' trouvé à pos {idx}: ...{full_text[max(0,idx-20):idx+60]}...")
+
+          # Afficher un extrait du HTML brut
+          print("\n=== HTML BRUT (1000-3000 chars) ===")
+          print(r.text[1000:3000])
+          PYEOF
