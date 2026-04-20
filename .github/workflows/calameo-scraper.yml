@@ -6,22 +6,22 @@ on:
     - cron: '0 0 * * *'
     - cron: '0 3 * * *'
   workflow_dispatch:
+
 jobs:
   scrape:
     runs-on: ubuntu-latest
     steps:
-      - name: Run Apify scraper
+      - name: Run Facebook scraper
         env:
-          APIFY_TOKEN: ${{ secrets.APIFY_KEY }}
           SUPABASE_KEY: ${{ secrets.SUPABASE_KEY }}
         run: |
-          pip install requests --quiet
+          pip install requests cloudscraper beautifulsoup4 --quiet
           python3 - <<PYEOF
-          import requests
-          import os
-          import time
+          import requests, os, re
+          import cloudscraper
+          from bs4 import BeautifulSoup
           from datetime import datetime
-          APIFY_TOKEN = os.environ["APIFY_TOKEN"]
+
           SUPABASE_KEY = os.environ["SUPABASE_KEY"]
           SB_URL = "https://iqeqlsxjiklygywjirqs.supabase.co"
           SB_HEADERS = {
@@ -31,49 +31,42 @@ jobs:
               "Prefer": "resolution=merge-duplicates"
           }
           KEYWORDS = ["la une", "competition du", "compétition du", "edition du", "une de"]
-          resp = requests.post(
-              f"https://api.apify.com/v2/acts/apify~facebook-posts-scraper/runs?token={APIFY_TOKEN}",
-              json={
-                  "startUrls": [{"url": "https://www.facebook.com/competitionalgerie"}],
-                  "resultsLimit": 20
-              }
+
+          scraper = cloudscraper.create_scraper(
+              browser={"browser": "chrome", "platform": "windows", "mobile": False}
           )
-          print(f"Apify launch status: {resp.status_code}")
-          run_data = resp.json()
-          print(f"Apify response: {run_data}")
-          if "data" not in run_data:
-              print(f"ERREUR: Réponse Apify invalide: {run_data}")
-              exit(1)
-          run_id = run_data["data"]["id"]
-          print(f"Run ID: {run_id}")
-          for i in range(24):
-              time.sleep(10)
-              status_resp = requests.get(
-                  f"https://api.apify.com/v2/actor-runs/{run_id}?token={APIFY_TOKEN}"
-              ).json()
-              status = status_resp.get("data", {}).get("status", "UNKNOWN")
-              print(f"Status [{i+1}/24]: {status}")
-              if status in ["SUCCEEDED", "FAILED", "ABORTED", "TIMED-OUT"]:
-                  break
-          if status != "SUCCEEDED":
-              print(f"Run terminé avec status: {status}")
+
+          print("Chargement de la page Facebook...")
+          r = scraper.get("https://mbasic.facebook.com/competitionalgerie", timeout=20)
+          print(f"Status: {r.status_code} | HTML: {len(r.text)} chars")
+
+          if r.status_code != 200:
+              print(f"ERREUR: page inaccessible ({r.status_code})")
               exit(0)
-          items = requests.get(
-              f"https://api.apify.com/v2/actor-runs/{run_id}/dataset/items?token={APIFY_TOKEN}"
-          ).json()
+
+          soup = BeautifulSoup(r.text, "html.parser")
+
+          # Extraire tous les blocs de posts
+          items = []
+          for article in soup.select("div[data-ft]"):
+              text_el = article.find("p") or article.find("div", {"data-ft": True})
+              text = text_el.get_text(" ", strip=True) if text_el else ""
+              img = article.find("img", src=re.compile(r"fbcdn|facebook"))
+              image = img["src"] if img else None
+              link = article.find("a", href=re.compile(r"/photo|/posts|/permalink"))
+              url = ("https://facebook.com" + link["href"]) if link and link["href"].startswith("/") else ""
+              items.append({"text": text, "image": image, "url": url, "time": datetime.now().isoformat()})
+
           print(f"Posts récupérés: {len(items)}")
+
           for item in items:
               text = (item.get("text") or "").lower()
               if not any(k in text for k in KEYWORDS):
                   continue
-              image = None
-              if item.get("photo_image"):
-                  image = item["photo_image"].get("uri")
-              elif item.get("media") and len(item["media"]) > 0:
-                  image = item["media"][0].get("thumbnail")
+              image = item.get("image")
               if not image:
                   continue
-              url = item.get("url") or item.get("postUrl") or ""
+              url = item.get("url") or ""
               published_at = item.get("time") or datetime.now().isoformat()
               res = requests.post(
                   f"{SB_URL}/rest/v1/competition_une",
@@ -87,5 +80,6 @@ jobs:
               )
               print(f"Sauvegardé: {res.status_code} - {image[:60]}")
               break
+
           print("Terminé.")
           PYEOF
