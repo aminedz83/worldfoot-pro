@@ -24,10 +24,8 @@ jobs:
           print(f"Status: {r.status_code} | HTML: {len(r.text)} chars")
 
           soup = BeautifulSoup(r.text, "html.parser")
-
-          # Extraire tous les blocs JSON embarqués dans les <script type="application/json">
           json_blocks = soup.find_all("script", {"type": "application/json"})
-          print(f"Blocs JSON trouvés: {len(json_blocks)}")
+          print(f"Blocs JSON trouves: {len(json_blocks)}")
 
           for i, block in enumerate(json_blocks):
               content = block.string or ""
@@ -35,33 +33,32 @@ jobs:
               if size < 500:
                   continue
               print(f"\n--- Bloc {i} ({size} chars) ---")
-              # Chercher des URLs d'images fbcdn
-              imgs = re.findall(r'https:\\?/\\?/[^"\'\\]+fbcdn[^"\'\\]+\.jpg[^"\'\\]*', content)
-              imgs += re.findall(r'https:\\?/\\?/[^"\'\\]+fbcdn[^"\'\\]+\.png[^"\'\\]*', content)
-              if imgs:
-                  print(f"  Images fbcdn: {len(imgs)}")
-                  for img in imgs[:3]:
-                      clean = img.replace('\\/', '/').replace('\\\\', '')
-                      print(f"    {clean[:120]}")
 
-              # Chercher texte "la une" ou "competition"
+              # Chercher URLs fbcdn simplement avec in + split
+              if "fbcdn" in content:
+                  parts = content.split("fbcdn")
+                  print(f"  Mentions fbcdn: {len(parts)-1}")
+                  for p in parts[1:4]:
+                      snippet = "https://scontent" + "fbcdn" + p[:100]
+                      print(f"    ...fbcdn{p[:100]}")
+
+              # Chercher keywords
               cl = content.lower()
               for kw in ["la une", "competition du", "une de", "edition du"]:
                   idx = cl.find(kw)
                   if idx >= 0:
-                      print(f"  Keyword '{kw}' à pos {idx}: ...{content[max(0,idx-30):idx+80]}...")
+                      print(f"  Keyword '{kw}': ...{content[max(0,idx-30):idx+80]}...")
 
-              # Essayer de parser comme JSON et chercher des clés utiles
+              # Parser JSON
               try:
                   data = json.loads(content)
                   txt = json.dumps(data)
-                  if "fbcdn" in txt or "photo" in txt.lower():
-                      print(f"  JSON parsé OK, contient fbcdn/photo")
-                      # Chercher récursivement les URLs d'images
+                  if "fbcdn" in txt:
+                      print(f"  JSON parse OK, contient fbcdn")
                       def find_urls(obj, depth=0):
-                          if depth > 10: return []
+                          if depth > 15: return []
                           urls = []
-                          if isinstance(obj, str) and "fbcdn" in obj and (".jpg" in obj or ".png" in obj):
+                          if isinstance(obj, str) and "fbcdn" in obj and ".jpg" in obj:
                               urls.append(obj)
                           elif isinstance(obj, dict):
                               for v in obj.values():
@@ -70,11 +67,11 @@ jobs:
                               for v in obj:
                                   urls += find_urls(v, depth+1)
                           return urls
-                      found_urls = find_urls(data)
-                      print(f"  URLs images trouvées: {len(found_urls)}")
-                      for u in found_urls[:3]:
+                      found = find_urls(data)
+                      print(f"  URLs .jpg fbcdn: {len(found)}")
+                      for u in found[:5]:
                           print(f"    {u[:120]}")
-              except:
+              except Exception as e:
                   pass
 
           PYEOF
