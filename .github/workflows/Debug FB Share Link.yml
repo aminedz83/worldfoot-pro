@@ -1,0 +1,41 @@
+name: Debug FB Share Link
+
+on:
+  workflow_dispatch:
+
+jobs:
+  debug:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Test share link
+        run: |
+          pip install cloudscraper --quiet
+          python3 - <<PYEOF
+          import cloudscraper, re
+
+          scraper = cloudscraper.create_scraper(
+              browser={"browser": "chrome", "platform": "windows", "mobile": False}
+          )
+
+          # Tester le lien de partage direct
+          url = "https://www.facebook.com/share/p/1H6ak2QU9J/?mibextid=wwXIfr"
+          r = scraper.get(url, timeout=15, allow_redirects=True)
+          print(f"Status: {r.status_code} | URL finale: {r.url}")
+          print(f"HTML: {len(r.text)} chars")
+
+          # og:image = image principale du post
+          og = re.findall(r'og:image[^>]*content="(https://[^"]+)"', r.text)
+          print(f"og:image: {og[:3]}")
+
+          og2 = re.findall(r'"og:image","content":"(https://[^"]+)"', r.text)
+          print(f"og:image JSON: {og2[:3]}")
+
+          fbcdn = re.findall(r'https://scontent[^"\'\\s]+\.jpg[^"\'\\s]*', r.text)
+          print(f"URLs jpg scontent: {len(fbcdn)}")
+          for u in fbcdn[:5]:
+              print(f"  {u[:120]}")
+
+          # Afficher debut HTML
+          print("\nHTML debut:")
+          print(r.text[:1000])
+          PYEOF
