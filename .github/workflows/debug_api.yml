@@ -1,0 +1,24 @@
+name: Debug API Football
+
+on:
+  workflow_dispatch:
+
+jobs:
+  debug:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Check fixture response
+        env:
+          API_FOOTBALL_KEY: ${{ secrets.API_FOOTBALL_KEY }}
+        run: |
+          pip install requests --quiet
+          python3 - <<PYEOF
+          import requests, json
+
+          r = requests.get(
+              "https://v3.football.api-sports.io/fixtures",
+              headers={"x-apisports-key": __import__('os').environ["API_FOOTBALL_KEY"]},
+              params={"id": "1513390"}
+          )
+          print(json.dumps(r.json(), indent=2))
+          PYEOF
