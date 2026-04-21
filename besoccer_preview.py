@@ -4,6 +4,8 @@ besoccer_preview.py
 Scrape les données Avant-Match depuis BeSoccer pour la Ligue 1 Algérie.
 Scrape: stats générales, forme récente, H2H, progression buts, apport offensif, joueurs vedettes
 Stocke dans: besoccer_preview (Supabase)
+
+PATCH v2 : KNOWN_IDS remplacé par lookup Supabase (algeria_match_ids)
 """
 
 import os, re, time, requests, json
@@ -23,49 +25,6 @@ SB_HEADERS   = {
     "Content-Type":  "application/json"
 }
 
-KNOWN_IDS = {
-    "2026-04-16": [
-        {"home_team": "CS Constantine",  "away_team": "MC Alger",        "bs_id": "2026264221", "bs_home": "cs-constantine","bs_away": "mc-alger"},
-    ],
-    "2026-04-17": [
-        {"home_team": "MB Rouissat",     "away_team": "JS Kabylie",      "bs_id": "2026264220", "bs_home": "mb-rouisset",   "bs_away": "kabylie"},
-        {"home_team": "ASO Chlef",       "away_team": "Olympique Akbou", "bs_id": "2026264215", "bs_home": "chlef",         "bs_away": "oued-akbou"},
-        {"home_team": "MC El Bayadh",    "away_team": "Paradou AC",      "bs_id": "2026264216", "bs_home": "el-bayadh",     "bs_away": "paradou"},
-        {"home_team": "JS Saoura",       "away_team": "USM Khenchela",   "bs_id": "2026264219", "bs_home": "js-saoura",     "bs_away": "usm-khenchela"},
-        {"home_team": "ES Setif",        "away_team": "MC Oran",         "bs_id": "2026264222", "bs_home": "es-setif",      "bs_away": "mc-oran"},
-    ],
-    "2026-05-09": [
-        {"home_team": "JS Kabylie",      "away_team": "ES Setif",        "bs_id": "2026264223", "bs_home": "kabylie",       "bs_away": "es-setif"},
-        {"home_team": "ES Mostaganem",   "away_team": "JS Saoura",       "bs_id": "2026264224", "bs_home": "es-mostaganem", "bs_away": "js-saoura"},
-        {"home_team": "MC Alger",        "away_team": "MB Rouissat",     "bs_id": "2026264225", "bs_home": "mc-alger",      "bs_away": "mb-rouisset"},
-        {"home_team": "Paradou AC",      "away_team": "CS Constantine",  "bs_id": "2026264226", "bs_home": "paradou",       "bs_away": "cs-constantine"},
-        {"home_team": "USM Khenchela",   "away_team": "MC El Bayadh",    "bs_id": "2026264227", "bs_home": "usm-khenchela", "bs_away": "el-bayadh"},
-        {"home_team": "ES Ben Aknoun",   "away_team": "USM Alger",       "bs_id": "2026264228", "bs_home": "ben-aknoun",    "bs_away": "usm-alger"},
-        {"home_team": "MC Oran",         "away_team": "ASO Chlef",       "bs_id": "2026264229", "bs_home": "mc-oran",       "bs_away": "chlef"},
-        {"home_team": "Olympique Akbou", "away_team": "CR Belouizdad",   "bs_id": "2026264230", "bs_home": "oued-akbou",    "bs_away": "belouizdad"},
-    ],
-    "2026-05-15": [
-        {"home_team": "MC El Bayadh",    "away_team": "JS Saoura",       "bs_id": "2026264231", "bs_home": "el-bayadh",     "bs_away": "js-saoura"},
-        {"home_team": "CS Constantine",  "away_team": "USM Khenchela",   "bs_id": "2026264232", "bs_home": "cs-constantine","bs_away": "usm-khenchela"},
-        {"home_team": "ES Setif",        "away_team": "MC Alger",        "bs_id": "2026264233", "bs_home": "es-setif",      "bs_away": "mc-alger"},
-        {"home_team": "CR Belouizdad",   "away_team": "MC Oran",         "bs_id": "2026264234", "bs_home": "belouizdad",    "bs_away": "mc-oran"},
-        {"home_team": "USM Alger",       "away_team": "Olympique Akbou", "bs_id": "2026264235", "bs_home": "usm-alger",     "bs_away": "oued-akbou"},
-        {"home_team": "ASO Chlef",       "away_team": "JS Kabylie",      "bs_id": "2026264236", "bs_home": "chlef",         "bs_away": "kabylie"},
-        {"home_team": "ES Ben Aknoun",   "away_team": "ES Mostaganem",   "bs_id": "2026264237", "bs_home": "ben-aknoun",    "bs_away": "es-mostaganem"},
-        {"home_team": "MB Rouissat",     "away_team": "Paradou AC",      "bs_id": "2026264238", "bs_home": "mb-rouisset",   "bs_away": "paradou"},
-    ],
-    "2026-05-22": [
-        {"home_team": "ES Mostaganem",   "away_team": "MC El Bayadh",    "bs_id": "2026264432", "bs_home": "es-mostaganem", "bs_away": "el-bayadh"},
-        {"home_team": "JS Saoura",       "away_team": "CS Constantine",  "bs_id": "2026264433", "bs_home": "js-saoura",     "bs_away": "cs-constantine"},
-        {"home_team": "USM Khenchela",   "away_team": "MB Rouissat",     "bs_id": "2026264434", "bs_home": "usm-khenchela", "bs_away": "mb-rouisset"},
-        {"home_team": "Paradou AC",      "away_team": "ES Setif",        "bs_id": "2026264435", "bs_home": "paradou",       "bs_away": "es-setif"},
-        {"home_team": "MC Alger",        "away_team": "ASO Chlef",       "bs_id": "2026264436", "bs_home": "mc-alger",      "bs_away": "chlef"},
-        {"home_team": "JS Kabylie",      "away_team": "CR Belouizdad",   "bs_id": "2026264437", "bs_home": "kabylie",       "bs_away": "belouizdad"},
-        {"home_team": "MC Oran",         "away_team": "USM Alger",       "bs_id": "2026264438", "bs_home": "mc-oran",       "bs_away": "usm-alger"},
-        {"home_team": "Olympique Akbou", "away_team": "ES Ben Aknoun",   "bs_id": "2026264439", "bs_home": "oued-akbou",    "bs_away": "ben-aknoun"},
-    ],
-}
-
 scraper = cloudscraper.create_scraper(
     browser={"browser": "chrome", "platform": "windows", "mobile": False}
 )
@@ -78,6 +37,46 @@ def fetch(url):
     except Exception as e:
         print(f"  Erreur: {e}")
         return None
+
+# ══════════════════════════════════════════════
+# LOOKUP MATCHS DEPUIS SUPABASE
+# ══════════════════════════════════════════════
+
+def get_targets():
+    """
+    Récupère les matchs des 8 prochains jours depuis algeria_match_ids.
+    Remplace l'ancien dict KNOWN_IDS hardcodé.
+    """
+    targets = []
+    today = date.today()
+    date_from = today.isoformat()
+    date_to   = (today + timedelta(days=7)).isoformat()
+
+    try:
+        r = requests.get(
+            SB_URL + f"/rest/v1/algeria_match_ids"
+                     f"?match_date=gte.{date_from}"
+                     f"&match_date=lte.{date_to}"
+                     f"&select=*",
+            headers={**SB_HEADERS, "Prefer": ""}
+        )
+        rows = r.json() if r.status_code == 200 else []
+        print(f"  {len(rows)} matchs dans algeria_match_ids ({date_from} → {date_to})")
+    except Exception as e:
+        print(f"  Erreur Supabase algeria_match_ids: {e}")
+        rows = []
+
+    for row in rows:
+        targets.append({
+            "bs_id":     row["match_id"],
+            "bs_home":   row.get("bs_home_slug", ""),
+            "bs_away":   row.get("bs_away_slug", ""),
+            "home_team": row["home_team"],
+            "away_team": row["away_team"],
+            "date":      row["match_date"],
+        })
+
+    return targets
 
 # ══════════════════════════════════════════════
 # SCRAPING FONCTIONS
@@ -239,25 +238,19 @@ def parse_offensive_contribution(soup):
     return offensive
 
 def parse_featured_players(soup):
-    """Parse les joueurs vedettes — structure BeSoccer corrigée"""
     featured = {"competition": {}, "all": {}}
-
     for tab_id, key in [("#tab-featured-competition", "competition"), ("#tab-featured-all", "all")]:
         tab = soup.select_one(tab_id)
         if not tab:
             continue
-
         for section in tab.select("div.mb15"):
             title_el = section.select_one("p.title.bold.ta-c.mb10")
             if not title_el:
                 continue
             title = title_el.get_text(strip=True)
-
             cols = section.select("div.col-6")
             if len(cols) < 2:
                 continue
-
-            # ── Home (col gauche): mark → a>div(nom) → a>img ──
             home_mark_el  = cols[0].select_one("div.mark")
             home_photo_el = cols[0].select_one("img.player-circle-box")
             home_name = ""
@@ -266,8 +259,6 @@ def parse_featured_players(soup):
                 if d:
                     home_name = d.get_text(strip=True)
                     break
-
-            # ── Away (col droite): a>img → a>div(nom) → mark ──
             away_mark_el  = cols[1].select_one("div.mark")
             away_photo_el = cols[1].select_one("img.player-circle-box")
             away_name = ""
@@ -276,20 +267,16 @@ def parse_featured_players(soup):
                 if d:
                     away_name = d.get_text(strip=True)
                     break
-
             home_val   = home_mark_el.get_text(strip=True)  if home_mark_el  else ""
             away_val   = away_mark_el.get_text(strip=True)  if away_mark_el  else ""
             home_photo = home_photo_el.get("src", "")        if home_photo_el else ""
             away_photo = away_photo_el.get("src", "")        if away_photo_el else ""
-
             if home_photo and home_photo.startswith("//"): home_photo = "https:" + home_photo
             if away_photo and away_photo.startswith("//"): away_photo = "https:" + away_photo
-
             featured[key][title] = {
                 "home": {"name": home_name, "value": home_val, "photo": home_photo},
                 "away": {"name": away_name, "value": away_val, "photo": away_photo}
             }
-
     return featured
 
 def parse_recent_streaks(soup, tab_id):
@@ -301,11 +288,11 @@ def parse_recent_streaks(soup, tab_id):
         label_el = row.select_one("p.text-label")
         if not label_el:
             continue
-        label       = label_el.get_text(strip=True)
-        left_el     = row.select_one("div.td-num.left div.color-grey")
-        right_el    = row.select_one("div.td-num.right div")
-        record_left = row.select_one("div.td-num.left div.color-grey2.record")
-        record_right= row.select_one("div.td-num.right div.color-grey2.record")
+        label        = label_el.get_text(strip=True)
+        left_el      = row.select_one("div.td-num.left div.color-grey")
+        right_el     = row.select_one("div.td-num.right div")
+        record_left  = row.select_one("div.td-num.left div.color-grey2.record")
+        record_right = row.select_one("div.td-num.right div.color-grey2.record")
         streaks.append({
             "label":        label,
             "home":         left_el.get_text(strip=True)      if left_el      else "",
@@ -333,7 +320,7 @@ def scrape_preview(match):
     soup = BeautifulSoup(r.text, "html.parser")
     print(f"  HTML size: {len(r.text)} chars")
 
-    stats        = parse_stats_general(soup)
+    stats          = parse_stats_general(soup)
     print(f"  ✅ Stats générales: {len(stats['competition'])} métriques")
 
     home_form_comp = parse_recent_form(soup, "#tab-recentForm-competition div.team-coach-stats.ta-c.col-6.pv10:first-child")
@@ -342,22 +329,19 @@ def scrape_preview(match):
     away_form_all  = parse_recent_form(soup, "#tab-recentForm-all div.team-coach-stats.ta-c.col-6.pv10:last-child")
     print(f"  ✅ Forme: {len(home_form_comp)} home / {len(away_form_comp)} away")
 
-    streaks_comp = parse_recent_streaks(soup, "#tab-recentForm-competition")
-    streaks_all  = parse_recent_streaks(soup, "#tab-recentForm-all")
-
-    h2h = parse_h2h(soup)
+    streaks_comp   = parse_recent_streaks(soup, "#tab-recentForm-competition")
+    streaks_all    = parse_recent_streaks(soup, "#tab-recentForm-all")
+    h2h            = parse_h2h(soup)
     print(f"  ✅ H2H: {len(h2h['matches'])} matchs")
 
-    goals_prog = parse_goals_progression(soup)
+    goals_prog     = parse_goals_progression(soup)
     print(f"  ✅ Progression buts: {len(goals_prog['home'])} intervalles")
 
-    offensive = parse_offensive_contribution(soup)
+    offensive      = parse_offensive_contribution(soup)
     print(f"  ✅ Offensif: {len(offensive['competition']['home'])} joueurs home")
 
-    featured = parse_featured_players(soup)
+    featured       = parse_featured_players(soup)
     print(f"  ✅ Vedettes: {len(featured['competition'])} catégories")
-    for cat, d in featured["competition"].items():
-        print(f"    {cat}: home={d['home']['name']} ({d['home']['value']}) | away={d['away']['name']} ({d['away']['value']})")
 
     return {
         "match_id":               bs_id,
@@ -421,14 +405,7 @@ def save_preview(data):
 print("=== BeSoccer Preview Scraper ===")
 print(datetime.now().strftime("%Y-%m-%d %H:%M:%S"))
 
-targets = []
-for delta in range(8):
-    target_date = (date.today() + timedelta(days=delta)).isoformat()
-    if target_date in KNOWN_IDS:
-        for m in KNOWN_IDS[target_date]:
-            m["date"] = target_date
-            targets.append(m)
-
+targets = get_targets()
 print(f"\n{len(targets)} matchs à scraper")
 
 if not targets:
