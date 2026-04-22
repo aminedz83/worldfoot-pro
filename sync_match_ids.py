@@ -119,10 +119,27 @@ def get_upcoming_fixtures():
     print(f"Matchs trouves (du {today} au {end}) : {len(fixtures)}")
     return fixtures
 
+def verify_match_date(match_id, home_slug, away_slug, expected_date):
+    """Verifie que le match_id correspond bien a la date attendue."""
+    url = f"{BS_BASE}/match/{home_slug}/{away_slug}/{match_id}"
+    try:
+        r = bs_scraper.get(url, timeout=10, allow_redirects=True)
+        if r.status_code != 200:
+            return False
+        d = datetime.strptime(expected_date, "%Y-%m-%d")
+        formats = [
+            d.strftime("%d/%m/%Y"),
+            d.strftime("%Y-%m-%d"),
+            d.strftime("%d.%m.%Y"),
+        ]
+        return any(fmt in r.text for fmt in formats)
+    except Exception:
+        return False
+
 def find_match_id_via_club(home_slug, home_bs_id, away_slug, match_date):
     """
     Cherche le match_id depuis la page matchs du club.
-    NE fait PAS de fallback generique pour eviter les mauvais IDs.
+    Verifie que l'ID trouve correspond bien a match_date.
     """
     if not home_bs_id:
         print(f"    Pas de bs_club_id pour {home_slug}")
@@ -139,12 +156,15 @@ def find_match_id_via_club(home_slug, home_bs_id, away_slug, match_date):
         for h, a in [(home_slug, away_slug), (away_slug, home_slug)]:
             pattern = "/match/" + re.escape(h) + "/" + re.escape(a) + r"/(\d{7,})"
             found = re.findall(pattern, r.text)
-            if found:
-                mid = found[0]
-                print(f"    match_id={mid} (via page club {home_slug})")
-                return mid
+            for mid in found:
+                print(f"    Candidat match_id={mid} — verification date...")
+                if verify_match_date(mid, h, a, match_date):
+                    print(f"    match_id={mid} verifie pour {match_date}")
+                    return mid
+                else:
+                    print(f"    match_id={mid} date incorrecte — ignore")
 
-        print(f"    Aucun match {home_slug} vs {away_slug} trouve sur la page")
+        print(f"    Aucun match {home_slug} vs {away_slug} verifie pour {match_date}")
         return None
 
     except Exception as e:
