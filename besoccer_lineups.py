@@ -155,13 +155,27 @@ def get_today_matches():
     existing_keys = {f"{r.get('home_team')}_{r.get('away_team')}" for r in existing_rows}
 
     # ── 2. Lookup des match_ids depuis algeria_match_ids ──
+    # Cherche aujourd'hui + 2 jours passés (rattrapage si match manqué)
+    from datetime import date, timedelta
+    date_from = (date.today() - timedelta(days=2)).strftime("%Y-%m-%d")
     try:
         r2 = requests.get(
-            SB_URL + f"/rest/v1/algeria_match_ids?match_date=eq.{today}&select=*",
+            SB_URL + f"/rest/v1/algeria_match_ids?match_date=gte.{date_from}&match_date=lte.{today}&select=*",
             headers={**SB_HEADERS, "Prefer": ""}
         )
         known_rows = r2.json() if r2.status_code == 200 else []
-        print(f"  {len(known_rows)} matchs dans algeria_match_ids")
+        # Filtrer uniquement les matchs pas encore en base
+        existing_match_ids = set()
+        try:
+            r3 = requests.get(
+                SB_URL + f"/rest/v1/besoccer_lineups?match_date=gte.{date_from}&select=match_id",
+                headers={**SB_HEADERS, "Prefer": ""}
+            )
+            existing_match_ids = {row["match_id"] for row in (r3.json() if r3.status_code == 200 else [])}
+        except Exception:
+            pass
+        known_rows = [r for r in known_rows if r["match_id"] not in existing_match_ids]
+        print(f"  {len(known_rows)} matchs dans algeria_match_ids (dont non scrapes)")
     except Exception as e:
         print(f"  Erreur Supabase algeria_match_ids: {e}")
         known_rows = []
