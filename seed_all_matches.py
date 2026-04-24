@@ -49,6 +49,7 @@ API_NAME_MAP = {
     "Khenchela":   "USM Khenchela",
     "Rouissat":    "MB Rouissat",
     "Rouisset":    "MB Rouissat",
+    "MB Rouisset": "MB Rouissat",
     "Akbou":       "Olympique Akbou",
     "Mostaganem":  "ES Mostaganem",
     "El Bayadh":   "MC El Bayadh",
