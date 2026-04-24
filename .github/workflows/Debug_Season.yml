@@ -1,0 +1,33 @@
+name: Debug Season
+
+on:
+  workflow_dispatch:
+
+jobs:
+  debug:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Test saisons API football
+        env:
+          API_FOOTBALL_KEY: ${{ secrets.API_FOOTBALL_KEY }}
+        run: |
+          pip install requests --quiet
+          python3 - <<PYEOF
+          import requests, json, os
+
+          key = os.environ["API_FOOTBALL_KEY"]
+          headers = {"x-apisports-key": key}
+
+          for season in [2024, 2025, 2026]:
+              r = requests.get(
+                  "https://v3.football.api-sports.io/fixtures",
+                  headers=headers,
+                  params={"league": 186, "season": season}
+              )
+              data = r.json()
+              count = data.get("results", 0)
+              print(f"season={season} → {count} fixtures")
+              if count > 0:
+                  fix = data["response"][0]
+                  print(f"  Premier: {fix['teams']['home']['name']} vs {fix['teams']['away']['name']} ({fix['fixture']['date'][:10]})")
+          PYEOF
