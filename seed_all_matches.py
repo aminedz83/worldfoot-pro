@@ -36,7 +36,9 @@ BS_BASE     = "https://www.besoccer.com"
 
 LEAGUE_ID = 186
 _now      = datetime.utcnow()
-SEASON    = _now.year if _now.month >= 7 else _now.year - 1
+# API football utilise l'année de DÉBUT de saison
+# Ex: saison 2025/26 → season=2025 (commence en août 2025)
+SEASON    = _now.year - 1 if _now.month < 8 else _now.year
 
 # ── Mapping noms API football → slugs BeSoccer ───────────────────────────────
 # Chargé dynamiquement depuis algeria_club_slugs
@@ -85,30 +87,21 @@ def load_slug_cache():
 
 # ── Récupération de TOUS les fixtures de la saison ───────────────────────────
 def get_all_fixtures():
-    print(f"  Saison {SEASON} — récupération des fixtures...")
+    print(f"  Saison {SEASON} — recuperation des fixtures...")
     all_fixtures = []
-    page = 1
-    while True:
-        r = requests.get(
-            f"{API_BASE}/fixtures",
-            headers=API_HEADERS,
-            params={"league": LEAGUE_ID, "season": SEASON, "page": page},
-            timeout=15
-        )
-        if r.status_code != 200:
-            print(f"  ⚠️ API erreur {r.status_code}")
-            break
-        data = r.json()
-        fixtures = data.get("response", [])
-        if not fixtures:
-            break
-        all_fixtures.extend(fixtures)
-        paging = data.get("paging", {})
-        if paging.get("current", 1) >= paging.get("total", 1):
-            break
-        page += 1
-        time.sleep(0.5)
-    print(f"  {len(all_fixtures)} fixtures récupérés")
+    # L'API retourne tous les fixtures en un seul appel (pas de pagination necessaire)
+    r = requests.get(
+        f"{API_BASE}/fixtures",
+        headers=API_HEADERS,
+        params={"league": LEAGUE_ID, "season": SEASON},
+        timeout=30
+    )
+    if r.status_code != 200:
+        print(f"  API erreur {r.status_code}: {r.text[:200]}")
+        return []
+    data = r.json()
+    all_fixtures = data.get("response", [])
+    print(f"  {len(all_fixtures)} fixtures recuperes (saison {SEASON})")
     return all_fixtures
 
 # ── Recherche match_id BeSoccer via page club ─────────────────────────────────
