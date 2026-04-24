@@ -11,7 +11,7 @@ PATCH v2 : KNOWN_IDS remplacé par lookup Supabase (algeria_match_ids)
 import os, re, time, requests, json
 import cloudscraper
 from bs4 import BeautifulSoup
-from datetime import datetime, timezone, date
+from datetime import datetime, timezone, date, timedelta
 
 # ══════════════════════════════════════════════
 # CONFIG
@@ -134,9 +134,10 @@ def find_besoccer_match_id(home_team, away_team, year):
 # ══════════════════════════════════════════════
 
 def get_today_matches():
-    today   = date.today().strftime("%Y-%m-%d")
-    matches = []
-    seen    = set()
+    today     = date.today().strftime("%Y-%m-%d")
+    date_from = (date.today() - timedelta(days=2)).strftime("%Y-%m-%d")
+    matches   = []
+    seen      = set()
 
     print(f"\nRecherche matchs du {today}...")
 
@@ -156,8 +157,6 @@ def get_today_matches():
 
     # ── 2. Lookup des match_ids depuis algeria_match_ids ──
     # Cherche aujourd'hui + 2 jours passés (rattrapage si match manqué)
-    from datetime import date, timedelta
-    date_from = (date.today() - timedelta(days=2)).strftime("%Y-%m-%d")
     try:
         r2 = requests.get(
             SB_URL + f"/rest/v1/algeria_match_ids?match_date=gte.{date_from}&match_date=lte.{today}&select=*",
@@ -215,7 +214,6 @@ def get_today_matches():
         known = known_index.get(key)
 
         if known and known.get("match_id"):
-            # ✅ Cas idéal : match_id trouvé dans algeria_match_ids
             bs_id   = known["match_id"]
             bs_home = known.get("bs_home_slug") or TEAM_SLUG.get(home, "")
             bs_away = known.get("bs_away_slug") or TEAM_SLUG.get(away, "")
@@ -229,7 +227,6 @@ def get_today_matches():
                 "date":      today,
             })
         else:
-            # ⚠️  Fallback : sync_match_ids.py n'a pas encore tourné pour ce match
             print(f"  ⚠️  Pas dans algeria_match_ids → fallback find_besoccer_match_id")
             match_id, match_url = find_besoccer_match_id(home, away, today[:4])
             if match_id:
@@ -336,7 +333,7 @@ def parse_player(link):
     }
 
 # ══════════════════════════════════════════════
-# SCRAPE EVENTS LIVE — nouvelle version complète
+# SCRAPE EVENTS LIVE
 # ══════════════════════════════════════════════
 
 def scrape_events_live(base_url, home_team, away_team):
@@ -615,12 +612,10 @@ def update_events(match_id, events, home_score, away_score, home_players, away_p
     print(f"  Events update: {'✅ OK' if code in [200,201,204] else '❌ '+str(code)+' '+res.text[:120]}")
 
 def has_ratings(lineup):
-    """Vérifie si le lineup contient des notes (BeSoccer les publie après le match)"""
     players = lineup.get("home_players", []) + lineup.get("away_players", [])
     return any(p.get("rating") is not None for p in players)
 
 def update_ratings(match_id, home_players, away_players, home_subs, away_subs):
-    """Met à jour uniquement les ratings sans toucher aux autres données"""
     payload = {
         "home_players": home_players,
         "away_players": away_players,
