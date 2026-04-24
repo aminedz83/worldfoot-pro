@@ -1,0 +1,51 @@
+name: Debug MB Rouissat
+
+on:
+  workflow_dispatch:
+
+jobs:
+  debug:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Find MB Rouissat ID
+        run: |
+          pip install cloudscraper beautifulsoup4 --quiet
+          python3 - <<PYEOF
+          import cloudscraper, re
+          from bs4 import BeautifulSoup
+
+          scraper = cloudscraper.create_scraper(
+              browser={"browser": "chrome", "platform": "windows", "mobile": False}
+          )
+
+          # Tester plusieurs IDs possibles pour MB Rouissat
+          slugs_ids = [
+              ("mb-rouisset", "100882"),
+              ("mb-rouisset", "88100"),
+              ("mb-rouissat", "100882"),
+              ("mb-rouissat", "88100"),
+          ]
+
+          for slug, cid in slugs_ids:
+              url = f"https://www.besoccer.com/team/matches/{slug}/{cid}/"
+              r = scraper.get(url, timeout=10)
+              print(f"{r.status_code} | {slug}/{cid} | {len(r.text)} chars")
+              if r.status_code == 200 and len(r.text) > 1000:
+                  # Chercher des matchs
+                  matches = re.findall(r'/match/[^/]+/[^/]+/(\d{7,})', r.text)
+                  print(f"  Matchs: {len(matches)}")
+                  if matches:
+                      print(f"  Ex: {matches[:3]}")
+
+          # Chercher via BeSoccer search
+          print("\n--- Recherche BeSoccer ---")
+          r = scraper.get("https://www.besoccer.com/buscador", params={"q": "MB Rouissat"}, timeout=10)
+          print(f"Search status: {r.status_code}")
+          if r.status_code == 200:
+              # Chercher les liens equipe
+              links = re.findall(r'/equipe/([^/"]+)/(\d+)', r.text)
+              print(f"Equipes trouvees: {links[:10]}")
+              # Aussi chercher le pattern team
+              team_ids = re.findall(r'/team/[^/]+/(\d+)', r.text)
+              print(f"Team IDs: {team_ids[:10]}")
+          PYEOF
