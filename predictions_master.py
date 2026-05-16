@@ -349,7 +349,13 @@ def team_stats(team_id, league_id, season):
     d = api("teams/statistics", {
         "team": team_id, "league": league_id, "season": season,
     })
-    return d[0] if d else None
+    if not d:
+        return None
+    if isinstance(d, list):
+        return d[0] if d else None
+    if isinstance(d, dict):
+        return d
+    return None
 
 def get_h2h(t1, t2, n=8):
     return api("fixtures/headtohead", {
