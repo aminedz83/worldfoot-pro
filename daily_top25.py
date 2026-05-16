@@ -18,8 +18,8 @@ import os
 from datetime import datetime, date
 from supabase import create_client
 
-SUPA_URL = os.environ["PREDICTIONS_SUPA_URL"]
-SUPA_KEY = os.environ["PREDICTIONS_SUPA_KEY"]
+SUPA_URL = os.environ["PREDICTIONS_SUPA_URL"].strip()
+SUPA_KEY = os.environ["PREDICTIONS_SUPA_KEY"].strip()
 supabase = create_client(SUPA_URL, SUPA_KEY)
 
 TOP_N          = 25
