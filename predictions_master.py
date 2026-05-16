@@ -865,13 +865,26 @@ def main():
         f"{datetime.utcnow().strftime('%Y-%m-%d %H:%M')} UTC ===\n"
     )
 
-    # Vérifier le quota actuel
-    status = api("status") or [{}]
-    if status:
-        req = status[0].get("requests", {})
-        global quota_used, quota_limit_day
-        quota_used      = req.get("current", 0)
-        quota_limit_day = req.get("limit_day", 7500)
+    # Vérifier le quota actuel via un appel test
+    global quota_used, quota_limit_day
+    try:
+        import requests as _req
+        r = _req.get(
+            "https://v3.football.api-sports.io/status",
+            headers=HEADERS, timeout=10
+        )
+        if r.status_code == 200:
+            d = r.json().get("response", {})
+            if isinstance(d, dict):
+                reqs = d.get("requests", {})
+                quota_used      = reqs.get("current", 0)
+                quota_limit_day = reqs.get("limit_day", 7500)
+            h_remain = r.headers.get("x-ratelimit-requests-remaining")
+            h_limit  = r.headers.get("x-ratelimit-requests-limit")
+            if h_limit:  quota_limit_day = int(h_limit)
+            if h_remain: quota_used = quota_limit_day - int(h_remain)
+    except Exception:
+        pass
     print(f"Quota : {quota_used}/{quota_limit_day} "
           f"({quota_remaining()} disponibles)\n")
 
