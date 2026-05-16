@@ -2,115 +2,110 @@ name: Predictions Engine
 
 on:
   schedule:
-    # Étape 1 : Moteur principal — 04h00 UTC quotidien
-    - cron: '0 4 * * *'
-    # Étape 2 : Sélection Top 25 — 05h30 UTC (après le moteur)
-    - cron: '30 5 * * *'
-    # Étape 3 : Vérification résultats J-1 — 03h00 UTC
-    - cron: '0 3 * * *'
+    - cron: '0 4 * * *'    # Moteur principal 04h00 UTC
+    - cron: '30 5 * * *'   # Top 25 05h30 UTC
+    - cron: '0 3 * * *'    # Vérification résultats 03h00 UTC
 
   workflow_dispatch:
     inputs:
       mode:
-        description: 'Mode'
+        description: 'Mode (engine / top25 / verify / all)'
         required: false
-        default: 'engine'
+        default: 'all'
         type: choice
         options:
-          - engine      # Moteur principal auto-découverte
-          - top25       # Sélection Top 25 uniquement
-          - verify      # Vérification résultats J-1
-          - all         # Tout en séquence
+          - all
+          - engine
+          - top25
+          - verify
 
 jobs:
 
-  # ── JOB 1 : MOTEUR PRINCIPAL ──────────────────────────────────────────────
   predictions-engine:
     runs-on: ubuntu-latest
     timeout-minutes: 60
-    if: |
-      github.event_name == 'workflow_dispatch' && 
-      (github.event.inputs.mode == 'engine' || github.event.inputs.mode == 'all') ||
-      github.event_name == 'schedule' && 
-      (github.event.schedule == '0 4 * * *')
+    if: >
+      github.event_name == 'workflow_dispatch' ||
+      (github.event_name == 'schedule' && github.event.schedule == '0 4 * * *')
 
     steps:
-      - name: Checkout
-        uses: actions/checkout@v4
+      - uses: actions/checkout@v4
 
-      - name: Setup Python
-        uses: actions/setup-python@v5
+      - uses: actions/setup-python@v5
         with:
           python-version: '3.11'
 
-      - name: Install dependencies
+      - name: Install
         run: pip install requests supabase
 
-      - name: Run predictions engine
+      - name: Run engine
         env:
           API_FOOTBALL_KEY:     ${{ secrets.API_FOOTBALL_KEY }}
           PREDICTIONS_SUPA_URL: ${{ secrets.PREDICTIONS_SUPA_URL }}
           PREDICTIONS_SUPA_KEY: ${{ secrets.PREDICTIONS_SUPA_KEY }}
-        run: python predictions_master.py
+        run: |
+          MODE="${{ github.event.inputs.mode || 'engine' }}"
+          if [ "$MODE" = "engine" ] || [ "$MODE" = "all" ]; then
+            python predictions_master.py
+          else
+            echo "Mode $MODE — skip engine"
+          fi
 
-      - name: Summary engine
-        if: always()
-        run: echo "Moteur terminé — voir logs pour détails"
-
-  # ── JOB 2 : SÉLECTION TOP 25 ─────────────────────────────────────────────
   daily-top25:
     runs-on: ubuntu-latest
     timeout-minutes: 10
-    if: |
-      github.event_name == 'workflow_dispatch' && 
-      (github.event.inputs.mode == 'top25' || github.event.inputs.mode == 'all') ||
-      github.event_name == 'schedule' && 
-      (github.event.schedule == '30 5 * * *')
-    needs: []
+    if: >
+      github.event_name == 'workflow_dispatch' ||
+      (github.event_name == 'schedule' && github.event.schedule == '30 5 * * *')
 
     steps:
-      - name: Checkout
-        uses: actions/checkout@v4
+      - uses: actions/checkout@v4
 
-      - name: Setup Python
-        uses: actions/setup-python@v5
+      - uses: actions/setup-python@v5
         with:
           python-version: '3.11'
 
-      - name: Install dependencies
-        run: pip install supabase
+      - name: Install
+        run: pip install requests supabase
 
-      - name: Run Top 25 selection
+      - name: Run top25
         env:
           PREDICTIONS_SUPA_URL: ${{ secrets.PREDICTIONS_SUPA_URL }}
           PREDICTIONS_SUPA_KEY: ${{ secrets.PREDICTIONS_SUPA_KEY }}
-        run: python daily_top25.py
+        run: |
+          MODE="${{ github.event.inputs.mode || 'top25' }}"
+          if [ "$MODE" = "top25" ] || [ "$MODE" = "all" ]; then
+            python daily_top25.py
+          else
+            echo "Mode $MODE — skip top25"
+          fi
 
-  # ── JOB 3 : VÉRIFICATION RÉSULTATS ───────────────────────────────────────
   verify-results:
     runs-on: ubuntu-latest
     timeout-minutes: 20
-    if: |
-      github.event_name == 'workflow_dispatch' && 
-      (github.event.inputs.mode == 'verify' || github.event.inputs.mode == 'all') ||
-      github.event_name == 'schedule' && 
-      (github.event.schedule == '0 3 * * *')
+    if: >
+      github.event_name == 'workflow_dispatch' ||
+      (github.event_name == 'schedule' && github.event.schedule == '0 3 * * *')
 
     steps:
-      - name: Checkout
-        uses: actions/checkout@v4
+      - uses: actions/checkout@v4
 
-      - name: Setup Python
-        uses: actions/setup-python@v5
+      - uses: actions/setup-python@v5
         with:
           python-version: '3.11'
 
-      - name: Install dependencies
+      - name: Install
         run: pip install requests supabase
 
-      - name: Verify yesterday results
+      - name: Run verify
         env:
           API_FOOTBALL_KEY:     ${{ secrets.API_FOOTBALL_KEY }}
           PREDICTIONS_SUPA_URL: ${{ secrets.PREDICTIONS_SUPA_URL }}
           PREDICTIONS_SUPA_KEY: ${{ secrets.PREDICTIONS_SUPA_KEY }}
-        run: python verify_results.py
+        run: |
+          MODE="${{ github.event.inputs.mode || 'verify' }}"
+          if [ "$MODE" = "verify" ] || [ "$MODE" = "all" ]; then
+            python verify_results.py
+          else
+            echo "Mode $MODE — skip verify"
+          fi
