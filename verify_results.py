@@ -14,9 +14,9 @@ import requests
 from datetime import datetime, timedelta
 from supabase import create_client
 
-API_KEY  = os.environ["API_FOOTBALL_KEY"]
-SUPA_URL = os.environ["PREDICTIONS_SUPA_URL"]
-SUPA_KEY = os.environ["PREDICTIONS_SUPA_KEY"]
+API_KEY  = os.environ["API_FOOTBALL_KEY"].strip()
+SUPA_URL = os.environ["PREDICTIONS_SUPA_URL"].strip()
+SUPA_KEY = os.environ["PREDICTIONS_SUPA_KEY"].strip()
 
 API_BASE = "https://v3.football.api-sports.io"
 HEADERS  = {"x-apisports-key": API_KEY}
