@@ -1,0 +1,116 @@
+name: Predictions Engine
+
+on:
+  schedule:
+    # Étape 1 : Moteur principal — 04h00 UTC quotidien
+    - cron: '0 4 * * *'
+    # Étape 2 : Sélection Top 25 — 05h30 UTC (après le moteur)
+    - cron: '30 5 * * *'
+    # Étape 3 : Vérification résultats J-1 — 03h00 UTC
+    - cron: '0 3 * * *'
+
+  workflow_dispatch:
+    inputs:
+      mode:
+        description: 'Mode'
+        required: false
+        default: 'engine'
+        type: choice
+        options:
+          - engine      # Moteur principal auto-découverte
+          - top25       # Sélection Top 25 uniquement
+          - verify      # Vérification résultats J-1
+          - all         # Tout en séquence
+
+jobs:
+
+  # ── JOB 1 : MOTEUR PRINCIPAL ──────────────────────────────────────────────
+  predictions-engine:
+    runs-on: ubuntu-latest
+    timeout-minutes: 60
+    if: |
+      github.event_name == 'workflow_dispatch' && 
+      (github.event.inputs.mode == 'engine' || github.event.inputs.mode == 'all') ||
+      github.event_name == 'schedule' && 
+      (github.event.schedule == '0 4 * * *')
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+
+      - name: Install dependencies
+        run: pip install requests supabase
+
+      - name: Run predictions engine
+        env:
+          API_FOOTBALL_KEY:     ${{ secrets.API_FOOTBALL_KEY }}
+          PREDICTIONS_SUPA_URL: ${{ secrets.PREDICTIONS_SUPA_URL }}
+          PREDICTIONS_SUPA_KEY: ${{ secrets.PREDICTIONS_SUPA_KEY }}
+        run: python predictions_master.py
+
+      - name: Summary engine
+        if: always()
+        run: echo "Moteur terminé — voir logs pour détails"
+
+  # ── JOB 2 : SÉLECTION TOP 25 ─────────────────────────────────────────────
+  daily-top25:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    if: |
+      github.event_name == 'workflow_dispatch' && 
+      (github.event.inputs.mode == 'top25' || github.event.inputs.mode == 'all') ||
+      github.event_name == 'schedule' && 
+      (github.event.schedule == '30 5 * * *')
+    needs: []
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+
+      - name: Install dependencies
+        run: pip install supabase
+
+      - name: Run Top 25 selection
+        env:
+          PREDICTIONS_SUPA_URL: ${{ secrets.PREDICTIONS_SUPA_URL }}
+          PREDICTIONS_SUPA_KEY: ${{ secrets.PREDICTIONS_SUPA_KEY }}
+        run: python daily_top25.py
+
+  # ── JOB 3 : VÉRIFICATION RÉSULTATS ───────────────────────────────────────
+  verify-results:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    if: |
+      github.event_name == 'workflow_dispatch' && 
+      (github.event.inputs.mode == 'verify' || github.event.inputs.mode == 'all') ||
+      github.event_name == 'schedule' && 
+      (github.event.schedule == '0 3 * * *')
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+
+      - name: Install dependencies
+        run: pip install requests supabase
+
+      - name: Verify yesterday results
+        env:
+          API_FOOTBALL_KEY:     ${{ secrets.API_FOOTBALL_KEY }}
+          PREDICTIONS_SUPA_URL: ${{ secrets.PREDICTIONS_SUPA_URL }}
+          PREDICTIONS_SUPA_KEY: ${{ secrets.PREDICTIONS_SUPA_KEY }}
+        run: python verify_results.py
