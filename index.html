@@ -16038,6 +16038,620 @@ function TeamPage({ teamId, teamName, teamLogo, leagueId, season, onClose, onTea
   ); // fin page
 }
 
+// ══════════════════════════════════════════════════════════════════════
+// TOP 25 TAB — Sélection quotidienne des meilleures prédictions
+// ══════════════════════════════════════════════════════════════════════
+
+function Top25Tab() {
+
+  var SB_BASE2 = "https://iqeqlsxjiklygywjirqs.supabase.co/rest/v1/";
+  var SB_H2 = { "apikey": SB_KEY, "Authorization": "Bearer " + SB_KEY };
+
+  var _useState0 = useState([]);
+  var top25Data = _useState0[0]; var setTop25Data = _useState0[1];
+
+  var _useState1 = useState(true);
+  var loading = _useState1[0]; var setLoading = _useState1[1];
+
+  var _useState2 = useState(null);
+  var error = _useState2[0]; var setError = _useState2[1];
+
+  var _useState3 = useState("TOUS");
+  var filter = _useState3[0]; var setFilter = _useState3[1];
+
+  var _useState4 = useState({});
+  var expanded = _useState4[0]; var setExpanded = _useState4[1];
+
+  useEffect(function() {
+    var today = new Date().toISOString().split("T")[0];
+    fetch(
+      SB_BASE2 + "daily_top25?selection_date=eq." + today +
+      "&order=rank.asc&select=*,predictions(context_text,under25_score,btts_score,victory_score,home_off_index,home_def_index,away_off_index,away_def_index,h2h_count,h2h_under25_rate,h2h_btts_rate,weather_desc,injuries_detail)",
+      { headers: SB_H2 }
+    )
+    .then(function(r) { return r.json(); })
+    .then(function(d) {
+      setTop25Data(Array.isArray(d) ? d : []);
+      setLoading(false);
+    })
+    .catch(function(e) {
+      setError("Erreur de chargement");
+      setLoading(false);
+    });
+  }, []);
+
+  function t25marketClass(rec) {
+    if (!rec) return "under";
+    var r = rec.toUpperCase();
+    if (r.indexOf("UNDER") >= 0)    return "under";
+    if (r.indexOf("BTTS") >= 0)     return "btts";
+    if (r.indexOf("DOUBLE") >= 0)   return "double";
+    if (r.indexOf("VICTOIRE") >= 0) return "vic";
+    return "under";
+  }
+
+  function t25marketLabel(rec) {
+    if (!rec) return rec;
+    var r = rec.toUpperCase();
+    if (r.indexOf("UNDER 2.5") >= 0)          return "Under 2.5";
+    if (r.indexOf("BTTS") >= 0)               return "BTTS";
+    if (r.indexOf("DOUBLE CHANCE 1X") >= 0)   return "Double 1X";
+    if (r.indexOf("DOUBLE CHANCE X2") >= 0)   return "Double X2";
+    if (r.indexOf("VICTOIRE DOMICILE") >= 0)  return "Victoire Dom.";
+    if (r.indexOf("VICTOIRE EXT") >= 0)       return "Victoire Ext.";
+    return rec;
+  }
+
+  function t25marketIcon(rec) {
+    if (!rec) return "⬇️";
+    var r = rec.toUpperCase();
+    if (r.indexOf("UNDER") >= 0)    return "⬇️";
+    if (r.indexOf("BTTS") >= 0)     return "⚽";
+    if (r.indexOf("DOUBLE") >= 0)   return "🔄";
+    if (r.indexOf("VICTOIRE") >= 0) return "🏆";
+    return "🎯";
+  }
+
+  function t25initials(name) {
+    if (!name) return "??";
+    var words = name.trim().split(/\s+/);
+    if (words.length === 1) return name.slice(0, 3).toUpperCase();
+    return (words[0][0] + words[1][0]).toUpperCase();
+  }
+
+  function t25time(dateStr) {
+    if (!dateStr) return "--:--";
+    try {
+      var d = new Date(dateStr);
+      var h = String(d.getHours()).padStart(2,"0");
+      var m = String(d.getMinutes()).padStart(2,"0");
+      return h + ":" + m;
+    } catch(e) { return "--:--"; }
+  }
+
+  function toggleExpand(id) {
+    setExpanded(function(prev) {
+      var next = Object.assign({}, prev);
+      next[id] = !next[id];
+      return next;
+    });
+  }
+
+  var filtered = top25Data.filter(function(p) {
+    if (filter === "TOUS") return true;
+    if (!p.recommendation) return false;
+    var r = p.recommendation.toUpperCase();
+    if (filter === "UNDER")    return r.indexOf("UNDER") >= 0;
+    if (filter === "BTTS")     return r.indexOf("BTTS") >= 0;
+    if (filter === "VICTOIRE") return r.indexOf("VICTOIRE") >= 0 || r.indexOf("DOUBLE") >= 0;
+    if (filter === "SHARP")    return p.odds_signal === "Sharp money Under";
+    return true;
+  });
+
+  // Stats globales
+  var totalConf = 0;
+  for (var i = 0; i < top25Data.length; i++) totalConf += (top25Data[i].rec_confidence || 0);
+  var avgConf = top25Data.length ? (totalConf / top25Data.length).toFixed(1) : 0;
+
+  var sharpCount   = 0;
+  var lowRiskCount = 0;
+  var underCount   = 0;
+  var bttsCount    = 0;
+  var vicCount     = 0;
+  for (var j = 0; j < top25Data.length; j++) {
+    var p = top25Data[j];
+    if (p.odds_signal === "Sharp money Under") sharpCount++;
+    if (p.risk_level === "Faible") lowRiskCount++;
+    if (p.recommendation) {
+      var ru = p.recommendation.toUpperCase();
+      if (ru.indexOf("UNDER") >= 0) underCount++;
+      else if (ru.indexOf("BTTS") >= 0) bttsCount++;
+      else if (ru.indexOf("VICTOIRE") >= 0 || ru.indexOf("DOUBLE") >= 0) vicCount++;
+    }
+  }
+
+  // Couleurs par marché
+  var MC_COLORS = {
+    under:  { bg: "rgba(59,157,221,0.08)",  color: "#3b9ddd", border: "rgba(59,157,221,0.2)"  },
+    btts:   { bg: "rgba(46,204,113,0.08)",  color: "#2ecc71", border: "rgba(46,204,113,0.2)"  },
+    vic:    { bg: "rgba(201,168,76,0.08)",  color: "#c9a84c", border: "rgba(201,168,76,0.2)"  },
+    double: { bg: "rgba(155,89,182,0.08)",  color: "#9b59b6", border: "rgba(155,89,182,0.2)"  },
+  };
+
+  function renderCard(pred) {
+    var mc      = t25marketClass(pred.recommendation);
+    var mc_col  = MC_COLORS[mc] || MC_COLORS.under;
+    var isSharp = pred.odds_signal === "Sharp money Under";
+    var isLow   = pred.risk_level === "Faible";
+    var isExp   = !!expanded[pred.id];
+    var ctx     = pred.predictions && pred.predictions[0];
+    var showUnd = pred.recommendation && pred.recommendation.toUpperCase().indexOf("UNDER") >= 0;
+    var showVic = pred.recommendation && (
+      pred.recommendation.toUpperCase().indexOf("VICTOIRE") >= 0 ||
+      pred.recommendation.toUpperCase().indexOf("DOUBLE") >= 0
+    );
+
+    return React.createElement("div", {
+      key: pred.id,
+      onClick: function() { toggleExpand(pred.id); },
+      style: {
+        background: "#fff",
+        borderRadius: 14,
+        border: "1px solid var(--c-border)",
+        borderLeft: "3px solid " + (isLow ? "#2ecc71" : "#f39c12"),
+        overflow: "hidden",
+        marginBottom: 10,
+        boxShadow: "0 2px 8px rgba(0,0,0,0.05)",
+        cursor: "pointer",
+        transition: "box-shadow 0.2s"
+      }
+    },
+
+      // ── En-tête carte ──
+      React.createElement("div", {
+        style: {
+          padding: "9px 12px",
+          display: "flex", alignItems: "center", justifyContent: "space-between",
+          borderBottom: "1px solid var(--c-border)",
+          background: "var(--c-base)"
+        }
+      },
+        React.createElement("span", {
+          style: {
+            fontFamily: "'JetBrains Mono', monospace",
+            fontSize: 10, color: "var(--c-ink-3)",
+            background: "var(--c-border)",
+            padding: "2px 7px", borderRadius: 4
+          }
+        }, "#" + String(pred.rank || "?").padStart(2,"0")),
+
+        React.createElement("div", { style: { display:"flex", gap:5, alignItems:"center" } },
+          isSharp ? React.createElement("span", {
+            style: {
+              fontSize: 9, fontWeight: 700, padding: "2px 7px",
+              borderRadius: 4, letterSpacing: "0.04em",
+              background: "rgba(155,89,182,0.1)", color: "#9b59b6"
+            }
+          }, "⚡ SHARP") : null,
+
+          React.createElement("span", {
+            style: {
+              fontSize: 10, fontWeight: 700, padding: "2px 8px",
+              borderRadius: 4, letterSpacing: "0.04em",
+              background: mc_col.bg, color: mc_col.color,
+              border: "1px solid " + mc_col.border
+            }
+          }, t25marketIcon(pred.recommendation) + " " + t25marketLabel(pred.recommendation)),
+
+          React.createElement("span", {
+            style: {
+              fontSize: 9, fontWeight: 700, padding: "2px 7px",
+              borderRadius: 4,
+              background: isLow ? "rgba(46,204,113,0.1)" : "rgba(243,156,18,0.1)",
+              color: isLow ? "#2ecc71" : "#f39c12"
+            }
+          }, isLow ? "🟢 Faible" : "🟡 Moyen")
+        )
+      ),
+
+      // ── Corps match ──
+      React.createElement("div", { style: { padding: "10px 12px" } },
+
+        // Ligue + heure
+        React.createElement("div", {
+          style: { display:"flex", justifyContent:"space-between", marginBottom:8 }
+        },
+          React.createElement("span", {
+            style: { fontSize:10, fontWeight:600, color:"var(--c-ink-3)",
+              textTransform:"uppercase", letterSpacing:"0.06em" }
+          }, pred.league_name || "—"),
+          React.createElement("span", {
+            style: { fontFamily:"'JetBrains Mono',monospace", fontSize:10, color:"var(--c-ink-3)" }
+          }, t25time(pred.match_date))
+        ),
+
+        // Équipes + xG
+        React.createElement("div", {
+          style: {
+            display:"grid", gridTemplateColumns:"1fr auto 1fr",
+            alignItems:"center", gap:8, marginBottom:12
+          }
+        },
+          // Domicile
+          React.createElement("div", { style:{ display:"flex", alignItems:"center", gap:8 } },
+            React.createElement("div", {
+              style: {
+                width:32, height:32, borderRadius:8, flexShrink:0,
+                background:"var(--c-border)",
+                display:"flex", alignItems:"center", justifyContent:"center",
+                fontFamily:"'JetBrains Mono',monospace",
+                fontSize:10, fontWeight:700, color:"var(--c-ink-2)"
+              }
+            }, t25initials(pred.home_team_name)),
+            React.createElement("span", {
+              style: { fontSize:13, fontWeight:600, color:"var(--c-ink)", lineHeight:1.2 }
+            }, pred.home_team_name || "—")
+          ),
+
+          // xG
+          React.createElement("div", { style:{ textAlign:"center" } },
+            React.createElement("div", {
+              style: {
+                fontFamily:"'JetBrains Mono',monospace",
+                fontSize:16, fontWeight:500, color:"var(--c-ink-3)"
+              }
+            }, pred.xg_total || "—"),
+            React.createElement("div", {
+              style: { fontSize:8, color:"var(--c-ink-3)", letterSpacing:"0.08em", textTransform:"uppercase" }
+            }, "xG")
+          ),
+
+          // Extérieur
+          React.createElement("div", { style:{ display:"flex", alignItems:"center", justifyContent:"flex-end", gap:8 } },
+            React.createElement("span", {
+              style: { fontSize:13, fontWeight:600, color:"var(--c-ink)", lineHeight:1.2, textAlign:"right" }
+            }, pred.away_team_name || "—"),
+            React.createElement("div", {
+              style: {
+                width:32, height:32, borderRadius:8, flexShrink:0,
+                background:"var(--c-border)",
+                display:"flex", alignItems:"center", justifyContent:"center",
+                fontFamily:"'JetBrains Mono',monospace",
+                fontSize:10, fontWeight:700, color:"var(--c-ink-2)"
+              }
+            }, t25initials(pred.away_team_name))
+          )
+        ),
+
+        // Barre de confiance
+        React.createElement("div", { style:{ marginBottom:10 } },
+          React.createElement("div", {
+            style: { display:"flex", justifyContent:"space-between", marginBottom:5 }
+          },
+            React.createElement("span", { style:{ fontSize:11, color:"var(--c-ink-3)" } }, "Confiance"),
+            React.createElement("span", {
+              style: {
+                fontFamily:"'JetBrains Mono',monospace",
+                fontSize:18, fontWeight:600, color: mc_col.color, lineHeight:1
+              }
+            }, (pred.rec_confidence || 0) + "%")
+          ),
+          React.createElement("div", {
+            style: { height:3, background:"var(--c-border)", borderRadius:2, overflow:"hidden" }
+          },
+            React.createElement("div", {
+              style: {
+                height:"100%", borderRadius:2,
+                width: (pred.rec_confidence || 0) + "%",
+                background: mc_col.color,
+                transition:"width 0.8s ease"
+              }
+            })
+          )
+        ),
+
+        // Cotes
+        React.createElement("div", {
+          style: {
+            background:"var(--c-base)", borderRadius:8,
+            padding:"8px 10px", marginBottom:8
+          }
+        },
+          React.createElement("div", {
+            style: { fontSize:9, fontWeight:700, color:"var(--c-ink-3)",
+              textTransform:"uppercase", letterSpacing:"0.08em", marginBottom:7 }
+          }, "Cotes temps réel"),
+
+          showUnd && [
+            pred.pinnacle_under25 ? React.createElement("div", {
+              key:"pin", style:{ display:"flex", justifyContent:"space-between", marginBottom:5, alignItems:"center" }
+            },
+              React.createElement("div", { style:{ display:"flex", alignItems:"center", gap:6 } },
+                React.createElement("div", { style:{ width:6, height:6, borderRadius:"50%", background:"#9b59b6" } }),
+                React.createElement("span", { style:{ fontSize:12, color:"var(--c-ink-2)", fontWeight:500 } }, "Pinnacle")
+              ),
+              React.createElement("span", {
+                style:{ fontFamily:"'JetBrains Mono',monospace", fontSize:14, fontWeight:500, color:"var(--c-ink)" }
+              }, pred.pinnacle_under25)
+            ) : null,
+
+            pred.bet365_under25 ? React.createElement("div", {
+              key:"b365", style:{ display:"flex", justifyContent:"space-between", marginBottom:5, alignItems:"center" }
+            },
+              React.createElement("div", { style:{ display:"flex", alignItems:"center", gap:6 } },
+                React.createElement("div", { style:{ width:6, height:6, borderRadius:"50%", background:"#2ecc71" } }),
+                React.createElement("span", { style:{ fontSize:12, color:"var(--c-ink-2)", fontWeight:500 } }, "bet365")
+              ),
+              React.createElement("span", {
+                style:{ fontFamily:"'JetBrains Mono',monospace", fontSize:14, fontWeight:500, color:"var(--c-ink)" }
+              }, pred.bet365_under25)
+            ) : null,
+
+            pred.xbet_under25 ? React.createElement("div", {
+              key:"xbet", style:{ display:"flex", justifyContent:"space-between", alignItems:"center" }
+            },
+              React.createElement("div", { style:{ display:"flex", alignItems:"center", gap:6 } },
+                React.createElement("div", { style:{ width:6, height:6, borderRadius:"50%", background:"#f39c12" } }),
+                React.createElement("span", { style:{ fontSize:12, color:"var(--c-ink-2)", fontWeight:500 } }, "1xbet")
+              ),
+              React.createElement("span", {
+                style:{ fontFamily:"'JetBrains Mono',monospace", fontSize:14, fontWeight:500, color:"var(--c-ink)" }
+              }, pred.xbet_under25)
+            ) : null
+          ],
+
+          showVic && [
+            pred.pinnacle_home ? React.createElement("div", {
+              key:"home", style:{ display:"flex", justifyContent:"space-between", marginBottom:5, alignItems:"center" }
+            },
+              React.createElement("span", { style:{ fontSize:12, color:"var(--c-ink-2)" } }, "🏠 Dom."),
+              React.createElement("span", {
+                style:{ fontFamily:"'JetBrains Mono',monospace", fontSize:14, fontWeight:500 }
+              }, pred.pinnacle_home)
+            ) : null,
+            pred.pinnacle_draw ? React.createElement("div", {
+              key:"draw", style:{ display:"flex", justifyContent:"space-between", marginBottom:5, alignItems:"center" }
+            },
+              React.createElement("span", { style:{ fontSize:12, color:"var(--c-ink-2)" } }, "🤝 Nul"),
+              React.createElement("span", {
+                style:{ fontFamily:"'JetBrains Mono',monospace", fontSize:14, fontWeight:500 }
+              }, pred.pinnacle_draw)
+            ) : null,
+            pred.pinnacle_away ? React.createElement("div", {
+              key:"away", style:{ display:"flex", justifyContent:"space-between", alignItems:"center" }
+            },
+              React.createElement("span", { style:{ fontSize:12, color:"var(--c-ink-2)" } }, "✈️ Ext."),
+              React.createElement("span", {
+                style:{ fontFamily:"'JetBrains Mono',monospace", fontSize:14, fontWeight:500 }
+              }, pred.pinnacle_away)
+            ) : null
+          ],
+
+          isSharp ? React.createElement("div", {
+            style: {
+              marginTop:7, padding:"4px 8px", borderRadius:4,
+              background:"rgba(155,89,182,0.08)", color:"#9b59b6",
+              fontSize:10, fontWeight:600
+            }
+          }, "⚡ Sharp money détecté — argent professionnel sur ce marché") : null
+        ),
+
+        // Analyse complète (expandable)
+        isExp && ctx ? React.createElement("div", null,
+
+          ctx.context_text ? React.createElement("div", {
+            style: {
+              fontSize:12, color:"var(--c-ink-2)", lineHeight:1.6,
+              padding:"8px 10px", marginBottom:8,
+              background:"var(--c-base)", borderRadius:8,
+              borderLeft:"2px solid var(--c-border)",
+              fontStyle:"italic"
+            }
+          }, ctx.context_text) : null,
+
+          // Index att/déf
+          React.createElement("div", {
+            style:{ display:"grid", gridTemplateColumns:"1fr 1fr", gap:6, marginBottom:8 }
+          },
+            [
+              { label:"Att. Dom.", val: ctx.home_off_index, isAtt: true },
+              { label:"Att. Ext.", val: ctx.away_off_index, isAtt: true },
+              { label:"Déf. Dom.", val: ctx.home_def_index, isAtt: false },
+              { label:"Déf. Ext.", val: ctx.away_def_index, isAtt: false },
+            ].map(function(item) {
+              var col = item.val >= 7 ? "#2ecc71" : item.val >= 5 ? "#f39c12" : "#e74c3c";
+              return React.createElement("div", {
+                key: item.label,
+                style:{
+                  background:"var(--c-base)", borderRadius:6, padding:"6px 8px",
+                  display:"flex", justifyContent:"space-between", alignItems:"center"
+                }
+              },
+                React.createElement("span", { style:{ fontSize:11, color:"var(--c-ink-3)" } }, item.label),
+                React.createElement("span", {
+                  style:{ fontFamily:"'JetBrains Mono',monospace", fontSize:13, fontWeight:600, color:col }
+                }, (item.val || "—") + "/10")
+              );
+            })
+          ),
+
+          // H2H
+          ctx.h2h_count > 0 ? React.createElement("div", {
+            style:{ display:"flex", gap:6, flexWrap:"wrap" }
+          },
+            React.createElement("span", {
+              style:{ fontSize:11, padding:"3px 8px", borderRadius:4,
+                background:"var(--c-border)", color:"var(--c-ink-3)" }
+            }, "H2H : " + ctx.h2h_count + " matchs"),
+            ctx.h2h_under25_rate ? React.createElement("span", {
+              style:{ fontSize:11, padding:"3px 8px", borderRadius:4,
+                background:"rgba(59,157,221,0.08)", color:"#3b9ddd" }
+            }, "Under : " + ctx.h2h_under25_rate + "%") : null,
+            ctx.h2h_btts_rate ? React.createElement("span", {
+              style:{ fontSize:11, padding:"3px 8px", borderRadius:4,
+                background:"rgba(46,204,113,0.08)", color:"#2ecc71" }
+            }, "BTTS : " + ctx.h2h_btts_rate + "%") : null
+          ) : null
+
+        ) : null,
+
+        // Expand hint
+        React.createElement("div", {
+          style:{ textAlign:"center", fontSize:10, color:"var(--c-ink-3)", marginTop:6 }
+        }, isExp ? "▲ Réduire" : "▼ Voir analyse")
+      ),
+
+      // ── Barre basse recommandation ──
+      React.createElement("div", {
+        style: {
+          display:"flex", alignItems:"center", justifyContent:"space-between",
+          padding:"8px 12px",
+          borderTop:"1px solid var(--c-border)",
+          background:"var(--c-base)"
+        }
+      },
+        React.createElement("div", null,
+          React.createElement("div", {
+            style: { fontSize:9, color:"var(--c-ink-3)", textTransform:"uppercase",
+              letterSpacing:"0.08em", fontWeight:600, marginBottom:2 }
+          }, "Recommandation"),
+          React.createElement("div", {
+            style: { fontSize:14, fontWeight:700, color: mc_col.color }
+          }, t25marketIcon(pred.recommendation) + " " + t25marketLabel(pred.recommendation))
+        ),
+        React.createElement("span", {
+          style: {
+            fontSize:9, fontWeight:700, padding:"4px 10px", borderRadius:4,
+            fontFamily:"'JetBrains Mono',monospace",
+            background: isLow ? "rgba(46,204,113,0.1)" : "rgba(243,156,18,0.1)",
+            color: isLow ? "#2ecc71" : "#f39c12"
+          }
+        }, isLow ? "Risque Faible" : "Risque Moyen")
+      )
+    );
+  }
+
+  // ── RENDER PRINCIPAL ──
+  return React.createElement("div", {
+    style: { height:"100%", overflowY:"auto", background:"var(--c-base)", WebkitOverflowScrolling:"touch" }
+  },
+
+    // Header stats
+    React.createElement("div", {
+      style: {
+        background:"#fff", borderBottom:"1px solid var(--c-border)",
+        padding:"12px 14px", position:"sticky", top:0, zIndex:10
+      }
+    },
+
+      // Stats pills
+      React.createElement("div", {
+        style: { display:"flex", gap:6, overflowX:"auto", scrollbarWidth:"none",
+          WebkitOverflowScrolling:"touch", paddingBottom:10, marginBottom:10 }
+      },
+        [
+          { icon:"📊", val: top25Data.length, label:"matchs", col:"var(--c-jade)" },
+          { icon:"🎯", val: avgConf+"%", label:"conf.moy.", col:"#3b9ddd" },
+          { icon:"⚡", val: sharpCount, label:"sharp", col:"#9b59b6" },
+          { icon:"🟢", val: lowRiskCount, label:"faible", col:"#2ecc71" },
+          { icon:"⬇️", val: underCount, label:"under", col:"#3b9ddd" },
+          { icon:"⚽", val: bttsCount, label:"btts", col:"#2ecc71" },
+          { icon:"🏆", val: vicCount, label:"victoire", col:"#c9a84c" },
+        ].map(function(s, i) {
+          return React.createElement("div", {
+            key: i,
+            style: {
+              flexShrink:0, display:"flex", alignItems:"center", gap:4,
+              padding:"4px 10px", borderRadius:20,
+              border:"1px solid var(--c-border)", background:"var(--c-base)",
+              fontSize:11, whiteSpace:"nowrap"
+            }
+          },
+            React.createElement("span", null, s.icon),
+            React.createElement("span", {
+              style:{ fontFamily:"'JetBrains Mono',monospace", fontWeight:600, color:s.col }
+            }, s.val),
+            React.createElement("span", { style:{ color:"var(--c-ink-3)" } }, s.label)
+          );
+        })
+      ),
+
+      // Filtres
+      React.createElement("div", {
+        style: { display:"flex", gap:6, overflowX:"auto", scrollbarWidth:"none", WebkitOverflowScrolling:"touch" }
+      },
+        ["TOUS","UNDER","BTTS","VICTOIRE","SHARP"].map(function(f) {
+          var active = filter === f;
+          return React.createElement("button", {
+            key: f,
+            onClick: function() { setFilter(f); },
+            style: {
+              flexShrink:0, padding:"6px 14px", borderRadius:20,
+              fontSize:11, fontWeight:700, cursor:"pointer",
+              fontFamily:"'Plus Jakarta Sans',sans-serif",
+              letterSpacing:"0.04em", textTransform:"uppercase",
+              border: active ? "1px solid rgba(5,150,105,0.25)" : "1px solid var(--c-border)",
+              background: active ? "rgba(5,150,105,0.08)" : "transparent",
+              color: active ? "var(--c-jade)" : "var(--c-ink-3)",
+              transition:"all 0.2s"
+            }
+          },
+            f === "TOUS"     ? "Tous"         :
+            f === "UNDER"   ? "⬇️ Under"     :
+            f === "BTTS"    ? "⚽ BTTS"      :
+            f === "VICTOIRE"? "🏆 Victoire"  :
+            "⚡ Sharp"
+          );
+        })
+      )
+    ),
+
+    // Contenu
+    loading ? React.createElement("div", {
+      style:{ display:"flex", flexDirection:"column", alignItems:"center",
+        justifyContent:"center", padding:"60px 20px", gap:12 }
+    },
+      React.createElement("div", {
+        style:{
+          width:32, height:32, borderRadius:"50%",
+          border:"2px solid var(--c-border)",
+          borderTopColor:"var(--c-jade)",
+          animation:"spin 0.8s linear infinite"
+        }
+      }),
+      React.createElement("span", {
+        style:{ fontSize:14, color:"var(--c-ink-3)" }
+      }, "Chargement du Top 25...")
+    ) :
+
+    error ? React.createElement("div", {
+      style:{ textAlign:"center", padding:"60px 20px" }
+    },
+      React.createElement("div", { style:{ fontSize:36, marginBottom:12 } }, "⚠️"),
+      React.createElement("div", { style:{ fontSize:15, fontWeight:600, color:"var(--c-ink)", marginBottom:6 } }, "Erreur de connexion"),
+      React.createElement("div", { style:{ fontSize:13, color:"var(--c-ink-3)" } }, "Vérifie ta connexion et la configuration Supabase")
+    ) :
+
+    filtered.length === 0 ? React.createElement("div", {
+      style:{ textAlign:"center", padding:"60px 20px" }
+    },
+      React.createElement("div", { style:{ fontSize:40, marginBottom:12 } }, "🔍"),
+      React.createElement("div", { style:{ fontSize:15, fontWeight:600, color:"var(--c-ink)", marginBottom:6 } },
+        top25Data.length === 0 ? "Top 25 pas encore disponible" : "Aucun match dans cette catégorie"
+      ),
+      React.createElement("div", { style:{ fontSize:13, color:"var(--c-ink-3)", lineHeight:1.5 } },
+        top25Data.length === 0
+          ? "La sélection sera disponible après 05h30 UTC"
+          : "Essaie un autre filtre"
+      )
+    ) :
+
+    React.createElement("div", { style:{ padding:"12px 14px 80px" } },
+      filtered.map(function(pred) { return renderCard(pred); })
+    )
+  );
+}
+
 function App() {
 
   const [currentTab, setCurrentTab] = useState(() => {
@@ -16141,7 +16755,8 @@ function App() {
     { id: "calendar", label: "CALENDRIER" },
     { id: "transfers", label: "TRANSFERTS" },
     { id: "actu", label: "ACTUALITÉS" },
-    { id: "jsk", label: "JSK" }
+    { id: "jsk", label: "JSK" },
+    { id: "top25", label: "🏆 TOP 25" }
   ];
 
   const renderContent = () => {
@@ -16153,6 +16768,7 @@ function App() {
       case "transfers": return React.createElement(TransfersTab, { key:"transfers", onTeam: openTeam });
       case "actu": return React.createElement(ActuTab, { key:"actu" });
       case "jsk": return React.createElement(JSKTab, { key:"jsk" });
+      case "top25": return React.createElement(Top25Tab, { key:"top25" });
       default: return React.createElement(ScoresTab, { key:"scores", favs, onFav: toggleFav });
     }
   };
