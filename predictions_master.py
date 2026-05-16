@@ -894,10 +894,10 @@ def main():
                   f"arrêt propre · {ts} prédictions publiées")
             break
 
-        print(f"\n[{li['name']}] {li['country']} "
-              f"S{li['season']} "
-              f"{'NAT' if li['is_national'] else f'T{li[\"tier\"]}'} "
-              f"Priorité #{li['priority_score']}")
+        tier_str = "NAT" if li["is_national"] else "T" + str(li["tier"])
+        print("\n[" + li["name"] + "] " + li["country"] +
+              " S" + str(li["season"]) + " " + tier_str +
+              " Priorité #" + str(li["priority_score"]))
 
         fxs = api("fixtures", {
             "league": li["league_id"], "season": li["season"],
