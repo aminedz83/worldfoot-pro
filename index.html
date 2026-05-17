@@ -16063,21 +16063,43 @@ function Top25Tab() {
   var expanded = _useState4[0]; var setExpanded = _useState4[1];
 
   useEffect(function() {
-    var today = new Date().toISOString().split("T")[0];
+    var d0 = new Date();
+    var yesterday = new Date(d0 - 86400000).toISOString().split("T")[0];
     fetch(
-      SB_BASE2 + "daily_top25?selection_date=eq." + today +
-      "&order=rank.asc&select=*,predictions(context_text,under25_score,btts_score,victory_score,home_off_index,home_def_index,away_off_index,away_def_index,h2h_count,h2h_under25_rate,h2h_btts_rate,weather_desc,injuries_detail)",
+      SB_BASE2 + "daily_top25?selection_date=gte." + yesterday +
+      "&order=rank.asc&select=*",
       { headers: SB_H2 }
     )
     .then(function(r) { return r.json(); })
-    .then(function(d) {
-      setTop25Data(Array.isArray(d) ? d : []);
-      setLoading(false);
+    .then(function(rows) {
+      if (!Array.isArray(rows) || rows.length === 0) {
+        setTop25Data([]); setLoading(false); return;
+      }
+      var ids = rows.map(function(p) { return p.prediction_id; }).filter(Boolean);
+      if (ids.length === 0) {
+        setTop25Data(rows); setLoading(false); return;
+      }
+      fetch(
+        SB_BASE2 + "predictions?id=in.(" + ids.join(",") + ")" +
+        "&select=id,context_text,under25_score,btts_score,victory_score," +
+        "home_off_index,home_def_index,away_off_index,away_def_index," +
+        "h2h_count,h2h_under25_rate,h2h_btts_rate,weather_desc,injuries_detail",
+        { headers: SB_H2 }
+      )
+      .then(function(r2) { return r2.json(); })
+      .then(function(preds) {
+        var pm = {};
+        if (Array.isArray(preds)) {
+          preds.forEach(function(p) { pm[p.id] = p; });
+        }
+        var enriched = rows.map(function(item) {
+          return Object.assign({}, item, { predictions: [pm[item.prediction_id] || {}] });
+        });
+        setTop25Data(enriched); setLoading(false);
+      })
+      .catch(function() { setTop25Data(rows); setLoading(false); });
     })
-    .catch(function(e) {
-      setError("Erreur de chargement");
-      setLoading(false);
-    });
+    .catch(function(e) { setError("Erreur"); setLoading(false); });
   }, []);
 
   function t25marketClass(rec) {
