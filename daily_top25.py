@@ -51,24 +51,25 @@ TARGET_DISTRIBUTION = {
 
 
 def get_today_predictions():
-    """Récupère toutes les prédictions publiées pour les matchs d'aujourd'hui et demain."""
-    today = date.today().isoformat()
-    tomorrow = (date.today().__class__.fromisoformat(today)
-                .__class__(date.today().year,
-                           date.today().month,
-                           min(date.today().day + 1, 31))).isoformat()
+    """Récupère toutes les prédictions publiées pour les 3 prochains jours."""
+    from datetime import timedelta
+    today     = date.today()
+    in3days   = today + timedelta(days=3)
+    yesterday = today - timedelta(days=1)
 
     try:
+        # Cherche les prédictions des matchs à venir (aujourd'hui + 3 jours)
         result = supabase.table("predictions")\
             .select("*")\
-            .gte("match_date", today)\
-            .lte("match_date", tomorrow + "T23:59:59")\
+            .gte("match_date", yesterday.isoformat())\
+            .lte("match_date", in3days.isoformat() + "T23:59:59")\
             .gte("rec_confidence", MIN_CONF_TOP)\
-            .is_("manually_validated", "null")\
-            .neq("odds_signal", "Mouvement contraire")\
+            .is_("prediction_correct", "null")\
             .order("rec_confidence", desc=True)\
             .execute()
-        return result.data or []
+        data = result.data or []
+        print(f"[TOP25] {len(data)} prédictions trouvées pour sélection")
+        return data
     except Exception as e:
         print(f"[ERREUR] Récupération prédictions : {e}")
         return []
@@ -202,6 +203,7 @@ def select_top25(predictions):
 def save_top25(selected):
     """Sauvegarde le top 25 dans la table daily_top25 avec rang."""
     today_str = date.today().isoformat()
+    print(f"[TOP25] Sauvegarde sélection du {today_str}")
 
     try:
         # Supprimer l'ancienne sélection du jour
