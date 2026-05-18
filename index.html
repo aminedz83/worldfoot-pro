@@ -16062,6 +16062,15 @@ function Top25Tab() {
   var _useState4 = useState({});
   var expanded = _useState4[0]; var setExpanded = _useState4[1];
 
+  // Auto-refresh toutes les 30 minutes
+  useEffect(function() {
+    var interval = setInterval(function() {
+      setLoading(true);
+      setError(null);
+    }, 30 * 60 * 1000);
+    return function() { clearInterval(interval); };
+  }, []);
+
   useEffect(function() {
     var d0 = new Date();
     var yesterday = new Date(d0 - 86400000).toISOString().split("T")[0];
@@ -16200,6 +16209,14 @@ function Top25Tab() {
     double: { bg: "rgba(155,89,182,0.08)",  color: "#9b59b6", border: "rgba(155,89,182,0.2)"  },
   };
 
+  function isNew(pred) {
+    // Badge NOUVEAU si le match a été ajouté dans les 2 dernières heures
+    if (!pred.created_at) return false;
+    var created = new Date(pred.created_at);
+    var now     = new Date();
+    return (now - created) < 2 * 60 * 60 * 1000;
+  }
+
   function renderCard(pred) {
     var mc      = t25marketClass(pred.recommendation);
     var mc_col  = MC_COLORS[mc] || MC_COLORS.under;
@@ -16248,6 +16265,14 @@ function Top25Tab() {
         }, "#" + String(pred.rank || "?").padStart(2,"0")),
 
         React.createElement("div", { style: { display:"flex", gap:5, alignItems:"center" } },
+          isNew(pred) ? React.createElement("span", {
+            style: {
+              fontSize: 9, fontWeight: 700, padding: "2px 7px",
+              borderRadius: 4, letterSpacing: "0.06em",
+              background: "rgba(231,76,60,0.1)", color: "#e74c3c",
+              animation: "pulse 1.5s ease infinite"
+            }
+          }, "🆕 NOUVEAU") : null,
           isSharp ? React.createElement("span", {
             style: {
               fontSize: 9, fontWeight: 700, padding: "2px 7px",
