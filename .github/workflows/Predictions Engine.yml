@@ -2,14 +2,15 @@ name: Predictions Engine
 
 on:
   schedule:
-    - cron: '0 4 * * *'    # Moteur principal 04h00 UTC
-    - cron: '30 5 * * *'   # Top 25 05h30 UTC
-    - cron: '0 3 * * *'    # Vérification résultats 03h00 UTC
+    - cron: '0 3 * * *'     # Vérification résultats J-1
+    - cron: '0 4 * * *'     # Moteur principal
+    - cron: '30 5 * * *'    # Top 25 sélection
+    - cron: '0 8-23 * * *'  # Remplacement horaire 08h-23h UTC
 
   workflow_dispatch:
     inputs:
       mode:
-        description: 'Mode (engine / top25 / verify / all)'
+        description: 'Mode'
         required: false
         default: 'all'
         type: choice
@@ -18,6 +19,7 @@ on:
           - engine
           - top25
           - verify
+          - replace
 
 jobs:
 
@@ -30,14 +32,10 @@ jobs:
 
     steps:
       - uses: actions/checkout@v4
-
       - uses: actions/setup-python@v5
         with:
           python-version: '3.11'
-
-      - name: Install
-        run: pip install requests supabase
-
+      - run: pip install requests supabase
       - name: Run engine
         env:
           API_FOOTBALL_KEY:     ${{ secrets.API_FOOTBALL_KEY }}
@@ -47,8 +45,6 @@ jobs:
           MODE="${{ github.event.inputs.mode || 'engine' }}"
           if [ "$MODE" = "engine" ] || [ "$MODE" = "all" ]; then
             python predictions_master.py
-          else
-            echo "Mode $MODE — skip engine"
           fi
 
   daily-top25:
@@ -60,14 +56,10 @@ jobs:
 
     steps:
       - uses: actions/checkout@v4
-
       - uses: actions/setup-python@v5
         with:
           python-version: '3.11'
-
-      - name: Install
-        run: pip install requests supabase
-
+      - run: pip install requests supabase
       - name: Run top25
         env:
           PREDICTIONS_SUPA_URL: ${{ secrets.PREDICTIONS_SUPA_URL }}
@@ -76,8 +68,6 @@ jobs:
           MODE="${{ github.event.inputs.mode || 'top25' }}"
           if [ "$MODE" = "top25" ] || [ "$MODE" = "all" ]; then
             python daily_top25.py
-          else
-            echo "Mode $MODE — skip top25"
           fi
 
   verify-results:
@@ -89,14 +79,10 @@ jobs:
 
     steps:
       - uses: actions/checkout@v4
-
       - uses: actions/setup-python@v5
         with:
           python-version: '3.11'
-
-      - name: Install
-        run: pip install requests supabase
-
+      - run: pip install requests supabase
       - name: Run verify
         env:
           API_FOOTBALL_KEY:     ${{ secrets.API_FOOTBALL_KEY }}
@@ -106,6 +92,28 @@ jobs:
           MODE="${{ github.event.inputs.mode || 'verify' }}"
           if [ "$MODE" = "verify" ] || [ "$MODE" = "all" ]; then
             python verify_results.py
-          else
-            echo "Mode $MODE — skip verify"
+          fi
+
+  replace-finished:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    if: >
+      github.event_name == 'workflow_dispatch' ||
+      (github.event_name == 'schedule' && github.event.schedule == '0 8-23 * * *')
+
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+      - run: pip install requests supabase
+      - name: Run replace
+        env:
+          API_FOOTBALL_KEY:     ${{ secrets.API_FOOTBALL_KEY }}
+          PREDICTIONS_SUPA_URL: ${{ secrets.PREDICTIONS_SUPA_URL }}
+          PREDICTIONS_SUPA_KEY: ${{ secrets.PREDICTIONS_SUPA_KEY }}
+        run: |
+          MODE="${{ github.event.inputs.mode || 'replace' }}"
+          if [ "$MODE" = "replace" ] || [ "$MODE" = "all" ]; then
+            python replace_finished.py
           fi
