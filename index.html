@@ -16168,7 +16168,17 @@ function Top25Tab() {
     });
   }
 
+  // Filtrer : uniquement matchs pas encore commencés + pas terminés
+  var nowUtc = new Date();
   var filtered = top25Data.filter(function(p) {
+    // Exclure matchs déjà commencés ou terminés
+    if (p.match_date) {
+      var matchTime = new Date(p.match_date);
+      if (matchTime <= nowUtc) return false;
+    }
+    // Exclure matchs déjà vérifiés (terminés)
+    if (p.prediction_correct !== null && p.prediction_correct !== undefined) return false;
+    // Filtre marché
     if (filter === "TOUS") return true;
     if (!p.recommendation) return false;
     var r = p.recommendation.toUpperCase();
@@ -16682,14 +16692,14 @@ function Top25Tab() {
     filtered.length === 0 ? React.createElement("div", {
       style:{ textAlign:"center", padding:"60px 20px" }
     },
-      React.createElement("div", { style:{ fontSize:40, marginBottom:12 } }, "🔍"),
+      React.createElement("div", { style:{ fontSize:40, marginBottom:12 } }, top25Data.length === 0 ? "🔍" : "⏳"),
       React.createElement("div", { style:{ fontSize:15, fontWeight:600, color:"var(--c-ink)", marginBottom:6 } },
-        top25Data.length === 0 ? "Top 25 pas encore disponible" : "Aucun match dans cette catégorie"
+        top25Data.length === 0 ? "Top 25 pas encore disponible" : filter !== "TOUS" ? "Aucun match dans cette catégorie" : "Tous les matchs ont commencé"
       ),
       React.createElement("div", { style:{ fontSize:13, color:"var(--c-ink-3)", lineHeight:1.5 } },
         top25Data.length === 0
           ? "La sélection sera disponible après 05h30 UTC"
-          : "Essaie un autre filtre"
+          : filter !== "TOUS" ? "Essaie un autre filtre" : "Nouveaux matchs automatiquement · prochaine sélection 05h30 UTC"
       )
     ) :
 
