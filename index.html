@@ -16169,8 +16169,17 @@ function Top25Tab() {
   }
 
   // Filtrer : uniquement matchs pas encore commencés + pas terminés
+  // Dédupliquer par fixture_id — éviter les doublons
+  var seenFids = {};
+  var dedupedData = top25Data.filter(function(p) {
+    var fid = p.fixture_id || p.id;
+    if (seenFids[fid]) return false;
+    seenFids[fid] = true;
+    return true;
+  });
+
   var nowUtc = new Date();
-  var filtered = top25Data.filter(function(p) {
+  var filtered = dedupedData.filter(function(p) {
     // Exclure matchs déjà commencés ou terminés
     if (p.match_date) {
       var matchTime = new Date(p.match_date);
@@ -16322,9 +16331,22 @@ function Top25Tab() {
             style: { fontSize:10, fontWeight:600, color:"var(--c-ink-3)",
               textTransform:"uppercase", letterSpacing:"0.06em" }
           }, pred.league_name || "—"),
-          React.createElement("span", {
-            style: { fontFamily:"'JetBrains Mono',monospace", fontSize:10, color:"var(--c-ink-3)" }
-          }, t25time(pred.match_date))
+          React.createElement("div", {
+            style: { display:"flex", flexDirection:"column", alignItems:"flex-end", gap:1 }
+          },
+            React.createElement("span", {
+              style: { fontFamily:"'JetBrains Mono',monospace", fontSize:10, color:"var(--c-ink-3)" }
+            }, (function() {
+              if (!pred.match_date) return "--:--";
+              try {
+                var d = new Date(pred.match_date);
+                return d.toLocaleDateString("fr-FR", { day:"2-digit", month:"short" });
+              } catch(e) { return ""; }
+            })()),
+            React.createElement("span", {
+              style: { fontFamily:"'JetBrains Mono',monospace", fontSize:11, fontWeight:600, color:"var(--c-ink-2)" }
+            }, t25time(pred.match_date))
+          )
         ),
 
         // Équipes + xG
@@ -16419,43 +16441,34 @@ function Top25Tab() {
               textTransform:"uppercase", letterSpacing:"0.08em", marginBottom:7 }
           }, "Cotes temps réel"),
 
-          showUnd && [
-            pred.pinnacle_under25 ? React.createElement("div", {
-              key:"pin", style:{ display:"flex", justifyContent:"space-between", marginBottom:5, alignItems:"center" }
-            },
-              React.createElement("div", { style:{ display:"flex", alignItems:"center", gap:6 } },
-                React.createElement("div", { style:{ width:6, height:6, borderRadius:"50%", background:"#9b59b6" } }),
-                React.createElement("span", { style:{ fontSize:12, color:"var(--c-ink-2)", fontWeight:500 } }, "Pinnacle")
-              ),
-              React.createElement("span", {
-                style:{ fontFamily:"'JetBrains Mono',monospace", fontSize:14, fontWeight:500, color:"var(--c-ink)" }
-              }, pred.pinnacle_under25)
-            ) : null,
+          showUnd && (function() {
+            var bks = [
+              { key:"pin",  name:"Pinnacle", color:"#9b59b6", val: pred.pinnacle_under25 },
+              { key:"b365", name:"bet365",   color:"#2ecc71", val: pred.bet365_under25   },
+              { key:"xbet", name:"1xbet",    color:"#f39c12", val: pred.xbet_under25     },
+            ].filter(function(b) { return b.val; });
 
-            pred.bet365_under25 ? React.createElement("div", {
-              key:"b365", style:{ display:"flex", justifyContent:"space-between", marginBottom:5, alignItems:"center" }
-            },
-              React.createElement("div", { style:{ display:"flex", alignItems:"center", gap:6 } },
-                React.createElement("div", { style:{ width:6, height:6, borderRadius:"50%", background:"#2ecc71" } }),
-                React.createElement("span", { style:{ fontSize:12, color:"var(--c-ink-2)", fontWeight:500 } }, "bet365")
-              ),
-              React.createElement("span", {
-                style:{ fontFamily:"'JetBrains Mono',monospace", fontSize:14, fontWeight:500, color:"var(--c-ink)" }
-              }, pred.bet365_under25)
-            ) : null,
+            if (bks.length === 0) {
+              return React.createElement("div", {
+                style:{ fontSize:11, color:"var(--c-ink-3)", fontStyle:"italic", textAlign:"center", padding:"4px 0" }
+              }, "Cotes en attente de mise à jour");
+            }
 
-            pred.xbet_under25 ? React.createElement("div", {
-              key:"xbet", style:{ display:"flex", justifyContent:"space-between", alignItems:"center" }
-            },
-              React.createElement("div", { style:{ display:"flex", alignItems:"center", gap:6 } },
-                React.createElement("div", { style:{ width:6, height:6, borderRadius:"50%", background:"#f39c12" } }),
-                React.createElement("span", { style:{ fontSize:12, color:"var(--c-ink-2)", fontWeight:500 } }, "1xbet")
-              ),
-              React.createElement("span", {
-                style:{ fontFamily:"'JetBrains Mono',monospace", fontSize:14, fontWeight:500, color:"var(--c-ink)" }
-              }, pred.xbet_under25)
-            ) : null
-          ],
+            return bks.map(function(bk, i) {
+              return React.createElement("div", {
+                key: bk.key,
+                style:{ display:"flex", justifyContent:"space-between", marginBottom: i < bks.length-1 ? 5 : 0, alignItems:"center" }
+              },
+                React.createElement("div", { style:{ display:"flex", alignItems:"center", gap:6 } },
+                  React.createElement("div", { style:{ width:6, height:6, borderRadius:"50%", background: bk.color } }),
+                  React.createElement("span", { style:{ fontSize:12, color:"var(--c-ink-2)", fontWeight:500 } }, bk.name)
+                ),
+                React.createElement("span", {
+                  style:{ fontFamily:"'JetBrains Mono',monospace", fontSize:14, fontWeight:600, color:"var(--c-ink)" }
+                }, bk.val)
+              );
+            });
+          })(),
 
           showVic && [
             pred.pinnacle_home ? React.createElement("div", {
