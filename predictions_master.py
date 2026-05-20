@@ -944,9 +944,12 @@ def main():
               " S" + str(li["season"]) + " " + tier_str +
               " Priorité #" + str(li["priority_score"]))
 
+        # Fenêtre élargie à 30 jours pour CdM et grandes compétitions
+        days_window = 30 if li.get("is_national") and li["priority_score"] >= 99 else DAYS_AHEAD
+        end_li = today + timedelta(days=days_window)
         fxs = api("fixtures", {
             "league": li["league_id"], "season": li["season"],
-            "from": str(today), "to": str(end), "status": "NS",
+            "from": str(today), "to": str(end_li), "status": "NS",
         }) or []
 
         if not fxs:
