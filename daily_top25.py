@@ -24,7 +24,7 @@ supabase = create_client(SUPA_URL, SUPA_KEY)
 
 TOP_N          = 25
 MAX_PER_LEAGUE = 3    # Max 3 matchs par ligue dans le top 25
-MIN_CONF_TOP   = 74   # Seuil minimum pour entrer dans le top 25
+MIN_CONF_TOP   = 70   # Seuil minimum pour entrer dans le top 25 (70% pour inclure CdM)
 
 # Bonus par type de signal cotes
 ODDS_SIGNAL_BONUS = {
@@ -59,14 +59,9 @@ def get_today_predictions():
 
     try:
         # Cherche les prédictions des matchs à venir (aujourd'hui + 3 jours)
-        result = supabase.table("predictions")\
-            .select("*")\
-            .gte("match_date", yesterday.isoformat())\
-            .lte("match_date", in3days.isoformat() + "T23:59:59")\
-            .gte("rec_confidence", MIN_CONF_TOP)\
-            .is_("prediction_correct", "null")\
-            .order("rec_confidence", desc=True)\
-            .execute()
+        # Récupérer prédictions normales + CdM sur 30 jours
+        in30days = today + timedelta(days=30)
+        result = supabase.table("predictions")            .select("*")            .gte("match_date", yesterday.isoformat())            .lte("match_date", in30days.isoformat() + "T23:59:59")            .gte("rec_confidence", MIN_CONF_TOP)            .is_("prediction_correct", "null")            .order("rec_confidence", desc=True)            .execute()
         data = result.data or []
         print(f"[TOP25] {len(data)} prédictions trouvées pour sélection")
         return data
