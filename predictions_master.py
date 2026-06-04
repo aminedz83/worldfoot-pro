@@ -33,7 +33,7 @@ DAYS_AHEAD = 7
 MIN_CONF   = 72
 
 # Quota safety — on s'arrête à 90% du quota pour ne jamais le dépasser
-QUOTA_SAFETY_PCT = 0.90
+QUOTA_SAFETY_PCT = 0.98  # Utiliser 98% du quota disponible
 
 # Requêtes utilisées aujourd'hui (mis à jour en temps réel depuis les headers)
 quota_used      = 0
