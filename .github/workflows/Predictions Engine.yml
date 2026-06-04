@@ -117,3 +117,21 @@ jobs:
           if [ "$MODE" = "replace" ] || [ "$MODE" = "all" ]; then
             python replace_finished.py
           fi
+
+  market-stats:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    if: >
+      github.event_name == 'workflow_dispatch' ||
+      (github.event_name == 'schedule' && github.event.schedule == '0 3 * * *')
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+      - run: pip install supabase
+      - name: Run market stats
+        env:
+          PREDICTIONS_SUPA_URL: ${{ secrets.PREDICTIONS_SUPA_URL }}
+          PREDICTIONS_SUPA_KEY: ${{ secrets.PREDICTIONS_SUPA_KEY }}
+        run: python market_stats.py
