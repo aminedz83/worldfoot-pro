@@ -126,8 +126,7 @@ def api(endpoint, params={}):
     # Vérifier le quota avant d'appeler
     quota_max = int(quota_limit_day * QUOTA_SAFETY_PCT)
     if quota_used >= quota_max:
-        print(f"  [QUOTA] Limite atteinte ({quota_used}/{quota_limit_day}) · arrêt")
-        return None
+        return None  # Quota atteint — arrêt silencieux
 
     try:
         r = requests.get(
@@ -671,9 +670,10 @@ def compute_scores(hi,ai,h2h_d,xgt,inj_d,sk,wth,ca,odd,
             vs=round(min(bv+7,88),1)
 
     cands=[]
-    if us>=MIN_CONF:               cands.append(("UNDER 2.5",us))
-    if bs>=MIN_CONF:               cands.append(("BTTS",bs))
-    if vs and vs>=MIN_CONF and sl: cands.append((f"VICTOIRE {sl}",vs))
+    # Under 2.5 exclu pour CdM et compétitions nationales (BTTS et Victoire plus pertinents)
+    if us>=MIN_CONF and not is_nat: cands.append(("UNDER 2.5", us))
+    if bs>=MIN_CONF:                cands.append(("BTTS",       bs))
+    if vs and vs>=MIN_CONF and sl:  cands.append((f"VICTOIRE {sl}", vs))
     if not cands: return None
 
     cands.sort(key=lambda x:x[1],reverse=True)
@@ -899,6 +899,7 @@ def main():
 
     # Vérifier le quota actuel via un appel test
     global quota_used, quota_limit_day
+    print(f"Heure UTC : {datetime.utcnow().strftime('%H:%M')}")
     try:
         import requests as _req
         r = _req.get(
@@ -935,8 +936,6 @@ def main():
 
         # Vérifier le quota avant chaque ligue
         if quota_pct_used() >= QUOTA_SAFETY_PCT * 100:
-            print(f"\n[QUOTA] {quota_pct_used():.1f}% utilisé · "
-                  f"arrêt propre · {ts} prédictions publiées")
             break
 
         tier_str = "NAT" if li["is_national"] else "T" + str(li["tier"])
