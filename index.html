@@ -16050,6 +16050,9 @@ function Top25Tab() {
   var _useState0 = useState([]);
   var top25Data = _useState0[0]; var setTop25Data = _useState0[1];
 
+  var _useStateMS = useState(null);
+  var marketStats = _useStateMS[0]; var setMarketStats = _useStateMS[1];
+
   var _useState1 = useState(true);
   var loading = _useState1[0]; var setLoading = _useState1[1];
 
@@ -16069,6 +16072,19 @@ function Top25Tab() {
       setError(null);
     }, 30 * 60 * 1000);
     return function() { clearInterval(interval); };
+  }, []);
+
+  // Charger les stats de performance par marché
+  useEffect(function() {
+    fetch(
+      SB_BASE2 + "market_performance?period=eq.30j&select=market,total,correct,rate,avg_conf&order=rate.desc.nullslast",
+      { headers: SB_H2 }
+    )
+    .then(function(r) { return r.json(); })
+    .then(function(d) {
+      if (Array.isArray(d) && d.length > 0) setMarketStats(d);
+    })
+    .catch(function() {});
   }, []);
 
   useEffect(function() {
@@ -16645,6 +16661,85 @@ function Top25Tab() {
           );
         })
       ),
+
+      // Stats performance par marché
+      marketStats && marketStats.length > 0 ? React.createElement("div", {
+        style: {
+          background: "var(--c-base)", borderRadius: 10,
+          border: "1px solid var(--c-border)",
+          padding: "10px 12px", marginBottom: 10
+        }
+      },
+        React.createElement("div", {
+          style: { fontSize:10, fontWeight:700, color:"var(--c-ink-3)",
+            textTransform:"uppercase", letterSpacing:"0.08em", marginBottom:8 }
+        }, "📊 Performance réelle sur 30 jours"),
+
+        React.createElement("div", {
+          style: { display:"grid", gridTemplateColumns:"1fr 1fr 1fr", gap:6 }
+        },
+          marketStats.map(function(ms, i) {
+            var market = ms.market;
+            var rate   = ms.rate;
+            var total  = ms.total;
+            var isBest = i === 0 && rate !== null;
+
+            var marketIcon = market.indexOf("UNDER") >= 0 ? "⬇️" :
+                             market.indexOf("BTTS")  >= 0 ? "⚽" : "🏆";
+            var marketShort = market.indexOf("UNDER") >= 0 ? "Under 2.5" :
+                              market.indexOf("BTTS")  >= 0 ? "BTTS" : "Victoire";
+
+            var rateColor = rate >= 75 ? "var(--c-jade)" :
+                            rate >= 65 ? "#f39c12" : "#e74c3c";
+
+            return React.createElement("div", {
+              key: market,
+              style: {
+                background: isBest ? "rgba(5,150,105,0.06)" : "var(--c-border)",
+                borderRadius: 8, padding: "8px 10px", textAlign:"center",
+                border: isBest ? "1px solid rgba(5,150,105,0.2)" : "1px solid transparent",
+                position:"relative"
+              }
+            },
+              isBest ? React.createElement("div", {
+                style: {
+                  position:"absolute", top:-6, left:"50%",
+                  transform:"translateX(-50%)",
+                  fontSize:9, fontWeight:700, padding:"1px 6px",
+                  borderRadius:3, background:"var(--c-jade)", color:"#fff",
+                  whiteSpace:"nowrap"
+                }
+              }, "MEILLEUR") : null,
+
+              React.createElement("div", { style:{ fontSize:16, marginBottom:2 } }, marketIcon),
+              React.createElement("div", { style:{ fontSize:11, fontWeight:600, color:"var(--c-ink-2)", marginBottom:4 } }, marketShort),
+              React.createElement("div", {
+                style: {
+                  fontFamily:"'JetBrains Mono',monospace",
+                  fontSize: 22, fontWeight:700, color: rateColor, lineHeight:1
+                }
+              }, rate !== null ? rate + "%" : "—"),
+              React.createElement("div", { style:{ fontSize:10, color:"var(--c-ink-3)", marginTop:3 } },
+                total > 0 ? total + " matchs" : "pas encore de données"
+              )
+            );
+          })
+        ),
+
+        marketStats[0] && marketStats[0].rate !== null && marketStats[0].total >= 5 ?
+          React.createElement("div", {
+            style: {
+              marginTop:8, padding:"6px 10px", borderRadius:6,
+              background:"rgba(5,150,105,0.06)", border:"1px solid rgba(5,150,105,0.15)",
+              fontSize:12, color:"var(--c-jade)", fontWeight:500, textAlign:"center"
+            }
+          },
+            "💡 Mise sur " + (
+              marketStats[0].market.indexOf("UNDER") >= 0 ? "Under 2.5" :
+              marketStats[0].market.indexOf("BTTS")  >= 0 ? "BTTS" : "Victoire"
+            ) + " en priorité ce mois-ci · " + marketStats[0].rate + "% de réussite"
+          ) : null
+      ) : null,
 
       // Filtres
       React.createElement("div", {
