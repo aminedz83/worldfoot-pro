@@ -290,12 +290,14 @@ def discover_leagues():
             continue
 
         # Données suffisantes ? (au moins 3 matchs joués récemment)
-        played = api("fixtures", {
-            "league": lid, "season": season,
-            "status": "FT", "last": 5,
-        }) or []
-        if len(played) < 3:
-            continue
+        # Exception : CdM 2026 pas encore commencée → skip ce filtre
+        if lid != 1:
+            played = api("fixtures", {
+                "league": lid, "season": season,
+                "status": "FT", "last": 5,
+            }) or []
+            if len(played) < 3:
+                continue
 
         is_nat = detect_national(name, country)
         tier   = detect_tier(name)
@@ -392,7 +394,12 @@ def get_odds(fid, bet):
 
 def compute_index(team_id, name, league_id, season, is_nat):
     cnt   = 12 if is_nat else 10
-    lasts = last_matches(team_id, cnt)
+    # Pour les équipes nationales CdM : chercher TOUTES compétitions (qualifs incluses)
+    # car la CdM vient de commencer → 0 matchs dans league_id=1
+    if is_nat:
+        lasts = (api("fixtures", {"team": team_id, "last": cnt, "status": "FT"}) or [])
+    else:
+        lasts = last_matches(team_id, cnt)
     stats = None if is_nat else team_stats(team_id, league_id, season)
 
     gf_s = ga_s = 0.0
@@ -898,6 +905,7 @@ def main():
         f"{datetime.utcnow().strftime('%Y-%m-%d %H:%M')} UTC ===\n"
     )
 
+    # Vérifier le quota actuel via un appel test
     global quota_used, quota_limit_day
     print(f"Heure UTC : {datetime.utcnow().strftime('%H:%M')}")
     try:
@@ -918,82 +926,77 @@ def main():
             if h_remain: quota_used = quota_limit_day - int(h_remain)
     except Exception:
         pass
-
-    print(f"Quota : {quota_used}/{quota_limit_day} ({quota_remaining()} disponibles)\n")
-
-    if quota_remaining() < 200:
-        print(f"[QUOTA] Seulement {quota_remaining()} req disponibles — run annulé.")
-        return
+    print(f"Quota : {quota_used}/{quota_limit_day} "
+          f"({quota_remaining()} disponibles)\n")
 
     today = datetime.utcnow().date()
-    tp = ts = 0
+    end   = today + timedelta(days=DAYS_AHEAD)
+    tp=ts=0
 
-    # ══════════════════════════════════════════════════════════════
-    # PRIORITÉ 1 : FIFA WORLD CUP 2026 — AVANT TOUT LE RESTE
-    # Traitée en premier pour garantir les prédictions CdM
-    # même si le quota est ensuite épuisé par les autres ligues
-    # ══════════════════════════════════════════════════════════════
+    # ══ PRIORITÉ ABSOLUE : World Cup 2026 traitée AVANT discover_leagues ══
+    # La CdM a 0 matchs joués → rejetée par discover_leagues (filtre played>=3)
+    # On la traite ici avant de brûler du quota sur les autres ligues
     wc_league = {
         "league_id": 1, "name": "FIFA World Cup 2026",
         "country": "World", "season": 2026,
         "tier": 1, "is_national": True,
         "priority_score": 999, "fixtures_ahead": 64,
     }
-
-    print("\n══ FIFA WORLD CUP 2026 ══")
+    print("\n[FIFA World Cup 2026] World S2026 NAT Priorité #999")
     wc_end = today + timedelta(days=30)
 
-    # Essai 1 : status NS (matchs pas encore commencés)
+    # Essai 1 : status NS
     wc_fxs = api("fixtures", {
         "league": 1, "season": 2026,
         "from": str(today), "to": str(wc_end), "status": "NS",
     }) or []
-    print(f"  Essai NS ({today} → {wc_end}) : {len(wc_fxs)} fixtures")
 
-    # Essai 2 : next=20 (prochains matchs, tous statuts)
+    # Essai 2 : sans filtre statut (matchs TBD ou autre)
     if not wc_fxs:
-        wc_fxs = api("fixtures", {"league": 1, "season": 2026, "next": 20}) or []
-        print(f"  Essai next=20 : {len(wc_fxs)} fixtures")
+        wc_fxs = api("fixtures", {
+            "league": 1, "season": 2026,
+            "from": str(today), "to": str(wc_end),
+        }) or []
+        if wc_fxs:
+            print(f"  [CdM] {len(wc_fxs)} fixtures (sans filtre statut)")
 
-    # Essai 3 : sans filtre de date ni statut
+    # Essai 3 : next=10
     if not wc_fxs:
-        wc_fxs = api("fixtures", {"league": 1, "season": 2026}) or []
-        print(f"  Essai sans filtre : {len(wc_fxs)} fixtures")
+        wc_fxs = api("fixtures", {"league": 1, "season": 2026, "next": 10}) or []
+        if wc_fxs:
+            print(f"  [CdM] {len(wc_fxs)} fixtures (next=10)")
 
     if wc_fxs:
-        print(f"  ✅ {len(wc_fxs)} matchs CdM trouvés — analyse:")
+        print(f"  [CdM] ✅ {len(wc_fxs)} matchs trouvés — analyse en cours")
         for fx in wc_fxs[:5]:
             h = fx.get("teams",{}).get("home",{}).get("name","?")
             a = fx.get("teams",{}).get("away",{}).get("name","?")
             d = fx.get("fixture",{}).get("date","?")[:10]
             s = fx.get("fixture",{}).get("status",{}).get("short","?")
-            print(f"    [{s}] {d} | {h} vs {a}")
-        # Traiter tous les matchs NS uniquement
-        wc_ns = [fx for fx in wc_fxs
-                 if fx.get("fixture",{}).get("status",{}).get("short") in ("NS","TBD","")]
-        print(f"  {len(wc_ns)} matchs NS/TBD à analyser")
-        for fx in wc_ns[:20]:
+            print(f"    {h} vs {a} ({d}) [{s}]")
+        for fx in wc_fxs[:20]:
             tp += 1
             if process(fx, wc_league): ts += 1
     else:
-        print("  ❌ Aucun fixture CdM retourné par l'API")
-        print("  → Vérifier : curl 'https://v3.football.api-sports.io/fixtures?league=1&season=2026&next=5'")
+        print("  [CdM] ❌ Aucun fixture — league_id=1 inaccessible sur ce plan API")
+        print("  [CdM] → Vérifier sur rapidapi.com/dashboard que la CdM est incluse")
 
-    # ══════════════════════════════════════════════════════════════
-    # PRIORITÉ 2 : Autres ligues (auto-discovery)
-    # ══════════════════════════════════════════════════════════════
+    # Découvrir toutes les autres ligues actives automatiquement
     leagues = discover_leagues()
     if not leagues:
-        print("Aucune autre ligue active trouvée.")
-        print(f"\n=== Terminé · {ts}/{tp} prédictions publiées · {quota_pct_used():.1f}% quota ===\n")
+        print("Aucune ligue active trouvée.")
+        # Sauvegarde quand même les stats CdM
+        print(f"\n=== Terminé · {ts}/{tp} prédictions publiées · {quota_pct_used():.1f}% du quota utilisé ===\n")
         return
 
-    # Exclure CdM (déjà traitée)
+    # Exclure la CdM de la liste (déjà traitée)
     leagues = [li for li in leagues if li["league_id"] != 1]
 
+    # Analyser par ordre de priorité
     for li in leagues:
+
+        # Vérifier le quota avant chaque ligue
         if quota_pct_used() >= QUOTA_SAFETY_PCT * 100:
-            print(f"  [QUOTA] Budget épuisé — arrêt")
             break
 
         tier_str = "NAT" if li["is_national"] else "T" + str(li["tier"])
@@ -1001,7 +1004,8 @@ def main():
               " S" + str(li["season"]) + " " + tier_str +
               " Priorité #" + str(li["priority_score"]))
 
-        end_li = today + timedelta(days=DAYS_AHEAD)
+        days_window = DAYS_AHEAD
+        end_li = today + timedelta(days=days_window)
         fxs = api("fixtures", {
             "league": li["league_id"], "season": li["season"],
             "from": str(today), "to": str(end_li), "status": "NS",
@@ -1011,14 +1015,18 @@ def main():
             print("  Aucun match.")
             continue
 
+        # Limiter à 20 matchs par ligue pour éviter timeout
         fxs = fxs[:20]
-        print(f"  {len(fxs)} match(s) · {quota_remaining()} req restantes")
+        print(f"  {len(fxs)} match(s) · "
+              f"{quota_remaining()} requêtes restantes")
 
         for fx in fxs:
+            # Vérifier quota avant chaque match
             if quota_pct_used() >= QUOTA_SAFETY_PCT * 100:
+                print(f"  [QUOTA] Arrêt avant ce match")
                 break
-            tp += 1
-            if process(fx, li): ts += 1
+            tp+=1
+            if process(fx, li): ts+=1
 
     print(
         f"\n=== Terminé · {ts}/{tp} prédictions publiées · "
