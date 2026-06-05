@@ -564,6 +564,7 @@ def odds_data(fid):
     res = {
         "pinnacle_under25":None,"bet365_under25":None,"xbet_under25":None,
         "pinnacle_home":None,"pinnacle_away":None,"pinnacle_draw":None,
+
         "adj":0,"signal":"Neutre","movement":{},
     }
     for item in get_odds(fid, 5):
@@ -578,7 +579,7 @@ def odds_data(fid):
                             elif bk.get("id")==36: res["xbet_under25"]=o
     for item in get_odds(fid, 1):
         for bk in item.get("bookmakers",[]):
-            if bk.get("id")==8:
+            if bk.get("id") == 8:
                 for bet in bk.get("bets",[]):
                     if bet.get("id")==1:
                         for v in bet.get("values",[]):
