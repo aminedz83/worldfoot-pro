@@ -16239,7 +16239,6 @@ function Top25Tab() {
 
   var sharpCount   = 0;
   var lowRiskCount = 0;
-  var underCount   = 0;
   var bttsCount    = 0;
   var vicCount     = 0;
   for (var j = 0; j < top25Data.length; j++) {
@@ -16248,8 +16247,7 @@ function Top25Tab() {
     if (p.risk_level === "Faible") lowRiskCount++;
     if (p.recommendation) {
       var ru = p.recommendation.toUpperCase();
-      if (ru.indexOf("UNDER") >= 0) underCount++;
-      else if (ru.indexOf("BTTS") >= 0) bttsCount++;
+      if (ru.indexOf("BTTS") >= 0) bttsCount++;
       else if (ru.indexOf("VICTOIRE") >= 0 || ru.indexOf("DOUBLE") >= 0) vicCount++;
     }
   }
@@ -16661,7 +16659,6 @@ function Top25Tab() {
           { icon:"🎯", val: avgConf+"%", label:"conf.moy.", col:"#3b9ddd" },
           { icon:"⚡", val: sharpCount, label:"sharp", col:"#9b59b6" },
           { icon:"🟢", val: lowRiskCount, label:"faible", col:"#2ecc71" },
-          { icon:"⬇️", val: underCount, label:"under", col:"#3b9ddd" },
           { icon:"⚽", val: bttsCount, label:"btts", col:"#2ecc71" },
           { icon:"🏆", val: vicCount, label:"victoire", col:"#c9a84c" },
         ].map(function(s, i) {
@@ -16699,9 +16696,9 @@ function Top25Tab() {
         }, "📊 Performance réelle sur 30 jours"),
 
         React.createElement("div", {
-          style: { display:"grid", gridTemplateColumns:"1fr 1fr 1fr", gap:6 }
+          style: { display:"grid", gridTemplateColumns:"1fr 1fr", gap:6 }
         },
-          marketStats.map(function(ms, i) {
+          marketStats.filter(function(ms) { return ms.market.indexOf("UNDER") < 0; }).map(function(ms, i) {
             var market = ms.market;
             var rate   = ms.rate;
             var total  = ms.total;
@@ -16772,7 +16769,7 @@ function Top25Tab() {
       React.createElement("div", {
         style: { display:"flex", gap:6, overflowX:"auto", scrollbarWidth:"none", WebkitOverflowScrolling:"touch" }
       },
-        ["TOUS","UNDER","BTTS","VICTOIRE","SHARP"].map(function(f) {
+        ["TOUS","BTTS","VICTOIRE","SHARP"].map(function(f) {
           var active = filter === f;
           return React.createElement("button", {
             key: f,
@@ -16789,7 +16786,6 @@ function Top25Tab() {
             }
           },
             f === "TOUS"     ? "Tous"         :
-            f === "UNDER"   ? "⬇️ Under"     :
             f === "BTTS"    ? "⚽ BTTS"      :
             f === "VICTOIRE"? "🏆 Victoire"  :
             "⚡ Sharp"
