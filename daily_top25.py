@@ -59,11 +59,19 @@ def get_today_predictions():
 
     try:
         # Cherche les prédictions des matchs à venir (aujourd'hui + 3 jours)
-        # Récupérer prédictions normales + CdM sur 30 jours
+        # Récupérer prédictions sur 30 jours à venir
         in30days = today + timedelta(days=30)
-        result = supabase.table("predictions")            .select("*")            .gte("match_date", yesterday.isoformat())            .lte("match_date", in30days.isoformat() + "T23:59:59")            .gte("rec_confidence", MIN_CONF_TOP)            .is_("prediction_correct", "null")            .order("rec_confidence", desc=True)            .execute()
+        result = supabase.table("predictions")            .select("*")            .gte("match_date", yesterday.isoformat())            .lte("match_date", in30days.isoformat() + "T23:59:59")            .gte("rec_confidence", MIN_CONF_TOP)            .is_("prediction_correct", "null")            .not_.ilike("league_name", "%Friendl%")            .order("rec_confidence", desc=True)            .execute()
         data = result.data or []
         print(f"[TOP25] {len(data)} prédictions trouvées pour sélection")
+
+        # Si aucune prédiction récente → prendre les dernières disponibles
+        if not data:
+            print("[TOP25] Aucune prédiction récente — chargement des dernières disponibles")
+            fallback = supabase.table("predictions")                .select("*")                .gte("rec_confidence", MIN_CONF_TOP)                .is_("prediction_correct", "null")                .order("match_date", desc=False)                .order("rec_confidence", desc=True)                .limit(50)                .execute()
+            data = fallback.data or []
+            print(f"[TOP25] {len(data)} prédictions fallback trouvées")
+
         return data
     except Exception as e:
         print(f"[ERREUR] Récupération prédictions : {e}")
