@@ -46,6 +46,7 @@ EXCLUDE_KW = [
     "u17","u18","u19","u20","u21","u23","youth","reserve",
     "women","feminin","femenino","beach","futsal","indoor",
     "friendly","amical","pre-season","preseason","test","exhibition",
+    "friendlies clubs",  # Trop de matchs sans valeur prédictive
 ]
 
 # ── Mots-clés → équipes nationales ────────────────────────────────────────────
@@ -955,6 +956,8 @@ def main():
             print("  Aucun match.")
             continue
 
+        # Limiter à 20 matchs par ligue pour éviter timeout
+        fxs = fxs[:20]
         print(f"  {len(fxs)} match(s) · "
               f"{quota_remaining()} requêtes restantes")
 
