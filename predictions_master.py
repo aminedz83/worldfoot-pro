@@ -290,12 +290,14 @@ def discover_leagues():
             continue
 
         # Données suffisantes ? (au moins 3 matchs joués récemment)
-        played = api("fixtures", {
-            "league": lid, "season": season,
-            "status": "FT", "last": 5,
-        }) or []
-        if len(played) < 3:
-            continue
+        # Exception : CdM 2026 pas encore commencée → skip ce filtre
+        if lid != 1:
+            played = api("fixtures", {
+                "league": lid, "season": season,
+                "status": "FT", "last": 5,
+            }) or []
+            if len(played) < 3:
+                continue
 
         is_nat = detect_national(name, country)
         tier   = detect_tier(name)
@@ -392,7 +394,12 @@ def get_odds(fid, bet):
 
 def compute_index(team_id, name, league_id, season, is_nat):
     cnt   = 12 if is_nat else 10
-    lasts = last_matches(team_id, cnt)
+    # Pour les équipes nationales CdM : chercher TOUTES compétitions (qualifs incluses)
+    # car la CdM vient de commencer → 0 matchs dans league_id=1
+    if is_nat:
+        lasts = (api("fixtures", {"team": team_id, "last": cnt, "status": "FT"}) or [])
+    else:
+        lasts = last_matches(team_id, cnt)
     stats = None if is_nat else team_stats(team_id, league_id, season)
 
     gf_s = ga_s = 0.0
@@ -922,26 +929,68 @@ def main():
     print(f"Quota : {quota_used}/{quota_limit_day} "
           f"({quota_remaining()} disponibles)\n")
 
-    # Découvrir toutes les ligues actives automatiquement
-    leagues = discover_leagues()
-    if not leagues:
-        print("Aucune ligue active trouvée.")
-        return
-
     today = datetime.utcnow().date()
     end   = today + timedelta(days=DAYS_AHEAD)
     tp=ts=0
 
-    # Forcer la CdM 2026 si pas dans la liste auto-découverte
-    wc_ids = [li["league_id"] for li in leagues]
-    if 1 not in wc_ids:
-        leagues.insert(0, {
-            "league_id": 1, "name": "FIFA World Cup 2026",
-            "country": "World", "season": 2026,
-            "tier": 1, "is_national": True,
-            "priority_score": 999, "fixtures_ahead": 64,
-        })
-        print("  [CdM 2026] Ajoutée manuellement — league=1 season=2026")
+    # ══ PRIORITÉ ABSOLUE : World Cup 2026 traitée AVANT discover_leagues ══
+    # La CdM a 0 matchs joués → rejetée par discover_leagues (filtre played>=3)
+    # On la traite ici avant de brûler du quota sur les autres ligues
+    wc_league = {
+        "league_id": 1, "name": "FIFA World Cup 2026",
+        "country": "World", "season": 2026,
+        "tier": 1, "is_national": True,
+        "priority_score": 999, "fixtures_ahead": 64,
+    }
+    print("\n[FIFA World Cup 2026] World S2026 NAT Priorité #999")
+    wc_end = today + timedelta(days=30)
+
+    # Essai 1 : status NS
+    wc_fxs = api("fixtures", {
+        "league": 1, "season": 2026,
+        "from": str(today), "to": str(wc_end), "status": "NS",
+    }) or []
+
+    # Essai 2 : sans filtre statut (matchs TBD ou autre)
+    if not wc_fxs:
+        wc_fxs = api("fixtures", {
+            "league": 1, "season": 2026,
+            "from": str(today), "to": str(wc_end),
+        }) or []
+        if wc_fxs:
+            print(f"  [CdM] {len(wc_fxs)} fixtures (sans filtre statut)")
+
+    # Essai 3 : next=10
+    if not wc_fxs:
+        wc_fxs = api("fixtures", {"league": 1, "season": 2026, "next": 10}) or []
+        if wc_fxs:
+            print(f"  [CdM] {len(wc_fxs)} fixtures (next=10)")
+
+    if wc_fxs:
+        print(f"  [CdM] ✅ {len(wc_fxs)} matchs trouvés — analyse en cours")
+        for fx in wc_fxs[:5]:
+            h = fx.get("teams",{}).get("home",{}).get("name","?")
+            a = fx.get("teams",{}).get("away",{}).get("name","?")
+            d = fx.get("fixture",{}).get("date","?")[:10]
+            s = fx.get("fixture",{}).get("status",{}).get("short","?")
+            print(f"    {h} vs {a} ({d}) [{s}]")
+        for fx in wc_fxs[:20]:
+            tp += 1
+            if process(fx, wc_league): ts += 1
+    else:
+        print("  [CdM] ❌ Aucun fixture — league_id=1 inaccessible sur ce plan API")
+        print("  [CdM] → Vérifier sur rapidapi.com/dashboard que la CdM est incluse")
+
+    # Découvrir toutes les autres ligues actives automatiquement
+    leagues = discover_leagues()
+    if not leagues:
+        print("Aucune ligue active trouvée.")
+        # Sauvegarde quand même les stats CdM
+        print(f"\n=== Terminé · {ts}/{tp} prédictions publiées · {quota_pct_used():.1f}% du quota utilisé ===\n")
+        return
+
+    # Exclure la CdM de la liste (déjà traitée)
+    leagues = [li for li in leagues if li["league_id"] != 1]
 
     # Analyser par ordre de priorité
     for li in leagues:
@@ -955,22 +1004,12 @@ def main():
               " S" + str(li["season"]) + " " + tier_str +
               " Priorité #" + str(li["priority_score"]))
 
-        # Fenêtre élargie à 30 jours pour CdM
-        days_window = 30 if li["league_id"] == 1 else DAYS_AHEAD
+        days_window = DAYS_AHEAD
         end_li = today + timedelta(days=days_window)
         fxs = api("fixtures", {
             "league": li["league_id"], "season": li["season"],
             "from": str(today), "to": str(end_li), "status": "NS",
         }) or []
-
-        # Debug CdM — voir ce que retourne l'API
-        if li["league_id"] == 1:
-            print(f"  [CdM] from={today} to={end_li} → {len(fxs)} fixtures")
-            for fx in fxs[:5]:
-                h = fx.get("teams",{}).get("home",{}).get("name","?")
-                a = fx.get("teams",{}).get("away",{}).get("name","?")
-                d = fx.get("fixture",{}).get("date","?")[:10]
-                print(f"    {h} vs {a} ({d})")
 
         if not fxs:
             print("  Aucun match.")
