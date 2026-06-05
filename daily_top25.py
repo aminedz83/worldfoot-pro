@@ -61,7 +61,7 @@ def get_today_predictions():
         # Cherche les prédictions des matchs à venir (aujourd'hui + 3 jours)
         # Récupérer prédictions sur 30 jours à venir
         in30days = today + timedelta(days=30)
-        result = supabase.table("predictions")            .select("*")            .gte("match_date", yesterday.isoformat())            .lte("match_date", in30days.isoformat() + "T23:59:59")            .gte("rec_confidence", MIN_CONF_TOP)            .is_("prediction_correct", "null")            .not_.ilike("league_name", "%Friendl%")            .not_.ilike("league_name", "%Tercera%")            .order("rec_confidence", desc=True)            .execute()
+        result = supabase.table("predictions")            .select("*")            .gte("match_date", yesterday.isoformat())            .lte("match_date", in30days.isoformat() + "T23:59:59")            .gte("rec_confidence", MIN_CONF_TOP)            .is_("prediction_correct", "null")            .not_.ilike("league_name", "%Friendl%")            .not_.ilike("league_name", "%Tercera%")            .not_.ilike("league_name", "%Federal%")            .not_.ilike("league_name", "%Primera B%")            .not_.ilike("league_name", "%Primera C%")            .not_.ilike("league_name", "%Paulista%")            .not_.ilike("league_name", "%Serie D%")            .not_.ilike("league_name", "%Oberliga%")            .lte("league_tier", 2)            .order("rec_confidence", desc=True)            .execute()
         data = result.data or []
         print(f"[TOP25] {len(data)} prédictions trouvées pour sélection")
 
