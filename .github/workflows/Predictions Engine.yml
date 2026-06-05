@@ -2,10 +2,14 @@ name: Predictions Engine
 
 on:
   schedule:
-    - cron: '0 3 * * *'
-    - cron: '0 4 * * *'
-    - cron: '30 5 * * *'
-    - cron: '0 8-23 * * *'
+    # ── 1 seul run master par nuit ──────────────────────────────────────────
+    # Quota : 7500 req/jour · reset à 00h00 UTC
+    # Le run de 04h00 a le quota PLEIN (reset 4h avant)
+    - cron: '0 4 * * *'      # 04h00 UTC — moteur principal (quota plein)
+    - cron: '30 5 * * *'     # 05h30 UTC — Top 25 (après engine)
+    - cron: '0 3 * * *'      # 03h00 UTC — vérification résultats J-1
+    - cron: '0 8-23 * * *'   # 8h-23h toutes les heures — remplacement
+
   workflow_dispatch:
     inputs:
       mode:
@@ -25,6 +29,11 @@ jobs:
   predictions-engine:
     runs-on: ubuntu-latest
     timeout-minutes: 60
+    # Ne tourne QUE au cron 04h00 ou si mode engine/all
+    if: >
+      github.event_name == 'workflow_dispatch' ||
+      (github.event_name == 'schedule' && 
+       (github.event.schedule == '0 4 * * *'))
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-python@v5
@@ -38,7 +47,7 @@ jobs:
           PREDICTIONS_SUPA_KEY: ${{ secrets.PREDICTIONS_SUPA_KEY }}
         run: |
           MODE="${{ github.event.inputs.mode || 'all' }}"
-          echo "Mode: $MODE"
+          echo "Mode: $MODE · $(date -u)"
           if [ "$MODE" = "engine" ] || [ "$MODE" = "all" ]; then
             echo "Lancement predictions_master.py..."
             python predictions_master.py
@@ -72,6 +81,11 @@ jobs:
   verify-results:
     runs-on: ubuntu-latest
     timeout-minutes: 20
+    # Tourne à 03h00 UTC ou si mode verify/all
+    if: >
+      github.event_name == 'workflow_dispatch' ||
+      (github.event_name == 'schedule' &&
+       (github.event.schedule == '0 3 * * *'))
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-python@v5
@@ -94,6 +108,11 @@ jobs:
   replace-finished:
     runs-on: ubuntu-latest
     timeout-minutes: 15
+    # Tourne 8h-23h toutes les heures ou si mode replace/all
+    if: >
+      github.event_name == 'workflow_dispatch' ||
+      (github.event_name == 'schedule' &&
+       (github.event.schedule == '0 8-23 * * *'))
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-python@v5
@@ -116,6 +135,10 @@ jobs:
   market-stats:
     runs-on: ubuntu-latest
     timeout-minutes: 5
+    if: >
+      github.event_name == 'workflow_dispatch' ||
+      (github.event_name == 'schedule' &&
+       (github.event.schedule == '0 4 * * *'))
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-python@v5
@@ -131,5 +154,5 @@ jobs:
           if [ "$MODE" = "all" ]; then
             python market_stats.py
           else
-            echo "Skip market stats (mode=$MODE)"
+            echo "Skip market stats"
           fi
