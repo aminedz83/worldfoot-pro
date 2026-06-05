@@ -329,12 +329,13 @@ def main():
     except Exception as e:
         all_preds = []
 
-    # Fusionner sans doublons
-    seen = set(p["fixture_id"] for p in top25)
-    for p in all_preds:
-        if p["fixture_id"] not in seen:
-            top25.append(p)
-            seen.add(p["fixture_id"])
+    # Fusionner sans doublons — dédupliquer aussi daily_top25
+    seen = {}
+    for p in top25 + all_preds:
+        fid = p["fixture_id"]
+        if fid not in seen:
+            seen[fid] = p
+    top25 = list(seen.values())
 
     print(f"{len(top25)} matchs à surveiller\n")
 
