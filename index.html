@@ -16622,11 +16622,11 @@ function Top25Tab() {
     style: { height:"100%", overflowY:"auto", background:"var(--c-base)", WebkitOverflowScrolling:"touch" }
   },
 
-    // Header stats
+    // Header stats sticky — pills + filtres seulement
     React.createElement("div", {
       style: {
         background:"#fff", borderBottom:"1px solid var(--c-border)",
-        padding:"12px 14px", position:"sticky", top:0, zIndex:10
+        padding:"10px 14px 0 14px", position:"sticky", top:0, zIndex:10
       }
     },
 
@@ -16662,14 +16662,16 @@ function Top25Tab() {
         })
       ),
 
-      // Stats performance par marché
-      marketStats && marketStats.length > 0 ? React.createElement("div", {
-        style: {
-          background: "var(--c-base)", borderRadius: 10,
-          border: "1px solid var(--c-border)",
-          padding: "10px 12px", marginBottom: 10
-        }
-      },
+    ), // fin sticky
+
+    // Performance 30j — NON sticky, reste en place au scroll
+    marketStats && marketStats.length > 0 ? React.createElement("div", {
+      style: {
+        background: "var(--c-base)", borderRadius: 10,
+        border: "1px solid var(--c-border)",
+        margin: "10px 14px", padding: "10px 12px"
+      }
+    },
         React.createElement("div", {
           style: { fontSize:10, fontWeight:700, color:"var(--c-ink-3)",
             textTransform:"uppercase", letterSpacing:"0.08em", marginBottom:8 }
@@ -16741,7 +16743,13 @@ function Top25Tab() {
           ) : null
       ) : null,
 
-      // Filtres
+    // Filtres — sticky sous le bloc performance
+    React.createElement("div", {
+      style: {
+        background:"#fff", borderBottom:"1px solid var(--c-border)",
+        padding:"8px 14px", position:"sticky", top:52, zIndex:9
+      }
+    },
       React.createElement("div", {
         style: { display:"flex", gap:6, overflowX:"auto", scrollbarWidth:"none", WebkitOverflowScrolling:"touch" }
       },
@@ -16768,8 +16776,9 @@ function Top25Tab() {
             "⚡ Sharp"
           );
         })
-      )
-    ),
+      ) // fin div filtres inner
+    ) // fin sticky filtres
+    ,
 
     // Contenu
     loading ? React.createElement("div", {
