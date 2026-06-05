@@ -2,12 +2,10 @@ name: Predictions Engine
 
 on:
   schedule:
-    # ── Quota reset à 00h00 UTC ──────────────────────────────────
-    # 1 seul run engine à 04h00 UTC — quota PLEIN (recharge 4h avant)
     - cron: '0 4 * * *'      # 04h00 UTC — engine principal
     - cron: '30 5 * * *'     # 05h30 UTC — Top 25
     - cron: '0 3 * * *'      # 03h00 UTC — vérification résultats J-1
-    - cron: '0 10-23 * * *'  # 10h-23h toutes les heures — remplacement
+    - cron: '0 10-23 * * *'  # 10h-23h — remplacement + surveillance cotes
 
   workflow_dispatch:
     inputs:
@@ -22,13 +20,13 @@ on:
           - top25
           - verify
           - replace
+          - odds
 
 jobs:
 
   predictions-engine:
     runs-on: ubuntu-latest
     timeout-minutes: 60
-    # Engine tourne UNIQUEMENT à 04h00 ou dispatch manuel
     if: |
       github.event_name == 'workflow_dispatch' ||
       github.event.schedule == '0 4 * * *'
@@ -124,6 +122,31 @@ jobs:
             python replace_finished.py
           else
             echo "Skip replace (mode=$MODE)"
+          fi
+
+  odds-monitor:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    if: |
+      github.event_name == 'workflow_dispatch' ||
+      github.event.schedule == '0 10-23 * * *'
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+      - run: pip install requests supabase
+      - name: Run odds monitor
+        env:
+          API_FOOTBALL_KEY:     ${{ secrets.API_FOOTBALL_KEY }}
+          PREDICTIONS_SUPA_URL: ${{ secrets.PREDICTIONS_SUPA_URL }}
+          PREDICTIONS_SUPA_KEY: ${{ secrets.PREDICTIONS_SUPA_KEY }}
+        run: |
+          MODE="${{ github.event.inputs.mode || 'odds' }}"
+          if [ "$MODE" = "odds" ] || [ "$MODE" = "all" ]; then
+            python odds_monitor.py
+          else
+            echo "Skip odds monitor (mode=$MODE)"
           fi
 
   market-stats:
