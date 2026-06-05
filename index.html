@@ -16065,6 +16065,24 @@ function Top25Tab() {
   var _useState4 = useState({});
   var expanded = _useState4[0]; var setExpanded = _useState4[1];
 
+  var _useState5 = useState([]);
+  var sharpAlerts = _useState5[0]; var setSharpAlerts = _useState5[1];
+
+  // Charger les alertes sharps des dernières 24h
+  useEffect(function() {
+    var since = new Date(Date.now() - 24*60*60*1000).toISOString();
+    fetch(
+      SB_BASE2 + "odds_alerts?sent_at=gte." + since +
+      "&order=sent_at.desc&select=*&limit=20",
+      { headers: SB_H2 }
+    )
+    .then(function(r) { return r.json(); })
+    .then(function(d) {
+      if (Array.isArray(d) && d.length > 0) setSharpAlerts(d);
+    })
+    .catch(function() {});
+  }, []);
+
   // Auto-refresh toutes les 30 minutes
   useEffect(function() {
     var interval = setInterval(function() {
@@ -16108,8 +16126,7 @@ function Top25Tab() {
         SB_BASE2 + "predictions?id=in.(" + ids.join(",") + ")" +
         "&select=id,context_text,under25_score,btts_score,victory_score," +
         "home_off_index,home_def_index,away_off_index,away_def_index," +
-        "h2h_count,h2h_under25_rate,h2h_btts_rate,weather_desc,injuries_detail," +
-        "home_team_id,away_team_id,league_id",
+        "h2h_count,h2h_under25_rate,h2h_btts_rate,weather_desc,injuries_detail",
         { headers: SB_H2 }
       )
       .then(function(r2) { return r2.json(); })
@@ -16119,13 +16136,7 @@ function Top25Tab() {
           preds.forEach(function(p) { pm[p.id] = p; });
         }
         var enriched = rows.map(function(item) {
-          var pd = pm[item.prediction_id] || {};
-          return Object.assign({}, item, {
-            predictions: [pd],
-            home_team_id: item.home_team_id || pd.home_team_id || null,
-            away_team_id: item.away_team_id || pd.away_team_id || null,
-            league_id:    item.league_id    || pd.league_id    || null,
-          });
+          return Object.assign({}, item, { predictions: [pm[item.prediction_id] || {}] });
         });
         setTop25Data(enriched); setLoading(false);
       })
@@ -16263,6 +16274,7 @@ function Top25Tab() {
     var mc      = t25marketClass(pred.recommendation);
     var mc_col  = MC_COLORS[mc] || MC_COLORS.under;
     var isSharp = pred.odds_signal === "Sharp money Under";
+    var hasAlert = sharpAlerts.some(function(a) { return a.fixture_id === pred.fixture_id; });
     var isLow   = pred.risk_level === "Faible";
     var isExp   = !!expanded[pred.id];
     var ctx     = pred.predictions && pred.predictions[0];
@@ -16315,13 +16327,15 @@ function Top25Tab() {
               animation: "pulse 1.5s ease infinite"
             }
           }, "🆕 NOUVEAU") : null,
-          isSharp ? React.createElement("span", {
+          isSharp || hasAlert ? React.createElement("span", {
             style: {
               fontSize: 9, fontWeight: 700, padding: "2px 7px",
               borderRadius: 4, letterSpacing: "0.04em",
-              background: "rgba(155,89,182,0.1)", color: "#9b59b6"
+              background: hasAlert ? "rgba(155,89,182,0.2)" : "rgba(155,89,182,0.1)",
+              color: "#9b59b6",
+              animation: hasAlert ? "pulse 1.5s ease infinite" : "none"
             }
-          }, "⚡ SHARP") : null,
+          }, hasAlert ? "⚡ ALERTE" : "⚡ SHARP") : null,
 
           React.createElement("span", {
             style: {
@@ -16350,17 +16364,10 @@ function Top25Tab() {
         React.createElement("div", {
           style: { display:"flex", justifyContent:"space-between", marginBottom:8 }
         },
-          React.createElement("div", { style:{ display:"flex", alignItems:"center", gap:5 } },
-            pred.league_id ? React.createElement("img", {
-              src: getLeagueLogo(pred.league_id, pred.league_name || "", "https://media.api-sports.io/football/leagues/" + pred.league_id + ".png"),
-              style: { width:14, height:14, objectFit:"contain", flexShrink:0 },
-              onError: function(e) { e.target.style.display="none"; }
-            }) : null,
-            React.createElement("span", {
-              style: { fontSize:10, fontWeight:600, color:"var(--c-ink-3)",
-                textTransform:"uppercase", letterSpacing:"0.06em" }
-            }, pred.league_name || "—")
-          ),
+          React.createElement("span", {
+            style: { fontSize:10, fontWeight:600, color:"var(--c-ink-3)",
+              textTransform:"uppercase", letterSpacing:"0.06em" }
+          }, pred.league_name || "—"),
           React.createElement("div", {
             style: { display:"flex", flexDirection:"column", alignItems:"flex-end", gap:1 }
           },
@@ -16389,21 +16396,14 @@ function Top25Tab() {
           // Domicile
           React.createElement("div", { style:{ display:"flex", alignItems:"center", gap:8 } },
             React.createElement("div", {
-              style: { width:32, height:32, borderRadius:8, flexShrink:0,
+              style: {
+                width:32, height:32, borderRadius:8, flexShrink:0,
                 background:"var(--c-border)",
                 display:"flex", alignItems:"center", justifyContent:"center",
-                overflow:"hidden" }
-            },
-              pred.home_team_id
-                ? React.createElement("img", {
-                    src: "https://media.api-sports.io/football/teams/" + pred.home_team_id + ".png",
-                    style: { width:28, height:28, objectFit:"contain" },
-                    onError: function(e) { e.target.style.display="none"; e.target.insertAdjacentHTML && e.target.parentNode && (e.target.parentNode.innerHTML = '<span style="font-size:10px;font-weight:700;color:var(--c-ink-2);font-family:monospace">' + t25initials(pred.home_team_name) + '</span>'); }
-                  })
-                : React.createElement("span", {
-                    style:{ fontSize:10, fontWeight:700, color:"var(--c-ink-2)", fontFamily:"monospace" }
-                  }, t25initials(pred.home_team_name))
-            ),
+                fontFamily:"'JetBrains Mono',monospace",
+                fontSize:10, fontWeight:700, color:"var(--c-ink-2)"
+              }
+            }, t25initials(pred.home_team_name)),
             React.createElement("span", {
               style: { fontSize:13, fontWeight:600, color:"var(--c-ink)", lineHeight:1.2 }
             }, pred.home_team_name || "—")
@@ -16428,21 +16428,14 @@ function Top25Tab() {
               style: { fontSize:13, fontWeight:600, color:"var(--c-ink)", lineHeight:1.2, textAlign:"right" }
             }, pred.away_team_name || "—"),
             React.createElement("div", {
-              style: { width:32, height:32, borderRadius:8, flexShrink:0,
+              style: {
+                width:32, height:32, borderRadius:8, flexShrink:0,
                 background:"var(--c-border)",
                 display:"flex", alignItems:"center", justifyContent:"center",
-                overflow:"hidden" }
-            },
-              pred.away_team_id
-                ? React.createElement("img", {
-                    src: "https://media.api-sports.io/football/teams/" + pred.away_team_id + ".png",
-                    style: { width:28, height:28, objectFit:"contain" },
-                    onError: function(e) { e.target.style.display="none"; e.target.insertAdjacentHTML && e.target.parentNode && (e.target.parentNode.innerHTML = '<span style="font-size:10px;font-weight:700;color:var(--c-ink-2);font-family:monospace">' + t25initials(pred.away_team_name) + '</span>'); }
-                  })
-                : React.createElement("span", {
-                    style:{ fontSize:10, fontWeight:700, color:"var(--c-ink-2)", fontFamily:"monospace" }
-                  }, t25initials(pred.away_team_name))
-            )
+                fontFamily:"'JetBrains Mono',monospace",
+                fontSize:10, fontWeight:700, color:"var(--c-ink-2)"
+              }
+            }, t25initials(pred.away_team_name))
           )
         ),
 
@@ -16771,7 +16764,7 @@ function Top25Tab() {
           ) : null
       ) : null,
 
-    // Filtres sticky séparé
+    // Filtres sticky
     React.createElement("div", {
       style: { background:"#fff", borderBottom:"1px solid var(--c-border)",
         padding:"8px 14px", position:"sticky", top:53, zIndex:9 }
@@ -16804,6 +16797,80 @@ function Top25Tab() {
         })
       )
     ), // fin sticky filtres
+
+    // Bannière alertes sharps
+    sharpAlerts.length > 0 ? React.createElement("div", {
+      style: {
+        margin: "10px 14px 0 14px",
+        borderRadius: 10,
+        overflow: "hidden",
+        border: "1px solid rgba(155,89,182,0.3)"
+      }
+    },
+      // Titre bannière
+      React.createElement("div", {
+        style: {
+          background: "rgba(155,89,182,0.1)",
+          padding: "8px 12px",
+          display: "flex", alignItems: "center", justifyContent: "space-between"
+        }
+      },
+        React.createElement("div", { style: { display:"flex", alignItems:"center", gap:6 } },
+          React.createElement("span", { style: { fontSize:14 } }, "⚡"),
+          React.createElement("span", {
+            style: { fontSize:11, fontWeight:700, color:"#9b59b6",
+              textTransform:"uppercase", letterSpacing:"0.06em" }
+          }, "Sharp Money Détecté"),
+          React.createElement("span", {
+            style: {
+              fontSize:10, fontWeight:700, padding:"1px 6px", borderRadius:10,
+              background:"#9b59b6", color:"#fff"
+            }
+          }, sharpAlerts.length)
+        ),
+        React.createElement("span", { style: { fontSize:10, color:"var(--c-ink-3)" } },
+          "Argent professionnel en mouvement"
+        )
+      ),
+      // Liste des alertes
+      sharpAlerts.slice(0, 3).map(function(alert, i) {
+        var move = alert.movement_pct;
+        var moveStr = move > 0 ? "+" + move.toFixed(1) : move.toFixed(1);
+        var dt = alert.match_date ? new Date(alert.match_date).toLocaleDateString("fr-FR",{day:"2-digit",month:"short"}) : "";
+        return React.createElement("div", {
+          key: i,
+          style: {
+            padding: "8px 12px",
+            borderTop: "1px solid rgba(155,89,182,0.15)",
+            background: "#fff",
+            display: "flex", alignItems: "center", justifyContent: "space-between"
+          }
+        },
+          React.createElement("div", null,
+            React.createElement("div", {
+              style: { fontSize:12, fontWeight:600, color:"var(--c-ink)", marginBottom:2 }
+            }, alert.home_team + " vs " + alert.away_team),
+            React.createElement("div", {
+              style: { fontSize:10, color:"var(--c-ink-3)" }
+            }, alert.league_name + " · " + dt)
+          ),
+          React.createElement("div", { style: { textAlign:"right" } },
+            React.createElement("div", {
+              style: {
+                fontFamily:"'JetBrains Mono',monospace",
+                fontSize:13, fontWeight:700, color:"#9b59b6"
+              }
+            }, alert.market),
+            React.createElement("div", {
+              style: {
+                fontFamily:"'JetBrains Mono',monospace",
+                fontSize:11, color:"#e74c3c", fontWeight:600
+              }
+            }, alert.bookmaker + " " + alert.old_odds + " → " + alert.new_odds + " (" + moveStr + "%)")
+          )
+        );
+      })
+    ) : null,
 
     // Contenu
     loading ? React.createElement("div", {
