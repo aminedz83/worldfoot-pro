@@ -932,6 +932,17 @@ def main():
     end   = today + timedelta(days=DAYS_AHEAD)
     tp=ts=0
 
+    # Forcer la CdM 2026 si pas dans la liste auto-découverte
+    wc_ids = [li["league_id"] for li in leagues]
+    if 1 not in wc_ids:
+        leagues.insert(0, {
+            "league_id": 1, "name": "FIFA World Cup 2026",
+            "country": "World", "season": 2026,
+            "tier": 1, "is_national": True,
+            "priority_score": 999, "fixtures_ahead": 64,
+        })
+        print("  [CdM 2026] Ajoutée manuellement — league=1 season=2026")
+
     # Analyser par ordre de priorité
     for li in leagues:
 
@@ -944,8 +955,8 @@ def main():
               " S" + str(li["season"]) + " " + tier_str +
               " Priorité #" + str(li["priority_score"]))
 
-        # Fenêtre élargie à 30 jours pour CdM et grandes compétitions
-        days_window = 30 if li.get("is_national") and li["priority_score"] >= 99 else DAYS_AHEAD
+        # Fenêtre élargie à 30 jours pour CdM
+        days_window = 30 if li["league_id"] == 1 else DAYS_AHEAD
         end_li = today + timedelta(days=days_window)
         fxs = api("fixtures", {
             "league": li["league_id"], "season": li["season"],
