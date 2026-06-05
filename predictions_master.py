@@ -963,6 +963,15 @@ def main():
             "from": str(today), "to": str(end_li), "status": "NS",
         }) or []
 
+        # Debug CdM — voir ce que retourne l'API
+        if li["league_id"] == 1:
+            print(f"  [CdM] from={today} to={end_li} → {len(fxs)} fixtures")
+            for fx in fxs[:5]:
+                h = fx.get("teams",{}).get("home",{}).get("name","?")
+                a = fx.get("teams",{}).get("away",{}).get("name","?")
+                d = fx.get("fixture",{}).get("date","?")[:10]
+                print(f"    {h} vs {a} ({d})")
+
         if not fxs:
             print("  Aucun match.")
             continue
