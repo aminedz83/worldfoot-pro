@@ -345,6 +345,13 @@ def main():
         return
 
     total_alerts = 0
+    # Exclure les amicaux des alertes sharp — cotes manipulées par rotations
+    EXCLUDE_SHARP = ["friendl","amical","friendly"]
+    top25 = [p for p in top25 if not any(
+        kw in (p.get("league_name","") or "").lower() for kw in EXCLUDE_SHARP
+    )]
+    print(f"{len(top25)} matchs à surveiller (amicaux exclus)\n")
+
     for pred in top25:
         alerts = process_fixture(pred)
         total_alerts += alerts
