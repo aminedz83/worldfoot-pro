@@ -62,11 +62,22 @@ WORLD_COUNTRIES = {
 
 # ── Classement FIFA fallback ──────────────────────────────────────────────────
 FIFA = {
+    # Top 10
     "Argentina":1,"France":2,"England":3,"Spain":4,"Brazil":5,
     "Portugal":6,"Belgium":7,"Netherlands":8,"Germany":9,"Italy":10,
-    "Morocco":13,"USA":16,"Mexico":17,"Senegal":18,"Japan":19,
-    "Croatia":11,"Colombia":12,"Uruguay":15,"Switzerland":19,
-    "Denmark":21,"Austria":22,"Turkey":25,"Ecuador":30,"Algeria":35,
+    "Croatia":11,"Colombia":12,"Morocco":13,"Uruguay":15,
+    "USA":16,"Mexico":17,"Senegal":18,"Japan":19,"Switzerland":19,
+    "Denmark":21,"Austria":22,"Turkey":25,"South Korea":23,
+    "Ecuador":30,"Algeria":35,"Australia":24,"Poland":26,
+    "Ukraine":28,"Sweden":27,"Hungary":29,"Czech Republic":32,
+    "Romania":34,"Serbia":31,"Norway":36,"Slovakia":38,
+    # CdM 2026 nations
+    "Qatar":37,"Canada":40,"South Africa":64,"Bosnia & Herzegovina":60,
+    "Paraguay":53,"New Zealand":98,"Tunisia":48,"Cape Verde Islands":70,
+    "Egypt":43,"Saudi Arabia":56,"Uruguay":15,"Iran":21,
+    "Jordan":85,"Ivory Coast":42,"Ghana":66,"Curaçao":85,
+    "Sweden":27,"Scotland":39,"Haiti":90,"Australia":24,
+    "Türkiye":25,"Turkey":25,"Senegal":18,
 }
 
 # ── Coordonnées par pays ──────────────────────────────────────────────────────
@@ -632,20 +643,68 @@ def compute_scores(hi,ai,h2h_d,xgt,inj_d,sk,wth,ca,odd,
     swr=hi["win_rate"] if ihs else ai["win_rate"]
     vs=None; sl=None
 
-    if og>=2.5 and dg>=1.5 and swr>=55:
-        bv=50+og*4+dg*3
-        if ihs: bv+={3:6,2:4,1:2,0:3}.get(tier,2)
-        if stds and not is_nat:
-            sp=stds.get(hid if ihs else aid,{}).get("points",0)
-            wp=stds.get(aid if ihs else hid,{}).get("points",0)
-            mg=6 if tier>=2 else 8
-            if sp-wp<mg: bv-=5
-        sl="DOMICILE" if ihs else "EXTÉRIEUR"
-        mv=78 if sl=="EXTÉRIEUR" else 75
-        if   bv>=mv: vs=round(min(bv,91),1)
-        elif bv>=70:
-            sl=f"DOUBLE CHANCE {'1X' if ihs else 'X2'}"
-            vs=round(min(bv+7,88),1)
+    # Seuils adaptés pour équipes nationales CdM
+    if is_nat:
+        hr = hi.get("fifa_rank", 50) or 50
+        ar = ai.get("fifa_rank", 50) or 50
+        fifa_gap = abs(hr - ar)
+
+        # ── FILTRE ANTI-PIÈGE ──────────────────────────────────────────────
+        # Exiger un écart FIFA MINIMUM pour éviter les matchs équilibrés
+        # Deux nations dans les 20 premiers = match trop incertain
+        top_nations = min(hr, ar)
+        both_strong = top_nations <= 20 and fifa_gap < 10
+
+        # Forme récente insuffisante = signal peu fiable
+        fav_win_rate = hi["win_rate"] if ihs else ai["win_rate"]
+        weak_form = fav_win_rate < 50
+
+        # Écart trop faible = match piège
+        weak_signal = og < 1.5 or dg < 0.8
+
+        # Abandonner si match piège détecté
+        if both_strong or weak_form or weak_signal:
+            pass  # vs et sl restent None → pas de prédiction
+        else:
+            # Signal validé — calculer le score
+            bv = 50 + og*5 + dg*4
+
+            # Bonus classement FIFA (écart clair = signal fort)
+            if   fifa_gap >= 30: bv += 15
+            elif fifa_gap >= 20: bv += 10
+            elif fifa_gap >= 15: bv += 6
+            elif fifa_gap >= 10: bv += 3
+            # Malus si les deux équipes sont fortes (match serré probable)
+            if top_nations <= 15: bv -= 5
+
+            # Bonus forme récente de la favorite
+            if fav_win_rate >= 70: bv += 5
+            elif fav_win_rate >= 60: bv += 2
+
+            # Bonus round CdM
+            bv += stake_adj(hid, aid, {}, wr)
+
+            sl = "DOMICILE" if ihs else "EXTÉRIEUR"
+            mv = 78 if sl == "EXTÉRIEUR" else 75  # Seuils stricts maintenus
+            if   bv >= mv: vs = round(min(bv, 91), 1)
+            elif bv >= 70:
+                sl = f"DOUBLE CHANCE {'1X' if ihs else 'X2'}"
+                vs = round(min(bv+7, 88), 1)
+    else:
+        if og>=2.5 and dg>=1.5 and swr>=55:
+            bv=50+og*4+dg*3
+            if ihs: bv+={3:6,2:4,1:2,0:3}.get(tier,2)
+            if stds and not is_nat:
+                sp=stds.get(hid if ihs else aid,{}).get("points",0)
+                wp=stds.get(aid if ihs else hid,{}).get("points",0)
+                mg=6 if tier>=2 else 8
+                if sp-wp<mg: bv-=5
+            sl="DOMICILE" if ihs else "EXTÉRIEUR"
+            mv=78 if sl=="EXTÉRIEUR" else 75
+            if   bv>=mv: vs=round(min(bv,91),1)
+            elif bv>=70:
+                sl=f"DOUBLE CHANCE {'1X' if ihs else 'X2'}"
+                vs=round(min(bv+7,88),1)
 
     cands=[]
     # Under 2.5 supprimé — taux réussite 60.2% trop faible
