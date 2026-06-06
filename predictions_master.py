@@ -948,16 +948,27 @@ def main():
             d = r.json().get("response", {})
             if isinstance(d, dict):
                 reqs = d.get("requests", {})
-                quota_used      = reqs.get("current", 0)
-                quota_limit_day = reqs.get("limit_day", 7500)
-            h_remain = r.headers.get("x-ratelimit-requests-remaining")
-            h_limit  = r.headers.get("x-ratelimit-requests-limit")
-            if h_limit:  quota_limit_day = int(h_limit)
-            if h_remain: quota_used = quota_limit_day - int(h_remain)
+                # Body JSON est la source fiable — pas les headers
+                current = reqs.get("current", None)
+                limit   = reqs.get("limit_day", None)
+                if current is not None: quota_used      = current
+                if limit   is not None: quota_limit_day = limit
+            # Headers en fallback uniquement si body vide
+            if quota_used == 0:
+                h_remain = r.headers.get("x-ratelimit-requests-remaining")
+                h_limit  = r.headers.get("x-ratelimit-requests-limit")
+                if h_limit:  quota_limit_day = int(h_limit)
+                if h_remain: quota_used = quota_limit_day - int(h_remain)
     except Exception:
         pass
-    print(f"Quota : {quota_used}/{quota_limit_day} "
-          f"({quota_remaining()} disponibles)\n")
+
+    avail = quota_limit_day - quota_used
+    print(f"Quota : {quota_used}/{quota_limit_day} ({avail} disponibles)")
+    if avail < 200:
+        print(f"[QUOTA] ⚠️  Seulement {avail} req disponibles — run annulé.")
+        print(f"[QUOTA] Recharge à 00h00 UTC. Cron automatique à 04h00 UTC.")
+        return
+    print()
 
     today = datetime.utcnow().date()
     end   = today + timedelta(days=DAYS_AHEAD)
