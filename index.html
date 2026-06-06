@@ -16313,17 +16313,20 @@ function Top25Tab() {
     })
     .then(function(r) { return r.json(); })
     .then(function(d) {
+      console.log("Expert IA réponse:", JSON.stringify(d).substring(0, 200));
       // Extraire le texte en ignorant les blocs tool_use
       var text = "Analyse indisponible.";
-      if (d.content) {
+      if (d.error) { text = "Erreur API : " + d.error.message; }
+      else if (d.content) {
         var textBlocks = d.content.filter(function(b) { return b.type === "text"; });
         if (textBlocks.length > 0) text = textBlocks[textBlocks.length-1].text;
       }
       setExpertAvis(function(prev) { var n = Object.assign({}, prev); n[pid] = text; return n; });
       setExpertLoading(function(prev) { var n = Object.assign({}, prev); n[pid] = false; return n; });
     })
-    .catch(function() {
-      setExpertAvis(function(prev) { var n = Object.assign({}, prev); n[pid] = "Erreur — réessaie."; return n; });
+    .catch(function(err) {
+      console.error("Expert IA erreur:", err);
+      setExpertAvis(function(prev) { var n = Object.assign({}, prev); n[pid] = "Erreur : " + (err.message || err.toString()); return n; });
       setExpertLoading(function(prev) { var n = Object.assign({}, prev); n[pid] = false; return n; });
     });
   }
