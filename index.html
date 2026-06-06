@@ -16068,11 +16068,6 @@ function Top25Tab() {
   var _useState5 = useState([]);
   var sharpAlerts = _useState5[0]; var setSharpAlerts = _useState5[1];
 
-  var _useState6 = useState({});
-  var expertAvis = _useState6[0]; var setExpertAvis = _useState6[1];
-
-  var _useState7 = useState({});
-  var expertLoading = _useState7[0]; var setExpertLoading = _useState7[1];
 
   // Charger les alertes sharps des dernières 24h
   useEffect(function() {
@@ -16272,63 +16267,6 @@ function Top25Tab() {
     var created = new Date(pred.created_at);
     var now     = new Date();
     return (now - created) < 2 * 60 * 60 * 1000;
-  }
-
-  function getExpertAvis(pred, ctx) {
-    var pid = pred.id;
-    if (expertLoading[pid]) return;
-    setExpertLoading(function(prev) { var n = Object.assign({}, prev); n[pid] = true; return n; });
-
-    var matchDate = pred.match_date ? new Date(pred.match_date).toLocaleDateString("fr-FR", {day:"2-digit",month:"long",year:"numeric"}) : "";
-    var prompt = [
-      "Tu es un pronostiqueur football professionnel. Analyse ce match et donne ton avis EXPERT en 3-4 phrases maximum.",
-      "",
-      "MATCH : " + pred.home_team_name + " vs " + pred.away_team_name,
-      "Compétition : " + (pred.league_name || "") + " · " + matchDate,
-      (pred.wc_round ? "Phase : " + pred.wc_round : ""),
-      "",
-      "DONNÉES RÉELLES DU MOTEUR :",
-      "• Recommandation moteur : " + (pred.recommendation || "") + " · Confiance : " + (pred.rec_confidence || "") + "%",
-      "• xG total : " + (pred.xg_total || "N/A") + " (Dom: " + (pred.xg_home||"?") + " · Ext: " + (pred.xg_away||"?") + ")",
-      ctx ? "• Att. Dom. : " + (ctx.home_off_index||"?") + "/10 · Déf. Dom. : " + (ctx.home_def_index||"?") + "/10" : "",
-      ctx ? "• Att. Ext. : " + (ctx.away_off_index||"?") + "/10 · Déf. Ext. : " + (ctx.away_def_index||"?") + "/10" : "",
-      ctx ? "• H2H : " + (ctx.h2h_count||0) + " matchs · BTTS H2H : " + (ctx.h2h_btts_rate||"?") + "%" : "",
-      pred.home_fifa_rank ? "• FIFA : Dom. #" + pred.home_fifa_rank + " · Ext. #" + pred.away_fifa_rank : "",
-      pred.pinnacle_home ? "• Cotes Pinnacle : Dom. " + pred.pinnacle_home + " · Nul " + pred.pinnacle_draw + " · Ext. " + pred.pinnacle_away : "",
-      ctx ? "• Météo : " + (ctx.weather_desc||"Normale") : "",
-      ctx && ctx.injuries_detail && ctx.injuries_detail !== "[]" ? "• Blessés : " + ctx.injuries_detail : "",
-      "",
-      "INSTRUCTIONS - Etape 1: Recherche web sur ce match pour infos actuelles blessures et compositions. Etape 2: Combine avec les stats fournies. Etape 3: Donne avis pronostiqueur pro en 3-4 phrases. Etape 4: Termine par [VALIDE] ou [MITIGE] ou [DECONSEILLE]. Reponds en francais."
-    ].filter(Boolean).join("\n");
-
-    fetch("https://api.anthropic.com/v1/messages", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({
-        model: "claude-sonnet-4-20250514",
-        max_tokens: 1000,
-        tools: [{ type: "web_search_20250305", name: "web_search" }],
-        messages: [{ role: "user", content: prompt }]
-      })
-    })
-    .then(function(r) { return r.json(); })
-    .then(function(d) {
-      console.log("Expert IA réponse:", JSON.stringify(d).substring(0, 200));
-      // Extraire le texte en ignorant les blocs tool_use
-      var text = "Analyse indisponible.";
-      if (d.error) { text = "Erreur API : " + d.error.message; }
-      else if (d.content) {
-        var textBlocks = d.content.filter(function(b) { return b.type === "text"; });
-        if (textBlocks.length > 0) text = textBlocks[textBlocks.length-1].text;
-      }
-      setExpertAvis(function(prev) { var n = Object.assign({}, prev); n[pid] = text; return n; });
-      setExpertLoading(function(prev) { var n = Object.assign({}, prev); n[pid] = false; return n; });
-    })
-    .catch(function(err) {
-      console.error("Expert IA erreur:", err);
-      setExpertAvis(function(prev) { var n = Object.assign({}, prev); n[pid] = "Erreur : " + (err.message || err.toString()); return n; });
-      setExpertLoading(function(prev) { var n = Object.assign({}, prev); n[pid] = false; return n; });
-    });
   }
 
   function renderCard(pred) {
@@ -16661,51 +16599,6 @@ function Top25Tab() {
             }, "BTTS : " + ctx.h2h_btts_rate + "%") : null
           ) : null,
 
-          // ── Avis Expert IA ──
-          React.createElement("div", { style:{ marginTop:10 } },
-            expertAvis[pred.id] ? React.createElement("div", {
-              style: {
-                background:"linear-gradient(135deg,rgba(155,89,182,0.08),rgba(52,152,219,0.08))",
-                border:"1px solid rgba(155,89,182,0.25)",
-                borderRadius:10, padding:"10px 12px"
-              }
-            },
-              React.createElement("div", {
-                style:{ display:"flex", alignItems:"center", gap:6, marginBottom:8 }
-              },
-                React.createElement("span", { style:{ fontSize:16 } }, "🤖"),
-                React.createElement("span", {
-                  style:{ fontSize:11, fontWeight:700, color:"#9b59b6",
-                    textTransform:"uppercase", letterSpacing:"0.05em" }
-                }, "Avis Expert IA"),
-                React.createElement("span", {
-                  style:{ fontSize:9, color:"var(--c-ink-3)", marginLeft:"auto" }
-                }, "Basé sur vos données réelles")
-              ),
-              React.createElement("div", {
-                style:{ fontSize:12, color:"var(--c-ink)", lineHeight:1.7,
-                  whiteSpace:"pre-wrap" }
-              }, expertAvis[pred.id])
-            ) : React.createElement("button", {
-              onClick: function(e) {
-                e.stopPropagation();
-                var ctx2 = pred.predictions && pred.predictions[0] ? pred.predictions[0] : null;
-                getExpertAvis(pred, ctx2);
-              },
-              style: {
-                width:"100%", padding:"8px 12px", borderRadius:8,
-                border:"1px solid rgba(155,89,182,0.3)",
-                background:"rgba(155,89,182,0.06)",
-                color:"#9b59b6", fontSize:12, fontWeight:600,
-                cursor:"pointer", display:"flex", alignItems:"center",
-                justifyContent:"center", gap:6
-              }
-            },
-              expertLoading[pred.id]
-                ? React.createElement("span", null, "⏳ Analyse en cours...")
-                : React.createElement("span", null, "🤖 Demander l'avis Expert IA")
-            )
-          )
 
         ) : null,
 
