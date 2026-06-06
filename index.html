@@ -16068,6 +16068,12 @@ function Top25Tab() {
   var _useState5 = useState([]);
   var sharpAlerts = _useState5[0]; var setSharpAlerts = _useState5[1];
 
+  var _useState6 = useState({});
+  var expertAvis = _useState6[0]; var setExpertAvis = _useState6[1];
+
+  var _useState7 = useState({});
+  var expertLoading = _useState7[0]; var setExpertLoading = _useState7[1];
+
   // Charger les alertes sharps des dernières 24h
   useEffect(function() {
     var since = new Date(Date.now() - 24*60*60*1000).toISOString();
@@ -16126,8 +16132,7 @@ function Top25Tab() {
         SB_BASE2 + "predictions?id=in.(" + ids.join(",") + ")" +
         "&select=id,context_text,under25_score,btts_score,victory_score," +
         "home_off_index,home_def_index,away_off_index,away_def_index," +
-        "h2h_count,h2h_under25_rate,h2h_btts_rate,weather_desc,injuries_detail," +
-        "home_team_id,away_team_id,league_id",
+        "h2h_count,h2h_under25_rate,h2h_btts_rate,weather_desc,injuries_detail",
         { headers: SB_H2 }
       )
       .then(function(r2) { return r2.json(); })
@@ -16137,13 +16142,7 @@ function Top25Tab() {
           preds.forEach(function(p) { pm[p.id] = p; });
         }
         var enriched = rows.map(function(item) {
-          var pd = pm[item.prediction_id] || {};
-          return Object.assign({}, item, {
-            predictions: [pd],
-            home_team_id: item.home_team_id || pd.home_team_id || null,
-            away_team_id: item.away_team_id || pd.away_team_id || null,
-            league_id:    item.league_id    || pd.league_id    || null,
-          });
+          return Object.assign({}, item, { predictions: [pm[item.prediction_id] || {}] });
         });
         setTop25Data(enriched); setLoading(false);
       })
@@ -16275,6 +16274,60 @@ function Top25Tab() {
     return (now - created) < 2 * 60 * 60 * 1000;
   }
 
+  function getExpertAvis(pred, ctx) {
+    var pid = pred.id;
+    if (expertLoading[pid]) return;
+    setExpertLoading(function(prev) { var n = Object.assign({}, prev); n[pid] = true; return n; });
+
+    var matchDate = pred.match_date ? new Date(pred.match_date).toLocaleDateString("fr-FR", {day:"2-digit",month:"long",year:"numeric"}) : "";
+    var prompt = [
+      "Tu es un pronostiqueur football professionnel. Analyse ce match et donne ton avis EXPERT en 3-4 phrases maximum.",
+      "",
+      "MATCH : " + pred.home_team_name + " vs " + pred.away_team_name,
+      "Compétition : " + (pred.league_name || "") + " · " + matchDate,
+      (pred.wc_round ? "Phase : " + pred.wc_round : ""),
+      "",
+      "DONNÉES RÉELLES DU MOTEUR :",
+      "• Recommandation moteur : " + (pred.recommendation || "") + " · Confiance : " + (pred.rec_confidence || "") + "%",
+      "• xG total : " + (pred.xg_total || "N/A") + " (Dom: " + (pred.xg_home||"?") + " · Ext: " + (pred.xg_away||"?") + ")",
+      ctx ? "• Att. Dom. : " + (ctx.home_off_index||"?") + "/10 · Déf. Dom. : " + (ctx.home_def_index||"?") + "/10" : "",
+      ctx ? "• Att. Ext. : " + (ctx.away_off_index||"?") + "/10 · Déf. Ext. : " + (ctx.away_def_index||"?") + "/10" : "",
+      ctx ? "• H2H : " + (ctx.h2h_count||0) + " matchs · BTTS H2H : " + (ctx.h2h_btts_rate||"?") + "%" : "",
+      pred.home_fifa_rank ? "• FIFA : Dom. #" + pred.home_fifa_rank + " · Ext. #" + pred.away_fifa_rank : "",
+      pred.pinnacle_home ? "• Cotes Pinnacle : Dom. " + pred.pinnacle_home + " · Nul " + pred.pinnacle_draw + " · Ext. " + pred.pinnacle_away : "",
+      ctx ? "• Météo : " + (ctx.weather_desc||"Normale") : "",
+      ctx && ctx.injuries_detail && ctx.injuries_detail !== "[]" ? "• Blessés : " + ctx.injuries_detail : "",
+      "",
+      "INSTRUCTIONS - Etape 1: Recherche web sur ce match pour infos actuelles blessures et compositions. Etape 2: Combine avec les stats fournies. Etape 3: Donne avis pronostiqueur pro en 3-4 phrases. Etape 4: Termine par [VALIDE] ou [MITIGE] ou [DECONSEILLE]. Reponds en francais."
+    ].filter(Boolean).join("\n");
+
+    fetch("https://api.anthropic.com/v1/messages", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        model: "claude-sonnet-4-20250514",
+        max_tokens: 1000,
+        tools: [{ type: "web_search_20250305", name: "web_search" }],
+        messages: [{ role: "user", content: prompt }]
+      })
+    })
+    .then(function(r) { return r.json(); })
+    .then(function(d) {
+      // Extraire le texte en ignorant les blocs tool_use
+      var text = "Analyse indisponible.";
+      if (d.content) {
+        var textBlocks = d.content.filter(function(b) { return b.type === "text"; });
+        if (textBlocks.length > 0) text = textBlocks[textBlocks.length-1].text;
+      }
+      setExpertAvis(function(prev) { var n = Object.assign({}, prev); n[pid] = text; return n; });
+      setExpertLoading(function(prev) { var n = Object.assign({}, prev); n[pid] = false; return n; });
+    })
+    .catch(function() {
+      setExpertAvis(function(prev) { var n = Object.assign({}, prev); n[pid] = "Erreur — réessaie."; return n; });
+      setExpertLoading(function(prev) { var n = Object.assign({}, prev); n[pid] = false; return n; });
+    });
+  }
+
   function renderCard(pred) {
     var mc      = t25marketClass(pred.recommendation);
     var mc_col  = MC_COLORS[mc] || MC_COLORS.under;
@@ -16369,17 +16422,10 @@ function Top25Tab() {
         React.createElement("div", {
           style: { display:"flex", justifyContent:"space-between", marginBottom:8 }
         },
-          React.createElement("div", { style:{ display:"flex", alignItems:"center", gap:5 } },
-            pred.league_id ? React.createElement("img", {
-              src: getLeagueLogo(pred.league_id, pred.league_name || "", "https://media.api-sports.io/football/leagues/" + pred.league_id + ".png"),
-              style: { width:14, height:14, objectFit:"contain", flexShrink:0 },
-              onError: function(e) { e.target.style.display="none"; }
-            }) : null,
-            React.createElement("span", {
-              style: { fontSize:10, fontWeight:600, color:"var(--c-ink-3)",
-                textTransform:"uppercase", letterSpacing:"0.06em" }
-            }, pred.league_name || "—")
-          ),
+          React.createElement("span", {
+            style: { fontSize:10, fontWeight:600, color:"var(--c-ink-3)",
+              textTransform:"uppercase", letterSpacing:"0.06em" }
+          }, pred.league_name || "—"),
           React.createElement("div", {
             style: { display:"flex", flexDirection:"column", alignItems:"flex-end", gap:1 }
           },
@@ -16408,21 +16454,14 @@ function Top25Tab() {
           // Domicile
           React.createElement("div", { style:{ display:"flex", alignItems:"center", gap:8 } },
             React.createElement("div", {
-              style: { width:32, height:32, borderRadius:8, flexShrink:0,
+              style: {
+                width:32, height:32, borderRadius:8, flexShrink:0,
                 background:"var(--c-border)",
                 display:"flex", alignItems:"center", justifyContent:"center",
-                overflow:"hidden" }
-            },
-              pred.home_team_id
-                ? React.createElement("img", {
-                    src: "https://media.api-sports.io/football/teams/" + pred.home_team_id + ".png",
-                    style: { width:28, height:28, objectFit:"contain" },
-                    onError: function(e) { e.target.style.display="none"; e.target.parentNode.innerHTML="<span style=\"font-size:10px;font-weight:700;color:var(--c-ink-2);font-family:monospace\">" + t25initials(pred.home_team_name) + "</span>"; }
-                  })
-                : React.createElement("span", {
-                    style:{ fontSize:10, fontWeight:700, color:"var(--c-ink-2)", fontFamily:"monospace" }
-                  }, t25initials(pred.home_team_name))
-            ),
+                fontFamily:"'JetBrains Mono',monospace",
+                fontSize:10, fontWeight:700, color:"var(--c-ink-2)"
+              }
+            }, t25initials(pred.home_team_name)),
             React.createElement("span", {
               style: { fontSize:13, fontWeight:600, color:"var(--c-ink)", lineHeight:1.2 }
             }, pred.home_team_name || "—")
@@ -16447,21 +16486,14 @@ function Top25Tab() {
               style: { fontSize:13, fontWeight:600, color:"var(--c-ink)", lineHeight:1.2, textAlign:"right" }
             }, pred.away_team_name || "—"),
             React.createElement("div", {
-              style: { width:32, height:32, borderRadius:8, flexShrink:0,
+              style: {
+                width:32, height:32, borderRadius:8, flexShrink:0,
                 background:"var(--c-border)",
                 display:"flex", alignItems:"center", justifyContent:"center",
-                overflow:"hidden" }
-            },
-              pred.away_team_id
-                ? React.createElement("img", {
-                    src: "https://media.api-sports.io/football/teams/" + pred.away_team_id + ".png",
-                    style: { width:28, height:28, objectFit:"contain" },
-                    onError: function(e) { e.target.style.display="none"; e.target.parentNode.innerHTML="<span style=\"font-size:10px;font-weight:700;color:var(--c-ink-2);font-family:monospace\">" + t25initials(pred.away_team_name) + "</span>"; }
-                  })
-                : React.createElement("span", {
-                    style:{ fontSize:10, fontWeight:700, color:"var(--c-ink-2)", fontFamily:"monospace" }
-                  }, t25initials(pred.away_team_name))
-            )
+                fontFamily:"'JetBrains Mono',monospace",
+                fontSize:10, fontWeight:700, color:"var(--c-ink-2)"
+              }
+            }, t25initials(pred.away_team_name))
           )
         ),
 
@@ -16624,7 +16656,53 @@ function Top25Tab() {
               style:{ fontSize:11, padding:"3px 8px", borderRadius:4,
                 background:"rgba(46,204,113,0.08)", color:"#2ecc71" }
             }, "BTTS : " + ctx.h2h_btts_rate + "%") : null
-          ) : null
+          ) : null,
+
+          // ── Avis Expert IA ──
+          React.createElement("div", { style:{ marginTop:10 } },
+            expertAvis[pred.id] ? React.createElement("div", {
+              style: {
+                background:"linear-gradient(135deg,rgba(155,89,182,0.08),rgba(52,152,219,0.08))",
+                border:"1px solid rgba(155,89,182,0.25)",
+                borderRadius:10, padding:"10px 12px"
+              }
+            },
+              React.createElement("div", {
+                style:{ display:"flex", alignItems:"center", gap:6, marginBottom:8 }
+              },
+                React.createElement("span", { style:{ fontSize:16 } }, "🤖"),
+                React.createElement("span", {
+                  style:{ fontSize:11, fontWeight:700, color:"#9b59b6",
+                    textTransform:"uppercase", letterSpacing:"0.05em" }
+                }, "Avis Expert IA"),
+                React.createElement("span", {
+                  style:{ fontSize:9, color:"var(--c-ink-3)", marginLeft:"auto" }
+                }, "Basé sur vos données réelles")
+              ),
+              React.createElement("div", {
+                style:{ fontSize:12, color:"var(--c-ink)", lineHeight:1.7,
+                  whiteSpace:"pre-wrap" }
+              }, expertAvis[pred.id])
+            ) : React.createElement("button", {
+              onClick: function(e) {
+                e.stopPropagation();
+                var ctx2 = pred.predictions && pred.predictions[0] ? pred.predictions[0] : null;
+                getExpertAvis(pred, ctx2);
+              },
+              style: {
+                width:"100%", padding:"8px 12px", borderRadius:8,
+                border:"1px solid rgba(155,89,182,0.3)",
+                background:"rgba(155,89,182,0.06)",
+                color:"#9b59b6", fontSize:12, fontWeight:600,
+                cursor:"pointer", display:"flex", alignItems:"center",
+                justifyContent:"center", gap:6
+              }
+            },
+              expertLoading[pred.id]
+                ? React.createElement("span", null, "⏳ Analyse en cours...")
+                : React.createElement("span", null, "🤖 Demander l'avis Expert IA")
+            )
+          )
 
         ) : null,
 
