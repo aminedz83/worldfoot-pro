@@ -300,13 +300,14 @@ def main():
     now_utc  = datetime.utcnow()
     # Analyser les matchs des prochaines 24 heures
     in_24h   = (now_utc + timedelta(hours=24)).isoformat()
+    in_30min = (now_utc + timedelta(minutes=30)).isoformat()
     now_str  = now_utc.isoformat()
 
     # Récupérer les prédictions actives dans le Top 25 avec matchs à venir
     try:
         result = supabase.table("daily_top25")\
             .select("fixture_id, home_team_name, away_team_name, league_name, match_date, recommendation")\
-            .gte("match_date", now_str)\
+            .gte("match_date", in_30min)\
             .lte("match_date", in_24h)\
             .is_("prediction_correct", "null")\
             .execute()
@@ -320,7 +321,7 @@ def main():
         in_7d = (now_utc + timedelta(days=7)).isoformat()
         result2 = supabase.table("predictions")\
             .select("fixture_id, home_team_name, away_team_name, league_name, match_date, recommendation")\
-            .gte("match_date", now_str)\
+            .gte("match_date", in_30min)\
             .lte("match_date", in_7d)\
             .is_("prediction_correct", "null")\
             .gte("rec_confidence", 75)\
