@@ -44,7 +44,7 @@ supabase = create_client(SUPA_URL, SUPA_KEY)
 # ── Mots-clés exclusion ───────────────────────────────────────────────────────
 EXCLUDE_KW = [
     "u17","u18","u19","u20","u21","u23","youth","reserve",
-    "women","feminin","femenino","beach","futsal","indoor",
+    "women","feminin","femenino","ladies","féminin","mujer","dames"," w ","wsl","nwsl","frauen","beach","futsal","indoor",
     "friendly","amical","pre-season","preseason","test","exhibition",
     "friendlies clubs","friendlies",  # Pas de valeur prédictive
 ]
@@ -281,7 +281,8 @@ def discover_leagues():
 
         # Exclusion automatique
         nl = name.lower()
-        if any(kw in nl for kw in EXCLUDE_KW):
+        # Exclure par mots-clés ET ligues féminines (nom finissant par " w")
+        if any(kw in nl for kw in EXCLUDE_KW) or nl.endswith(" w") or " w " in nl:
             continue
 
         # Exclure CdM (traitée séparément) et Friendlies par league_id
