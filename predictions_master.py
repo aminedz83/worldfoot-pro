@@ -60,25 +60,44 @@ WORLD_COUNTRIES = {
     "World","Europe","Africa","Asia","South America","North America","Oceania",
 }
 
-# ── Classement FIFA fallback ──────────────────────────────────────────────────
-FIFA = {
-    # Top 10
-    "Argentina":1,"France":2,"England":3,"Spain":4,"Brazil":5,
-    "Portugal":6,"Belgium":7,"Netherlands":8,"Germany":9,"Italy":10,
-    "Croatia":11,"Colombia":12,"Morocco":13,"Uruguay":15,
-    "USA":16,"Mexico":17,"Senegal":18,"Japan":19,"Switzerland":19,
-    "Denmark":21,"Austria":22,"Turkey":25,"South Korea":23,
-    "Ecuador":30,"Algeria":35,"Australia":24,"Poland":26,
-    "Ukraine":28,"Sweden":27,"Hungary":29,"Czech Republic":32,
-    "Romania":34,"Serbia":31,"Norway":36,"Slovakia":38,
-    # CdM 2026 nations
-    "Qatar":37,"Canada":40,"South Africa":64,"Bosnia & Herzegovina":60,
-    "Paraguay":53,"New Zealand":98,"Tunisia":48,"Cape Verde Islands":70,
-    "Egypt":43,"Saudi Arabia":56,"Uruguay":15,"Iran":21,
-    "Jordan":85,"Ivory Coast":42,"Ghana":66,"Curaçao":85,
-    "Sweden":27,"Scotland":39,"Haiti":90,"Australia":24,
-    "Türkiye":25,"Turkey":25,"Senegal":18,
-}
+# ── Classement FIFA — chargé depuis l'API au démarrage ───────────────────────
+FIFA = {}  # Sera rempli par load_fifa_rankings()
+
+def load_fifa_rankings():
+    """
+    Charge les vrais classements FIFA depuis API-Football.
+    Endpoint : /teams/rankings?type=world
+    Fallback sur valeurs statiques si l'API échoue.
+    """
+    global FIFA
+    data = api("teams/ranking", {"type": "world"}) or []
+    if data and len(data) > 5:
+        for item in data:
+            name = item.get("team", {}).get("name", "")
+            rank = item.get("rank", 99)
+            if name:
+                FIFA[name] = rank
+        print(f"  [FIFA] {len(FIFA)} classements chargés depuis l'API")
+        return True
+    else:
+        # Fallback statique
+        print("  [FIFA] Fallback sur classements statiques")
+        FIFA = {
+            "Argentina":1,"France":2,"England":3,"Spain":4,"Brazil":5,
+            "Portugal":6,"Belgium":7,"Netherlands":8,"Germany":9,"Italy":10,
+            "Croatia":11,"Colombia":12,"Morocco":13,"Uruguay":15,
+            "USA":16,"Mexico":17,"Senegal":18,"Japan":19,"Switzerland":19,
+            "Denmark":21,"Austria":22,"Turkey":25,"South Korea":23,
+            "Ecuador":30,"Algeria":35,"Australia":24,"Poland":26,
+            "Ukraine":28,"Sweden":27,"Hungary":29,"Czech Republic":32,
+            "Romania":34,"Serbia":31,"Norway":36,"Slovakia":38,
+            "Qatar":37,"Canada":40,"South Africa":64,"Bosnia & Herzegovina":60,
+            "Paraguay":53,"New Zealand":98,"Tunisia":48,"Cape Verde Islands":70,
+            "Egypt":43,"Saudi Arabia":56,"Iran":21,"Jordan":85,
+            "Ivory Coast":42,"Ghana":66,"Curaçao":85,"Scotland":39,
+            "Haiti":90,"Türkiye":25,"Tunisia":48,
+        }
+        return False
 
 # ── Coordonnées par pays ──────────────────────────────────────────────────────
 COUNTRY_COORDS = {
@@ -416,10 +435,12 @@ def get_odds(fid, bet):
 
 def compute_index(team_id, name, league_id, season, is_nat):
     cnt   = 12 if is_nat else 10
-    # Pour les équipes nationales CdM : chercher TOUTES compétitions (qualifs incluses)
-    # car la CdM vient de commencer → 0 matchs dans league_id=1
+    # Pour les équipes nationales : matchs officiels prioritaires (pas amicaux)
     if is_nat:
-        lasts = (api("fixtures", {"team": team_id, "last": cnt, "status": "FT"}) or [])
+        all_lasts = api("fixtures", {"team": team_id, "last": cnt*2, "status": "FT"}) or []
+        # Filtrer amicaux (league_id=10) — bruitent la vraie forme
+        officiels = [f for f in all_lasts if f.get("league",{}).get("id") not in (10,667,666)]
+        lasts = officiels[:cnt] if len(officiels) >= 4 else all_lasts[:cnt]
     else:
         lasts = last_matches(team_id, cnt)
     stats = None if is_nat else team_stats(team_id, league_id, season)
@@ -973,6 +994,9 @@ def main():
     today = datetime.utcnow().date()
     end   = today + timedelta(days=DAYS_AHEAD)
     tp=ts=0
+
+    # Charger les vrais classements FIFA depuis l'API
+    load_fifa_rankings()
 
     # ══ PRIORITÉ ABSOLUE : World Cup 2026 traitée AVANT discover_leagues ══
     # La CdM a 0 matchs joués → rejetée par discover_leagues (filtre played>=3)
