@@ -218,7 +218,7 @@ def discover_leagues():
     try:
         c = supabase.table("active_leagues").select("*")\
             .gte("updated_at",
-                 (datetime.utcnow() - timedelta(hours=20)).isoformat())\
+                 (datetime.utcnow() - timedelta(hours=1)).isoformat())\
             .execute()
         if c.data:
             print(f"  [AUTO-DISCOVER] {len(c.data)} ligues depuis cache")
@@ -271,6 +271,10 @@ def discover_leagues():
         # Exclusion automatique
         nl = name.lower()
         if any(kw in nl for kw in EXCLUDE_KW):
+            continue
+
+        # Exclure CdM (traitée séparément) et Friendlies par league_id
+        if lid in (1, 10, 667, 666):
             continue
 
         # Saison courante
