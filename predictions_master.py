@@ -46,7 +46,7 @@ EXCLUDE_KW = [
     "u17","u18","u19","u20","u21","u23","youth","reserve",
     "women","feminin","femenino","beach","futsal","indoor",
     "friendly","amical","pre-season","preseason","test","exhibition",
-    "friendlies clubs",  # Trop de matchs sans valeur prédictive
+    "friendlies clubs","friendlies",  # Pas de valeur prédictive
 ]
 
 # ── Mots-clés → équipes nationales ────────────────────────────────────────────
@@ -301,6 +301,11 @@ def discover_leagues():
 
         is_nat = detect_national(name, country)
         tier   = detect_tier(name)
+
+        # Exclure tier 3 — trop de ligues, peu de valeur prédictive
+        if tier >= 3 and not is_nat:
+            continue
+
         prio   = league_priority_score(
             name, country, tier, is_nat, len(upcoming)
         )
@@ -325,8 +330,9 @@ def discover_leagues():
         except Exception:
             pass
 
-    # Trier par priorité décroissante
+    # Trier par priorité décroissante — limiter à 80 ligues max
     active.sort(key=lambda x: x["priority_score"], reverse=True)
+    active = active[:80]
 
     print(f"  [AUTO-DISCOVER] {len(active)} ligues retenues · triées par priorité")
     for lg in active[:10]:
