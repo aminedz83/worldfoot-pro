@@ -122,7 +122,8 @@ def find_best_market(stats_30j):
 def compute_xg_stats():
     """
     Analyse le taux de réussite par tranche de xG.
-    Permet de décider si un ajustement xG est nécessaire.
+    Sauvegarde dans xg_performance pour affichage dans l'app.
+    Alerte automatique si taux < 70% sur 5+ matchs.
     """
     try:
         r = supabase.table("predictions")            .select("prediction_correct, xg_total, recommendation, rec_confidence")            .not_.is_("prediction_correct", "null")            .not_.is_("xg_total", "null")            .gte("match_date", "2024-01-01T00:00:00")            .execute()
@@ -131,7 +132,6 @@ def compute_xg_stats():
         print(f"  [ERR] xG stats : {e}")
         return
 
-    # Tranches xG
     tranches = [
         {"label": "xG < 1.0",      "min": 0,   "max": 1.0},
         {"label": "xG 1.0 - 1.5",  "min": 1.0, "max": 1.5},
@@ -143,6 +143,9 @@ def compute_xg_stats():
     print("\n  📊 ANALYSE PAR TRANCHE xG (Victoire uniquement)")
     print(f"  {'Tranche':<18} {'Total':>6} {'Correct':>8} {'Taux':>8}")
     print(f"  {'-'*45}")
+
+    now = datetime.utcnow().isoformat()
+    alertes = []
 
     for t in tranches:
         subset = [
@@ -156,6 +159,30 @@ def compute_xg_stats():
         rate_str = f"{rate}%" if rate is not None else "N/A"
         flag = " ⚠️" if (rate is not None and rate < 70 and total >= 5) else ""
         print(f"  {t['label']:<18} {total:>6} {correct:>8} {rate_str:>8}{flag}")
+
+        # Sauvegarder dans xg_performance
+        try:
+            supabase.table("xg_performance").upsert({
+                "label":      t["label"],
+                "xg_min":     t["min"],
+                "xg_max":     t["max"],
+                "total":      total,
+                "correct":    correct,
+                "rate":       rate,
+                "updated_at": now,
+            }, on_conflict="label").execute()
+        except Exception as e:
+            print(f"  [DB] xg_performance : {e}")
+
+        # Alerte si taux < 70% sur 5+ matchs
+        if rate is not None and rate < 70 and total >= 5:
+            alertes.append(t["label"])
+
+    if alertes:
+        print(f"\n  ⚠️  ALERTE — Taux faible détecté sur : {', '.join(alertes)}")
+        print(f"  → Envisager un ajustement des seuils xG")
+    else:
+        print(f"\n  ✅ Tous les seuils xG stables")
 
     print()
 
