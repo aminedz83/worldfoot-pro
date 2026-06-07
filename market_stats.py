@@ -119,6 +119,47 @@ def find_best_market(stats_30j):
     return best_market
 
 
+def compute_xg_stats():
+    """
+    Analyse le taux de réussite par tranche de xG.
+    Permet de décider si un ajustement xG est nécessaire.
+    """
+    try:
+        r = supabase.table("predictions")            .select("prediction_correct, xg_total, recommendation, rec_confidence")            .not_.is_("prediction_correct", "null")            .not_.is_("xg_total", "null")            .gte("match_date", "2024-01-01T00:00:00")            .execute()
+        data = r.data or []
+    except Exception as e:
+        print(f"  [ERR] xG stats : {e}")
+        return
+
+    # Tranches xG
+    tranches = [
+        {"label": "xG < 1.0",      "min": 0,   "max": 1.0},
+        {"label": "xG 1.0 - 1.5",  "min": 1.0, "max": 1.5},
+        {"label": "xG 1.5 - 2.0",  "min": 1.5, "max": 2.0},
+        {"label": "xG 2.0 - 2.5",  "min": 2.0, "max": 2.5},
+        {"label": "xG > 2.5",      "min": 2.5, "max": 99},
+    ]
+
+    print("\n  📊 ANALYSE PAR TRANCHE xG (Victoire uniquement)")
+    print(f"  {'Tranche':<18} {'Total':>6} {'Correct':>8} {'Taux':>8}")
+    print(f"  {'-'*45}")
+
+    for t in tranches:
+        subset = [
+            p for p in data
+            if t["min"] <= (p["xg_total"] or 0) < t["max"]
+            and ("VICTOIRE" in (p["recommendation"] or "") or "DOUBLE" in (p["recommendation"] or ""))
+        ]
+        total   = len(subset)
+        correct = sum(1 for p in subset if p["prediction_correct"] is True)
+        rate    = round(correct / total * 100, 1) if total > 0 else None
+        rate_str = f"{rate}%" if rate is not None else "N/A"
+        flag = " ⚠️" if (rate is not None and rate < 70 and total >= 5) else ""
+        print(f"  {t['label']:<18} {total:>6} {correct:>8} {rate_str:>8}{flag}")
+
+    print()
+
+
 def save_stats(stats):
     """Sauvegarde les stats dans Supabase table market_performance."""
     now = datetime.utcnow().isoformat()
@@ -193,6 +234,10 @@ def main():
     print_report(stats)
     save_stats(stats)
     print("Stats sauvegardées dans Supabase · table market_performance")
+
+    # Analyse xG — pour décider d'ajustements futurs
+    print("\n=== Analyse xG ===")
+    compute_xg_stats()
 
 
 if __name__ == "__main__":
