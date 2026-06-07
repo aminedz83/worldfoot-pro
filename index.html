@@ -16127,7 +16127,8 @@ function Top25Tab() {
         SB_BASE2 + "predictions?id=in.(" + ids.join(",") + ")" +
         "&select=id,context_text,under25_score,btts_score,victory_score," +
         "home_off_index,home_def_index,away_off_index,away_def_index," +
-        "h2h_count,h2h_under25_rate,h2h_btts_rate,weather_desc,injuries_detail",
+        "h2h_count,h2h_under25_rate,h2h_btts_rate,weather_desc,injuries_detail," +
+        "home_team_id,away_team_id,league_id",
         { headers: SB_H2 }
       )
       .then(function(r2) { return r2.json(); })
@@ -16137,7 +16138,13 @@ function Top25Tab() {
           preds.forEach(function(p) { pm[p.id] = p; });
         }
         var enriched = rows.map(function(item) {
-          return Object.assign({}, item, { predictions: [pm[item.prediction_id] || {}] });
+          var pd = pm[item.prediction_id] || {};
+          return Object.assign({}, item, {
+            predictions: [pd],
+            home_team_id: item.home_team_id || pd.home_team_id || null,
+            away_team_id: item.away_team_id || pd.away_team_id || null,
+            league_id:    item.league_id    || pd.league_id    || null,
+          });
         });
         setTop25Data(enriched); setLoading(false);
       })
@@ -16363,10 +16370,17 @@ function Top25Tab() {
         React.createElement("div", {
           style: { display:"flex", justifyContent:"space-between", marginBottom:8 }
         },
-          React.createElement("span", {
-            style: { fontSize:10, fontWeight:600, color:"var(--c-ink-3)",
-              textTransform:"uppercase", letterSpacing:"0.06em" }
-          }, pred.league_name || "—"),
+          React.createElement("div", { style:{ display:"flex", alignItems:"center", gap:5 } },
+            pred.league_id ? React.createElement("img", {
+              src: getLeagueLogo(pred.league_id, pred.league_name || "", "https://media.api-sports.io/football/leagues/" + pred.league_id + ".png"),
+              style: { width:14, height:14, objectFit:"contain", flexShrink:0 },
+              onError: function(e) { e.target.style.display="none"; }
+            }) : null,
+            React.createElement("span", {
+              style: { fontSize:10, fontWeight:600, color:"var(--c-ink-3)",
+                textTransform:"uppercase", letterSpacing:"0.06em" }
+            }, pred.league_name || "—")
+          ),
           React.createElement("div", {
             style: { display:"flex", flexDirection:"column", alignItems:"flex-end", gap:1 }
           },
@@ -16395,14 +16409,21 @@ function Top25Tab() {
           // Domicile
           React.createElement("div", { style:{ display:"flex", alignItems:"center", gap:8 } },
             React.createElement("div", {
-              style: {
-                width:32, height:32, borderRadius:8, flexShrink:0,
+              style: { width:32, height:32, borderRadius:8, flexShrink:0,
                 background:"var(--c-border)",
                 display:"flex", alignItems:"center", justifyContent:"center",
-                fontFamily:"'JetBrains Mono',monospace",
-                fontSize:10, fontWeight:700, color:"var(--c-ink-2)"
-              }
-            }, t25initials(pred.home_team_name)),
+                overflow:"hidden" }
+            },
+              pred.home_team_id
+                ? React.createElement("img", {
+                    src: "https://media.api-sports.io/football/teams/" + pred.home_team_id + ".png",
+                    style: { width:28, height:28, objectFit:"contain" },
+                    onError: function(e) { e.target.style.display="none"; e.target.parentNode.innerHTML="<span style=\"font-size:10px;font-weight:700;color:var(--c-ink-2);font-family:monospace\">" + t25initials(pred.home_team_name) + "</span>"; }
+                  })
+                : React.createElement("span", {
+                    style:{ fontSize:10, fontWeight:700, color:"var(--c-ink-2)", fontFamily:"monospace" }
+                  }, t25initials(pred.home_team_name))
+            ),
             React.createElement("span", {
               style: { fontSize:13, fontWeight:600, color:"var(--c-ink)", lineHeight:1.2 }
             }, pred.home_team_name || "—")
@@ -16427,14 +16448,21 @@ function Top25Tab() {
               style: { fontSize:13, fontWeight:600, color:"var(--c-ink)", lineHeight:1.2, textAlign:"right" }
             }, pred.away_team_name || "—"),
             React.createElement("div", {
-              style: {
-                width:32, height:32, borderRadius:8, flexShrink:0,
+              style: { width:32, height:32, borderRadius:8, flexShrink:0,
                 background:"var(--c-border)",
                 display:"flex", alignItems:"center", justifyContent:"center",
-                fontFamily:"'JetBrains Mono',monospace",
-                fontSize:10, fontWeight:700, color:"var(--c-ink-2)"
-              }
-            }, t25initials(pred.away_team_name))
+                overflow:"hidden" }
+            },
+              pred.away_team_id
+                ? React.createElement("img", {
+                    src: "https://media.api-sports.io/football/teams/" + pred.away_team_id + ".png",
+                    style: { width:28, height:28, objectFit:"contain" },
+                    onError: function(e) { e.target.style.display="none"; e.target.parentNode.innerHTML="<span style=\"font-size:10px;font-weight:700;color:var(--c-ink-2);font-family:monospace\">" + t25initials(pred.away_team_name) + "</span>"; }
+                  })
+                : React.createElement("span", {
+                    style:{ fontSize:10, fontWeight:700, color:"var(--c-ink-2)", fontFamily:"monospace" }
+                  }, t25initials(pred.away_team_name))
+            )
           )
         ),
 
