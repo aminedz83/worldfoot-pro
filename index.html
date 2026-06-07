@@ -16068,6 +16068,12 @@ function Top25Tab() {
   var _useState5 = useState([]);
   var sharpAlerts = _useState5[0]; var setSharpAlerts = _useState5[1];
 
+  var _useState6 = useState([]);
+  var xgStats = _useState6[0]; var setXgStats = _useState6[1];
+
+  var _useState7 = useState(null);
+  var xgAlert = _useState7[0]; var setXgAlert = _useState7[1];
+
 
   // Charger les alertes sharps des dernières 24h
   useEffect(function() {
@@ -16080,6 +16086,37 @@ function Top25Tab() {
     .then(function(r) { return r.json(); })
     .then(function(d) {
       if (Array.isArray(d) && d.length > 0) setSharpAlerts(d);
+    })
+    .catch(function() {});
+  }, []);
+
+  // Charger les stats xG depuis market_performance
+  useEffect(function() {
+    fetch(
+      SB_BASE2 + "market_performance?period=eq.30j&market=eq.VICTOIRE&select=*",
+      { headers: SB_H2 }
+    )
+    .then(function(r) { return r.json(); })
+    .then(function(d) {
+      if (Array.isArray(d) && d.length > 0) {
+        // Charger aussi les stats xG depuis une table dédiée si elle existe
+        fetch(
+          SB_BASE2 + "xg_performance?order=xg_min.asc&select=*",
+          { headers: SB_H2 }
+        )
+        .then(function(r2) { return r2.json(); })
+        .then(function(d2) {
+          if (Array.isArray(d2) && d2.length > 0) {
+            setXgStats(d2);
+            // Alerte si un seuil < 70%
+            var alerte = d2.find(function(x) {
+              return x.total >= 5 && x.rate !== null && x.rate < 70;
+            });
+            if (alerte) setXgAlert(alerte);
+          }
+        })
+        .catch(function() {});
+      }
     })
     .catch(function() {});
   }, []);
@@ -16790,6 +16827,66 @@ function Top25Tab() {
             ) + " en priorité ce mois-ci · " + marketStats[0].rate + "% de réussite"
           ) : null
       ) : null,
+
+    // ── Bloc Analyse xG ──
+    xgStats.length > 0 ? React.createElement("div", {
+      style: {
+        margin: "10px 14px 0 14px",
+        background: "var(--c-base)",
+        borderRadius: 10,
+        border: "1px solid var(--c-border)",
+        padding: "10px 12px"
+      }
+    },
+      // Header
+      React.createElement("div", {
+        style: { display:"flex", alignItems:"center", justifyContent:"space-between", marginBottom:8 }
+      },
+        React.createElement("div", { style:{ display:"flex", alignItems:"center", gap:6 } },
+          React.createElement("span", { style:{ fontSize:13 } }, "📊"),
+          React.createElement("span", {
+            style:{ fontSize:11, fontWeight:700, color:"var(--c-ink)",
+              textTransform:"uppercase", letterSpacing:"0.05em" }
+          }, "Analyse par xG"),
+        ),
+        xgAlert ? React.createElement("span", {
+          style:{
+            fontSize:9, fontWeight:700, padding:"2px 7px", borderRadius:10,
+            background:"rgba(231,76,60,0.1)", color:"#e74c3c"
+          }
+        }, "⚠️ SEUIL BAS") : React.createElement("span", {
+          style:{
+            fontSize:9, fontWeight:700, padding:"2px 7px", borderRadius:10,
+            background:"rgba(46,204,113,0.1)", color:"var(--c-jade)"
+          }
+        }, "✓ Stable")
+      ),
+      // Tableau xG
+      React.createElement("div", { style:{ display:"grid", gridTemplateColumns:"1fr auto auto", gap:"4px 8px", fontSize:11 } },
+        // Headers
+        React.createElement("span", { style:{ color:"var(--c-ink-3)", fontWeight:600 } }, "Tranche xG"),
+        React.createElement("span", { style:{ color:"var(--c-ink-3)", fontWeight:600, textAlign:"right" } }, "Matchs"),
+        React.createElement("span", { style:{ color:"var(--c-ink-3)", fontWeight:600, textAlign:"right" } }, "Taux"),
+        // Lignes
+        xgStats.map(function(x, i) {
+          var rateColor = x.rate >= 80 ? "var(--c-jade)" : x.rate >= 70 ? "#f39c12" : "#e74c3c";
+          return [
+            React.createElement("span", { key:"l"+i, style:{ color:"var(--c-ink)", fontSize:10 } }, x.label),
+            React.createElement("span", { key:"t"+i, style:{ color:"var(--c-ink-3)", textAlign:"right" } }, x.total),
+            React.createElement("span", { key:"r"+i, style:{ color:rateColor, fontWeight:700, textAlign:"right" } },
+              x.rate !== null ? x.rate + "%" : "N/A"
+            )
+          ];
+        })
+      ),
+      // Message alerte
+      xgAlert ? React.createElement("div", {
+        style:{
+          marginTop:8, padding:"6px 10px", borderRadius:8,
+          background:"rgba(231,76,60,0.08)", fontSize:11, color:"#e74c3c"
+        }
+      }, "⚠️ Taux faible sur " + xgAlert.label + " (" + xgAlert.rate + "% sur " + xgAlert.total + " matchs) — ajustement possible") : null
+    ) : null,
 
     // Filtres sticky
     React.createElement("div", {
