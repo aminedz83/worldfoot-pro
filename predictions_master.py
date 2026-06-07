@@ -638,7 +638,7 @@ def odds_data(fid):
 # ══════════════════════════════════════════════════════════════════════════════
 
 def compute_scores(hi,ai,h2h_d,xgt,inj_d,sk,wth,ca,odd,
-                   stds,hid,aid,tier,is_nat):
+                   stds,hid,aid,tier,is_nat,wr=""):
 
     # Under 2.5 désactivé — score mis à 0
     us = 0.0
@@ -884,7 +884,7 @@ def process(fix, li):
     odd  = odds_data(fid)
 
     res  = compute_scores(hi,ai,h2h_d,xgt,inj_d,sk,wth,ca,odd,
-                          stds,home["id"],away["id"],tier,is_nat)
+                          stds,home["id"],away["id"],tier,is_nat,wr)
     if not res:
         print(f"      [SKIP] Signal insuffisant")
         return False
