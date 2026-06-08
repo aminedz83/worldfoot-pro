@@ -26,10 +26,25 @@ TOP_N          = 25
 MAX_PER_LEAGUE = 2    # Max 2 matchs par ligue dans le top 25
 MIN_CONF_TOP   = 70   # Seuil minimum pour entrer dans le top 25
 
-# ── Filtre ligues par tier — uniquement T1 et T2 de toutes les ligues API-Football ──
-# Tier 1 = D1 nationale, Tier 2 = D2 nationale
-# Les ligues nationales (CdM, Euro, etc.) toujours incluses
-MAX_TIER_ALLOWED = 2  # Inclure T1 et T2 uniquement
+# ── Pays dont les ligues sont disponibles sur Bet365/1xBet ──────────────────
+ALLOWED_COUNTRIES = {
+    # Europe
+    "England", "Germany", "Spain", "Italy", "France", "Netherlands",
+    "Portugal", "Belgium", "Turkey", "Scotland", "Greece", "Russia",
+    "Ukraine", "Poland", "Czech Republic", "Switzerland", "Austria",
+    "Denmark", "Sweden", "Norway", "Croatia", "Serbia", "Romania",
+    "Hungary", "Slovakia", "Israel", "Finland", "Bulgaria", "Slovenia",
+    # Amériques
+    "USA", "Mexico", "Brazil", "Argentina", "Colombia", "Chile",
+    "Uruguay", "Peru", "Ecuador", "Venezuela", "Canada",
+    # Asie
+    "Japan", "South Korea", "China", "Saudi Arabia", "UAE",
+    "Qatar", "Iran", "Australia", "India",
+    # Afrique
+    "Egypt", "Morocco", "South Africa", "Nigeria", "Tunisia",
+    # Compétitions internationales
+    "World", "Europe", "Africa", "Asia", "South America", "North America",
+}
 
 # Bonus par type de signal cotes
 ODDS_SIGNAL_BONUS = {
@@ -135,18 +150,19 @@ def compute_selection_score(pred):
     return round(score, 1)
 
 
-def is_allowed_league(league_name, is_national, tier):
+def is_allowed_league(league_name, is_national, tier, country=""):
     """
-    Filtre basé sur le tier de la ligue depuis API-Football.
-    T1 = D1 nationale (Premier League, La Liga, MLS, J1...)
-    T2 = D2 nationale (Championship, Ligue 2, Serie B...)
+    Filtre basé sur le pays — uniquement les pays couverts par Bet365/1xBet.
+    Tier 1 et 2 uniquement dans ces pays.
     Compétitions nationales (CdM, Euro...) toujours autorisées.
     """
-    # Compétitions nationales toujours autorisées (CdM, Euro, Copa America...)
+    # Compétitions nationales toujours autorisées
     if is_national:
         return True
-    # Tier 1 et 2 uniquement — disponibles sur tous les grands bookmakers
-    return (tier or 3) <= MAX_TIER_ALLOWED
+    # Pays dans la liste blanche + tier 1 ou 2
+    if country in ALLOWED_COUNTRIES and (tier or 3) <= 2:
+        return True
+    return False
 
 
 def select_top25(predictions):
@@ -164,10 +180,22 @@ def select_top25(predictions):
     if not predictions:
         return []
 
+    # Récupérer les pays depuis active_leagues
+    try:
+        al = supabase.table("active_leagues").select("league_id,country").execute()
+        country_map = {row["league_id"]: row.get("country","") for row in (al.data or [])}
+    except Exception:
+        country_map = {}
+
     # Filtrer uniquement les ligues disponibles sur Bet365/1xBet
     predictions = [
         p for p in predictions
-        if is_allowed_league(p.get("league_name", ""), p.get("is_national", False), p.get("league_tier", 3))
+        if is_allowed_league(
+            p.get("league_name", ""),
+            p.get("is_national", False),
+            p.get("league_tier", 3),
+            country_map.get(p.get("league_id"), "")
+        )
     ]
     print(f"{len(predictions)} prédictions après filtre ligues disponibles")
 
