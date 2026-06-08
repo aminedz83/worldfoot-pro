@@ -707,7 +707,7 @@ def compute_scores(hi,ai,h2h_d,xgt,inj_d,sk,wth,ca,odd,
             bv += stake_adj(hid, aid, {}, wr)
 
             sl = "DOMICILE" if ihs else "EXTÉRIEUR"
-            mv = 78 if sl == "EXTÉRIEUR" else 75  # Seuils stricts maintenus
+            mv = 78 if sl == "EXTÉRIEUR" else 75
             if   bv >= mv: vs = round(min(bv, 91), 1)
             elif bv >= 70:
                 sl = f"DOUBLE CHANCE {'1X' if ihs else 'X2'}"
@@ -857,7 +857,7 @@ def process(fix, li):
     print(f"    [{quota_pct_used():.0f}% quota] "
           f"{home['name']} vs {away['name']}")
 
-    mn = 4 if is_nat else 5
+    mn = 3 if is_nat else 5
     hi = compute_index(home["id"],home["name"],lid,season,is_nat)
     ai = compute_index(away["id"],away["name"],lid,season,is_nat)
 
