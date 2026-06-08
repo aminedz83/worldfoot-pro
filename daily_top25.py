@@ -24,7 +24,12 @@ supabase = create_client(SUPA_URL, SUPA_KEY)
 
 TOP_N          = 25
 MAX_PER_LEAGUE = 2    # Max 2 matchs par ligue dans le top 25
-MIN_CONF_TOP   = 70   # Seuil minimum pour entrer dans le top 25 (70% pour inclure CdM)
+MIN_CONF_TOP   = 70   # Seuil minimum pour entrer dans le top 25
+
+# ── Filtre ligues par tier — uniquement T1 et T2 de toutes les ligues API-Football ──
+# Tier 1 = D1 nationale, Tier 2 = D2 nationale
+# Les ligues nationales (CdM, Euro, etc.) toujours incluses
+MAX_TIER_ALLOWED = 2  # Inclure T1 et T2 uniquement
 
 # Bonus par type de signal cotes
 ODDS_SIGNAL_BONUS = {
@@ -130,6 +135,20 @@ def compute_selection_score(pred):
     return round(score, 1)
 
 
+def is_allowed_league(league_name, is_national, tier):
+    """
+    Filtre basé sur le tier de la ligue depuis API-Football.
+    T1 = D1 nationale (Premier League, La Liga, MLS, J1...)
+    T2 = D2 nationale (Championship, Ligue 2, Serie B...)
+    Compétitions nationales (CdM, Euro...) toujours autorisées.
+    """
+    # Compétitions nationales toujours autorisées (CdM, Euro, Copa America...)
+    if is_national:
+        return True
+    # Tier 1 et 2 uniquement — disponibles sur tous les grands bookmakers
+    return (tier or 3) <= MAX_TIER_ALLOWED
+
+
 def select_top25(predictions):
     """
     Algorithme de sélection des 25 meilleurs matchs.
@@ -143,6 +162,17 @@ def select_top25(predictions):
     """
 
     if not predictions:
+        return []
+
+    # Filtrer uniquement les ligues disponibles sur Bet365/1xBet
+    predictions = [
+        p for p in predictions
+        if is_allowed_league(p.get("league_name", ""), p.get("is_national", False), p.get("league_tier", 3))
+    ]
+    print(f"{len(predictions)} prédictions après filtre ligues disponibles")
+
+    if not predictions:
+        print("⚠️ Aucune prédiction dans les ligues autorisées")
         return []
 
     # Étape 1 : Calculer les scores
