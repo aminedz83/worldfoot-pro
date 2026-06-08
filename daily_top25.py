@@ -36,7 +36,7 @@ ALLOWED_COUNTRIES = {
     "Hungary", "Slovakia", "Israel", "Finland", "Bulgaria", "Slovenia",
     # Amériques
     "USA", "Mexico", "Brazil", "Argentina", "Colombia", "Chile",
-    "Uruguay", "Peru", "Ecuador", "Venezuela", "Canada",
+    "Uruguay", "Peru", "Ecuador", "Venezuela",
     # Asie
     "Japan", "South Korea", "China", "Saudi Arabia", "UAE",
     "Qatar", "Iran", "Australia", "India",
