@@ -281,9 +281,13 @@ def discover_leagues():
             {"league_id":62,  "name":"Ligue 2",           "country":"France",      "season":2025,"tier":2,"is_national":False,"priority_score":78},
             {"league_id":136, "name":"Serie B",           "country":"Italy",       "season":2025,"tier":2,"is_national":False,"priority_score":76},
             {"league_id":141, "name":"Segunda Division",  "country":"Spain",       "season":2025,"tier":2,"is_national":False,"priority_score":75},
-            {"league_id":71,  "name":"Serie A Brazil",    "country":"Brazil",      "season":2025,"tier":1,"is_national":False,"priority_score":83},
-            {"league_id":253, "name":"MLS",               "country":"USA",         "season":2025,"tier":1,"is_national":False,"priority_score":80},
-            {"league_id":128, "name":"Liga Profesional",  "country":"Argentina",   "season":2025,"tier":1,"is_national":False,"priority_score":82},
+            {"league_id":71,  "name":"Serie A Brazil",    "country":"Brazil",      "season":2026,"tier":1,"is_national":False,"priority_score":83},
+            {"league_id":253, "name":"MLS",               "country":"USA",         "season":2026,"tier":1,"is_national":False,"priority_score":80},
+            {"league_id":128, "name":"Liga Profesional",  "country":"Argentina",   "season":2026,"tier":1,"is_national":False,"priority_score":82},
+            {"league_id":292, "name":"Liga MX",           "country":"Mexico",      "season":2026,"tier":1,"is_national":False,"priority_score":78},
+            {"league_id":307, "name":"Saudi Pro League",  "country":"Saudi Arabia","season":2025,"tier":1,"is_national":False,"priority_score":54},
+            {"league_id":98,  "name":"J1 League",         "country":"Japan",       "season":2026,"tier":1,"is_national":False,"priority_score":53},
+            {"league_id":292, "name":"K League 1",        "country":"South Korea", "season":2026,"tier":1,"is_national":False,"priority_score":52},
             {"league_id":1,   "name":"World Cup 2026",    "country":"World",       "season":2026,"tier":1,"is_national":True, "priority_score":99},
         ]
 
@@ -425,43 +429,6 @@ def get_standings(league_id, season):
 
 def get_fixture_stats(fid):
     return api("fixtures/statistics", {"fixture": fid}) or []
-
-def get_fatigue(team_id, match_date):
-    """
-    Calcule la fatigue en comptant les matchs joués dans les 7 derniers jours.
-    Un match dans les 3 jours = fatigue élevée.
-    Un match dans les 7 jours = fatigue modérée.
-    """
-    try:
-        from datetime import datetime, timedelta
-        md = datetime.fromisoformat(match_date[:10])
-        d7 = (md - timedelta(days=7)).strftime("%Y-%m-%d")
-        d3 = (md - timedelta(days=3)).strftime("%Y-%m-%d")
-        today = md.strftime("%Y-%m-%d")
-
-        recent = api("fixtures", {
-            "team": team_id,
-            "from": d7,
-            "to": today,
-            "status": "FT"
-        }) or []
-
-        matches_7d = len(recent)
-        matches_3d = sum(1 for f in recent
-            if f.get("fixture", {}).get("date", "")[:10] >= d3)
-
-        # Score fatigue : 0=frais, négatif=fatigué
-        fatigue_adj = 0
-        if matches_3d >= 1: fatigue_adj -= 8   # Match dans les 3 jours → très fatigué
-        elif matches_7d >= 2: fatigue_adj -= 4  # 2 matchs en 7 jours → fatigué
-
-        return {
-            "matches_7d": matches_7d,
-            "matches_3d": matches_3d,
-            "fatigue_adj": fatigue_adj
-        }
-    except Exception:
-        return {"matches_7d": 0, "matches_3d": 0, "fatigue_adj": 0}
 
 
 def get_odds(fid, bet):
@@ -913,15 +880,6 @@ def process(fix, li):
     stds         = get_standings(lid,season) if not is_nat else {}
     sk           = stake_adj(home["id"],away["id"],stds,wr)
 
-    # ── Fatigue (matchs dans les 7 derniers jours) ──
-    fat_h = get_fatigue(home["id"], md)
-    fat_a = get_fatigue(away["id"], md)
-    fatigue_adj_total = fat_h["fatigue_adj"] - fat_a["fatigue_adj"]
-    if fat_h["matches_3d"] > 0:
-        print(f"      [FATIGUE] {home['name']} a joué il y a 3 jours")
-    if fat_a["matches_3d"] > 0:
-        print(f"      [FATIGUE] {away['name']} a joué il y a 3 jours")
-
     # Coordonnées GPS automatiques
     if vc and vc in CITY_COORDS: coords=CITY_COORDS[vc]
     else: coords=COUNTRY_COORDS.get(country,(48.856,2.352))
@@ -930,13 +888,8 @@ def process(fix, li):
     ca   = 0  # corner_adj lié à Under 2.5 — désactivé
     odd  = odds_data(fid)
 
-    # Ajustement fatigue sur les indices
-    hi_adj = dict(hi)
-    ai_adj = dict(ai)
-    if fat_h["fatigue_adj"] < 0:
-        hi_adj["off_index"] = round(max(hi["off_index"] + fat_h["fatigue_adj"]/10, 0), 1)
-    if fat_a["fatigue_adj"] < 0:
-        ai_adj["off_index"] = round(max(ai["off_index"] + fat_a["fatigue_adj"]/10, 0), 1)
+    hi_adj = hi
+    ai_adj = ai
 
     res  = compute_scores(hi_adj,ai_adj,h2h_d,xgt,inj_d,sk,wth,ca,odd,
                           stds,home["id"],away["id"],tier,is_nat,wr)
@@ -949,11 +902,6 @@ def process(fix, li):
         res["recommendation"],odd,wth,inj_d,is_nat
     )
 
-    # Enrichir le contexte avec fatigue et compositions
-    fatigue_info = []
-    if fat_h["matches_3d"] > 0: fatigue_info.append(f"{home['name']} fatigué ({fat_h['matches_3d']} match en 3j)")
-    if fat_a["matches_3d"] > 0: fatigue_info.append(f"{away['name']} fatigué ({fat_a['matches_3d']} match en 3j)")
-    if fatigue_info: ctx += " · Fatigue: " + ", ".join(fatigue_info)
 
 
     now = datetime.utcnow().isoformat()
