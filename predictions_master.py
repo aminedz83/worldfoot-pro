@@ -426,10 +426,6 @@ def get_standings(league_id, season):
 def get_fixture_stats(fid):
     return api("fixtures/statistics", {"fixture": fid}) or []
 
-def get_lineups(fid):
-    """Récupère les compositions officielles si disponibles (publiées ~1h avant KO)"""
-    return api("fixtures/lineups", {"fixture": fid}) or []
-
 def get_fatigue(team_id, match_date):
     """
     Calcule la fatigue en comptant les matchs joués dans les 7 derniers jours.
@@ -467,50 +463,6 @@ def get_fatigue(team_id, match_date):
     except Exception:
         return {"matches_7d": 0, "matches_3d": 0, "fatigue_adj": 0}
 
-def analyze_lineups(lineups, home_id, away_id):
-    """
-    Analyse les compositions officielles.
-    Détecte les absences de joueurs clés (titulaires habituels absents).
-    Retourne un ajustement de confiance.
-    """
-    if not lineups:
-        return {"home_adj": 0, "away_adj": 0, "home_missing": [], "away_missing": [], "available": False}
-
-    home_lineup = next((l for l in lineups if l.get("team", {}).get("id") == home_id), None)
-    away_lineup = next((l for l in lineups if l.get("team", {}).get("id") == away_id), None)
-
-    if not home_lineup or not away_lineup:
-        return {"home_adj": 0, "away_adj": 0, "home_missing": [], "away_missing": [], "available": False}
-
-    # Compter titulaires
-    home_starters = home_lineup.get("startXI", [])
-    away_starters = away_lineup.get("startXI", [])
-
-    home_count = len(home_starters)
-    away_count = len(away_starters)
-
-    # Si moins de 11 titulaires → composition incomplète/rotation
-    home_adj = -5 if home_count < 11 else 0
-    away_adj = -5 if away_count < 11 else 0
-
-    # Formation défensive détectée (5 défenseurs) → moins de buts probables
-    home_formation = home_lineup.get("formation", "")
-    away_formation = away_lineup.get("formation", "")
-
-    if home_formation.startswith("5") or home_formation.startswith("4-1"):
-        home_adj -= 3  # Formation très défensive
-    if away_formation.startswith("5") or away_formation.startswith("4-1"):
-        away_adj -= 3
-
-    return {
-        "home_adj": home_adj,
-        "away_adj": away_adj,
-        "home_formation": home_formation,
-        "away_formation": away_formation,
-        "home_starters": home_count,
-        "away_starters": away_count,
-        "available": True
-    }
 
 def get_odds(fid, bet):
     return api("odds", {"fixture": fid, "bet": bet}) or []
@@ -961,12 +913,6 @@ def process(fix, li):
     stds         = get_standings(lid,season) if not is_nat else {}
     sk           = stake_adj(home["id"],away["id"],stds,wr)
 
-    # ── Compositions officielles (si disponibles ~1h avant KO) ──
-    lineups_raw  = get_lineups(fid)
-    lineup_d     = analyze_lineups(lineups_raw, home["id"], away["id"])
-    if lineup_d["available"]:
-        print(f"      [LINEUPS] {home['name']} {lineup_d.get('home_formation','')} vs {away['name']} {lineup_d.get('away_formation','')}")
-
     # ── Fatigue (matchs dans les 7 derniers jours) ──
     fat_h = get_fatigue(home["id"], md)
     fat_a = get_fatigue(away["id"], md)
@@ -992,13 +938,6 @@ def process(fix, li):
     if fat_a["fatigue_adj"] < 0:
         ai_adj["off_index"] = round(max(ai["off_index"] + fat_a["fatigue_adj"]/10, 0), 1)
 
-    # Ajustement compositions sur les indices
-    if lineup_d["available"]:
-        if lineup_d["home_adj"] < 0:
-            hi_adj["off_index"] = round(max(hi_adj["off_index"] + lineup_d["home_adj"]/10, 0), 1)
-        if lineup_d["away_adj"] < 0:
-            ai_adj["off_index"] = round(max(ai_adj["off_index"] + lineup_d["away_adj"]/10, 0), 1)
-
     res  = compute_scores(hi_adj,ai_adj,h2h_d,xgt,inj_d,sk,wth,ca,odd,
                           stds,home["id"],away["id"],tier,is_nat,wr)
     if not res:
@@ -1015,8 +954,7 @@ def process(fix, li):
     if fat_h["matches_3d"] > 0: fatigue_info.append(f"{home['name']} fatigué ({fat_h['matches_3d']} match en 3j)")
     if fat_a["matches_3d"] > 0: fatigue_info.append(f"{away['name']} fatigué ({fat_a['matches_3d']} match en 3j)")
     if fatigue_info: ctx += " · Fatigue: " + ", ".join(fatigue_info)
-    if lineup_d["available"]:
-        ctx += f" · Compos: {home['name']} {lineup_d.get('home_formation','')} vs {away['name']} {lineup_d.get('away_formation','')}"
+
 
     now = datetime.utcnow().isoformat()
     row = {
