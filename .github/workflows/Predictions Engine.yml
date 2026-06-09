@@ -2,10 +2,9 @@ name: Predictions Engine
 
 on:
   schedule:
-    - cron: '0 4 * * *'      # 04h00 UTC — engine principal
-    - cron: '30 5 * * *'     # 05h30 UTC — Top 25
-    - cron: '0 3 * * *'      # 03h00 UTC — vérification résultats J-1
-    - cron: '0 10-23 * * *'  # 10h-23h — remplacement + surveillance cotes
+    - cron: '0 4 * * *'     # 04h00 UTC — Engine principal (quota plein)
+    - cron: '30 5 * * *'    # 05h30 UTC — Top 25
+    - cron: '0 8-23 * * *'  # Toutes les heures 8h-23h — replace/verify/odds
 
   workflow_dispatch:
     inputs:
@@ -27,9 +26,6 @@ jobs:
   predictions-engine:
     runs-on: ubuntu-latest
     timeout-minutes: 90
-    if: |
-      github.event_name == 'workflow_dispatch' ||
-      github.event.schedule == '0 4 * * *'
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-python@v5
@@ -42,10 +38,9 @@ jobs:
           PREDICTIONS_SUPA_URL: ${{ secrets.PREDICTIONS_SUPA_URL }}
           PREDICTIONS_SUPA_KEY: ${{ secrets.PREDICTIONS_SUPA_KEY }}
         run: |
-          MODE="${{ github.event.inputs.mode || 'engine' }}"
+          MODE="${{ github.event.inputs.mode || 'all' }}"
           echo "Mode: $MODE · $(date -u)"
           if [ "$MODE" = "engine" ] || [ "$MODE" = "all" ]; then
-            echo "Lancement predictions_master.py..."
             python predictions_master.py
           else
             echo "Skip engine (mode=$MODE)"
@@ -77,9 +72,6 @@ jobs:
   verify-results:
     runs-on: ubuntu-latest
     timeout-minutes: 20
-    if: |
-      github.event_name == 'workflow_dispatch' ||
-      github.event.schedule == '0 3 * * *'
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-python@v5
@@ -92,7 +84,7 @@ jobs:
           PREDICTIONS_SUPA_URL: ${{ secrets.PREDICTIONS_SUPA_URL }}
           PREDICTIONS_SUPA_KEY: ${{ secrets.PREDICTIONS_SUPA_KEY }}
         run: |
-          MODE="${{ github.event.inputs.mode || 'verify' }}"
+          MODE="${{ github.event.inputs.mode || 'all' }}"
           if [ "$MODE" = "verify" ] || [ "$MODE" = "all" ]; then
             python verify_results.py
           else
@@ -102,9 +94,6 @@ jobs:
   replace-finished:
     runs-on: ubuntu-latest
     timeout-minutes: 15
-    if: |
-      github.event_name == 'workflow_dispatch' ||
-      github.event.schedule == '0 10-23 * * *'
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-python@v5
@@ -117,44 +106,16 @@ jobs:
           PREDICTIONS_SUPA_URL: ${{ secrets.PREDICTIONS_SUPA_URL }}
           PREDICTIONS_SUPA_KEY: ${{ secrets.PREDICTIONS_SUPA_KEY }}
         run: |
-          MODE="${{ github.event.inputs.mode || 'replace' }}"
+          MODE="${{ github.event.inputs.mode || 'all' }}"
           if [ "$MODE" = "replace" ] || [ "$MODE" = "all" ]; then
             python replace_finished.py
           else
             echo "Skip replace (mode=$MODE)"
           fi
 
-  odds-monitor:
-    runs-on: ubuntu-latest
-    timeout-minutes: 15
-    if: |
-      github.event_name == 'workflow_dispatch' ||
-      github.event.schedule == '0 10-23 * * *'
-    steps:
-      - uses: actions/checkout@v4
-      - uses: actions/setup-python@v5
-        with:
-          python-version: '3.11'
-      - run: pip install requests supabase
-      - name: Run odds monitor
-        env:
-          API_FOOTBALL_KEY:     ${{ secrets.API_FOOTBALL_KEY }}
-          PREDICTIONS_SUPA_URL: ${{ secrets.PREDICTIONS_SUPA_URL }}
-          PREDICTIONS_SUPA_KEY: ${{ secrets.PREDICTIONS_SUPA_KEY }}
-        run: |
-          MODE="${{ github.event.inputs.mode || 'odds' }}"
-          if [ "$MODE" = "odds" ] || [ "$MODE" = "all" ]; then
-            python odds_monitor.py
-          else
-            echo "Skip odds monitor (mode=$MODE)"
-          fi
-
   market-stats:
     runs-on: ubuntu-latest
     timeout-minutes: 5
-    if: |
-      github.event_name == 'workflow_dispatch' ||
-      github.event.schedule == '0 4 * * *'
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-python@v5
