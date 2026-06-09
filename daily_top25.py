@@ -169,7 +169,7 @@ EXCLUDED_LEAGUE_KW = [
     "second league", "srpska liga", "4. liga", "ii liga - east", "ii liga - west",
     "divizie", "liga 3", "liga 4",
     # Amérique du Nord inférieure
-    "canadian premier", "usl league two", "usl super league",
+    "canadian premier", "usl league two", "usl super league", "canadian",
     "mls next pro", "liga de expansion",
     # Amérique du Sud inférieure
     "torneo federal", "torneo promocional", "primera b metro", "primera c",
