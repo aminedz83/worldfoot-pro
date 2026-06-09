@@ -152,16 +152,30 @@ def compute_selection_score(pred):
 
 # Mots-clés de ligues NON disponibles sur Bet365/1xBet
 EXCLUDED_LEAGUE_KW = [
+    # Australie régionale
     "tasmania", "queensland", "capital territory", "nnsw", "northern territory",
-    "baiano", "mineiro", "catarinense", "cearense", "matogrossense", "maranhense",
-    "carioca a2", "copa gaucha", "paulista serie",
-    "landesliga", "oberliga", "regionalliga",
-    "division 2 - norrland", "division 2 -", "ettan",
-    "second league", "srpska liga",
-    "canadian premier", "usl league two", "usl super league",
+    "south australia state", "western australia", "victoria state",
     "npl", "premier league nsw", "premier league victoria",
+    # Brésil régional/inférieur
+    "baiano", "mineiro", "catarinense", "cearense", "matogrossense", "maranhense",
+    "carioca a2", "carioca b", "carioca c", "copa gaucha", "paulista serie",
+    "serie d", "copa sul", "gaucho", "paranaense", "pernambucano",
+    # Allemagne régionale
+    "landesliga", "oberliga", "regionalliga",
+    # Scandinavie inférieure
+    "division 2 - norrland", "division 2 -", "ettan", "2. division",
+    "3. division", "4. division",
+    # Europe de l'Est inférieure
+    "second league", "srpska liga", "4. liga", "ii liga - east", "ii liga - west",
+    "divizie", "liga 3", "liga 4",
+    # Amérique du Nord inférieure
+    "canadian premier", "usl league two", "usl super league",
+    "mls next pro", "liga de expansion",
+    # Amérique du Sud inférieure
     "torneo federal", "torneo promocional", "primera b metro", "primera c",
-    "serie d", "copa sul",
+    "primera d", "ligi kuu", "tanzania",
+    # Afrique/Asie ligues mineures
+    "ligi kuu", "tanzania", "ethiopia", "kenya",
 ]
 
 def is_allowed_league(league_name, is_national, tier, country=""):
