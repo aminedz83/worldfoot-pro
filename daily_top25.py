@@ -150,19 +150,37 @@ def compute_selection_score(pred):
     return round(score, 1)
 
 
+# Mots-clés de ligues NON disponibles sur Bet365/1xBet
+EXCLUDED_LEAGUE_KW = [
+    "tasmania", "queensland", "capital territory", "nnsw", "northern territory",
+    "baiano", "mineiro", "catarinense", "cearense", "matogrossense", "maranhense",
+    "carioca a2", "copa gaucha", "paulista serie",
+    "landesliga", "oberliga", "regionalliga",
+    "division 2 - norrland", "division 2 -", "ettan",
+    "second league", "srpska liga",
+    "canadian premier", "usl league two", "usl super league",
+    "npl", "premier league nsw", "premier league victoria",
+    "torneo federal", "torneo promocional", "primera b metro", "primera c",
+    "serie d", "copa sul",
+]
+
 def is_allowed_league(league_name, is_national, tier, country=""):
     """
-    Filtre basé sur le pays — uniquement les pays couverts par Bet365/1xBet.
-    Tier 1 et 2 uniquement dans ces pays.
-    Compétitions nationales (CdM, Euro...) toujours autorisées.
+    Filtre basé sur liste noire — exclut les ligues non disponibles sur Bet365/1xBet.
+    Fonctionne même sans active_leagues.
     """
-    # Compétitions nationales toujours autorisées
+    # Compétitions nationales toujours autorisées (CdM, Euro, Copa America...)
     if is_national:
         return True
-    # Pays dans la liste blanche + tier 1 ou 2
-    if country in ALLOWED_COUNTRIES and (tier or 3) <= 2:
-        return True
-    return False
+    # Vérifier liste noire par nom
+    ln = (league_name or "").lower()
+    for kw in EXCLUDED_LEAGUE_KW:
+        if kw in ln:
+            return False
+    # Tier 1 et 2 uniquement
+    if (tier or 3) >= 3:
+        return False
+    return True
 
 
 def select_top25(predictions):
