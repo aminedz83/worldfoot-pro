@@ -16155,47 +16155,69 @@ function Top25Tab() {
     .catch(function() {});
   }, []);
 
-  // Charger ticket quand viewMode === "ticket"
+  // Charger ticket depuis daily_top25 — les vrais meilleurs matchs sélectionnés par le moteur
   useEffect(function() {
     if (viewMode !== "ticket") return;
     setTicketLoading(true);
-    var now = new Date();
-    var in7days = new Date(Date.now() + 20*86400000).toISOString();
-    var yesterday = new Date(Date.now() - 86400000).toISOString();
+    var yesterday = new Date(Date.now() - 86400000).toISOString().split("T")[0];
+
     fetch(
-      SB_BASE2 + "predictions?" +
-      "match_date=gte." + yesterday +
-      "&match_date=lte." + in7days +
-      "&rec_confidence=gte.80" +
-      "&recommendation=ilike.*VICTOIRE*" +
-      // prediction_correct=is.null retiré — on veut aussi les matchs terminés
-      "&league_name=not.ilike.*Tasmania*" +
-      "&league_name=not.ilike.*Second League*" +
-      "&league_name=not.ilike.*Landesliga*" +
-      "&league_name=not.ilike.*Baiano*" +
-      "&league_name=not.ilike.*Mineiro*" +
-      "&league_name=not.ilike.*Catarinense*" +
-      "&league_name=not.ilike.*Oberliga*" +
-      "&league_name=not.ilike.*USL League Two*" +
-      "&league_name=not.ilike.*MLS Next Pro*" +
-      "&league_name=not.ilike.*Queensland*" +
-      "&league_name=not.ilike.*Northern Championship*" +
-      "&order=rec_confidence.desc&select=*&limit=15",
+      SB_BASE2 + "daily_top25?" +
+      "selection_date=gte." + yesterday +
+      "&order=rank.asc&select=*",
       { headers: SB_H2 }
     )
     .then(function(r) { return r.json(); })
-    .then(function(d) {
-      if (Array.isArray(d)) {
-        // Filtrer uniquement VICTOIRE (pas DOUBLE CHANCE) et is_national ou tier<=2
-        var filtered = d.filter(function(p) {
-          var rec = (p.recommendation||"").toUpperCase();
-          return rec.indexOf("VICTOIRE") >= 0;
-        }).slice(0, 15);
-        setTicketData(filtered);
+    .then(function(rows) {
+      if (!Array.isArray(rows) || rows.length === 0) {
+        setTicketData([]); setTicketLoading(false); return;
       }
-      setTicketLoading(false);
+      var ids = rows.map(function(r) { return r.prediction_id; }).filter(Boolean);
+      if (ids.length === 0) {
+        var filtered = rows.filter(function(p) {
+          var rec = (p.recommendation || "").toUpperCase();
+          return (rec.indexOf("VICTOIRE") >= 0) && (p.rec_confidence >= 80);
+        }).slice(0, 10);
+        setTicketData(filtered); setTicketLoading(false); return;
+      }
+      fetch(
+        SB_BASE2 + "predictions?id=in.(" + ids.join(",") + ")" +
+        "&select=id,prediction_correct,home_team_id,away_team_id",
+        { headers: SB_H2 }
+      )
+      .then(function(r2) { return r2.json(); })
+      .then(function(preds) {
+        var pm = {};
+        if (Array.isArray(preds)) {
+          preds.forEach(function(p) { pm[p.id] = p; });
+        }
+        var enriched = rows.map(function(item) {
+          var pd = pm[item.prediction_id] || {};
+          var pc = (pd.prediction_correct !== undefined && pd.prediction_correct !== null)
+                    ? pd.prediction_correct
+                    : (item.prediction_correct !== undefined ? item.prediction_correct : null);
+          return Object.assign({}, item, {
+            prediction_correct: pc,
+            home_team_id: item.home_team_id || pd.home_team_id || null,
+            away_team_id: item.away_team_id || pd.away_team_id || null,
+          });
+        });
+        var filtered = enriched.filter(function(p) {
+          var rec = (p.recommendation || "").toUpperCase();
+          return (rec.indexOf("VICTOIRE") >= 0) && (p.rec_confidence >= 80);
+        }).slice(0, 10);
+        setTicketData(filtered);
+        setTicketLoading(false);
+      })
+      .catch(function() {
+        var filtered = rows.filter(function(p) {
+          var rec = (p.recommendation || "").toUpperCase();
+          return (rec.indexOf("VICTOIRE") >= 0) && (p.rec_confidence >= 80);
+        }).slice(0, 10);
+        setTicketData(filtered); setTicketLoading(false);
+      });
     })
-    .catch(function() { setTicketLoading(false); });
+    .catch(function() { setTicketData([]); setTicketLoading(false); });
   }, [viewMode]);
 
   // Charger historique quand viewMode === "history"
@@ -16360,8 +16382,8 @@ function Top25Tab() {
 
   var nowUtc = new Date();
   var filtered = dedupedData.filter(function(p) {
-    // Garder matchs terminés pour GAGNÉ/PERDU
-    // Garder matchs terminés pour afficher GAGNÉ/PERDU
+    // Matchs terminés gardés pour afficher GAGNÉ/PERDU
+    // Matchs vérifiés gardés — badges GAGNÉ/PERDU visibles
     // Filtre marché
     if (filter === "TOUS") return true;
     if (!p.recommendation) return false;
@@ -17144,7 +17166,6 @@ function Top25Tab() {
           var md = new Date(pred.match_date);
           var dateStr = md.toLocaleDateString("fr-FR",{day:"2-digit",month:"short"});
           var timeStr = md.toLocaleTimeString("fr-FR",{hour:"2-digit",minute:"2-digit"});
-          // Cote selon la recommandation
           var recUp = (pred.recommendation || "").toUpperCase();
           var cote = null;
           if (recUp.indexOf("EXTÉRIEUR") >= 0 || recUp.indexOf("EXTERIEUR") >= 0) {
