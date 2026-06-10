@@ -17074,6 +17074,176 @@ function Top25Tab() {
   );
 }
 
+
+// ══════════════════════════════════════════════════════════════════════════════
+// HISTORY TAB — Historique des résultats vérifiés
+// ══════════════════════════════════════════════════════════════════════════════
+function HistoryTab() {
+  var _useState1 = useState([]); var results = _useState1[0]; var setResults = _useState1[1];
+  var _useState2 = useState(true); var loading = _useState2[0]; var setLoading = _useState2[1];
+  var _useState3 = useState("ALL"); var filter = _useState3[0]; var setFilter = _useState3[1];
+  var _useState4 = useState(30); var days = _useState4[0]; var setDays = _useState4[1];
+
+  useEffect(function() {
+    setLoading(true);
+    var since = new Date(Date.now() - days * 86400000).toISOString();
+    fetch(
+      SB_BASE2 + "predictions?prediction_correct=not.is.null" +
+      "&match_date=gte." + since +
+      "&order=match_date.desc&select=id,home_team_name,away_team_name,league_name," +
+      "match_date,recommendation,rec_confidence,prediction_correct,xg_total," +
+      "home_team_id,away_team_id,league_id&limit=100",
+      { headers: SB_H2 }
+    )
+    .then(function(r) { return r.json(); })
+    .then(function(d) {
+      if (Array.isArray(d)) setResults(d);
+      setLoading(false);
+    })
+    .catch(function() { setLoading(false); });
+  }, [days]);
+
+  var filtered = results.filter(function(r) {
+    if (filter === "WON") return r.prediction_correct === true;
+    if (filter === "LOST") return r.prediction_correct === false;
+    return true;
+  });
+
+  var total = results.length;
+  var won = results.filter(function(r) { return r.prediction_correct === true; }).length;
+  var lost = results.filter(function(r) { return r.prediction_correct === false; }).length;
+  var rate = total > 0 ? Math.round(won / total * 100) : 0;
+
+  return React.createElement("div", { style: { padding: "12px 14px", maxWidth: 600, margin: "0 auto" } },
+
+    // ── Header stats ──
+    React.createElement("div", {
+      style: { display: "grid", gridTemplateColumns: "1fr 1fr 1fr 1fr", gap: 8, marginBottom: 14 }
+    },
+      [
+        { label: "Total", value: total, color: "var(--c-ink)" },
+        { label: "Gagnés", value: won, color: "#27ae60" },
+        { label: "Perdus", value: lost, color: "#e74c3c" },
+        { label: "Taux", value: rate + "%", color: rate >= 80 ? "#27ae60" : rate >= 70 ? "#f39c12" : "#e74c3c" },
+      ].map(function(s, i) {
+        return React.createElement("div", {
+          key: i,
+          style: {
+            background: "var(--c-base)", borderRadius: 10,
+            border: "1px solid var(--c-border)",
+            padding: "10px 8px", textAlign: "center"
+          }
+        },
+          React.createElement("div", { style: { fontSize: 18, fontWeight: 800, color: s.color } }, s.value),
+          React.createElement("div", { style: { fontSize: 10, color: "var(--c-ink-3)", marginTop: 2 } }, s.label)
+        );
+      })
+    ),
+
+    // ── Filtres période ──
+    React.createElement("div", { style: { display: "flex", gap: 6, marginBottom: 10 } },
+      [7, 14, 30, 60].map(function(d) {
+        return React.createElement("button", {
+          key: d,
+          onClick: function() { setDays(d); },
+          style: {
+            padding: "5px 12px", borderRadius: 20, fontSize: 11, fontWeight: 700,
+            border: days === d ? "1px solid var(--c-jade)" : "1px solid var(--c-border)",
+            background: days === d ? "rgba(5,150,105,0.08)" : "var(--c-base)",
+            color: days === d ? "var(--c-jade)" : "var(--c-ink-3)",
+            cursor: "pointer"
+          }
+        }, d + "j");
+      })
+    ),
+
+    // ── Filtres résultat ──
+    React.createElement("div", { style: { display: "flex", gap: 6, marginBottom: 14 } },
+      [
+        { id: "ALL", label: "Tous" },
+        { id: "WON", label: "✅ Gagnés" },
+        { id: "LOST", label: "❌ Perdus" },
+      ].map(function(f) {
+        return React.createElement("button", {
+          key: f.id,
+          onClick: function() { setFilter(f.id); },
+          style: {
+            padding: "5px 12px", borderRadius: 20, fontSize: 11, fontWeight: 700,
+            border: filter === f.id ? "1px solid var(--c-jade)" : "1px solid var(--c-border)",
+            background: filter === f.id ? "rgba(5,150,105,0.08)" : "var(--c-base)",
+            color: filter === f.id ? "var(--c-jade)" : "var(--c-ink-3)",
+            cursor: "pointer"
+          }
+        }, f.label);
+      })
+    ),
+
+    // ── Liste matchs ──
+    loading ? React.createElement("div", {
+      style: { textAlign: "center", padding: 40, color: "var(--c-ink-3)", fontSize: 13 }
+    }, "Chargement...") :
+
+    filtered.length === 0 ? React.createElement("div", {
+      style: { textAlign: "center", padding: 40, color: "var(--c-ink-3)", fontSize: 13 }
+    }, "Aucun résultat") :
+
+    React.createElement("div", null,
+      filtered.map(function(r) {
+        var won2 = r.prediction_correct === true;
+        var md = new Date(r.match_date);
+        var dateStr = md.toLocaleDateString("fr-FR", { day: "2-digit", month: "short" });
+        var timeStr = md.toLocaleTimeString("fr-FR", { hour: "2-digit", minute: "2-digit" });
+
+        return React.createElement("div", {
+          key: r.id,
+          style: {
+            background: "var(--c-base)", borderRadius: 12,
+            border: "1px solid var(--c-border)",
+            borderLeft: "3px solid " + (won2 ? "#27ae60" : "#e74c3c"),
+            marginBottom: 8, padding: "10px 12px",
+            display: "flex", alignItems: "center", gap: 10
+          }
+        },
+          // Badge résultat
+          React.createElement("div", {
+            style: {
+              width: 32, height: 32, borderRadius: 8, flexShrink: 0,
+              background: won2 ? "rgba(46,204,113,0.12)" : "rgba(231,76,60,0.08)",
+              display: "flex", alignItems: "center", justifyContent: "center",
+              fontSize: 16
+            }
+          }, won2 ? "✅" : "❌"),
+
+          // Infos match
+          React.createElement("div", { style: { flex: 1, minWidth: 0 } },
+            React.createElement("div", {
+              style: { fontSize: 12, fontWeight: 700, color: "var(--c-ink)", whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }
+            }, r.home_team_name + " vs " + r.away_team_name),
+            React.createElement("div", {
+              style: { fontSize: 10, color: "var(--c-ink-3)", marginTop: 2 }
+            }, r.league_name + " · " + dateStr)
+          ),
+
+          // Prédiction + confiance
+          React.createElement("div", { style: { textAlign: "right", flexShrink: 0 } },
+            React.createElement("div", {
+              style: {
+                fontSize: 10, fontWeight: 700,
+                color: won2 ? "#27ae60" : "#e74c3c",
+                padding: "2px 7px", borderRadius: 4,
+                background: won2 ? "rgba(46,204,113,0.08)" : "rgba(231,76,60,0.06)"
+              }
+            }, won2 ? "GAGNÉ" : "PERDU"),
+            React.createElement("div", {
+              style: { fontSize: 10, color: "var(--c-ink-3)", marginTop: 3 }
+            }, (r.rec_confidence || "?") + "%")
+          )
+        );
+      })
+    )
+  );
+}
+
 function App() {
 
   const [currentTab, setCurrentTab] = useState(() => {
@@ -17178,7 +17348,8 @@ function App() {
     { id: "transfers", label: "TRANSFERTS" },
     { id: "actu", label: "ACTUALITÉS" },
     { id: "jsk", label: "JSK" },
-    { id: "top25", label: "🏆 TOP 25" }
+    { id: "top25", label: "🏆 TOP 25" },
+    { id: "history", label: "📊 HISTORIQUE" }
   ];
 
   const renderContent = () => {
@@ -17191,6 +17362,7 @@ function App() {
       case "actu": return React.createElement(ActuTab, { key:"actu" });
       case "jsk": return React.createElement(JSKTab, { key:"jsk" });
       case "top25": return React.createElement(Top25Tab, { key:"top25" });
+      case "history": return React.createElement(HistoryTab, { key:"history" });
       default: return React.createElement(ScoresTab, { key:"scores", favs, onFav: toggleFav });
     }
   };
