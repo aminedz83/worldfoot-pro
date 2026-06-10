@@ -16075,6 +16075,21 @@ function Top25Tab() {
   var _useState3 = useState("TOUS");
   var filter = _useState3[0]; var setFilter = _useState3[1];
 
+  var _useStateVM = useState("today");
+  var viewMode = _useStateVM[0]; var setViewMode = _useStateVM[1];
+
+  var _useStateHist = useState([]);
+  var histResults = _useStateHist[0]; var setHistResults = _useStateHist[1];
+
+  var _useStateHistLoad = useState(false);
+  var histLoading = _useStateHistLoad[0]; var setHistLoading = _useStateHistLoad[1];
+
+  var _useStateHistDays = useState(30);
+  var histDays = _useStateHistDays[0]; var setHistDays = _useStateHistDays[1];
+
+  var _useStateHistFilter = useState("ALL");
+  var histFilter = _useStateHistFilter[0]; var setHistFilter = _useStateHistFilter[1];
+
   var _useState4 = useState({});
   var expanded = _useState4[0]; var setExpanded = _useState4[1];
 
@@ -16133,6 +16148,26 @@ function Top25Tab() {
     })
     .catch(function() {});
   }, []);
+
+  // Charger historique quand viewMode === "history"
+  useEffect(function() {
+    if (viewMode !== "history") return;
+    setHistLoading(true);
+    var since = new Date(Date.now() - histDays * 86400000).toISOString();
+    fetch(
+      SB_BASE2 + "predictions?prediction_correct=not.is.null" +
+      "&match_date=gte." + since +
+      "&order=match_date.desc&select=id,home_team_name,away_team_name,league_name," +
+      "match_date,recommendation,rec_confidence,prediction_correct,xg_total&limit=100",
+      { headers: SB_H2 }
+    )
+    .then(function(r) { return r.json(); })
+    .then(function(d) {
+      if (Array.isArray(d)) setHistResults(d);
+      setHistLoading(false);
+    })
+    .catch(function() { setHistLoading(false); });
+  }, [viewMode, histDays]);
 
   // Auto-refresh toutes les 30 minutes
   useEffect(function() {
@@ -16741,6 +16776,158 @@ function Top25Tab() {
     style: { height:"100%", overflowY:"auto", background:"var(--c-base)", WebkitOverflowScrolling:"touch" }
   },
 
+    // ── Toggle Aujourd'hui / Historique ──
+    React.createElement("div", {
+      style: {
+        display:"flex", gap:6, padding:"10px 14px 0 14px",
+        background:"var(--c-base)", borderBottom:"1px solid var(--c-border)"
+      }
+    },
+      React.createElement("button", {
+        onClick: function() { setViewMode("today"); },
+        style: {
+          flex:1, padding:"8px 0", borderRadius:8, fontSize:12, fontWeight:700,
+          border: viewMode==="today" ? "1.5px solid var(--c-jade)" : "1px solid var(--c-border)",
+          background: viewMode==="today" ? "rgba(5,150,105,0.08)" : "var(--c-base)",
+          color: viewMode==="today" ? "var(--c-jade)" : "var(--c-ink-3)",
+          cursor:"pointer"
+        }
+      }, "🏆 Sélection du jour"),
+      React.createElement("button", {
+        onClick: function() { setViewMode("history"); },
+        style: {
+          flex:1, padding:"8px 0", borderRadius:8, fontSize:12, fontWeight:700,
+          border: viewMode==="history" ? "1.5px solid #9b59b6" : "1px solid var(--c-border)",
+          background: viewMode==="history" ? "rgba(155,89,182,0.08)" : "var(--c-base)",
+          color: viewMode==="history" ? "#9b59b6" : "var(--c-ink-3)",
+          cursor:"pointer"
+        }
+      }, "📊 Historique")
+    ),
+
+    // ── Vue Historique ──
+    viewMode === "history" ? React.createElement("div", { style: { padding:"12px 14px" } },
+
+      // Stats header
+      React.createElement("div", {
+        style: { display:"grid", gridTemplateColumns:"1fr 1fr 1fr 1fr", gap:8, marginBottom:12 }
+      },
+        (function() {
+          var total = histResults.length;
+          var won = histResults.filter(function(r) { return r.prediction_correct === true; }).length;
+          var lost = histResults.filter(function(r) { return r.prediction_correct === false; }).length;
+          var rate = total > 0 ? Math.round(won/total*100) : 0;
+          return [
+            { label:"Total", value:total, color:"var(--c-ink)" },
+            { label:"Gagnés", value:won, color:"#27ae60" },
+            { label:"Perdus", value:lost, color:"#e74c3c" },
+            { label:"Taux", value:rate+"%", color:rate>=80?"#27ae60":rate>=70?"#f39c12":"#e74c3c" },
+          ].map(function(s,i) {
+            return React.createElement("div", {
+              key:i,
+              style:{
+                background:"var(--c-base)", borderRadius:10,
+                border:"1px solid var(--c-border)",
+                padding:"10px 8px", textAlign:"center"
+              }
+            },
+              React.createElement("div", { style:{fontSize:18,fontWeight:800,color:s.color} }, s.value),
+              React.createElement("div", { style:{fontSize:10,color:"var(--c-ink-3)",marginTop:2} }, s.label)
+            );
+          });
+        })()
+      ),
+
+      // Filtres période
+      React.createElement("div", { style:{display:"flex",gap:6,marginBottom:8} },
+        [7,14,30,60].map(function(d) {
+          return React.createElement("button", {
+            key:d, onClick:function(){setHistDays(d);},
+            style:{
+              padding:"5px 12px", borderRadius:20, fontSize:11, fontWeight:700,
+              border:histDays===d?"1px solid var(--c-jade)":"1px solid var(--c-border)",
+              background:histDays===d?"rgba(5,150,105,0.08)":"var(--c-base)",
+              color:histDays===d?"var(--c-jade)":"var(--c-ink-3)", cursor:"pointer"
+            }
+          }, d+"j");
+        })
+      ),
+
+      // Filtres résultat
+      React.createElement("div", { style:{display:"flex",gap:6,marginBottom:12} },
+        [{id:"ALL",label:"Tous"},{id:"WON",label:"✅ Gagnés"},{id:"LOST",label:"❌ Perdus"}].map(function(f) {
+          return React.createElement("button", {
+            key:f.id, onClick:function(){setHistFilter(f.id);},
+            style:{
+              padding:"5px 12px", borderRadius:20, fontSize:11, fontWeight:700,
+              border:histFilter===f.id?"1px solid var(--c-jade)":"1px solid var(--c-border)",
+              background:histFilter===f.id?"rgba(5,150,105,0.08)":"var(--c-base)",
+              color:histFilter===f.id?"var(--c-jade)":"var(--c-ink-3)", cursor:"pointer"
+            }
+          }, f.label);
+        })
+      ),
+
+      // Liste résultats
+      histLoading ? React.createElement("div", {
+        style:{textAlign:"center",padding:40,color:"var(--c-ink-3)",fontSize:13}
+      }, "Chargement...") :
+
+      React.createElement("div", null,
+        histResults.filter(function(r) {
+          if (histFilter==="WON") return r.prediction_correct === true;
+          if (histFilter==="LOST") return r.prediction_correct === false;
+          return true;
+        }).map(function(r) {
+          var won2 = r.prediction_correct === true;
+          var md = new Date(r.match_date);
+          var dateStr = md.toLocaleDateString("fr-FR",{day:"2-digit",month:"short"});
+          return React.createElement("div", {
+            key:r.id,
+            style:{
+              background:"var(--c-base)", borderRadius:12,
+              border:"1px solid var(--c-border)",
+              borderLeft:"3px solid "+(won2?"#27ae60":"#e74c3c"),
+              marginBottom:8, padding:"10px 12px",
+              display:"flex", alignItems:"center", gap:10
+            }
+          },
+            React.createElement("div", {
+              style:{
+                width:32,height:32,borderRadius:8,flexShrink:0,
+                background:won2?"rgba(46,204,113,0.12)":"rgba(231,76,60,0.08)",
+                display:"flex",alignItems:"center",justifyContent:"center",fontSize:16
+              }
+            }, won2?"✅":"❌"),
+            React.createElement("div", {style:{flex:1,minWidth:0}},
+              React.createElement("div", {
+                style:{fontSize:12,fontWeight:700,color:"var(--c-ink)",
+                  whiteSpace:"nowrap",overflow:"hidden",textOverflow:"ellipsis"}
+              }, r.home_team_name+" vs "+r.away_team_name),
+              React.createElement("div", {style:{fontSize:10,color:"var(--c-ink-3)",marginTop:2}},
+                r.league_name+" · "+dateStr)
+            ),
+            React.createElement("div", {style:{textAlign:"right",flexShrink:0}},
+              React.createElement("div", {
+                style:{
+                  fontSize:10,fontWeight:700,
+                  color:won2?"#27ae60":"#e74c3c",
+                  padding:"2px 7px",borderRadius:4,
+                  background:won2?"rgba(46,204,113,0.08)":"rgba(231,76,60,0.06)"
+                }
+              }, won2?"GAGNÉ":"PERDU"),
+              React.createElement("div", {
+                style:{fontSize:10,color:"var(--c-ink-3)",marginTop:3}
+              }, (r.rec_confidence||"?")+"%")
+            )
+          );
+        })
+      )
+    ) : null,
+
+    // ── Vue Sélection du jour (masquée si historique) ──
+    viewMode !== "history" ? React.createElement("div", null,
+
     // Pills sticky
     React.createElement("div", {
       style: {
@@ -17071,6 +17258,8 @@ function Top25Tab() {
     React.createElement("div", { style:{ padding:"12px 14px 80px" } },
       filtered.map(function(pred) { return renderCard(pred); })
     )
+    ) : null
+
   );
 }
 
@@ -17348,8 +17537,7 @@ function App() {
     { id: "transfers", label: "TRANSFERTS" },
     { id: "actu", label: "ACTUALITÉS" },
     { id: "jsk", label: "JSK" },
-    { id: "top25", label: "🏆 TOP 25" },
-    { id: "history", label: "📊 HISTORIQUE" }
+    { id: "top25", label: "🏆 TOP 25" }
   ];
 
   const renderContent = () => {
@@ -17362,7 +17550,6 @@ function App() {
       case "actu": return React.createElement(ActuTab, { key:"actu" });
       case "jsk": return React.createElement(JSKTab, { key:"jsk" });
       case "top25": return React.createElement(Top25Tab, { key:"top25" });
-      case "history": return React.createElement(HistoryTab, { key:"history" });
       default: return React.createElement(ScoresTab, { key:"scores", favs, onFav: toggleFav });
     }
   };
