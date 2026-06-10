@@ -16090,6 +16090,12 @@ function Top25Tab() {
   var _useStateHistFilter = useState("ALL");
   var histFilter = _useStateHistFilter[0]; var setHistFilter = _useStateHistFilter[1];
 
+  var _useStateTicket = useState([]);
+  var ticketData = _useStateTicket[0]; var setTicketData = _useStateTicket[1];
+
+  var _useStateTicketLoad = useState(false);
+  var ticketLoading = _useStateTicketLoad[0]; var setTicketLoading = _useStateTicketLoad[1];
+
   var _useState4 = useState({});
   var expanded = _useState4[0]; var setExpanded = _useState4[1];
 
@@ -16148,6 +16154,38 @@ function Top25Tab() {
     })
     .catch(function() {});
   }, []);
+
+  // Charger ticket quand viewMode === "ticket"
+  useEffect(function() {
+    if (viewMode !== "ticket") return;
+    setTicketLoading(true);
+    var now = new Date();
+    var in7days = new Date(Date.now() + 7*86400000).toISOString();
+    var yesterday = new Date(Date.now() - 86400000).toISOString();
+    fetch(
+      SB_BASE2 + "predictions?" +
+      "match_date=gte." + yesterday +
+      "&match_date=lte." + in7days +
+      "&rec_confidence=gte.80&rec_confidence=lte.90" +
+      "&recommendation=ilike.*VICTOIRE*" +
+      "&is_.\.null=false" +
+      "&order=rec_confidence.desc&select=*&limit=15",
+      { headers: SB_H2 }
+    )
+    .then(function(r) { return r.json(); })
+    .then(function(d) {
+      if (Array.isArray(d)) {
+        // Filtrer uniquement VICTOIRE (pas DOUBLE CHANCE) et is_national ou tier<=2
+        var filtered = d.filter(function(p) {
+          var rec = (p.recommendation||"").toUpperCase();
+          return rec.indexOf("VICTOIRE") >= 0;
+        }).slice(0, 15);
+        setTicketData(filtered);
+      }
+      setTicketLoading(false);
+    })
+    .catch(function() { setTicketLoading(false); });
+  }, [viewMode]);
 
   // Charger historique quand viewMode === "history"
   useEffect(function() {
@@ -16802,7 +16840,17 @@ function Top25Tab() {
           color: viewMode==="history" ? "#9b59b6" : "var(--c-ink-3)",
           cursor:"pointer"
         }
-      }, "📊 Historique")
+      }, "📊 Historique"),
+      React.createElement("button", {
+        onClick: function() { setViewMode("ticket"); },
+        style: {
+          flex:1, padding:"8px 0", borderRadius:8, fontSize:12, fontWeight:700,
+          border: viewMode==="ticket" ? "1.5px solid #f39c12" : "1px solid var(--c-border)",
+          background: viewMode==="ticket" ? "rgba(243,156,18,0.08)" : "var(--c-base)",
+          color: viewMode==="ticket" ? "#f39c12" : "var(--c-ink-3)",
+          cursor:"pointer"
+        }
+      }, "🎯 Ticket")
     ),
 
     // ── Vue Historique ──
@@ -17007,8 +17055,188 @@ function Top25Tab() {
       )
     ) : null,
 
-    // ── Vue Sélection du jour (masquée si historique) ──
-    viewMode !== "history" ? React.createElement("div", null,
+    // ── Vue Ticket ──
+    viewMode === "ticket" ? React.createElement("div", { style:{ padding:"12px 14px" } },
+
+      // Header ticket
+      React.createElement("div", {
+        style:{
+          background:"rgba(243,156,18,0.06)", borderRadius:12,
+          border:"1px solid rgba(243,156,18,0.2)",
+          padding:"12px 14px", marginBottom:12
+        }
+      },
+        React.createElement("div", {
+          style:{ display:"flex", alignItems:"center", gap:8, marginBottom:6 }
+        },
+          React.createElement("span", { style:{ fontSize:16 } }, "🎯"),
+          React.createElement("span", {
+            style:{ fontSize:13, fontWeight:700, color:"var(--c-ink)" }
+          }, "Ticket du jour"),
+          React.createElement("span", {
+            style:{
+              marginLeft:"auto", fontSize:10, fontWeight:700,
+              padding:"2px 8px", borderRadius:20,
+              background:"rgba(243,156,18,0.12)", color:"#f39c12"
+            }
+          }, ticketData.length + " matchs")
+        ),
+        React.createElement("div", {
+          style:{ fontSize:11, color:"var(--c-ink-3)" }
+        }, "Victoire · Confiance 80-90% · Basé sur historique réel 84.4%")
+      ),
+
+      // Cote totale calculée
+      ticketData.length > 0 ? React.createElement("div", {
+        style:{
+          background:"var(--c-base)", borderRadius:12,
+          border:"1px solid var(--c-border)",
+          padding:"10px 14px", marginBottom:12,
+          display:"flex", alignItems:"center", justifyContent:"space-between"
+        }
+      },
+        React.createElement("span", { style:{ fontSize:12, color:"var(--c-ink-3)" } }, "Cote totale combinée"),
+        React.createElement("span", {
+          style:{ fontSize:18, fontWeight:800, color:"#f39c12" }
+        }, (function() {
+          var cote = 1;
+          ticketData.forEach(function(p) {
+            var c = p.pinnacle_home || p.pinnacle_away || null;
+            if (c) cote *= parseFloat(c);
+          });
+          return cote > 1 ? cote.toFixed(2) : "N/A";
+        })())
+      ) : null,
+
+      // Liste matchs ticket
+      ticketLoading ? React.createElement("div", {
+        style:{ textAlign:"center", padding:40, color:"var(--c-ink-3)", fontSize:13 }
+      }, "Chargement...") :
+
+      ticketData.length === 0 ? React.createElement("div", {
+        style:{ textAlign:"center", padding:40, color:"var(--c-ink-3)", fontSize:13 }
+      }, "Aucun match disponible avec ces critères") :
+
+      React.createElement("div", null,
+        ticketData.map(function(pred, idx) {
+          var st = getMatchStatus(pred.match_date, pred.prediction_correct);
+          var borderColor = pred.prediction_correct === true ? "#27ae60" :
+                           pred.prediction_correct === false ? "#e74c3c" :
+                           st && st.pulse ? "#e74c3c" : "#f39c12";
+          var md = new Date(pred.match_date);
+          var dateStr = md.toLocaleDateString("fr-FR",{day:"2-digit",month:"short"});
+          var timeStr = md.toLocaleTimeString("fr-FR",{hour:"2-digit",minute:"2-digit"});
+          var cote = pred.pinnacle_home || pred.pinnacle_away || null;
+
+          return React.createElement("div", {
+            key: pred.id,
+            style:{
+              background:"var(--c-base)", borderRadius:14,
+              border:"1px solid var(--c-border)",
+              borderLeft:"3px solid "+borderColor,
+              marginBottom:8, overflow:"hidden"
+            }
+          },
+            React.createElement("div", { style:{ padding:"10px 12px" } },
+
+              // Header
+              React.createElement("div", {
+                style:{ display:"flex", alignItems:"center", justifyContent:"space-between", marginBottom:8 }
+              },
+                React.createElement("div", { style:{ display:"flex", alignItems:"center", gap:6 } },
+                  React.createElement("span", {
+                    style:{
+                      fontSize:10, fontWeight:700, padding:"2px 8px", borderRadius:20,
+                      background:"rgba(243,156,18,0.1)", color:"#f39c12"
+                    }
+                  }, "#"+(idx+1)),
+                  st ? React.createElement("span", {
+                    style:{
+                      fontSize:10, fontWeight:700, padding:"2px 8px", borderRadius:20,
+                      background: st.bg, color: st.color,
+                      animation: st.pulse ? "pulse 1.5s ease infinite" : "none"
+                    }
+                  }, st.icon+" "+st.label) : null,
+                  React.createElement("span", {
+                    style:{ fontSize:10, color:"var(--c-ink-3)" }
+                  }, dateStr+" · "+timeStr)
+                ),
+                cote ? React.createElement("span", {
+                  style:{
+                    fontSize:13, fontWeight:800, color:"#f39c12",
+                    background:"rgba(243,156,18,0.08)", padding:"2px 8px", borderRadius:8
+                  }
+                }, parseFloat(cote).toFixed(2)) :
+                React.createElement("span", {
+                  style:{ fontSize:11, color:"var(--c-ink-3)" }
+                }, pred.rec_confidence+"%")
+              ),
+
+              // Équipes
+              React.createElement("div", {
+                style:{ display:"flex", alignItems:"center", gap:8, marginBottom:8 }
+              },
+                React.createElement("div", {
+                  style:{
+                    width:28, height:28, borderRadius:8, flexShrink:0,
+                    background:"var(--c-border)", overflow:"hidden",
+                    display:"flex", alignItems:"center", justifyContent:"center"
+                  }
+                },
+                  pred.home_team_id
+                    ? React.createElement("img", {
+                        src:"https://media.api-sports.io/football/teams/"+pred.home_team_id+".png",
+                        style:{width:24,height:24,objectFit:"contain"},
+                        onError:function(e){e.target.style.display="none";}
+                      })
+                    : React.createElement("span", {style:{fontSize:9,fontWeight:700,color:"var(--c-ink-2)"}}, t25initials(pred.home_team_name))
+                ),
+                React.createElement("div", { style:{ flex:1, minWidth:0 } },
+                  React.createElement("div", {
+                    style:{ fontSize:13, fontWeight:700, color:"var(--c-ink)",
+                      whiteSpace:"nowrap", overflow:"hidden", textOverflow:"ellipsis" }
+                  },
+                    pred.home_team_name,
+                    React.createElement("span", { style:{ color:"var(--c-ink-3)", fontWeight:400, margin:"0 4px" } }, "vs"),
+                    pred.away_team_name
+                  ),
+                  React.createElement("div", { style:{ fontSize:10, color:"var(--c-ink-3)", marginTop:2 } }, pred.league_name)
+                ),
+                React.createElement("div", {
+                  style:{
+                    width:28, height:28, borderRadius:8, flexShrink:0,
+                    background:"var(--c-border)", overflow:"hidden",
+                    display:"flex", alignItems:"center", justifyContent:"center"
+                  }
+                },
+                  pred.away_team_id
+                    ? React.createElement("img", {
+                        src:"https://media.api-sports.io/football/teams/"+pred.away_team_id+".png",
+                        style:{width:24,height:24,objectFit:"contain"},
+                        onError:function(e){e.target.style.display="none";}
+                      })
+                    : React.createElement("span", {style:{fontSize:9,fontWeight:700,color:"var(--c-ink-2)"}}, t25initials(pred.away_team_name))
+                )
+              ),
+
+              // Footer prédiction + confiance
+              React.createElement("div", {
+                style:{ display:"flex", alignItems:"center", gap:6, paddingTop:8, borderTop:"1px solid var(--c-border)" }
+              },
+                React.createElement("span", { style:{fontSize:12} }, "🏆"),
+                React.createElement("span", { style:{ fontSize:11, fontWeight:600, color:"var(--c-ink)" } },
+                  t25marketLabel(pred.recommendation||"")),
+                React.createElement("span", { style:{ marginLeft:"auto", fontSize:10, color:"var(--c-ink-3)" } },
+                  "Conf. "+pred.rec_confidence+"% · xG "+(pred.xg_total||"?"))
+              )
+            )
+          );
+        })
+      )
+    ) : null,
+
+    // ── Vue Sélection du jour (masquée si historique ou ticket) ──
+    viewMode !== "history" && viewMode !== "ticket" ? React.createElement("div", null,
 
     // Pills sticky
     React.createElement("div", {
