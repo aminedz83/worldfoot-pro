@@ -24,7 +24,7 @@ supabase = create_client(SUPA_URL, SUPA_KEY)
 
 TOP_N          = 25
 MAX_PER_LEAGUE = 2    # Max 2 matchs par ligue dans le top 25
-MIN_CONF_TOP   = 70   # Seuil minimum pour entrer dans le top 25
+MIN_CONF_TOP   = 80   # Seuil minimum pour entrer dans le top 25
 
 # ── Pays dont les ligues sont disponibles sur Bet365/1xBet ──────────────────
 ALLOWED_COUNTRIES = {
