@@ -304,10 +304,12 @@ def save_top25(selected):
     print(f"[TOP25] Sauvegarde sélection du {today_str}")
 
     try:
-        # Supprimer l'ancienne sélection du jour
+        # Supprimer toutes les entrées passées — éviter les doublons hier/aujourd'hui
+        from datetime import timedelta
+        yesterday_str = (date.today() - timedelta(days=1)).isoformat()
         supabase.table("daily_top25")\
             .delete()\
-            .eq("selection_date", today_str)\
+            .gte("selection_date", yesterday_str)\
             .execute()
     except Exception:
         pass
