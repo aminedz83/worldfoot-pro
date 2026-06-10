@@ -1,11 +1,11 @@
 """
 verify_results.py
 =================
-Vérifie les résultats des prédictions J-1
+Vérifie les résultats des prédictions J-1 ET du jour même
 Met à jour prediction_correct dans predictions et daily_top25
 Calcule le taux de réussite réel du moteur
 
-Cron GitHub Actions : 03h00 UTC quotidien
+Cron GitHub Actions : toutes les heures 8h-23h UTC
 Secrets : API_FOOTBALL_KEY · PREDICTIONS_SUPA_URL · PREDICTIONS_SUPA_KEY
 """
 
@@ -45,8 +45,9 @@ def get_unverified_predictions():
     """
     Récupère toutes les prédictions dont le match est terminé
     mais dont prediction_correct est encore NULL.
+    Fenêtre : 3 jours en arrière jusqu'à maintenant (inclus aujourd'hui).
     """
-    yesterday = (datetime.utcnow() - timedelta(days=1)).date().isoformat()
+    now_iso       = datetime.utcnow().isoformat()
     three_days_ago = (datetime.utcnow() - timedelta(days=3)).date().isoformat()
 
     try:
@@ -56,7 +57,7 @@ def get_unverified_predictions():
                     "home_team_name, away_team_name, match_date")\
             .is_("prediction_correct", "null")\
             .gte("match_date", three_days_ago)\
-            .lte("match_date", yesterday + "T23:59:59")\
+            .lte("match_date", now_iso)\
             .execute()
         return result.data or []
     except Exception as e:
@@ -184,7 +185,7 @@ def compute_daily_stats(verified):
             by_market[market]["correct"] += 1
 
     print(f"\n{'═'*55}")
-    print(f"  BILAN J-1 — {(datetime.utcnow()-timedelta(days=1)).date()}")
+    print(f"  BILAN — {datetime.utcnow().strftime('%Y-%m-%d %H:%M')} UTC")
     print(f"{'═'*55}")
     print(f"  Total vérifié : {total}")
     print(f"  Correct       : {correct} ✅")
@@ -199,7 +200,6 @@ def compute_daily_stats(verified):
         print(f"    {market:<15} {c}/{t} = {r}%")
     print(f"{'═'*55}\n")
 
-    # Détail des prédictions
     print("  Détail :")
     for v in sorted(verified, key=lambda x: x["correct"] is False):
         icon = "✅" if v["correct"] else "❌"
@@ -236,7 +236,6 @@ def main():
         print(f"  → {pred['home_team_name']} vs {pred['away_team_name']} "
               f"({pred['league_name']})")
 
-        # Récupérer le résultat réel
         result = get_fixture_result(fixture_id)
 
         if not result:
@@ -244,7 +243,6 @@ def main():
             skipped += 1
             continue
 
-        # Vérifier la prédiction
         is_correct = check_prediction(rec, result)
 
         if is_correct is None:
@@ -252,7 +250,6 @@ def main():
             skipped += 1
             continue
 
-        # Mettre à jour Supabase
         update_prediction(pred["id"], result, is_correct)
         update_top25(fixture_id, is_correct)
 
@@ -273,7 +270,6 @@ def main():
             "away_goals":     result["away_goals"],
         })
 
-    # Bilan
     compute_daily_stats(verified)
     print(
         f"=== Terminé : {len(verified)} vérifiés · "
