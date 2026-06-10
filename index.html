@@ -16190,15 +16190,19 @@ function Top25Tab() {
       if (!Array.isArray(rows) || rows.length === 0) {
         setTicketData([]); setTicketLoading(false); return;
       }
-      // Dédupliquer par fixture_id — garder le plus récent (selection_date max)
-      var seen = {};
-      var uniqueRows = rows.filter(function(r) {
-        var fid = r.fixture_id || r.prediction_id;
-        if (!fid) return true;
-        if (!seen[fid] || r.selection_date > seen[fid]) {
-          seen[fid] = r.selection_date; return true;
+      // Dédupliquer par fixture_id — 2 passes : d'abord trouver le meilleur, puis filtrer
+      var bestByFid = {};
+      rows.forEach(function(r) {
+        var fid = String(r.fixture_id || r.prediction_id || "");
+        if (!fid) return;
+        if (!bestByFid[fid] || r.selection_date > bestByFid[fid].selection_date) {
+          bestByFid[fid] = r;
         }
-        return false;
+      });
+      var uniqueRows = rows.filter(function(r) {
+        var fid = String(r.fixture_id || r.prediction_id || "");
+        if (!fid) return true;
+        return bestByFid[fid] === r;
       });
       var ids = uniqueRows.map(function(r) { return r.prediction_id; }).filter(Boolean);
       if (ids.length === 0) {
