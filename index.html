@@ -17111,7 +17111,15 @@ function Top25Tab() {
         }, (function() {
           var cote = 1;
           ticketData.forEach(function(p) {
-            var c = p.pinnacle_home || p.pinnacle_away || null;
+            var recUp2 = (p.recommendation || "").toUpperCase();
+            var c = null;
+            if (recUp2.indexOf("EXTÉRIEUR") >= 0 || recUp2.indexOf("EXTERIEUR") >= 0) {
+              c = p.pinnacle_away || p.pinnacle_home || null;
+            } else if (recUp2.indexOf("DOMICILE") >= 0) {
+              c = p.pinnacle_home || p.pinnacle_away || null;
+            } else {
+              c = p.pinnacle_under25 || p.pinnacle_home || p.pinnacle_away || null;
+            }
             if (c) cote *= parseFloat(c);
           });
           return cote > 1 ? cote.toFixed(2) : "N/A";
@@ -17136,7 +17144,20 @@ function Top25Tab() {
           var md = new Date(pred.match_date);
           var dateStr = md.toLocaleDateString("fr-FR",{day:"2-digit",month:"short"});
           var timeStr = md.toLocaleTimeString("fr-FR",{hour:"2-digit",minute:"2-digit"});
-          var cote = pred.pinnacle_home || pred.pinnacle_away || null;
+          // Cote selon la recommandation
+          var recUp = (pred.recommendation || "").toUpperCase();
+          var cote = null;
+          if (recUp.indexOf("EXTÉRIEUR") >= 0 || recUp.indexOf("EXTERIEUR") >= 0) {
+            cote = pred.pinnacle_away || pred.pinnacle_home || null;
+          } else if (recUp.indexOf("DOMICILE") >= 0) {
+            cote = pred.pinnacle_home || pred.pinnacle_away || null;
+          } else if (recUp.indexOf("1X") >= 0) {
+            cote = pred.pinnacle_home || null;
+          } else if (recUp.indexOf("X2") >= 0) {
+            cote = pred.pinnacle_away || null;
+          } else {
+            cote = pred.pinnacle_under25 || pred.pinnacle_home || pred.pinnacle_away || null;
+          }
 
           return React.createElement("div", {
             key: pred.id,
