@@ -20,6 +20,7 @@ on:
           - verify
           - replace
           - odds
+          - analyze
 
 jobs:
 
@@ -40,7 +41,6 @@ jobs:
         run: |
           MODE="${{ github.event.inputs.mode || 'all' }}"
           echo "Mode: $MODE · $(date -u)"
-          # Engine uniquement sur mode explicite ou cron 04h00
           HOUR=$(date -u +%H)
           if [ "$MODE" = "engine" ] || ([ "$MODE" = "all" ] && [ "$HOUR" = "04" ]); then
             python predictions_master.py
@@ -136,4 +136,25 @@ jobs:
             python market_stats.py
           else
             echo "Skip market stats"
+          fi
+
+  analyze-performance:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+      - run: pip install supabase
+      - name: Run analyze
+        env:
+          PREDICTIONS_SUPA_URL: ${{ secrets.PREDICTIONS_SUPA_URL }}
+          PREDICTIONS_SUPA_KEY: ${{ secrets.PREDICTIONS_SUPA_KEY }}
+        run: |
+          MODE="${{ github.event.inputs.mode || 'all' }}"
+          if [ "$MODE" = "analyze" ]; then
+            python analyze_performance.py
+          else
+            echo "Skip analyze"
           fi
