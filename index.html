@@ -16192,7 +16192,7 @@ function Top25Tab() {
       }
       // Dédupliquer par fixture_id — garder le plus récent (selection_date max)
       var seen = {};
-      rows = rows.filter(function(r) {
+      var uniqueRows = rows.filter(function(r) {
         var fid = r.fixture_id || r.prediction_id;
         if (!fid) return true;
         if (!seen[fid] || r.selection_date > seen[fid]) {
@@ -16200,9 +16200,9 @@ function Top25Tab() {
         }
         return false;
       });
-      var ids = rows.map(function(r) { return r.prediction_id; }).filter(Boolean);
+      var ids = uniqueRows.map(function(r) { return r.prediction_id; }).filter(Boolean);
       if (ids.length === 0) {
-        var filtered = rows.filter(function(p) {
+        var filtered = uniqueRows.filter(function(p) {
           var rec = (p.recommendation || "").toUpperCase();
           return (rec.indexOf("VICTOIRE") >= 0) && (p.rec_confidence >= 80);
         }).slice(0, 10);
@@ -16219,7 +16219,7 @@ function Top25Tab() {
         if (Array.isArray(preds)) {
           preds.forEach(function(p) { pm[p.id] = p; });
         }
-        var enriched = rows.map(function(item) {
+        var enriched = uniqueRows.map(function(item) {
           var pd = pm[item.prediction_id] || {};
           var pc = (pd.prediction_correct !== undefined && pd.prediction_correct !== null)
                     ? pd.prediction_correct
@@ -16238,7 +16238,7 @@ function Top25Tab() {
         setTicketLoading(false);
       })
       .catch(function() {
-        var filtered = rows.filter(function(p) {
+        var filtered = uniqueRows.filter(function(p) {
           var rec = (p.recommendation || "").toUpperCase();
           return (rec.indexOf("VICTOIRE") >= 0) && (p.rec_confidence >= 80);
         }).slice(0, 10);
