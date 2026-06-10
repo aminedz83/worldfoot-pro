@@ -204,7 +204,7 @@ def select_top25(predictions):
     Étapes :
     1. Calculer le score composite de chaque prédiction
     2. Trier par score décroissant
-    3. Appliquer la règle max 3 par ligue
+    3. Appliquer la règle max 2 par ligue
     4. Équilibrer la distribution Under / BTTS / Victoire
     5. Retourner les 25 meilleurs
     """
@@ -255,7 +255,7 @@ def select_top25(predictions):
         league_id = pred.get("league_id")
         rec       = pred.get("recommendation", "")
 
-        # Règle max 3 par ligue
+        # Règle max 2 par ligue
         if league_count.get(league_id, 0) >= MAX_PER_LEAGUE:
             continue
 
