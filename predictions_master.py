@@ -1049,7 +1049,7 @@ def main():
             d = fx.get("fixture",{}).get("date","?")[:10]
             s = fx.get("fixture",{}).get("status",{}).get("short","?")
             print(f"    {h} vs {a} ({d}) [{s}]")
-        for fx in wc_fxs[:20]:
+        for fx in wc_fxs[:64]:
             tp += 1
             if process(fx, wc_league): ts += 1
     else:
