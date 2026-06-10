@@ -16145,9 +16145,9 @@ function Top25Tab() {
 
   useEffect(function() {
     var d0 = new Date();
-    var yesterday = new Date(d0 - 86400000).toISOString().split("T")[0];
+    var today = d0.toISOString().split("T")[0];
     fetch(
-      SB_BASE2 + "daily_top25?selection_date=gte." + yesterday +
+      SB_BASE2 + "daily_top25?selection_date=eq." + today +
       "&order=rank.asc&select=*",
       { headers: SB_H2 }
     )
@@ -16247,7 +16247,6 @@ function Top25Tab() {
     });
   }
 
-  // Filtrer : uniquement matchs pas encore commencés + pas terminés
   // Dédupliquer par fixture_id — éviter les doublons
   var seenFids = {};
   var dedupedData = top25Data.filter(function(p) {
@@ -16258,14 +16257,16 @@ function Top25Tab() {
   });
 
   var nowUtc = new Date();
+  function t25matchStatus(pred) {
+    if (pred.prediction_correct === true)  return "won";
+    if (pred.prediction_correct === false) return "lost";
+    if (!pred.match_date) return "upcoming";
+    var matchTime = new Date(pred.match_date);
+    if (matchTime <= nowUtc) return "live";
+    return "upcoming";
+  }
+
   var filtered = dedupedData.filter(function(p) {
-    // Exclure matchs déjà commencés ou terminés
-    if (p.match_date) {
-      var matchTime = new Date(p.match_date);
-      if (matchTime <= nowUtc) return false;
-    }
-    // Exclure matchs déjà vérifiés (terminés)
-    if (p.prediction_correct !== null && p.prediction_correct !== undefined) return false;
     // Filtre marché
     if (filter === "TOUS") return true;
     if (!p.recommendation) return false;
@@ -16326,6 +16327,12 @@ function Top25Tab() {
       pred.recommendation.toUpperCase().indexOf("VICTOIRE") >= 0 ||
       pred.recommendation.toUpperCase().indexOf("DOUBLE") >= 0
     );
+    var status  = t25matchStatus(pred);
+    var borderColor = status === "won"  ? "#2ecc71" :
+                      status === "lost" ? "#e74c3c" :
+                      status === "live" ? "#f39c12" :
+                      isLow             ? "#2ecc71" : "#f39c12";
+    var cardOpacity = (status === "won" || status === "lost") ? 0.7 : 1;
 
     return React.createElement("div", {
       key: pred.id,
@@ -16334,12 +16341,13 @@ function Top25Tab() {
         background: "#fff",
         borderRadius: 14,
         border: "1px solid var(--c-border)",
-        borderLeft: "3px solid " + (isLow ? "#2ecc71" : "#f39c12"),
+        borderLeft: "3px solid " + borderColor,
         overflow: "hidden",
         marginBottom: 10,
         boxShadow: "0 2px 8px rgba(0,0,0,0.05)",
         cursor: "pointer",
-        transition: "box-shadow 0.2s"
+        transition: "box-shadow 0.2s",
+        opacity: cardOpacity
       }
     },
 
@@ -16362,7 +16370,29 @@ function Top25Tab() {
         }, "#" + String(pred.rank || "?").padStart(2,"0")),
 
         React.createElement("div", { style: { display:"flex", gap:5, alignItems:"center" } },
-          isNew(pred) ? React.createElement("span", {
+          status === "live" ? React.createElement("span", {
+            style: {
+              fontSize: 9, fontWeight: 700, padding: "2px 7px",
+              borderRadius: 4, letterSpacing: "0.06em",
+              background: "rgba(243,156,18,0.15)", color: "#f39c12",
+              animation: "pulse 1.5s ease infinite"
+            }
+          }, "🔴 EN COURS") : null,
+          status === "won" ? React.createElement("span", {
+            style: {
+              fontSize: 9, fontWeight: 700, padding: "2px 7px",
+              borderRadius: 4, letterSpacing: "0.06em",
+              background: "rgba(46,204,113,0.15)", color: "#2ecc71"
+            }
+          }, "✅ GAGNÉ") : null,
+          status === "lost" ? React.createElement("span", {
+            style: {
+              fontSize: 9, fontWeight: 700, padding: "2px 7px",
+              borderRadius: 4, letterSpacing: "0.06em",
+              background: "rgba(231,76,60,0.15)", color: "#e74c3c"
+            }
+          }, "❌ PERDU") : null,
+          status === "upcoming" && isNew(pred) ? React.createElement("span", {
             style: {
               fontSize: 9, fontWeight: 700, padding: "2px 7px",
               borderRadius: 4, letterSpacing: "0.06em",
@@ -17024,14 +17054,14 @@ function Top25Tab() {
     filtered.length === 0 ? React.createElement("div", {
       style:{ textAlign:"center", padding:"60px 20px" }
     },
-      React.createElement("div", { style:{ fontSize:40, marginBottom:12 } }, top25Data.length === 0 ? "🔍" : "⏳"),
+      React.createElement("div", { style:{ fontSize:40, marginBottom:12 } }, "🔍"),
       React.createElement("div", { style:{ fontSize:15, fontWeight:600, color:"var(--c-ink)", marginBottom:6 } },
-        top25Data.length === 0 ? "Top 25 pas encore disponible" : filter !== "TOUS" ? "Aucun match dans cette catégorie" : "Tous les matchs ont commencé"
+        top25Data.length === 0 ? "Top 25 pas encore disponible" : "Aucun match dans cette catégorie"
       ),
       React.createElement("div", { style:{ fontSize:13, color:"var(--c-ink-3)", lineHeight:1.5 } },
         top25Data.length === 0
           ? "La sélection sera disponible après 05h30 UTC"
-          : filter !== "TOUS" ? "Essaie un autre filtre" : "Nouveaux matchs automatiquement · prochaine sélection 05h30 UTC"
+          : "Essaie un autre filtre"
       )
     ) :
 
