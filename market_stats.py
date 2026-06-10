@@ -30,7 +30,7 @@ def compute_market_stats():
         {"label": "tout", "days": 9999},
     ]
 
-    markets = ["UNDER 2.5", "BTTS", "VICTOIRE"]
+    markets = ["BTTS", "VICTOIRE"]  # UNDER 2.5 désactivé — taux 60.2% trop faible
 
     results = {}
 
@@ -220,7 +220,7 @@ def print_report(stats):
         print(f"  {'-'*50}")
 
         period_results = []
-        for market in ["UNDER 2.5", "BTTS", "VICTOIRE"]:
+        for market in ["BTTS", "VICTOIRE"]:  # UNDER 2.5 désactivé
             s = period_data.get(market, {})
             total   = s.get("total", 0)
             correct = s.get("correct", 0)
