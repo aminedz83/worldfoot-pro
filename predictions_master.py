@@ -862,6 +862,14 @@ def process(fix, li):
     print(f"    [{quota_pct_used():.0f}% quota] "
           f"{home['name']} vs {away['name']}")
 
+    # Exclure équipes jeunes (U20, U21, U23...) même si la ligue passe le filtre
+    YOUTH_KW = ["u16","u17","u18","u19","u20","u21","u22","u23","youth","u-20","u-21","u-23"]
+    hn_low = home["name"].lower()
+    an_low = away["name"].lower()
+    if any(kw in hn_low for kw in YOUTH_KW) or any(kw in an_low for kw in YOUTH_KW):
+        print(f"      [SKIP] Équipe jeune (U20/U21/U23)")
+        return False
+
     mn = 3 if is_nat else 5
     hi = compute_index(home["id"],home["name"],lid,season,is_nat)
     ai = compute_index(away["id"],away["name"],lid,season,is_nat)
@@ -1049,7 +1057,7 @@ def main():
             d = fx.get("fixture",{}).get("date","?")[:10]
             s = fx.get("fixture",{}).get("status",{}).get("short","?")
             print(f"    {h} vs {a} ({d}) [{s}]")
-        for fx in wc_fxs[:64]:
+        for fx in wc_fxs[:20]:
             tp += 1
             if process(fx, wc_league): ts += 1
     else:
