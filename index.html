@@ -16042,6 +16042,19 @@ function TeamPage({ teamId, teamName, teamLogo, leagueId, season, onClose, onTea
 // TOP 25 TAB — Sélection quotidienne des meilleures prédictions
 // ══════════════════════════════════════════════════════════════════════
 
+function getMatchStatus(matchDate, predictionCorrect) {
+    if (!matchDate) return null;
+    try {
+        var now = new Date();
+        var kickoff = new Date(matchDate);
+        var diffMin = (now - kickoff) / 60000;
+        if (predictionCorrect === true) return { label: "GAGNÉ", icon: "✅", bg: "rgba(46,204,113,0.12)", color: "#27ae60", border: "rgba(46,204,113,0.3)" };
+        if (predictionCorrect === false) return { label: "PERDU", icon: "❌", bg: "rgba(231,76,60,0.08)", color: "#e74c3c", border: "rgba(231,76,60,0.2)" };
+        if (diffMin > 0 && diffMin < 120) return { label: "EN COURS", icon: "🔴", bg: "rgba(231,76,60,0.1)", color: "#e74c3c", border: "rgba(231,76,60,0.3)", pulse: true };
+        return null;
+    } catch(e) { return null; }
+}
+
 function Top25Tab() {
 
   var SB_BASE2 = "https://iqeqlsxjiklygywjirqs.supabase.co/rest/v1/";
@@ -16334,7 +16347,13 @@ function Top25Tab() {
         background: "#fff",
         borderRadius: 14,
         border: "1px solid var(--c-border)",
-        borderLeft: "3px solid " + (isLow ? "#2ecc71" : "#f39c12"),
+        borderLeft: "3px solid " + (function() {
+          var st = getMatchStatus(pred.match_date, pred.prediction_correct);
+          if (pred.prediction_correct === true)  return "#27ae60";
+          if (pred.prediction_correct === false) return "#e74c3c";
+          if (st && st.pulse) return "#e74c3c";
+          return isLow ? "#2ecc71" : "#f39c12";
+        })(),
         overflow: "hidden",
         marginBottom: 10,
         boxShadow: "0 2px 8px rgba(0,0,0,0.05)",
@@ -16379,6 +16398,20 @@ function Top25Tab() {
               animation: hasAlert ? "pulse 1.5s ease infinite" : "none"
             }
           }, hasAlert ? "⚡ ALERTE" : "⚡ SHARP") : null,
+
+          (function() {
+            var st = getMatchStatus(pred.match_date, pred.prediction_correct);
+            if (!st) return null;
+            return React.createElement("span", {
+              style: {
+                fontSize: 9, fontWeight: 700, padding: "2px 7px",
+                borderRadius: 4, letterSpacing: "0.05em",
+                background: st.bg, color: st.color,
+                border: "1px solid " + st.border,
+                animation: st.pulse ? "pulse 1.5s ease infinite" : "none"
+              }
+            }, st.icon + " " + st.label);
+          })(),
 
           React.createElement("span", {
             style: {
