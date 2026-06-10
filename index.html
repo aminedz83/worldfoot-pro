@@ -16168,7 +16168,7 @@ function Top25Tab() {
       "&match_date=lte." + in7days +
       "&rec_confidence=gte.80" +
       "&recommendation=ilike.*VICTOIRE*" +
-      "&prediction_correct=is.null" +
+      // prediction_correct=is.null retiré — on veut aussi les matchs terminés
       "&league_name=not.ilike.*Tasmania*" +
       "&league_name=not.ilike.*Second League*" +
       "&league_name=not.ilike.*Landesliga*" +
@@ -16262,7 +16262,7 @@ function Top25Tab() {
         "&select=id,context_text,under25_score,btts_score,victory_score," +
         "home_off_index,home_def_index,away_off_index,away_def_index," +
         "h2h_count,h2h_under25_rate,h2h_btts_rate,weather_desc,injuries_detail," +
-        "home_team_id,away_team_id,league_id",
+        "home_team_id,away_team_id,league_id,prediction_correct",
         { headers: SB_H2 }
       )
       .then(function(r2) { return r2.json(); })
@@ -16273,11 +16273,15 @@ function Top25Tab() {
         }
         var enriched = rows.map(function(item) {
           var pd = pm[item.prediction_id] || {};
+          var pc = (pd.prediction_correct !== undefined && pd.prediction_correct !== null)
+                    ? pd.prediction_correct
+                    : (item.prediction_correct !== undefined ? item.prediction_correct : null);
           return Object.assign({}, item, {
             predictions: [pd],
             home_team_id: item.home_team_id || pd.home_team_id || null,
             away_team_id: item.away_team_id || pd.away_team_id || null,
             league_id:    item.league_id    || pd.league_id    || null,
+            prediction_correct: pc,
           });
         });
         setTop25Data(enriched); setLoading(false);
@@ -16356,13 +16360,8 @@ function Top25Tab() {
 
   var nowUtc = new Date();
   var filtered = dedupedData.filter(function(p) {
-    // Exclure matchs déjà commencés ou terminés
-    if (p.match_date) {
-      var matchTime = new Date(p.match_date);
-      if (matchTime <= nowUtc) return false;
-    }
-    // Exclure matchs déjà vérifiés (terminés)
-    if (p.prediction_correct !== null && p.prediction_correct !== undefined) return false;
+    // Garder matchs terminés pour GAGNÉ/PERDU
+    // Garder matchs terminés pour afficher GAGNÉ/PERDU
     // Filtre marché
     if (filter === "TOUS") return true;
     if (!p.recommendation) return false;
