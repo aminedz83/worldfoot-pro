@@ -42,6 +42,7 @@ ALLOWED_COUNTRIES = {
     "Qatar", "Iran", "Australia", "India",
     # Afrique
     "Egypt", "Morocco", "South Africa", "Nigeria", "Tunisia",
+    "Mali", "Kenya", "Burkina Faso",
     # Compétitions internationales
     "World", "Europe", "Africa", "Asia", "South America", "North America",
 }
@@ -214,7 +215,7 @@ EXCLUDED_LEAGUE_KW = [
     "torneo federal", "torneo promocional", "primera b metro", "primera c",
     "primera d", "ligi kuu", "tanzania",
     # Afrique/Asie ligues mineures
-    "ligi kuu", "tanzania", "ethiopia", "kenya",
+    "ligi kuu", "tanzania", "ethiopia",
 ]
 
 def is_allowed_league(league_name, is_national, tier, country=""):
