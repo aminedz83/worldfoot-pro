@@ -30,7 +30,7 @@ def compute_market_stats():
         {"label": "tout", "days": 9999},
     ]
 
-    markets = ["BTTS", "VICTOIRE"]  # UNDER 2.5 désactivé — taux 60.2% trop faible
+    markets = ["UNDER 2.5", "BTTS", "VICTOIRE"]
 
     results = {}
 
@@ -220,7 +220,7 @@ def print_report(stats):
         print(f"  {'-'*50}")
 
         period_results = []
-        for market in ["BTTS", "VICTOIRE"]:  # UNDER 2.5 désactivé
+        for market in ["UNDER 2.5", "BTTS", "VICTOIRE"]:
             s = period_data.get(market, {})
             total   = s.get("total", 0)
             correct = s.get("correct", 0)
@@ -251,6 +251,58 @@ def print_report(stats):
         print("\n  ⚠️ Pas encore assez de données — continuez à utiliser le moteur")
 
 
+def compute_league_stats():
+    """
+    Calcule le taux de réussite par ligue sur 30 jours.
+    Sauvegarde dans league_performance pour analyse future.
+    Minimum 3 matchs pour être enregistré.
+    """
+    from_date = (datetime.utcnow() - timedelta(days=30)).isoformat()
+    try:
+        r = supabase.table("predictions")\
+            .select("prediction_correct, league_name, league_tier, recommendation")\
+            .not_.is_("prediction_correct", "null")\
+            .gte("match_date", from_date)\
+            .execute()
+        data = r.data or []
+    except Exception as e:
+        print(f"  [ERR] league stats : {e}")
+        return
+
+    # Grouper par ligue
+    by_league = {}
+    for p in data:
+        league = p.get("league_name") or "Inconnue"
+        by_league.setdefault(league, []).append(p)
+
+    now = datetime.utcnow().isoformat()
+    saved = 0
+
+    for league, preds in by_league.items():
+        total   = len(preds)
+        if total < 3:
+            continue  # Pas assez de données
+        correct = sum(1 for p in preds if p["prediction_correct"] is True)
+        rate    = round(correct / total * 100, 1)
+        tier    = preds[0].get("league_tier") or 3
+
+        try:
+            supabase.table("league_performance").upsert({
+                "league_name": league,
+                "league_tier": tier,
+                "total":       total,
+                "correct":     correct,
+                "rate":        rate,
+                "period":      "30j",
+                "updated_at":  now,
+            }, on_conflict="league_name,period").execute()
+            saved += 1
+        except Exception as e:
+            print(f"  [DB] league_performance {league} : {e}")
+
+    print(f"  {saved} ligues sauvegardées dans league_performance")
+
+
 def main():
     print(
         f"\n=== Market Stats — "
@@ -265,6 +317,10 @@ def main():
     # Analyse xG — pour décider d'ajustements futurs
     print("\n=== Analyse xG ===")
     compute_xg_stats()
+
+    # Récolte stats par ligue — pour analyse dans 30 jours
+    print("\n=== Stats par ligue ===")
+    compute_league_stats()
 
 
 if __name__ == "__main__":
