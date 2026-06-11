@@ -81,19 +81,53 @@ def get_today_predictions():
         # Cherche les prédictions des matchs à venir (aujourd'hui + 3 jours)
         # Récupérer prédictions sur 30 jours à venir
         in30days = today + timedelta(days=30)
-        result = supabase.table("predictions")            .select("*")            .gte("match_date", yesterday.isoformat())            .lte("match_date", in30days.isoformat() + "T23:59:59")            .gte("rec_confidence", MIN_CONF_TOP)            .is_("prediction_correct", "null")            .not_.ilike("league_name", "%Friendlies%")            .not_.ilike("league_name", "%Tercera%")            .not_.ilike("league_name", "%Primera C%")            .not_.ilike("league_name", "%Paulista%")            .not_.ilike("league_name", "%Serie D%")            .not_.ilike("league_name", "%Tournoi%")            .not_.ilike("league_name", "%Tasmania%")            .not_.ilike("league_name", "%Baiano%")            .not_.ilike("league_name", "%Mineiro%")            .not_.ilike("league_name", "%Catarinense%")            .not_.ilike("league_name", "%Landesliga%")            .not_.ilike("league_name", "%Oberliga%")            .not_.ilike("league_name", "%Second League%")            .not_.ilike("league_name", "%USL League Two%")            .not_.ilike("league_name", "%NPL%")            .not_.ilike("league_name", "%Queensland%")            .not_.ilike("league_name", "%Capital Territory%")            .not_.ilike("league_name", "%4. liga%")            .not_.ilike("league_name", "%Ligi kuu%")            .not_.ilike("league_name", "%MLS Next Pro%")
-            .not_.ilike("league_name", "%Maurice Revello%")
-            .not_.ilike("league_name", "%Toulon%")
-            .not_.ilike("league_name", "%U20%")
-            .not_.ilike("league_name", "%U21%")
-            .not_.ilike("league_name", "%U23%")            .order("rec_confidence", desc=True)            .execute()
+        result = supabase.table("predictions") \
+            .select("*") \
+            .gte("match_date", yesterday.isoformat()) \
+            .lte("match_date", in30days.isoformat() + "T23:59:59") \
+            .gte("rec_confidence", MIN_CONF_TOP) \
+            .is_("prediction_correct", "null") \
+            .not_.ilike("league_name", "%Friendlies%") \
+            .not_.ilike("league_name", "%Tercera%") \
+            .not_.ilike("league_name", "%Primera C%") \
+            .not_.ilike("league_name", "%Paulista%") \
+            .not_.ilike("league_name", "%Serie D%") \
+            .not_.ilike("league_name", "%Tournoi%") \
+            .not_.ilike("league_name", "%Tasmania%") \
+            .not_.ilike("league_name", "%Baiano%") \
+            .not_.ilike("league_name", "%Mineiro%") \
+            .not_.ilike("league_name", "%Catarinense%") \
+            .not_.ilike("league_name", "%Landesliga%") \
+            .not_.ilike("league_name", "%Oberliga%") \
+            .not_.ilike("league_name", "%Second League%") \
+            .not_.ilike("league_name", "%USL League Two%") \
+            .not_.ilike("league_name", "%NPL%") \
+            .not_.ilike("league_name", "%Queensland%") \
+            .not_.ilike("league_name", "%Capital Territory%") \
+            .not_.ilike("league_name", "%4. liga%") \
+            .not_.ilike("league_name", "%Ligi kuu%") \
+            .not_.ilike("league_name", "%MLS Next Pro%") \
+            .not_.ilike("league_name", "%Maurice Revello%") \
+            .not_.ilike("league_name", "%Toulon%") \
+            .not_.ilike("league_name", "%U20%") \
+            .not_.ilike("league_name", "%U21%") \
+            .not_.ilike("league_name", "%U23%") \
+            .order("rec_confidence", desc=True) \
+            .execute()
         data = result.data or []
         print(f"[TOP25] {len(data)} prédictions trouvées pour sélection")
 
         # Si aucune prédiction récente → prendre les dernières disponibles
         if not data:
             print("[TOP25] Aucune prédiction récente — chargement des dernières disponibles")
-            fallback = supabase.table("predictions")                .select("*")                .gte("rec_confidence", MIN_CONF_TOP)                .is_("prediction_correct", "null")                .order("match_date", desc=False)                .order("rec_confidence", desc=True)                .limit(50)                .execute()
+            fallback = supabase.table("predictions") \
+                .select("*") \
+                .gte("rec_confidence", MIN_CONF_TOP) \
+                .is_("prediction_correct", "null") \
+                .order("match_date", desc=False) \
+                .order("rec_confidence", desc=True) \
+                .limit(50) \
+                .execute()
             data = fallback.data or []
             print(f"[TOP25] {len(data)} prédictions fallback trouvées")
 
@@ -304,12 +338,12 @@ def save_top25(selected):
     print(f"[TOP25] Sauvegarde sélection du {today_str}")
 
     try:
-        # Supprimer toutes les entrées passées — éviter les doublons hier/aujourd'hui
+        # Supprimer hier + aujourd'hui pour éviter les doublons
         from datetime import timedelta
         yesterday_str = (date.today() - timedelta(days=1)).isoformat()
-        supabase.table("daily_top25")\
-            .delete()\
-            .gte("selection_date", yesterday_str)\
+        supabase.table("daily_top25") \
+            .delete() \
+            .gte("selection_date", yesterday_str) \
             .execute()
     except Exception:
         pass
