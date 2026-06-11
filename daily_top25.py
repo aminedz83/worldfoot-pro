@@ -274,6 +274,30 @@ def select_top25(predictions):
         print("⚠️ Aucune prédiction dans les ligues autorisées")
         return []
 
+    # Filtrer les prédictions où la cote recommandée > 3.00
+    # (bookmakers plus fiables que le moteur sur les équipes nationales)
+    def get_rec_cote(pred):
+        rec = (pred.get("recommendation") or "").upper()
+        if "EXTÉRIEUR" in rec or "EXTERIEUR" in rec:
+            return pred.get("pinnacle_away") or pred.get("bet365_away")
+        elif "DOMICILE" in rec:
+            return pred.get("pinnacle_home") or pred.get("bet365_home")
+        elif "1X" in rec:
+            return pred.get("pinnacle_home") or pred.get("bet365_home")
+        elif "X2" in rec:
+            return pred.get("pinnacle_away") or pred.get("bet365_away")
+        return None
+
+    filtered_by_cote = []
+    for pred in predictions:
+        cote = get_rec_cote(pred)
+        if cote is not None and float(cote) > 3.00:
+            print(f"  [COTE FILTER] {pred.get('home_team_name')} vs {pred.get('away_team_name')} — cote {cote} > 3.00 → exclu")
+            continue
+        filtered_by_cote.append(pred)
+    predictions = filtered_by_cote
+    print(f"{len(predictions)} prédictions après filtre cote > 3.00")
+
     # Étape 1 : Calculer les scores
     for pred in predictions:
         pred["_selection_score"] = compute_selection_score(pred)
