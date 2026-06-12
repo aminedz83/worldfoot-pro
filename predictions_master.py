@@ -689,18 +689,27 @@ def compute_scores(hi,ai,h2h_d,xgt,inj_d,sk,wth,ca,odd,
         # Écart trop faible = match piège
         weak_signal = og < 1.5 or dg < 0.8
 
+        # ── COHÉRENCE FIFA ─────────────────────────────────────────────────
+        # Le favori désigné par le calcul doit être cohérent avec FIFA.
+        # Si le calcul désigne une équipe bien moins classée → contradiction.
+        fav_fifa = hr if ihs else ar
+        opp_fifa = ar if ihs else hr
+        fifa_contradiction = fav_fifa > opp_fifa + 15
+
         # Abandonner si match piège détecté
-        if both_strong or weak_form or weak_signal:
+        if both_strong or weak_form or weak_signal or fifa_contradiction:
             pass  # vs et sl restent None → pas de prédiction
         else:
             # Signal validé — calculer le score
             bv = 50 + og*5 + dg*4
 
-            # Bonus classement FIFA (écart clair = signal fort)
-            if   fifa_gap >= 30: bv += 15
-            elif fifa_gap >= 20: bv += 10
-            elif fifa_gap >= 15: bv += 6
-            elif fifa_gap >= 10: bv += 3
+            # Bonus classement FIFA — seulement si le favori est mieux classé
+            fav_better = fav_fifa < opp_fifa
+            if fav_better:
+                if   fifa_gap >= 30: bv += 15
+                elif fifa_gap >= 20: bv += 10
+                elif fifa_gap >= 15: bv += 6
+                elif fifa_gap >= 10: bv += 3
             # Malus si les deux équipes sont fortes (match serré probable)
             if top_nations <= 15: bv -= 5
 
