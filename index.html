@@ -16378,6 +16378,40 @@ function Top25Tab() {
     return "🎯";
   }
 
+  // Logo de l'équipe recommandée (domicile ou extérieur selon la reco)
+  function t25recoLogo(pred) {
+    if (!pred || !pred.recommendation) return null;
+    var r = pred.recommendation.toUpperCase();
+    var teamId = null;
+    if (r.indexOf("DOMICILE") >= 0 || r.indexOf("1X") >= 0) {
+      teamId = pred.home_team_id;
+    } else if (r.indexOf("EXTÉRIEUR") >= 0 || r.indexOf("EXTERIEUR") >= 0 || r.indexOf("X2") >= 0) {
+      teamId = pred.away_team_id;
+    }
+    if (!teamId) return null;
+    return "https://media.api-sports.io/football/teams/" + teamId + ".png";
+  }
+
+  // Badge market avec logo équipe si VICTOIRE, sinon emoji
+  function t25marketBadgeContent(pred) {
+    var rec = pred.recommendation || "";
+    var r = rec.toUpperCase();
+    var isVictoire = r.indexOf("VICTOIRE") >= 0;
+    var logo = isVictoire ? t25recoLogo(pred) : null;
+    var label = t25marketLabel(rec);
+    if (logo) {
+      return React.createElement(React.Fragment, null,
+        React.createElement("img", {
+          src: logo,
+          style: { width: 14, height: 14, objectFit: "contain", verticalAlign: "middle", marginRight: 4 },
+          onError: function(e) { e.target.style.display = "none"; }
+        }),
+        label
+      );
+    }
+    return t25marketIcon(rec) + " " + label;
+  }
+
   function t25initials(name) {
     if (!name) return "??";
     var words = name.trim().split(/\s+/);
@@ -16558,7 +16592,7 @@ function Top25Tab() {
               background: mc_col.bg, color: mc_col.color,
               border: "1px solid " + mc_col.border
             }
-          }, t25marketIcon(pred.recommendation) + " " + t25marketLabel(pred.recommendation)),
+          }, t25marketBadgeContent(pred)),
 
           React.createElement("span", {
             style: {
@@ -16860,7 +16894,7 @@ function Top25Tab() {
           }, "Recommandation"),
           React.createElement("div", {
             style: { fontSize:14, fontWeight:700, color: mc_col.color }
-          }, t25marketIcon(pred.recommendation) + " " + t25marketLabel(pred.recommendation))
+          }, t25marketBadgeContent(pred))
         ),
         React.createElement("span", {
           style: {
@@ -17210,10 +17244,16 @@ function Top25Tab() {
                   paddingTop:8, borderTop:"1px solid var(--c-border)"
                 }
               },
-                React.createElement("span", { style:{fontSize:12} },
-                  r.recommendation && r.recommendation.indexOf("BTTS") >= 0 ? "⚽" :
-                  r.recommendation && r.recommendation.indexOf("VICTOIRE") >= 0 ? "🏆" : "🔄"
-                ),
+                (r.recommendation && r.recommendation.toUpperCase().indexOf("VICTOIRE") >= 0 && t25recoLogo(r))
+                  ? React.createElement("img", {
+                      src: t25recoLogo(r),
+                      style:{ width:14, height:14, objectFit:"contain", flexShrink:0 },
+                      onError: function(e){ e.target.style.display="none"; }
+                    })
+                  : React.createElement("span", { style:{fontSize:12} },
+                      r.recommendation && r.recommendation.indexOf("BTTS") >= 0 ? "⚽" :
+                      r.recommendation && r.recommendation.indexOf("VICTOIRE") >= 0 ? "🏆" : "🔄"
+                    ),
                 React.createElement("span", {
                   style:{ fontSize:11, fontWeight:600, color:"var(--c-ink)" }
                 }, t25marketLabel(r.recommendation||"")),
@@ -17415,7 +17455,13 @@ function Top25Tab() {
               React.createElement("div", {
                 style:{ display:"flex", alignItems:"center", gap:6, paddingTop:8, borderTop:"1px solid var(--c-border)" }
               },
-                React.createElement("span", { style:{fontSize:12} }, "🏆"),
+                (pred.recommendation && pred.recommendation.toUpperCase().indexOf("VICTOIRE") >= 0 && t25recoLogo(pred))
+                  ? React.createElement("img", {
+                      src: t25recoLogo(pred),
+                      style:{ width:14, height:14, objectFit:"contain", flexShrink:0 },
+                      onError: function(e){ e.target.style.display="none"; }
+                    })
+                  : React.createElement("span", { style:{fontSize:12} }, "🏆"),
                 React.createElement("span", { style:{ fontSize:11, fontWeight:600, color:"var(--c-ink)" } },
                   t25marketLabel(pred.recommendation||"")),
                 React.createElement("span", { style:{ marginLeft:"auto", fontSize:10, color:"var(--c-ink-3)" } },
