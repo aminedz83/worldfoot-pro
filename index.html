@@ -17438,7 +17438,42 @@ function Top25Tab() {
             React.createElement("span", { style:{ fontSize:12, color:"var(--c-ink-2)", fontWeight:600 } }, "💰 Gain potentiel"),
             React.createElement("span", { style:{ fontSize:18, fontWeight:800, color:"#27ae60" } },
               coteTotale > 1 ? (gain.toLocaleString("fr-FR",{maximumFractionDigits:0}) + " " + sym) : "—")
-          )
+          ),
+
+          // Probabilité réelle du combiné
+          (function() {
+            // Probabilité que TOUS les matchs passent = produit des confiances
+            var prob = 1;
+            ticketData.forEach(function(p) {
+              var conf = p.rec_confidence || 80;
+              prob *= (conf / 100);
+            });
+            var probPct = (prob * 100);
+            var probColor = probPct >= 50 ? "#27ae60" : probPct >= 25 ? "#f39c12" : "#e74c3c";
+            var warning = "";
+            if (ticketData.length >= 6) warning = "⚠️ Trop de matchs — chance très faible";
+            else if (probPct < 25) warning = "⚠️ Combiné risqué";
+
+            return React.createElement("div", { style:{ marginTop:10 } },
+              React.createElement("div", {
+                style:{
+                  display:"flex", alignItems:"center", justifyContent:"space-between",
+                  background:"rgba(231,76,60,0.05)", borderRadius:10,
+                  border:"1px solid " + probColor + "44", padding:"10px 12px"
+                }
+              },
+                React.createElement("span", { style:{ fontSize:12, color:"var(--c-ink-2)", fontWeight:600 } }, "🎲 Chance réelle que tout passe"),
+                React.createElement("span", { style:{ fontSize:18, fontWeight:800, color:probColor } },
+                  probPct >= 10 ? probPct.toFixed(0) + "%" : probPct.toFixed(1) + "%")
+              ),
+              warning ? React.createElement("div", {
+                style:{ fontSize:10, color:"#e74c3c", marginTop:6, textAlign:"center", fontWeight:600 }
+              }, warning) : null,
+              React.createElement("div", {
+                style:{ fontSize:10, color:"var(--c-ink-3)", marginTop:6, textAlign:"center", fontStyle:"italic" }
+              }, "Plus tu ajoutes de matchs, plus la chance que tout passe baisse")
+            );
+          })()
         );
       })() : null,
 
