@@ -16218,7 +16218,7 @@ function Top25Tab() {
       }
       fetch(
         SB_BASE2 + "predictions?id=in.(" + ids.join(",") + ")" +
-        "&select=id,prediction_correct,home_team_id,away_team_id",
+        "&select=id,prediction_correct,home_team_id,away_team_id,actual_home_goals,actual_away_goals",
         { headers: SB_H2 }
       )
       .then(function(r2) { return r2.json(); })
@@ -16236,6 +16236,8 @@ function Top25Tab() {
             prediction_correct: pc,
             home_team_id: item.home_team_id || pd.home_team_id || null,
             away_team_id: item.away_team_id || pd.away_team_id || null,
+            actual_home_goals: (pd.actual_home_goals !== undefined ? pd.actual_home_goals : (item.actual_home_goals !== undefined ? item.actual_home_goals : null)),
+            actual_away_goals: (pd.actual_away_goals !== undefined ? pd.actual_away_goals : (item.actual_away_goals !== undefined ? item.actual_away_goals : null)),
           });
         });
         var filtered = enriched.filter(function(p) {
@@ -16320,7 +16322,7 @@ function Top25Tab() {
         "&select=id,context_text,under25_score,btts_score,victory_score," +
         "home_off_index,home_def_index,away_off_index,away_def_index," +
         "h2h_count,h2h_under25_rate,h2h_btts_rate,weather_desc,injuries_detail," +
-        "home_team_id,away_team_id,league_id,prediction_correct",
+        "home_team_id,away_team_id,league_id,prediction_correct,actual_home_goals,actual_away_goals",
         { headers: SB_H2 }
       )
       .then(function(r2) { return r2.json(); })
@@ -16340,6 +16342,8 @@ function Top25Tab() {
             away_team_id: item.away_team_id || pd.away_team_id || null,
             league_id:    item.league_id    || pd.league_id    || null,
             prediction_correct: pc,
+            actual_home_goals: (pd.actual_home_goals !== undefined ? pd.actual_home_goals : null),
+            actual_away_goals: (pd.actual_away_goals !== undefined ? pd.actual_away_goals : null),
           });
         });
         setTop25Data(enriched); setLoading(false);
@@ -16674,18 +16678,31 @@ function Top25Tab() {
             }, pred.home_team_name || "—")
           ),
 
-          // xG
-          React.createElement("div", { style:{ textAlign:"center" } },
-            React.createElement("div", {
-              style: {
-                fontFamily:"'JetBrains Mono',monospace",
-                fontSize:16, fontWeight:500, color:"var(--c-ink-3)"
-              }
-            }, pred.xg_total || "—"),
-            React.createElement("div", {
-              style: { fontSize:8, color:"var(--c-ink-3)", letterSpacing:"0.08em", textTransform:"uppercase" }
-            }, "xG")
-          ),
+          // Score réel (si match terminé) sinon xG
+          (pred.actual_home_goals !== null && pred.actual_home_goals !== undefined &&
+           pred.actual_away_goals !== null && pred.actual_away_goals !== undefined)
+            ? React.createElement("div", { style:{ textAlign:"center" } },
+                React.createElement("div", {
+                  style: {
+                    fontFamily:"'JetBrains Mono',monospace",
+                    fontSize:18, fontWeight:800, color:"var(--c-ink)"
+                  }
+                }, pred.actual_home_goals + " - " + pred.actual_away_goals),
+                React.createElement("div", {
+                  style: { fontSize:8, color:"var(--c-ink-3)", letterSpacing:"0.08em", textTransform:"uppercase" }
+                }, "Score")
+              )
+            : React.createElement("div", { style:{ textAlign:"center" } },
+                React.createElement("div", {
+                  style: {
+                    fontFamily:"'JetBrains Mono',monospace",
+                    fontSize:16, fontWeight:500, color:"var(--c-ink-3)"
+                  }
+                }, pred.xg_total || "—"),
+                React.createElement("div", {
+                  style: { fontSize:8, color:"var(--c-ink-3)", letterSpacing:"0.08em", textTransform:"uppercase" }
+                }, "xG")
+              ),
 
           // Extérieur
           React.createElement("div", { style:{ display:"flex", alignItems:"center", justifyContent:"flex-end", gap:8 } },
