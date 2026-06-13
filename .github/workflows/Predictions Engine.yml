@@ -144,6 +144,27 @@ jobs:
             echo "Skip market stats"
           fi
 
+  analyze-tickets:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+      - run: pip install supabase
+      - name: Run ticket analysis
+        env:
+          PREDICTIONS_SUPA_URL: ${{ secrets.PREDICTIONS_SUPA_URL }}
+          PREDICTIONS_SUPA_KEY: ${{ secrets.PREDICTIONS_SUPA_KEY }}
+        run: |
+          MODE="${{ github.event.inputs.mode || 'all' }}"
+          if [ "$MODE" = "all" ]; then
+            python analyze_tickets.py
+          else
+            echo "Skip ticket analysis"
+          fi
+
   analyze-performance:
     runs-on: ubuntu-latest
     timeout-minutes: 5
