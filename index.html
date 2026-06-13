@@ -16110,6 +16110,12 @@ function Top25Tab() {
   var _useStateTicketInfo = useState(null);
   var ticketInfo = _useStateTicketInfo[0]; var setTicketInfo = _useStateTicketInfo[1];
 
+  var _useStateTicketTab = useState("ticket");
+  var ticketTab = _useStateTicketTab[0]; var setTicketTab = _useStateTicketTab[1];
+
+  var _useStateTicketFmt = useState([]);
+  var ticketFormatsData = _useStateTicketFmt[0]; var setTicketFormatsData = _useStateTicketFmt[1];
+
   var _useState4 = useState({});
   var expanded = _useState4[0]; var setExpanded = _useState4[1];
 
@@ -16192,6 +16198,12 @@ function Top25Tab() {
     if (viewMode !== "ticket") return;
     setTicketLoading(true);
     setTicketInfo(null);
+
+    // Charger aussi les stats de format de ticket
+    fetch(SB_BASE2 + "ticket_format_stats?select=*&order=num_matches.asc", { headers: SB_H2 })
+      .then(function(r) { return r.json(); })
+      .then(function(rows) { if (Array.isArray(rows)) setTicketFormatsData(rows); })
+      .catch(function() {});
 
     fetch(
       SB_BASE2 + "daily_tickets?order=ticket_date.desc&limit=1&select=*",
@@ -17357,6 +17369,78 @@ function Top25Tab() {
     // ── Vue Ticket ──
     viewMode === "ticket" ? React.createElement("div", { style:{ padding:"12px 14px" } },
 
+      // Toggle Ticket du jour / Statistiques
+      React.createElement("div", { style:{ display:"flex", gap:6, marginBottom:12 } },
+        [{id:"ticket",label:"🎟️ Ticket du jour"},{id:"stats",label:"📊 Statistiques"}].map(function(tb) {
+          return React.createElement("button", {
+            key:tb.id, onClick:function(){ setTicketTab(tb.id); },
+            style:{
+              flex:1, padding:"8px 12px", borderRadius:10, fontSize:12, fontWeight:700,
+              border:ticketTab===tb.id?"1.5px solid #f39c12":"1px solid var(--c-border)",
+              background:ticketTab===tb.id?"rgba(243,156,18,0.08)":"var(--c-base)",
+              color:ticketTab===tb.id?"#f39c12":"var(--c-ink-3)", cursor:"pointer"
+            }
+          }, tb.label);
+        })
+      ),
+
+      // ─── SOUS-VUE STATISTIQUES ───
+      ticketTab === "stats" ? React.createElement("div", null,
+        React.createElement("div", {
+          style:{ fontSize:13, fontWeight:700, color:"var(--c-ink)", marginBottom:4 }
+        }, "🎟️ Combien de matchs jouer ?"),
+        React.createElement("div", {
+          style:{ fontSize:11, color:"var(--c-ink-3)", marginBottom:12, fontStyle:"italic" }
+        }, "Analyse sur tes tickets passés · fiable dès 10 tickets"),
+        (ticketFormatsData && ticketFormatsData.length > 0) ? (function() {
+          var formats = ticketFormatsData;
+          var best = null;
+          formats.forEach(function(f) {
+            if ((f.total_tickets || 0) >= 10) {
+              if (!best || (f.expected_value || 0) > (best.expected_value || 0)) best = f;
+            }
+          });
+          return React.createElement("div", null,
+            React.createElement("div", { style:{ display:"flex", flexDirection:"column", gap:6 } },
+              formats.map(function(f) {
+                var total = f.total_tickets || 0;
+                var fiable = total >= 10;
+                var rate = f.win_rate || 0;
+                var isBest = best && best.num_matches === f.num_matches;
+                var color = !fiable ? "var(--c-ink-3)" : rate >= 50 ? "#27ae60" : rate >= 25 ? "#f39c12" : "#e74c3c";
+                return React.createElement("div", {
+                  key: f.num_matches,
+                  style:{
+                    background: isBest ? "rgba(39,174,96,0.08)" : "var(--c-base)",
+                    borderRadius:10, padding:"12px 14px",
+                    border: isBest ? "1.5px solid #27ae60" : "1px solid var(--c-border)",
+                    display:"flex", justifyContent:"space-between", alignItems:"center"
+                  }
+                },
+                  React.createElement("span", { style:{ fontSize:14, fontWeight:700, color:"var(--c-ink)" } },
+                    (isBest ? "⭐ " : "") + f.num_matches + " matchs"),
+                  React.createElement("span", { style:{ fontSize:11, color:"var(--c-ink-3)" } }, total + " tickets"),
+                  fiable
+                    ? React.createElement("span", { style:{ fontSize:16, fontWeight:800, color:color } }, rate + "%")
+                    : React.createElement("span", { style:{ fontSize:11, color:"var(--c-ink-3)", fontStyle:"italic" } }, "En cours…")
+                );
+              })
+            ),
+            best ? React.createElement("div", {
+              style:{ marginTop:12, padding:"12px 14px", background:"rgba(39,174,96,0.08)", borderRadius:10, fontSize:13, color:"#27ae60", fontWeight:700, textAlign:"center" }
+            }, "💡 Le mieux pour toi : " + best.num_matches + " matchs (taux " + best.win_rate + "%)")
+              : React.createElement("div", {
+              style:{ marginTop:12, padding:"12px", fontSize:11, color:"var(--c-ink-3)", fontStyle:"italic", textAlign:"center" }
+            }, "Continue d'accumuler des tickets — l'analyse se précisera après ~10 tickets terminés")
+          );
+        })() : React.createElement("div", {
+          style:{ textAlign:"center", padding:30, color:"var(--c-ink-3)", fontSize:12 }
+        }, "Aucune donnée d'analyse pour l'instant. Les tickets doivent d'abord se terminer.")
+      ) :
+
+      // ─── SOUS-VUE TICKET DU JOUR ───
+      React.createElement("div", null,
+
       // Header ticket
       React.createElement("div", {
         style:{
@@ -17669,7 +17753,7 @@ function Top25Tab() {
           );
         })
       )
-    ) : null,
+      ) ) : null,
 
     // ── Vue Sélection du jour (masquée si historique ou ticket) ──
     viewMode !== "history" && viewMode !== "ticket" ? React.createElement("div", null,
