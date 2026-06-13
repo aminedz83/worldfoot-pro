@@ -983,6 +983,24 @@ def main():
         f"{datetime.utcnow().strftime('%Y-%m-%d %H:%M')} UTC ===\n"
     )
 
+    # ── PROTECTION ANTI-DOUBLON ──────────────────────────────────────────
+    # Si le moteur a déjà publié des prédictions aujourd'hui, on s'arrête.
+    # Permet plusieurs tentatives cron (00h30/01h00/01h30) sans gaspiller le quota.
+    try:
+        today_iso = datetime.utcnow().date().isoformat()
+        chk = supabase.table("predictions") \
+            .select("id", count="exact") \
+            .gte("scraped_at", today_iso + "T00:00:00") \
+            .limit(1) \
+            .execute()
+        already = getattr(chk, "count", None) or 0
+        if already and already > 0:
+            print(f"  [SKIP] {already} prédictions déjà publiées aujourd'hui — moteur déjà exécuté")
+            print("=== Arrêt anti-doublon ===")
+            return
+    except Exception as e:
+        print(f"  [WARN] Vérification anti-doublon échouée ({e}) — on continue")
+
     # Vérifier le quota actuel via un appel test
     global quota_used, quota_limit_day
     print(f"Heure UTC : {datetime.utcnow().strftime('%H:%M')}")
