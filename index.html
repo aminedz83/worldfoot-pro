@@ -16101,6 +16101,12 @@ function Top25Tab() {
   var _useStateTicketLoad = useState(false);
   var ticketLoading = _useStateTicketLoad[0]; var setTicketLoading = _useStateTicketLoad[1];
 
+  var _useStateStake = useState(5);
+  var ticketStake = _useStateStake[0]; var setTicketStake = _useStateStake[1];
+
+  var _useStateCurrency = useState("CAD");
+  var ticketCurrency = _useStateCurrency[0]; var setTicketCurrency = _useStateCurrency[1];
+
   var _useState4 = useState({});
   var expanded = _useState4[0]; var setExpanded = _useState4[1];
 
@@ -17344,35 +17350,97 @@ function Top25Tab() {
         }, "Victoire · Confiance 80%+ · Ligues disponibles sur Bet365/1xBet · Basé sur historique réel 84.4%")
       ),
 
-      // Cote totale calculée
-      ticketData.length > 0 ? React.createElement("div", {
-        style:{
-          background:"var(--c-base)", borderRadius:12,
-          border:"1px solid var(--c-border)",
-          padding:"10px 14px", marginBottom:12,
-          display:"flex", alignItems:"center", justifyContent:"space-between"
-        }
-      },
-        React.createElement("span", { style:{ fontSize:12, color:"var(--c-ink-3)" } }, "Cote totale combinée"),
-        React.createElement("span", {
-          style:{ fontSize:18, fontWeight:800, color:"#f39c12" }
-        }, (function() {
-          var cote = 1;
-          ticketData.forEach(function(p) {
-            var recUp2 = (p.recommendation || "").toUpperCase();
-            var c = null;
-            if (recUp2.indexOf("EXTÉRIEUR") >= 0 || recUp2.indexOf("EXTERIEUR") >= 0) {
-              c = p.pinnacle_away || p.pinnacle_home || null;
-            } else if (recUp2.indexOf("DOMICILE") >= 0) {
-              c = p.pinnacle_home || p.pinnacle_away || null;
-            } else {
-              c = p.pinnacle_under25 || p.pinnacle_home || p.pinnacle_away || null;
+      // Cote totale + sélecteur de mise + gain
+      ticketData.length > 0 ? (function() {
+        var coteTotale = 1;
+        ticketData.forEach(function(p) {
+          var recUp2 = (p.recommendation || "").toUpperCase();
+          var c = null;
+          if (recUp2.indexOf("EXTÉRIEUR") >= 0 || recUp2.indexOf("EXTERIEUR") >= 0) {
+            c = p.pinnacle_away || p.pinnacle_home || null;
+          } else if (recUp2.indexOf("DOMICILE") >= 0) {
+            c = p.pinnacle_home || p.pinnacle_away || null;
+          } else {
+            c = p.pinnacle_under25 || p.pinnacle_home || p.pinnacle_away || null;
+          }
+          if (c) coteTotale *= parseFloat(c);
+        });
+
+        var sym = ticketCurrency === "CAD" ? "$" : "D";
+        var step = ticketCurrency === "CAD" ? 5 : 500;
+        var maxStake = ticketCurrency === "CAD" ? 100 : 10000;
+        // Construire les options de mise
+        var stakeOptions = [];
+        for (var s = step; s <= maxStake; s += step) { stakeOptions.push(s); }
+        // S'assurer que la mise courante est valide pour la devise
+        var curStake = ticketStake;
+        if (stakeOptions.indexOf(curStake) < 0) { curStake = step; }
+        var gain = coteTotale > 1 ? (curStake * coteTotale) : 0;
+
+        return React.createElement("div", {
+          style:{
+            background:"var(--c-base)", borderRadius:12,
+            border:"1px solid var(--c-border)",
+            padding:"12px 14px", marginBottom:12
+          }
+        },
+          // Ligne cote totale
+          React.createElement("div", {
+            style:{ display:"flex", alignItems:"center", justifyContent:"space-between", marginBottom:10 }
+          },
+            React.createElement("span", { style:{ fontSize:12, color:"var(--c-ink-3)" } }, "Cote totale combinée"),
+            React.createElement("span", { style:{ fontSize:18, fontWeight:800, color:"#f39c12" } },
+              coteTotale > 1 ? coteTotale.toFixed(2) : "N/A")
+          ),
+
+          // Toggle devise
+          React.createElement("div", { style:{ display:"flex", gap:6, marginBottom:10 } },
+            ["CAD","DZD"].map(function(cur) {
+              return React.createElement("button", {
+                key:cur,
+                onClick:function(){ setTicketCurrency(cur); setTicketStake(cur==="CAD"?5:500); },
+                style:{
+                  flex:1, padding:"6px 10px", borderRadius:8, fontSize:12, fontWeight:700,
+                  border:ticketCurrency===cur?"1.5px solid #f39c12":"1px solid var(--c-border)",
+                  background:ticketCurrency===cur?"rgba(243,156,18,0.08)":"transparent",
+                  color:ticketCurrency===cur?"#f39c12":"var(--c-ink-3)", cursor:"pointer"
+                }
+              }, cur==="CAD"?"🇨🇦 Dollar CAD":"🇩🇿 Dinar DZD");
+            })
+          ),
+
+          // Sélecteur de mise
+          React.createElement("div", { style:{ marginBottom:10 } },
+            React.createElement("div", { style:{ fontSize:11, color:"var(--c-ink-3)", marginBottom:6 } }, "Ta mise :"),
+            React.createElement("select", {
+              value: curStake,
+              onChange: function(e){ setTicketStake(parseInt(e.target.value,10)); },
+              style:{
+                width:"100%", padding:"10px 12px", borderRadius:10, fontSize:16,
+                border:"1px solid var(--c-border)", background:"var(--c-card)",
+                color:"var(--c-ink)", fontWeight:700, cursor:"pointer"
+              }
+            },
+              stakeOptions.map(function(opt) {
+                return React.createElement("option", { key:opt, value:opt }, opt + " " + sym);
+              })
+            )
+          ),
+
+          // Gain potentiel
+          React.createElement("div", {
+            style:{
+              display:"flex", alignItems:"center", justifyContent:"space-between",
+              background:"rgba(39,174,96,0.08)", borderRadius:10,
+              border:"1px solid rgba(39,174,96,0.25)", padding:"10px 12px"
             }
-            if (c) cote *= parseFloat(c);
-          });
-          return cote > 1 ? cote.toFixed(2) : "N/A";
-        })())
-      ) : null,
+          },
+            React.createElement("span", { style:{ fontSize:12, color:"var(--c-ink-2)", fontWeight:600 } }, "💰 Gain potentiel"),
+            React.createElement("span", { style:{ fontSize:18, fontWeight:800, color:"#27ae60" } },
+              coteTotale > 1 ? (gain.toLocaleString("fr-FR",{maximumFractionDigits:0}) + " " + sym) : "—")
+          )
+        );
+      })() : null,
 
       // Liste matchs ticket
       ticketLoading ? React.createElement("div", {
