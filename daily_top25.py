@@ -405,6 +405,69 @@ def save_top25(selected):
             print(f"  [DB ERR] Rang {rank}: {e}")
 
 
+def save_daily_ticket(selected):
+    """
+    Fige un ticket de 7 matchs VICTOIRE dans daily_tickets.
+    Le ticket ne change plus une fois créé — il est analysable.
+    """
+    today_str = date.today().isoformat()
+
+    # Garder uniquement VICTOIRE (pas BTTS/Double) triés par score, max 7
+    victoires = []
+    for p in selected:
+        rec = (p.get("recommendation") or "").upper()
+        if "VICTOIRE" in rec and "DOUBLE" not in rec:
+            victoires.append(p)
+    victoires = victoires[:7]
+
+    if len(victoires) < 2:
+        print(f"[TICKET] Pas assez de matchs VICTOIRE ({len(victoires)}) — ticket non créé")
+        return
+
+    # Construire la cote totale + le snapshot figé des matchs
+    total_odds = 1.0
+    matches = []
+    for p in victoires:
+        rec = (p.get("recommendation") or "").upper()
+        if "EXTÉRIEUR" in rec or "EXTERIEUR" in rec:
+            cote = p.get("pinnacle_away") or p.get("pinnacle_home")
+        else:
+            cote = p.get("pinnacle_home") or p.get("pinnacle_away")
+        cote = float(cote) if cote else 1.0
+        total_odds *= cote
+        matches.append({
+            "fixture_id":     p["fixture_id"],
+            "prediction_id":  p["id"],
+            "home_team_name": p["home_team_name"],
+            "away_team_name": p["away_team_name"],
+            "league_name":    p["league_name"],
+            "match_date":     p["match_date"],
+            "recommendation": p["recommendation"],
+            "rec_confidence": p["rec_confidence"],
+            "cote":           round(cote, 2),
+            "xg_total":       p.get("xg_total"),
+            "prediction_correct": None,
+        })
+
+    try:
+        # Un seul ticket par jour — on remplace si déjà existant aujourd'hui
+        supabase.table("daily_tickets").delete().eq("ticket_date", today_str).execute()
+        supabase.table("daily_tickets").insert({
+            "ticket_date":   today_str,
+            "matches":       matches,
+            "total_odds":    round(total_odds, 2),
+            "num_matches":   len(matches),
+            "status":        "pending",
+            "won_count":     0,
+            "lost_count":    0,
+            "pending_count": len(matches),
+            "created_at":    datetime.utcnow().isoformat(),
+        }).execute()
+        print(f"[TICKET] Ticket figé du {today_str} : {len(matches)} matchs · cote {round(total_odds,2)}")
+    except Exception as e:
+        print(f"  [TICKET ERR] {e}")
+
+
 def print_top25(selected):
     """Affiche le top 25 dans les logs GitHub Actions."""
     print(f"\n{'═'*65}")
@@ -476,6 +539,9 @@ def main():
     # Sauvegarder dans Supabase
     save_top25(selected)
     print(f"Top 25 sauvegardé dans Supabase · table daily_top25")
+
+    # Figer le ticket du jour (7 matchs VICTOIRE)
+    save_daily_ticket(selected)
 
 
 if __name__ == "__main__":
