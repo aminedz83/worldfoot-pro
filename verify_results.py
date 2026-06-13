@@ -118,6 +118,73 @@ def update_top25(fixture_id, is_correct):
         pass
 
 
+def update_daily_tickets():
+    """
+    Met à jour le statut des tickets figés (daily_tickets) selon les résultats.
+    Ne change JAMAIS les matchs du ticket — met juste à jour won/lost/pending et le statut.
+    """
+    try:
+        # Récupérer les tickets pas encore finalisés
+        r = supabase.table("daily_tickets") \
+            .select("*") \
+            .neq("status", "won") \
+            .neq("status", "lost") \
+            .execute()
+        tickets = r.data or []
+    except Exception as e:
+        print(f"  [TICKET] Lecture échouée : {e}")
+        return
+
+    for ticket in tickets:
+        matches = ticket.get("matches") or []
+        if not matches:
+            continue
+
+        # Récupérer les résultats actuels de chaque match du ticket
+        changed = False
+        won = lost = pending = 0
+        for m in matches:
+            fid = m.get("fixture_id")
+            try:
+                pr = supabase.table("predictions") \
+                    .select("prediction_correct") \
+                    .eq("fixture_id", fid) \
+                    .limit(1) \
+                    .execute()
+                pc = (pr.data[0]["prediction_correct"] if pr.data else None)
+            except Exception:
+                pc = m.get("prediction_correct")
+
+            if m.get("prediction_correct") != pc:
+                m["prediction_correct"] = pc
+                changed = True
+
+            if pc is True:    won += 1
+            elif pc is False: lost += 1
+            else:             pending += 1
+
+        # Déterminer le statut global
+        if lost > 0:
+            status = "lost"          # un seul perdu = ticket perdu
+        elif pending == 0:
+            status = "won"           # tous joués et aucun perdu = gagné
+        else:
+            status = "pending"       # encore des matchs à jouer
+
+        try:
+            supabase.table("daily_tickets").update({
+                "matches":       matches,
+                "won_count":     won,
+                "lost_count":    lost,
+                "pending_count": pending,
+                "status":        status,
+            }).eq("id", ticket["id"]).execute()
+            if changed or status != ticket.get("status"):
+                print(f"  [TICKET {ticket['ticket_date']}] {won}✅ {lost}❌ {pending}⏳ → {status}")
+        except Exception as e:
+            print(f"  [TICKET update err] {e}")
+
+
 def compute_daily_stats(verified):
     if not verified:
         return
@@ -204,6 +271,11 @@ def main():
         })
 
     compute_daily_stats(verified)
+
+    # Mettre à jour le statut des tickets figés
+    print("\n=== Mise à jour tickets figés ===")
+    update_daily_tickets()
+
     print(f"=== Terminé : {len(verified)} vérifiés · {skipped} ignorés ===\n")
 
 
