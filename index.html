@@ -16678,7 +16678,7 @@ function Top25Tab() {
             }, pred.home_team_name || "—")
           ),
 
-          // Score réel (si match terminé) sinon xG
+          // Score réel + xG (si match terminé) sinon xG seul
           (pred.actual_home_goals !== null && pred.actual_home_goals !== undefined &&
            pred.actual_away_goals !== null && pred.actual_away_goals !== undefined)
             ? React.createElement("div", { style:{ textAlign:"center" } },
@@ -16689,8 +16689,11 @@ function Top25Tab() {
                   }
                 }, pred.actual_home_goals + " - " + pred.actual_away_goals),
                 React.createElement("div", {
-                  style: { fontSize:8, color:"var(--c-ink-3)", letterSpacing:"0.08em", textTransform:"uppercase" }
-                }, "Score")
+                  style: { fontSize:8, color:"var(--c-ink-3)", letterSpacing:"0.08em", textTransform:"uppercase", marginBottom:3 }
+                }, "Score"),
+                React.createElement("div", {
+                  style: { fontFamily:"'JetBrains Mono',monospace", fontSize:11, fontWeight:500, color:"var(--c-ink-3)" }
+                }, "xG " + (pred.xg_total || "—"))
               )
             : React.createElement("div", { style:{ textAlign:"center" } },
                 React.createElement("div", {
