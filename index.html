@@ -16107,6 +16107,9 @@ function Top25Tab() {
   var _useStateCurrency = useState("CAD");
   var ticketCurrency = _useStateCurrency[0]; var setTicketCurrency = _useStateCurrency[1];
 
+  var _useStateTicketInfo = useState(null);
+  var ticketInfo = _useStateTicketInfo[0]; var setTicketInfo = _useStateTicketInfo[1];
+
   var _useState4 = useState({});
   var expanded = _useState4[0]; var setExpanded = _useState4[1];
 
@@ -16174,53 +16177,41 @@ function Top25Tab() {
     Promise.all([
       fetch(SB_BASE2 + "market_performance?select=*&order=period.asc", { headers: SB_H2 }).then(function(r) { return r.json(); }),
       fetch(SB_BASE2 + "xg_performance?select=*&order=xg_min.asc", { headers: SB_H2 }).then(function(r) { return r.json(); }),
-      fetch(SB_BASE2 + "league_performance?select=*&period=eq.30j&order=total.desc", { headers: SB_H2 }).then(function(r) { return r.json(); })
+      fetch(SB_BASE2 + "league_performance?select=*&period=eq.30j&order=total.desc", { headers: SB_H2 }).then(function(r) { return r.json(); }),
+      fetch(SB_BASE2 + "ticket_format_stats?select=*&order=num_matches.asc", { headers: SB_H2 }).then(function(r) { return r.json(); })
     ])
     .then(function(results) {
-      setStatsData({ market: results[0] || [], xg: results[1] || [], leagues: results[2] || [] });
+      setStatsData({ market: results[0] || [], xg: results[1] || [], leagues: results[2] || [], ticketFormats: results[3] || [] });
       setStatsLoading(false);
     })
     .catch(function() { setStatsLoading(false); });
   }, [viewMode]);
 
-  // Charger ticket depuis daily_top25 — les vrais meilleurs matchs sélectionnés par le moteur
+  // Charger le ticket figé du jour depuis daily_tickets
   useEffect(function() {
     if (viewMode !== "ticket") return;
     setTicketLoading(true);
-    var yesterday = new Date(Date.now() - 86400000).toISOString().split("T")[0];
+    setTicketInfo(null);
 
     fetch(
-      SB_BASE2 + "daily_top25?" +
-      "selection_date=gte." + yesterday +
-      "&order=rank.asc&select=*",
+      SB_BASE2 + "daily_tickets?order=ticket_date.desc&limit=1&select=*",
       { headers: SB_H2 }
     )
     .then(function(r) { return r.json(); })
     .then(function(rows) {
       if (!Array.isArray(rows) || rows.length === 0) {
-        setTicketData([]); setTicketLoading(false); return;
+        setTicketData([]); setTicketInfo(null); setTicketLoading(false); return;
       }
-      // Dédupliquer par fixture_id — 2 passes : d'abord trouver le meilleur, puis filtrer
-      var bestByFid = {};
-      rows.forEach(function(r) {
-        var fid = String(r.fixture_id || r.prediction_id || "");
-        if (!fid) return;
-        if (!bestByFid[fid] || r.selection_date > bestByFid[fid].selection_date) {
-          bestByFid[fid] = r;
-        }
-      });
-      var uniqueRows = rows.filter(function(r) {
-        var fid = String(r.fixture_id || r.prediction_id || "");
-        if (!fid) return true;
-        return bestByFid[fid] === r;
-      });
-      var ids = uniqueRows.map(function(r) { return r.prediction_id; }).filter(Boolean);
+      var ticket = rows[0];
+      var matches = ticket.matches || [];
+
+      // Enrichir chaque match avec team_id + score réel depuis predictions
+      var ids = matches.map(function(m) { return m.prediction_id; }).filter(Boolean);
       if (ids.length === 0) {
-        var filtered = uniqueRows.filter(function(p) {
-          var rec = (p.recommendation || "").toUpperCase();
-          return (rec.indexOf("VICTOIRE") >= 0) && (p.rec_confidence >= 80);
-        }).slice(0, 10);
-        setTicketData(filtered); setTicketLoading(false); return;
+        setTicketData(matches);
+        setTicketInfo(ticket);
+        setTicketLoading(false);
+        return;
       }
       fetch(
         SB_BASE2 + "predictions?id=in.(" + ids.join(",") + ")" +
@@ -16230,38 +16221,31 @@ function Top25Tab() {
       .then(function(r2) { return r2.json(); })
       .then(function(preds) {
         var pm = {};
-        if (Array.isArray(preds)) {
-          preds.forEach(function(p) { pm[p.id] = p; });
-        }
-        var enriched = uniqueRows.map(function(item) {
-          var pd = pm[item.prediction_id] || {};
+        if (Array.isArray(preds)) { preds.forEach(function(p) { pm[p.id] = p; }); }
+        var enriched = matches.map(function(m) {
+          var pd = pm[m.prediction_id] || {};
           var pc = (pd.prediction_correct !== undefined && pd.prediction_correct !== null)
                     ? pd.prediction_correct
-                    : (item.prediction_correct !== undefined ? item.prediction_correct : null);
-          return Object.assign({}, item, {
+                    : (m.prediction_correct !== undefined ? m.prediction_correct : null);
+          return Object.assign({}, m, {
             prediction_correct: pc,
-            home_team_id: item.home_team_id || pd.home_team_id || null,
-            away_team_id: item.away_team_id || pd.away_team_id || null,
-            actual_home_goals: (pd.actual_home_goals !== undefined ? pd.actual_home_goals : (item.actual_home_goals !== undefined ? item.actual_home_goals : null)),
-            actual_away_goals: (pd.actual_away_goals !== undefined ? pd.actual_away_goals : (item.actual_away_goals !== undefined ? item.actual_away_goals : null)),
+            home_team_id: pd.home_team_id || null,
+            away_team_id: pd.away_team_id || null,
+            actual_home_goals: (pd.actual_home_goals !== undefined ? pd.actual_home_goals : null),
+            actual_away_goals: (pd.actual_away_goals !== undefined ? pd.actual_away_goals : null),
+            pinnacle_home: m.cote,
+            pinnacle_away: m.cote,
           });
         });
-        var filtered = enriched.filter(function(p) {
-          var rec = (p.recommendation || "").toUpperCase();
-          return (rec.indexOf("VICTOIRE") >= 0) && (p.rec_confidence >= 80);
-        }).slice(0, 10);
-        setTicketData(filtered);
+        setTicketData(enriched);
+        setTicketInfo(ticket);
         setTicketLoading(false);
       })
       .catch(function() {
-        var filtered = uniqueRows.filter(function(p) {
-          var rec = (p.recommendation || "").toUpperCase();
-          return (rec.indexOf("VICTOIRE") >= 0) && (p.rec_confidence >= 80);
-        }).slice(0, 10);
-        setTicketData(filtered); setTicketLoading(false);
+        setTicketData(matches); setTicketInfo(ticket); setTicketLoading(false);
       });
     })
-    .catch(function() { setTicketData([]); setTicketLoading(false); });
+    .catch(function() { setTicketData([]); setTicketInfo(null); setTicketLoading(false); });
   }, [viewMode]);
 
   // Charger historique quand viewMode === "history"
@@ -17047,6 +17031,57 @@ function Top25Tab() {
         ) : null,
 
         // ── Stats par ligue ──────────────────────────────────────────
+        // ── Analyse format de ticket ─────────────────────────────────
+        statsData.ticketFormats && statsData.ticketFormats.length > 0 ? React.createElement("div", { style:{ marginTop:14 } },
+          React.createElement("div", { style:{ fontSize:11, fontWeight:700, color:"var(--c-ink-3)", marginBottom:6, textTransform:"uppercase", letterSpacing:1 } }, "🎟️ Combien de matchs jouer ?"),
+          React.createElement("div", { style:{ fontSize:10, color:"var(--c-ink-3)", marginBottom:8, fontStyle:"italic" } }, "Analyse sur tes tickets passés · fiable dès 10 tickets"),
+          (function() {
+            var formats = statsData.ticketFormats;
+            // Trouver le meilleur format (rendement le plus élevé avec ≥10 tickets)
+            var best = null;
+            formats.forEach(function(f) {
+              if ((f.total_tickets || 0) >= 10) {
+                if (!best || (f.expected_value || 0) > (best.expected_value || 0)) best = f;
+              }
+            });
+            return React.createElement("div", null,
+              React.createElement("div", { style:{ display:"flex", flexDirection:"column", gap:4 } },
+                formats.map(function(f) {
+                  var total = f.total_tickets || 0;
+                  var fiable = total >= 10;
+                  var rate = f.win_rate || 0;
+                  var isBest = best && best.num_matches === f.num_matches;
+                  var color = !fiable ? "var(--c-ink-3)" : rate >= 50 ? "#27ae60" : rate >= 25 ? "#f39c12" : "#e74c3c";
+                  return React.createElement("div", {
+                    key: f.num_matches,
+                    style:{
+                      background: isBest ? "rgba(39,174,96,0.08)" : "var(--c-base)",
+                      borderRadius:8, padding:"8px 10px",
+                      border: isBest ? "1.5px solid #27ae60" : "1px solid var(--c-border)"
+                    }
+                  },
+                    React.createElement("div", { style:{ display:"flex", justifyContent:"space-between", alignItems:"center" } },
+                      React.createElement("span", { style:{ fontSize:12, fontWeight:700, color:"var(--c-ink)" } },
+                        (isBest ? "⭐ " : "") + f.num_matches + " matchs"),
+                      React.createElement("span", { style:{ fontSize:10, color:"var(--c-ink-3)" } }, total + " tickets"),
+                      fiable
+                        ? React.createElement("span", { style:{ fontSize:13, fontWeight:800, color:color } }, rate + "%")
+                        : React.createElement("span", { style:{ fontSize:10, color:"var(--c-ink-3)", fontStyle:"italic" } }, "En cours…")
+                    )
+                  );
+                })
+              ),
+              best ? React.createElement("div", {
+                style:{ marginTop:8, padding:"8px 10px", background:"rgba(39,174,96,0.08)", borderRadius:8, fontSize:11, color:"#27ae60", fontWeight:600, textAlign:"center" }
+              }, "💡 Le mieux pour toi : " + best.num_matches + " matchs (taux " + best.win_rate + "%)")
+                : React.createElement("div", {
+                style:{ marginTop:8, fontSize:10, color:"var(--c-ink-3)", fontStyle:"italic", textAlign:"center" }
+              }, "Continue d'accumuler des tickets — l'analyse se précisera")
+            );
+          })()
+        ) : null,
+
+        // ── Stats par ligue ──────────────────────────────────────────
         statsData.leagues && statsData.leagues.length > 0 ? React.createElement("div", { style:{ marginTop:14 } },
           React.createElement("div", { style:{ fontSize:11, fontWeight:700, color:"var(--c-ink-3)", marginBottom:6, textTransform:"uppercase", letterSpacing:1 } }, "🏟️ Taux par ligue — 30j"),
           React.createElement("div", { style:{ fontSize:10, color:"var(--c-ink-3)", marginBottom:8, fontStyle:"italic" } }, "Mis à jour chaque jour · taux fiable dès 10 matchs"),
@@ -17341,30 +17376,44 @@ function Top25Tab() {
             style:{
               marginLeft:"auto", fontSize:10, fontWeight:700,
               padding:"2px 8px", borderRadius:20,
-              background:"rgba(243,156,18,0.12)", color:"#f39c12"
+              background: (ticketInfo && ticketInfo.status === "won") ? "rgba(39,174,96,0.15)"
+                        : (ticketInfo && ticketInfo.status === "lost") ? "rgba(231,76,60,0.15)"
+                        : "rgba(243,156,18,0.12)",
+              color: (ticketInfo && ticketInfo.status === "won") ? "#27ae60"
+                   : (ticketInfo && ticketInfo.status === "lost") ? "#e74c3c"
+                   : "#f39c12"
             }
-          }, ticketData.length + " matchs")
+          },
+            (ticketInfo && ticketInfo.status === "won") ? "✅ GAGNÉ"
+          : (ticketInfo && ticketInfo.status === "lost") ? "❌ PERDU"
+          : (ticketInfo ? (ticketInfo.won_count + "/" + ticketInfo.num_matches + " ⏳") : (ticketData.length + " matchs")))
         ),
         React.createElement("div", {
           style:{ fontSize:11, color:"var(--c-ink-3)" }
-        }, "Victoire · Confiance 80%+ · Ligues disponibles sur Bet365/1xBet · Basé sur historique réel 84.4%")
+        }, (ticketInfo && ticketInfo.ticket_date)
+             ? ("Ticket figé du " + ticketInfo.ticket_date + " · 7 matchs Victoire · Ne change plus")
+             : "Victoire · Confiance 80%+ · Ligues Bet365/1xBet")
       ),
 
       // Cote totale + sélecteur de mise + gain
       ticketData.length > 0 ? (function() {
-        var coteTotale = 1;
-        ticketData.forEach(function(p) {
-          var recUp2 = (p.recommendation || "").toUpperCase();
-          var c = null;
-          if (recUp2.indexOf("EXTÉRIEUR") >= 0 || recUp2.indexOf("EXTERIEUR") >= 0) {
-            c = p.pinnacle_away || p.pinnacle_home || null;
-          } else if (recUp2.indexOf("DOMICILE") >= 0) {
-            c = p.pinnacle_home || p.pinnacle_away || null;
-          } else {
-            c = p.pinnacle_under25 || p.pinnacle_home || p.pinnacle_away || null;
-          }
-          if (c) coteTotale *= parseFloat(c);
-        });
+        // Utiliser la cote figée du ticket si disponible, sinon recalculer
+        var coteTotale = (ticketInfo && ticketInfo.total_odds) ? parseFloat(ticketInfo.total_odds) : 1;
+        if (!ticketInfo || !ticketInfo.total_odds) {
+          coteTotale = 1;
+          ticketData.forEach(function(p) {
+            var recUp2 = (p.recommendation || "").toUpperCase();
+            var c = null;
+            if (recUp2.indexOf("EXTÉRIEUR") >= 0 || recUp2.indexOf("EXTERIEUR") >= 0) {
+              c = p.pinnacle_away || p.pinnacle_home || p.cote || null;
+            } else if (recUp2.indexOf("DOMICILE") >= 0) {
+              c = p.pinnacle_home || p.pinnacle_away || p.cote || null;
+            } else {
+              c = p.cote || p.pinnacle_home || null;
+            }
+            if (c) coteTotale *= parseFloat(c);
+          });
+        }
 
         var sym = ticketCurrency === "CAD" ? "$" : "D";
         var step = ticketCurrency === "CAD" ? 5 : 500;
