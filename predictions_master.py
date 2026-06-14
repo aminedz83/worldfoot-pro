@@ -165,8 +165,8 @@ def api(endpoint, params={}):
             headers=HEADERS, params=params, timeout=15
         )
 
-        # Petite pause régulière pour lisser le débit (évite d'atteindre la limite/minute)
-        time.sleep(0.35)
+        # Petite pause régulière pour lisser le débit (plan PRO ~450 req/min)
+        time.sleep(0.12)
 
         # Mettre à jour le quota depuis les headers
         limit  = r.headers.get("x-ratelimit-requests-limit")
@@ -1056,7 +1056,7 @@ def main():
         "priority_score": 999, "fixtures_ahead": 64,
     }
     print("\n[FIFA World Cup 2026] World S2026 NAT Priorité #999")
-    wc_end = today + timedelta(days=30)
+    wc_end = today + timedelta(days=7)
 
     # Essai 1 : status NS
     wc_fxs = api("fixtures", {
