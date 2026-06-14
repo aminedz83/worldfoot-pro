@@ -412,13 +412,26 @@ def save_daily_ticket(selected):
     """
     today_str = date.today().isoformat()
 
-    # Garder uniquement VICTOIRE (pas BTTS/Double) triés par score, max 7
+    # Garder uniquement VICTOIRE (pas BTTS/Double) triés par score
+    # ET une seule fois chaque équipe recommandée (répartir le risque)
     victoires = []
+    teams_used = []
     for p in selected:
         rec = (p.get("recommendation") or "").upper()
-        if "VICTOIRE" in rec and "DOUBLE" not in rec:
-            victoires.append(p)
-    victoires = victoires[:7]
+        if "VICTOIRE" not in rec or "DOUBLE" in rec:
+            continue
+        # Déterminer l'équipe recommandée (celle sur qui on parie)
+        if "EXTÉRIEUR" in rec or "EXTERIEUR" in rec:
+            team_reco = p.get("away_team_name")
+        else:
+            team_reco = p.get("home_team_name")
+        # Si cette équipe est déjà dans le ticket, on saute (évite 3× Espagne)
+        if team_reco in teams_used:
+            continue
+        teams_used.append(team_reco)
+        victoires.append(p)
+        if len(victoires) >= 7:
+            break
 
     if len(victoires) < 2:
         print(f"[TICKET] Pas assez de matchs VICTOIRE ({len(victoires)}) — ticket non créé")
