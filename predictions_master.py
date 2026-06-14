@@ -165,16 +165,19 @@ def api(endpoint, params={}):
             headers=HEADERS, params=params, timeout=15
         )
 
+        # Petite pause régulière pour lisser le débit (évite d'atteindre la limite/minute)
+        time.sleep(0.35)
+
         # Mettre à jour le quota depuis les headers
         limit  = r.headers.get("x-ratelimit-requests-limit")
         remain = r.headers.get("x-ratelimit-requests-remaining")
         if limit:  quota_limit_day = int(limit)
         if remain: quota_used = quota_limit_day - int(remain)
 
-        # Rate limit par minute atteint → attendre
+        # Rate limit par minute atteint → attendre (réduit à 8s, suffisant)
         if r.status_code == 429:
-            print("  [RATELIMIT] Pause 62 secondes...")
-            time.sleep(62)
+            print("  [RATELIMIT] Pause 8 secondes...")
+            time.sleep(8)
             return api(endpoint, params)
 
         if r.status_code != 200: return None
