@@ -917,6 +917,33 @@ def process(fix, li):
         print(f"      [SKIP] Signal insuffisant")
         return False
 
+    # ── Prudence Coupe du Monde selon la phase (round) ──────────────────
+    # 3e match de groupe : enjeux faussés (équipes qualifiées gèrent, calculs)
+    # Élimination directe : peut aller en prolongation/penalties → "Victoire"
+    #   au temps réglementaire devient incertaine.
+    if is_nat and wr:
+        wr_low = wr.lower()
+        rec_up = (res.get("recommendation") or "").upper()
+        is_victoire = "VICTOIRE" in rec_up
+        malus = 0
+        raison = ""
+        # Élimination directe (penalties possibles)
+        if any(k in wr_low for k in ["round of", "8th finals", "16", "quarter", "semi", "final"]):
+            malus = 12
+            raison = "élimination directe (prolongation/penalties possibles)"
+        # 3e match de groupe (enjeux faussés)
+        elif "group" in wr_low and ("3" in wr_low or "- 3" in wr_low):
+            malus = 8
+            raison = "3e match de groupe (enjeux faussés)"
+
+        if malus > 0 and is_victoire:
+            res["rec_confidence"] = round(res["rec_confidence"] - malus, 1)
+            print(f"      [CdM PRUDENCE] -{malus} conf · {raison} → {res['rec_confidence']}%")
+            # Si la confiance retombe sous le seuil, on annule la prédiction
+            if res["rec_confidence"] < MIN_CONF:
+                print(f"      [SKIP] Confiance sous le seuil après prudence CdM")
+                return False
+
     ctx = gen_context(
         home["name"],away["name"],hi_adj,ai_adj,h2h_d,xgt,
         res["recommendation"],odd,wth,inj_d,is_nat
