@@ -657,7 +657,7 @@ def compute_scores(hi,ai,h2h_d,xgt,inj_d,sk,wth,ca,odd,
     br=(hi["btts_rate"]+ai["btts_rate"])/2
     bs=(br*0.40+(oc/10*100)*0.30+((10-dc)/10*100)*0.15+h2h_d["btts"]*0.15)
     bs+=inj_d["adj_btts"]+wth.get("adj_btts",0)
-    if hi["off_index"]<5.5 or ai["off_index"]<5.5: bs-=8
+    if hi["off_index"]<5.5 or ai["off_index"]<5.5: bs-=4
     bs=round(min(max(bs,0),96),1)
 
     # Éviter contradiction Under ↔ BTTS
