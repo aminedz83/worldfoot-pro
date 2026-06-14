@@ -17024,9 +17024,19 @@ function Top25Tab() {
         // ── SECTION 1 : LIGUES ──
         React.createElement("div", { style:{ marginBottom:18 } },
           React.createElement("div", { style:{ fontSize:13, fontWeight:800, color:"var(--c-ink)", marginBottom:8 } }, "🏆 Quelles ligues gagnent ?"),
+          React.createElement("div", { style:{ fontSize:10, color:"var(--c-ink-3)", marginBottom:8, fontStyle:"italic" } },
+            (statsData.leagues ? statsData.leagues.length : 0) + " ligues analysées · les fiables (15+ matchs) en haut"),
           (statsData.leagues && statsData.leagues.length > 0)
             ? React.createElement("div", { style:{ display:"flex", flexDirection:"column", gap:6 } },
-                statsData.leagues.slice(0, 15).map(function(lg) {
+                statsData.leagues.slice().sort(function(a, b) {
+                  var aF = (a.total || 0) >= 15, bF = (b.total || 0) >= 15;
+                  // Fiables d'abord
+                  if (aF && !bF) return -1;
+                  if (!aF && bF) return 1;
+                  // Parmi les fiables : taux décroissant. Parmi les non-fiables : nb matchs décroissant
+                  if (aF && bF) return (b.rate || 0) - (a.rate || 0);
+                  return (b.total || 0) - (a.total || 0);
+                }).map(function(lg) {
                   var total = lg.total || 0;
                   var rate = lg.rate || 0;
                   var fiable = total >= 15;
