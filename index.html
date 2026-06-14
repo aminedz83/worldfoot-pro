@@ -17235,7 +17235,13 @@ function Top25Tab() {
           React.createElement("div", { style:{ fontSize:11, fontWeight:700, color:"var(--c-ink-3)", marginBottom:6, textTransform:"uppercase", letterSpacing:1 } }, "🏟️ Taux par ligue — 30j"),
           React.createElement("div", { style:{ fontSize:10, color:"var(--c-ink-3)", marginBottom:8, fontStyle:"italic" } }, "Mis à jour chaque jour · taux fiable dès 10 matchs"),
           React.createElement("div", { style:{ display:"flex", flexDirection:"column", gap:3 } },
-            (statsData.leagues || []).slice(0, 20).map(function(r) {
+            (statsData.leagues || []).slice().sort(function(a, b) {
+              var aF = (a.total || 0) >= 10, bF = (b.total || 0) >= 10;
+              if (aF && !bF) return -1;
+              if (!aF && bF) return 1;
+              if (aF && bF) return (b.rate || 0) - (a.rate || 0);
+              return (b.total || 0) - (a.total || 0);
+            }).map(function(r) {
               var rate  = r.rate;
               var total = r.total || 0;
               var fiable = total >= 10;
