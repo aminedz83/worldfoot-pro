@@ -16114,6 +16114,9 @@ function Top25Tab() {
   var _useStateTicketTab = useState("ticket");
   var ticketTab = _useStateTicketTab[0]; var setTicketTab = _useStateTicketTab[1];
 
+  var _useStateTicketHist = useState(null);
+  var ticketHist = _useStateTicketHist[0]; var setTicketHist = _useStateTicketHist[1];
+
   var _useStateTicketFmt = useState([]);
   var ticketFormatsData = _useStateTicketFmt[0]; var setTicketFormatsData = _useStateTicketFmt[1];
 
@@ -16204,6 +16207,12 @@ function Top25Tab() {
     fetch(SB_BASE2 + "ticket_format_stats?select=*&order=num_matches.asc", { headers: SB_H2 })
       .then(function(r) { return r.json(); })
       .then(function(rows) { if (Array.isArray(rows)) setTicketFormatsData(rows); })
+      .catch(function() {});
+
+    // Charger l'historique des tickets passés (30 derniers)
+    fetch(SB_BASE2 + "daily_tickets?select=ticket_date,total_odds,num_matches,status,won_count,lost_count,pending_count&order=ticket_date.desc&limit=30", { headers: SB_H2 })
+      .then(function(r) { return r.json(); })
+      .then(function(rows) { if (Array.isArray(rows)) setTicketHist(rows); })
       .catch(function() {});
 
     fetch(
@@ -17542,7 +17551,7 @@ function Top25Tab() {
 
       // Toggle Ticket du jour / Statistiques
       React.createElement("div", { style:{ display:"flex", gap:6, marginBottom:12 } },
-        [{id:"ticket",label:"🎟️ Ticket du jour"},{id:"stats",label:"📊 Statistiques"}].map(function(tb) {
+        [{id:"ticket",label:"🎟️ Jour"},{id:"stats",label:"📊 Stats"},{id:"history",label:"📜 Passés"}].map(function(tb) {
           return React.createElement("button", {
             key:tb.id, onClick:function(){ setTicketTab(tb.id); },
             style:{
@@ -17607,6 +17616,37 @@ function Top25Tab() {
         })() : React.createElement("div", {
           style:{ textAlign:"center", padding:30, color:"var(--c-ink-3)", fontSize:12 }
         }, "Aucune donnée d'analyse pour l'instant. Les tickets doivent d'abord se terminer.")
+      ) :
+
+      // ─── SOUS-VUE HISTORIQUE DES TICKETS ───
+      ticketTab === "history" ? React.createElement("div", null,
+        React.createElement("div", { style:{ fontSize:14, fontWeight:800, color:"var(--c-ink)", marginBottom:4 } }, "📜 Tickets passés"),
+        React.createElement("div", { style:{ fontSize:11, color:"var(--c-ink-3)", marginBottom:12, fontStyle:"italic" } }, "Coup d'œil sur tous tes tickets figés"),
+        (!ticketHist || ticketHist.length === 0)
+          ? React.createElement("div", { style:{ textAlign:"center", padding:30, color:"var(--c-ink-3)", fontSize:12 } }, "Aucun ticket pour l'instant.")
+          : React.createElement("div", { style:{ display:"flex", flexDirection:"column", gap:8 } },
+              ticketHist.map(function(tk) {
+                var st = tk.status || "pending";
+                var won = tk.won_count || 0, lost = tk.lost_count || 0, pend = tk.pending_count || 0;
+                var num = tk.num_matches || (won + lost + pend);
+                var conf = st === "won" ? { bg:"rgba(39,174,96,0.12)", bd:"#27ae60", txt:"#27ae60", label:"✅ GAGNÉ" }
+                         : st === "lost" ? { bg:"rgba(231,76,60,0.12)", bd:"#e74c3c", txt:"#e74c3c", label:"❌ PERDU" }
+                         : { bg:"rgba(243,156,18,0.10)", bd:"#f39c12", txt:"#f39c12", label:"⏳ EN COURS" };
+                return React.createElement("div", {
+                  key: tk.ticket_date,
+                  style:{ background:conf.bg, border:"1px solid "+conf.bd, borderRadius:10, padding:"10px 12px" }
+                },
+                  React.createElement("div", { style:{ display:"flex", justifyContent:"space-between", alignItems:"center", marginBottom:4 } },
+                    React.createElement("span", { style:{ fontSize:12, fontWeight:800, color:conf.txt } }, conf.label),
+                    React.createElement("span", { style:{ fontSize:13, fontWeight:800, color:"var(--c-ink)" } }, "cote " + (tk.total_odds || "—"))
+                  ),
+                  React.createElement("div", { style:{ display:"flex", justifyContent:"space-between", alignItems:"center" } },
+                    React.createElement("span", { style:{ fontSize:11, color:"var(--c-ink-2)" } }, "Ticket du " + tk.ticket_date + " · " + num + " matchs"),
+                    React.createElement("span", { style:{ fontSize:11, color:"var(--c-ink-3)" } }, won + "✅ " + lost + "❌ " + pend + "⏳")
+                  )
+                );
+              })
+            )
       ) :
 
       // ─── SOUS-VUE TICKET DU JOUR ───
