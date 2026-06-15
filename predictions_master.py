@@ -954,7 +954,7 @@ def process(fix, li):
     now = datetime.utcnow().isoformat()
     row = {
         "id":make_id(fid,lid),"fixture_id":fid,
-        "league_id":lid,"league_name":li["name"],
+        "league_id":lid,"league_name":li["name"],"league_country":country,
         "league_tier":tier,"is_national":is_nat,"wc_round":wr,
         "season":season,"match_date":md,"venue_city":vc,
         "home_team_id":home["id"],"home_team_name":home["name"],
