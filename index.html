@@ -16269,7 +16269,7 @@ function Top25Tab() {
     fetch(
       SB_BASE2 + "predictions?prediction_correct=not.is.null" +
       "&match_date=gte." + since +
-      "&order=match_date.desc&select=id,home_team_name,away_team_name,league_name," +
+      "&order=match_date.desc&select=id,home_team_name,away_team_name,league_name,league_country," +
       "match_date,recommendation,rec_confidence,prediction_correct,xg_total,home_team_id,away_team_id&limit=100",
       { headers: SB_H2 }
     )
@@ -16386,6 +16386,34 @@ function Top25Tab() {
     if (r.indexOf("DOUBLE") >= 0)   return "🔄";
     if (r.indexOf("VICTOIRE") >= 0) return "🏆";
     return "🎯";
+  }
+
+  // Convertir un nom de pays (API-Football, en anglais) en emoji drapeau
+  function countryFlag(country) {
+    if (!country) return "";
+    var map = {
+      "England":"🏴󠁧󠁢󠁥󠁮󠁧󠁿","Scotland":"🏴󠁧󠁢󠁳󠁣󠁴󠁿","Wales":"🏴󠁧󠁢󠁷󠁬󠁳󠁿","Germany":"🇩🇪","Spain":"🇪🇸",
+      "Italy":"🇮🇹","France":"🇫🇷","Netherlands":"🇳🇱","Portugal":"🇵🇹","Belgium":"🇧🇪",
+      "Turkey":"🇹🇷","Brazil":"🇧🇷","Argentina":"🇦🇷","USA":"🇺🇸","Mexico":"🇲🇽",
+      "Greece":"🇬🇷","Russia":"🇷🇺","Ukraine":"🇺🇦","Poland":"🇵🇱","Czech-Republic":"🇨🇿",
+      "Czech Republic":"🇨🇿","Switzerland":"🇨🇭","Croatia":"🇭🇷","Serbia":"🇷🇸","Romania":"🇷🇴",
+      "Norway":"🇳🇴","Sweden":"🇸🇪","Denmark":"🇩🇰","Austria":"🇦🇹","Morocco":"🇲🇦",
+      "Algeria":"🇩🇿","Egypt":"🇪🇬","South Africa":"🇿🇦","Saudi Arabia":"🇸🇦","Japan":"🇯🇵",
+      "South Korea":"🇰🇷","Australia":"🇦🇺","Finland":"🇫🇮","Ireland":"🇮🇪","Iceland":"🇮🇸",
+      "Bulgaria":"🇧🇬","Hungary":"🇭🇺","Slovakia":"🇸🇰","Slovenia":"🇸🇮","Colombia":"🇨🇴",
+      "Chile":"🇨🇱","Peru":"🇵🇪","Uruguay":"🇺🇾","Ecuador":"🇪🇨","Paraguay":"🇵🇾",
+      "Bolivia":"🇧🇴","Venezuela":"🇻🇪","Canada":"🇨🇦","Costa Rica":"🇨🇷","Tunisia":"🇹🇳",
+      "Nigeria":"🇳🇬","Ghana":"🇬🇭","Senegal":"🇸🇳","Cameroon":"🇨🇲","Ivory Coast":"🇨🇮",
+      "China":"🇨🇳","India":"🇮🇳","Indonesia":"🇮🇩","Thailand":"🇹🇭","Iran":"🇮🇷",
+      "Iraq":"🇮🇶","Qatar":"🇶🇦","UAE":"🇦🇪","Israel":"🇮🇱","New Zealand":"🇳🇿",
+      "Estonia":"🇪🇪","Latvia":"🇱🇻","Lithuania":"🇱🇹","Cyprus":"🇨🇾","Malta":"🇲🇹",
+      "Luxembourg":"🇱🇺","Albania":"🇦🇱","Bosnia":"🇧🇦","North Macedonia":"🇲🇰","Montenegro":"🇲🇪",
+      "Kosovo":"🇽🇰","Georgia":"🇬🇪","Armenia":"🇦🇲","Azerbaijan":"🇦🇿","Kazakhstan":"🇰🇿",
+      "Belarus":"🇧🇾","Moldova":"🇲🇩","Tanzania":"🇹🇿","Kenya":"🇰🇪","Zambia":"🇿🇲",
+      "Angola":"🇦🇴","World":"🌍","Europe":"🇪🇺","Africa":"🌍","Asia":"🌏",
+      "South America":"🌎","North America":"🌎"
+    };
+    return map[country] || "🏳️";
   }
 
   // Logo de l'équipe recommandée (domicile ou extérieur selon la reco)
@@ -16631,7 +16659,7 @@ function Top25Tab() {
             React.createElement("span", {
               style: { fontSize:10, fontWeight:600, color:"var(--c-ink-3)",
                 textTransform:"uppercase", letterSpacing:"0.06em" }
-            }, pred.league_name || "—")
+            }, (pred.league_country ? countryFlag(pred.league_country) + " " : "") + (pred.league_name || "—"))
           ),
           React.createElement("div", {
             style: { display:"flex", flexDirection:"column", alignItems:"flex-end", gap:1 }
@@ -17047,7 +17075,7 @@ function Top25Tab() {
                     style:{ display:"flex", alignItems:"center", gap:8, padding:"10px 12px", background:"var(--c-card)", borderRadius:10, border:"1px solid var(--c-border)" }
                   },
                     React.createElement("div", { style:{ flex:1, minWidth:0 } },
-                      React.createElement("div", { style:{ fontSize:12, fontWeight:700, color:"var(--c-ink)", whiteSpace:"nowrap", overflow:"hidden", textOverflow:"ellipsis" } }, lg.league_name),
+                      React.createElement("div", { style:{ fontSize:12, fontWeight:700, color:"var(--c-ink)", whiteSpace:"nowrap", overflow:"hidden", textOverflow:"ellipsis" } }, countryFlag(lg.league_country) + " " + lg.league_name),
                       React.createElement("div", { style:{ fontSize:10, color:"var(--c-ink-3)" } }, total + " matchs" + (fiable ? "" : " · pas encore assez"))
                     ),
                     fiable
@@ -17254,7 +17282,7 @@ function Top25Tab() {
                 style:{ background:"var(--c-base)", borderRadius:8, border:"1px solid var(--c-border)", padding:"7px 10px" }
               },
                 React.createElement("div", { style:{ display:"flex", justifyContent:"space-between", alignItems:"center", marginBottom: fiable ? 4 : 0 } },
-                  React.createElement("span", { style:{ fontSize:11, color:"var(--c-ink)", fontWeight:600, flex:1, marginRight:8 } }, r.league_name),
+                  React.createElement("span", { style:{ fontSize:11, color:"var(--c-ink)", fontWeight:600, flex:1, marginRight:8 } }, countryFlag(r.league_country) + " " + r.league_name),
                   React.createElement("span", { style:{ fontSize:10, color:"var(--c-ink-3)", marginRight:8 } }, total + " matchs"),
                   fiable
                     ? React.createElement("span", { style:{ fontSize:12, fontWeight:800, color:color } }, rate + "%")
@@ -18252,7 +18280,7 @@ function HistoryTab() {
     fetch(
       SB_BASE2 + "predictions?prediction_correct=not.is.null" +
       "&match_date=gte." + since +
-      "&order=match_date.desc&select=id,home_team_name,away_team_name,league_name," +
+      "&order=match_date.desc&select=id,home_team_name,away_team_name,league_name,league_country," +
       "match_date,recommendation,rec_confidence,prediction_correct,xg_total," +
       "home_team_id,away_team_id,league_id&limit=100",
       { headers: SB_H2 }
