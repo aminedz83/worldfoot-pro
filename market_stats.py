@@ -260,7 +260,7 @@ def compute_league_stats():
     from_date = (datetime.utcnow() - timedelta(days=30)).isoformat()
     try:
         r = supabase.table("predictions")\
-            .select("prediction_correct, league_name, league_tier, recommendation")\
+            .select("prediction_correct, league_name, league_country, league_tier, recommendation")\
             .not_.is_("prediction_correct", "null")\
             .gte("match_date", from_date)\
             .execute()
@@ -285,10 +285,18 @@ def compute_league_stats():
         correct = sum(1 for p in preds if p["prediction_correct"] is True)
         rate    = round(correct / total * 100, 1)
         tier    = preds[0].get("league_tier") or 3
+        # Récupérer le pays (le premier non-vide trouvé pour cette ligue)
+        country = ""
+        for p in preds:
+            c = p.get("league_country")
+            if c:
+                country = c
+                break
 
         try:
             supabase.table("league_performance").upsert({
                 "league_name": league,
+                "league_country": country,
                 "league_tier": tier,
                 "total":       total,
                 "correct":     correct,
