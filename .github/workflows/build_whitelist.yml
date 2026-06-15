@@ -71,6 +71,7 @@ jobs:
 
               raw = fetch_leagues()
               kept = []
+              intl_cups = []
               n_cup = n_fem = n_jeu = n_flag = 0
               cups = []
 
@@ -85,10 +86,9 @@ jobs:
 
                   if ltype != "League":
                       n_cup += 1
-                      if any(k in nm for k in ["champions league", "europa league",
-                                               "conference league", "libertadores",
-                                               "sudamericana"]):
-                          cups.append((lid, name, country))
+                      # Competitions internationales / continentales = pays "World"
+                      if country == "World":
+                          intl_cups.append((lid, name))
                       continue
 
                   flag = ""
@@ -112,10 +112,12 @@ jobs:
               print("DROP jeunes               : %d" % n_jeu)
               print("A revoir 'bas_niveau?'    : %d" % n_flag)
               print("KEEP net (championnats)   : %d" % len(kept))
-              if cups:
-                  print("\nCoupes continentales majeures (a ajouter si tu veux) :")
-                  for lid, name, country in cups:
-                      print("   %5s  %s (%s)" % (lid, name, country))
+              if intl_cups:
+                  intl_cups.sort(key=lambda x: x[1])
+                  print("\n===CUPS-BEGIN=== (competitions internationales — copie jusqu'a CUPS-END)")
+                  for lid, name in intl_cups:
+                      print("%s|%s" % (lid, name))
+                  print("===CUPS-END===")
 
               print("\n===WF-BEGIN=== (copie tout jusqu'a WF-END)")
               for country, lid, name, flag in kept:
