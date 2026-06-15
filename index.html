@@ -16116,6 +16116,7 @@ function Top25Tab() {
 
   var _useStateTicketHist = useState(null);
   var ticketHist = _useStateTicketHist[0]; var setTicketHist = _useStateTicketHist[1];
+  var _useStateTicketOpen = React.useState(null); var ticketOpen = _useStateTicketOpen[0]; var setTicketOpen = _useStateTicketOpen[1];
 
   var _useStateTicketFmt = useState([]);
   var ticketFormatsData = _useStateTicketFmt[0]; var setTicketFormatsData = _useStateTicketFmt[1];
@@ -16210,7 +16211,7 @@ function Top25Tab() {
       .catch(function() {});
 
     // Charger l'historique des tickets passés (30 derniers)
-    fetch(SB_BASE2 + "daily_tickets?select=ticket_date,total_odds,num_matches,status,won_count,lost_count,pending_count&order=ticket_date.desc&limit=30", { headers: SB_H2 })
+    fetch(SB_BASE2 + "daily_tickets?select=ticket_date,total_odds,num_matches,status,won_count,lost_count,pending_count,matches&order=ticket_date.desc&limit=30", { headers: SB_H2 })
       .then(function(r) { return r.json(); })
       .then(function(rows) { if (Array.isArray(rows)) setTicketHist(rows); })
       .catch(function() {});
@@ -17632,9 +17633,12 @@ function Top25Tab() {
                 var conf = st === "won" ? { bg:"rgba(39,174,96,0.12)", bd:"#27ae60", txt:"#27ae60", label:"✅ GAGNÉ" }
                          : st === "lost" ? { bg:"rgba(231,76,60,0.12)", bd:"#e74c3c", txt:"#e74c3c", label:"❌ PERDU" }
                          : { bg:"rgba(243,156,18,0.10)", bd:"#f39c12", txt:"#f39c12", label:"⏳ EN COURS" };
+                var isOpen = ticketOpen === tk.ticket_date;
+                var mlist = Array.isArray(tk.matches) ? tk.matches : [];
                 return React.createElement("div", {
                   key: tk.ticket_date,
-                  style:{ background:conf.bg, border:"1px solid "+conf.bd, borderRadius:10, padding:"10px 12px" }
+                  onClick: function() { setTicketOpen(isOpen ? null : tk.ticket_date); },
+                  style:{ background:conf.bg, border:"1px solid "+conf.bd, borderRadius:10, padding:"10px 12px", cursor:"pointer" }
                 },
                   React.createElement("div", { style:{ display:"flex", justifyContent:"space-between", alignItems:"center", marginBottom:4 } },
                     React.createElement("span", { style:{ fontSize:12, fontWeight:800, color:conf.txt } }, conf.label),
@@ -17643,7 +17647,35 @@ function Top25Tab() {
                   React.createElement("div", { style:{ display:"flex", justifyContent:"space-between", alignItems:"center" } },
                     React.createElement("span", { style:{ fontSize:11, color:"var(--c-ink-2)" } }, "Ticket du " + tk.ticket_date + " · " + num + " matchs"),
                     React.createElement("span", { style:{ fontSize:11, color:"var(--c-ink-3)" } }, won + "✅ " + lost + "❌ " + pend + "⏳")
-                  )
+                  ),
+                  // Indicateur cliquable
+                  React.createElement("div", { style:{ fontSize:10, color:"var(--c-ink-3)", textAlign:"center", marginTop:6 } },
+                    isOpen ? "▲ Masquer les matchs" : "▼ Voir les " + num + " matchs"),
+                  // Liste dépliée des matchs
+                  isOpen ? React.createElement("div", { style:{ marginTop:8, display:"flex", flexDirection:"column", gap:6 } },
+                    mlist.length === 0
+                      ? React.createElement("div", { style:{ fontSize:11, color:"var(--c-ink-3)", fontStyle:"italic", textAlign:"center", padding:8 } }, "Détail des matchs non disponible")
+                      : mlist.map(function(m, idx) {
+                          var pc = m.prediction_correct;
+                          var icon = pc === true ? "✅" : pc === false ? "❌" : "⏳";
+                          return React.createElement("div", {
+                            key: idx,
+                            style:{ background:"var(--c-card)", borderRadius:8, padding:"8px 10px", border:"1px solid var(--c-border)" }
+                          },
+                            React.createElement("div", { style:{ display:"flex", justifyContent:"space-between", alignItems:"center", marginBottom:2 } },
+                              React.createElement("span", { style:{ fontSize:11, fontWeight:700, color:"var(--c-ink)", flex:1, marginRight:6 } },
+                                icon + " " + (m.home_team_name || "?") + " vs " + (m.away_team_name || "?")),
+                              React.createElement("span", { style:{ fontSize:11, fontWeight:700, color:"var(--c-ink)" } }, "cote " + (m.cote || "—"))
+                            ),
+                            React.createElement("div", { style:{ display:"flex", justifyContent:"space-between", alignItems:"center" } },
+                              React.createElement("span", { style:{ fontSize:9, color:"var(--c-ink-3)" } },
+                                (m.league_name || "") + " · " + (m.recommendation || "")),
+                              React.createElement("span", { style:{ fontSize:9, color:"var(--c-ink-3)" } },
+                                (m.rec_confidence ? m.rec_confidence + "%" : ""))
+                            )
+                          );
+                        })
+                  ) : null
                 );
               })
             )
