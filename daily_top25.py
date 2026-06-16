@@ -15,7 +15,7 @@ Cron GitHub Actions : 05h30 UTC (après predictions_master.py à 04h00)
 """
 
 import os
-from datetime import datetime, date
+from datetime import datetime, date, timedelta
 from supabase import create_client
 
 SUPA_URL = os.environ["PREDICTIONS_SUPA_URL"].strip()
