@@ -412,6 +412,25 @@ def save_daily_ticket(selected):
     """
     today_str = date.today().isoformat()
 
+    # Ticket = uniquement des matchs NEUFS, imminents (aujourd'hui + demain).
+    # 1) Dates autorisées
+    _today = date.today()
+    allowed_dates = {_today.isoformat(), (_today + timedelta(days=1)).isoformat()}
+    # 2) Fixtures déjà figés dans les tickets des 7 derniers jours -> à exclure
+    used_fixtures = set()
+    try:
+        since = (_today - timedelta(days=7)).isoformat()
+        rec_tickets = supabase.table("daily_tickets") \
+            .select("matches").gte("ticket_date", since).execute()
+        for t in (rec_tickets.data or []):
+            for m in (t.get("matches") or []):
+                fid = m.get("fixture_id")
+                if fid is not None:
+                    used_fixtures.add(fid)
+        print(f"[TICKET] {len(used_fixtures)} matchs déjà utilisés récemment -> exclus")
+    except Exception as e:
+        print(f"[TICKET] Lecture tickets récents impossible : {e}")
+
     # Garder uniquement VICTOIRE (pas BTTS/Double) triés par score
     # ET une seule fois chaque équipe recommandée (répartir le risque)
     victoires = []
@@ -419,6 +438,12 @@ def save_daily_ticket(selected):
     for p in selected:
         rec = (p.get("recommendation") or "").upper()
         if "VICTOIRE" not in rec or "DOUBLE" in rec:
+            continue
+        # Match déjà figé dans un ticket récent -> on saute (pas de répétition)
+        if p.get("fixture_id") in used_fixtures:
+            continue
+        # Match hors fenêtre aujourd'hui/demain -> on saute
+        if (p.get("match_date") or "")[:10] not in allowed_dates:
             continue
         # Déterminer l'équipe recommandée (celle sur qui on parie)
         if "EXTÉRIEUR" in rec or "EXTERIEUR" in rec:
