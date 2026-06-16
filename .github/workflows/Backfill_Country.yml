@@ -1,0 +1,117 @@
+name: Backfill Country
+
+on:
+  workflow_dispatch:
+
+jobs:
+  backfill:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Setup Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+      - name: Backfill league_country
+        env:
+          API_FOOTBALL_KEY: ${{ secrets.API_FOOTBALL_KEY }}
+          PREDICTIONS_SUPA_URL: ${{ secrets.PREDICTIONS_SUPA_URL }}
+          PREDICTIONS_SUPA_KEY: ${{ secrets.PREDICTIONS_SUPA_KEY }}
+        run: |
+          pip install supabase requests --quiet
+          cat > bf.py <<'PY'
+          import os
+          import requests
+          from supabase import create_client
+
+          API_KEY  = os.environ.get("API_FOOTBALL_KEY", "").strip()
+          SUPA_URL = os.environ.get("PREDICTIONS_SUPA_URL", "").strip()
+          SUPA_KEY = os.environ.get("PREDICTIONS_SUPA_KEY", "").strip()
+          HEADERS  = {"x-apisports-key": API_KEY}
+
+          supabase = create_client(SUPA_URL, SUPA_KEY)
+
+
+          def fetch_leagues():
+              r = requests.get("https://v3.football.api-sports.io/leagues",
+                               headers=HEADERS, params={"current": "true"}, timeout=30)
+              r.raise_for_status()
+              d = r.json()
+              if d.get("errors"):
+                  raise RuntimeError("Erreurs API : %s" % d["errors"])
+              return d.get("response", [])
+
+
+          def main():
+              if not (API_KEY and SUPA_URL and SUPA_KEY):
+                  print("ERREUR : secrets manquants (API_FOOTBALL_KEY / PREDICTIONS_SUPA_*).")
+                  return
+
+              raw = fetch_leagues()
+              id2c = {}
+              name2c = {}
+              for it in raw:
+                  lid = it.get("league", {}).get("id")
+                  nm  = it.get("league", {}).get("name", "")
+                  co  = it.get("country", {}).get("name", "") or ""
+                  if lid and co:
+                      id2c[lid] = co
+                  if nm and co and nm not in name2c:
+                      name2c[nm] = co
+              print("Mapping API : %d ligues (id), %d noms" % (len(id2c), len(name2c)))
+
+              # 1) predictions.league_country (lignes encore NULL)
+              npred = 0
+              for lid, co in id2c.items():
+                  try:
+                      res = supabase.table("predictions").update({"league_country": co}) \
+                          .eq("league_id", lid).is_("league_country", "null").execute()
+                      npred += len(res.data or [])
+                  except Exception as e:
+                      print("  [predictions %s] %s" % (lid, e))
+              print("predictions : %d lignes mises a jour" % npred)
+
+              # 2) daily_top25 (seulement si la colonne existe)
+              do_top25 = True
+              try:
+                  supabase.table("daily_top25").select("league_country").limit(1).execute()
+              except Exception:
+                  do_top25 = False
+                  print("daily_top25 : pas de colonne league_country -> ignore")
+              if do_top25:
+                  ntop = 0
+                  for lid, co in id2c.items():
+                      try:
+                          res = supabase.table("daily_top25").update({"league_country": co}) \
+                              .eq("league_id", lid).is_("league_country", "null").execute()
+                          ntop += len(res.data or [])
+                      except Exception:
+                          pass
+                  print("daily_top25 : %d lignes mises a jour" % ntop)
+
+              # 3) league_performance (par nom de ligue)
+              do_lp = True
+              try:
+                  supabase.table("league_performance").select("league_country").limit(1).execute()
+              except Exception:
+                  do_lp = False
+                  print("league_performance : pas de colonne league_country -> ignore")
+              if do_lp:
+                  nlp = 0
+                  for nm, co in name2c.items():
+                      try:
+                          res = supabase.table("league_performance").update({"league_country": co}) \
+                              .eq("league_name", nm).is_("league_country", "null").execute()
+                          nlp += len(res.data or [])
+                      except Exception:
+                          pass
+                  print("league_performance : %d lignes mises a jour" % nlp)
+
+              print("")
+              print("Backfill termine. Recharge l'app pour voir les drapeaux.")
+
+
+          if __name__ == "__main__":
+              main()
+
+          PY
+          python bf.py
