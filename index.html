@@ -16426,6 +16426,52 @@ function Top25Tab() {
     return map[country] || "🏳️";
   }
 
+  // Convertir un nom de pays (API-Football, anglais) en français
+  function countryFR(country) {
+    if (!country) return "";
+    var m = {
+      "England":"Angleterre","Scotland":"Écosse","Wales":"Pays de Galles",
+      "Germany":"Allemagne","Spain":"Espagne","Italy":"Italie","France":"France",
+      "Netherlands":"Pays-Bas","Portugal":"Portugal","Belgium":"Belgique",
+      "Turkey":"Turquie","Brazil":"Brésil","Argentina":"Argentine","USA":"États-Unis",
+      "Mexico":"Mexique","Greece":"Grèce","Russia":"Russie","Ukraine":"Ukraine",
+      "Poland":"Pologne","Czech-Republic":"Tchéquie","Czech Republic":"Tchéquie",
+      "Switzerland":"Suisse","Croatia":"Croatie","Serbia":"Serbie","Romania":"Roumanie",
+      "Norway":"Norvège","Sweden":"Suède","Denmark":"Danemark","Austria":"Autriche",
+      "Morocco":"Maroc","Algeria":"Algérie","Egypt":"Égypte","South Africa":"Afrique du Sud",
+      "Saudi Arabia":"Arabie Saoudite","Japan":"Japon","South Korea":"Corée du Sud",
+      "Australia":"Australie","Finland":"Finlande","Ireland":"Irlande","Iceland":"Islande",
+      "Bulgaria":"Bulgarie","Hungary":"Hongrie","Slovakia":"Slovaquie","Slovenia":"Slovénie",
+      "Colombia":"Colombie","Chile":"Chili","Peru":"Pérou","Uruguay":"Uruguay",
+      "Ecuador":"Équateur","Paraguay":"Paraguay","Bolivia":"Bolivie","Venezuela":"Venezuela",
+      "Canada":"Canada","Costa Rica":"Costa Rica","Tunisia":"Tunisie","Nigeria":"Nigéria",
+      "Ghana":"Ghana","Senegal":"Sénégal","Cameroon":"Cameroun","Ivory Coast":"Côte d'Ivoire",
+      "China":"Chine","India":"Inde","Indonesia":"Indonésie","Thailand":"Thaïlande",
+      "Iran":"Iran","Iraq":"Irak","Qatar":"Qatar","UAE":"Émirats arabes unis",
+      "Israel":"Israël","New Zealand":"Nouvelle-Zélande","Estonia":"Estonie",
+      "Latvia":"Lettonie","Lithuania":"Lituanie","Cyprus":"Chypre","Malta":"Malte",
+      "Luxembourg":"Luxembourg","Albania":"Albanie","Bosnia":"Bosnie",
+      "North Macedonia":"Macédoine du Nord","Macedonia":"Macédoine du Nord",
+      "Montenegro":"Monténégro","Kosovo":"Kosovo","Georgia":"Géorgie","Armenia":"Arménie",
+      "Azerbaijan":"Azerbaïdjan","Kazakhstan":"Kazakhstan","Belarus":"Biélorussie",
+      "Moldova":"Moldavie","Tanzania":"Tanzanie","Kenya":"Kenya","Zambia":"Zambie",
+      "Angola":"Angola","Mali":"Mali","Burkina-Faso":"Burkina Faso","Burkina Faso":"Burkina Faso",
+      "Congo-DR":"RD Congo","DR Congo":"RD Congo","Malaysia":"Malaisie","Vietnam":"Vietnam",
+      "Uzbekistan":"Ouzbékistan",
+      "World":"International","Europe":"Europe","Africa":"Afrique","Asia":"Asie",
+      "South America":"Amérique du Sud","North America":"Amérique du Nord"
+    };
+    return m[country] || country;
+  }
+
+  // Label complet d'une ligue : "🇧🇷 Serie A · Brésil"
+  function leagueLabel(country, name) {
+    var nm = name || "—";
+    if (!country) return nm;
+    var fr = countryFR(country);
+    return countryFlag(country) + " " + nm + (fr ? " · " + fr : "");
+  }
+
   // Logo de l'équipe recommandée (domicile ou extérieur selon la reco)
   function t25recoLogo(pred) {
     if (!pred || !pred.recommendation) return null;
@@ -16669,7 +16715,7 @@ function Top25Tab() {
             React.createElement("span", {
               style: { fontSize:10, fontWeight:600, color:"var(--c-ink-3)",
                 textTransform:"uppercase", letterSpacing:"0.06em" }
-            }, (pred.league_country ? countryFlag(pred.league_country) + " " : "") + (pred.league_name || "—"))
+            }, leagueLabel(pred.league_country, pred.league_name))
           ),
           React.createElement("div", {
             style: { display:"flex", flexDirection:"column", alignItems:"flex-end", gap:1 }
@@ -17085,7 +17131,7 @@ function Top25Tab() {
                     style:{ display:"flex", alignItems:"center", gap:8, padding:"10px 12px", background:"var(--c-card)", borderRadius:10, border:"1px solid var(--c-border)" }
                   },
                     React.createElement("div", { style:{ flex:1, minWidth:0 } },
-                      React.createElement("div", { style:{ fontSize:12, fontWeight:700, color:"var(--c-ink)", whiteSpace:"nowrap", overflow:"hidden", textOverflow:"ellipsis" } }, countryFlag(lg.league_country) + " " + lg.league_name),
+                      React.createElement("div", { style:{ fontSize:12, fontWeight:700, color:"var(--c-ink)", whiteSpace:"nowrap", overflow:"hidden", textOverflow:"ellipsis" } }, leagueLabel(lg.league_country, lg.league_name)),
                       React.createElement("div", { style:{ fontSize:10, color:"var(--c-ink-3)" } }, total + " matchs" + (fiable ? "" : " · pas encore assez"))
                     ),
                     fiable
@@ -17292,7 +17338,7 @@ function Top25Tab() {
                 style:{ background:"var(--c-base)", borderRadius:8, border:"1px solid var(--c-border)", padding:"7px 10px" }
               },
                 React.createElement("div", { style:{ display:"flex", justifyContent:"space-between", alignItems:"center", marginBottom: fiable ? 4 : 0 } },
-                  React.createElement("span", { style:{ fontSize:11, color:"var(--c-ink)", fontWeight:600, flex:1, marginRight:8 } }, countryFlag(r.league_country) + " " + r.league_name),
+                  React.createElement("span", { style:{ fontSize:11, color:"var(--c-ink)", fontWeight:600, flex:1, marginRight:8 } }, leagueLabel(r.league_country, r.league_name)),
                   React.createElement("span", { style:{ fontSize:10, color:"var(--c-ink-3)", marginRight:8 } }, total + " matchs"),
                   fiable
                     ? React.createElement("span", { style:{ fontSize:12, fontWeight:800, color:color } }, rate + "%")
