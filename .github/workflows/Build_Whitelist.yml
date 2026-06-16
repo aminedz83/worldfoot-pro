@@ -1,0 +1,132 @@
+name: Build Whitelist
+
+on:
+  workflow_dispatch:
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Setup Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+      - name: Generer la whitelist
+        env:
+          API_FOOTBALL_KEY: ${{ secrets.API_FOOTBALL_KEY }}
+        run: |
+          pip install requests --quiet
+          cat > bw.py <<'PY'
+          import os
+          import unicodedata
+          import requests
+
+          API_KEY  = os.environ.get("API_FOOTBALL_KEY", "").strip()
+          API_BASE = "https://v3.football.api-sports.io"
+          HEADERS  = {"x-apisports-key": API_KEY}
+
+          FEMININ = [
+              "women", "woman", "femin", "femen", "femmin", "femminile",
+              "frauen", "damen", "dames", "kvinn", "kvinde", "naisten",
+              "damallsvenskan", "feminine",
+          ]
+          JEUNES = [
+              "u15", "u16", "u17", "u18", "u19", "u20", "u21", "u22", "u23",
+              "youth", "junior", "primavera", "juvenil", "jugend", "sub-2", "sub 2",
+              "reserve", "reserves",
+          ]
+          BAS_NIVEAU = [
+              "oberliga", "landesliga", "regionalliga", "verbandsliga", "kreisliga",
+              "bezirksliga", "serie d", "eccellenza", "promozione", "prima categoria",
+              "tercera", "cuarta", "quinta", "regional", "amateur", "state league",
+              "provincial", "county", "district", "npl", "isthmian", "ettan", "tvaan",
+              "non league", "non-league", "combined counties",
+          ]
+
+
+          def norm(s):
+              s = unicodedata.normalize("NFKD", s or "")
+              s = "".join(c for c in s if not unicodedata.combining(c))
+              return s.lower().strip()
+
+
+          def has_kw(nm, kws):
+              return any(kw in nm for kw in kws)
+
+
+          def fetch_leagues():
+              r = requests.get(f"{API_BASE}/leagues",
+                               headers=HEADERS, params={"current": "true"}, timeout=30)
+              r.raise_for_status()
+              d = r.json()
+              if d.get("errors"):
+                  raise RuntimeError("Erreurs API : %s" % d["errors"])
+              return d.get("response", [])
+
+
+          def main():
+              if not API_KEY:
+                  print("ERREUR : secret API_FOOTBALL_KEY absent.")
+                  return
+
+              raw = fetch_leagues()
+              kept = []
+              intl_cups = []
+              n_cup = n_fem = n_jeu = n_flag = 0
+              cups = []
+
+              for item in raw:
+                  lg = item.get("league", {})
+                  ct = item.get("country", {})
+                  lid = lg.get("id")
+                  name = lg.get("name", "")
+                  ltype = lg.get("type", "")
+                  country = ct.get("name", "") or ""
+                  nm = norm(name)
+
+                  if ltype != "League":
+                      n_cup += 1
+                      # Competitions internationales / continentales = pays "World"
+                      if country == "World":
+                          intl_cups.append((lid, name))
+                      continue
+
+                  flag = ""
+                  if has_kw(nm, FEMININ):
+                      n_fem += 1
+                      continue
+                  if has_kw(nm, JEUNES):
+                      n_jeu += 1
+                      continue
+                  if has_kw(nm, BAS_NIVEAU):
+                      flag = "bas_niveau?"
+                      n_flag += 1
+                  kept.append((country, lid, name, flag))
+
+              kept.sort(key=lambda x: (x[0], x[2]))
+
+              print("=== RESUME ===")
+              print("Ligues brutes (current)   : %d" % len(raw))
+              print("Coupes mises de cote      : %d" % n_cup)
+              print("DROP feminin              : %d" % n_fem)
+              print("DROP jeunes               : %d" % n_jeu)
+              print("A revoir 'bas_niveau?'    : %d" % n_flag)
+              print("KEEP net (championnats)   : %d" % len(kept))
+              if intl_cups:
+                  intl_cups.sort(key=lambda x: x[1])
+                  print("\n===CUPS-BEGIN=== (competitions internationales — copie jusqu'a CUPS-END)")
+                  for lid, name in intl_cups:
+                      print("%s|%s" % (lid, name))
+                  print("===CUPS-END===")
+
+              print("\n===WF-BEGIN=== (copie tout jusqu'a WF-END)")
+              for country, lid, name, flag in kept:
+                  print("%s|%s|%s|%s" % (lid, name, country, flag))
+              print("===WF-END===")
+
+
+          if __name__ == "__main__":
+              main()
+
+          PY
+          python bw.py
