@@ -453,13 +453,14 @@ def save_daily_ticket(selected):
     except Exception as e:
         print(f"[TICKET] Lecture tickets récents impossible : {e}")
 
-    # Garder uniquement VICTOIRE (pas BTTS/Double) triés par score
+    # Garder VICTOIRE sèche ET DOUBLE CHANCE (pas BTTS), triés par score
     # ET une seule fois chaque équipe recommandée (répartir le risque)
+    # NB : toutes les reco victoire/double chance commencent par "VICTOIRE"
     victoires = []
     teams_used = []
     for p in selected:
         rec = (p.get("recommendation") or "").upper()
-        if "VICTOIRE" not in rec or "DOUBLE" in rec:
+        if "VICTOIRE" not in rec:
             continue
         # Match déjà figé dans un ticket récent -> on saute (pas de répétition)
         if p.get("fixture_id") in used_fixtures:
@@ -468,7 +469,8 @@ def save_daily_ticket(selected):
         if (p.get("match_date") or "")[:10] not in allowed_dates:
             continue
         # Déterminer l'équipe recommandée (celle sur qui on parie)
-        if "EXTÉRIEUR" in rec or "EXTERIEUR" in rec:
+        # X2 = nul ou extérieur -> on rattache à l'équipe extérieure
+        if "X2" in rec or "EXTÉRIEUR" in rec or "EXTERIEUR" in rec:
             team_reco = p.get("away_team_name")
         else:
             team_reco = p.get("home_team_name")
@@ -489,10 +491,18 @@ def save_daily_ticket(selected):
     matches = []
     for p in victoires:
         rec = (p.get("recommendation") or "").upper()
-        if "EXTÉRIEUR" in rec or "EXTERIEUR" in rec:
-            cote = p.get("pinnacle_away") or p.get("pinnacle_home")
+        ph = p.get("pinnacle_home"); pa = p.get("pinnacle_away"); pdr = p.get("pinnacle_draw")
+        if "DOUBLE" in rec:
+            # Cote double chance = 1 / (1/cote_equipe + 1/cote_nul)
+            c_team, c_draw = (pa, pdr) if "X2" in rec else (ph, pdr)
+            try:
+                cote = 1.0 / (1.0/float(c_team) + 1.0/float(c_draw))
+            except (TypeError, ValueError, ZeroDivisionError):
+                cote = None
+        elif "EXTÉRIEUR" in rec or "EXTERIEUR" in rec:
+            cote = pa or ph
         else:
-            cote = p.get("pinnacle_home") or p.get("pinnacle_away")
+            cote = ph or pa
         cote = float(cote) if cote else 1.0
         total_odds *= cote
         matches.append({
