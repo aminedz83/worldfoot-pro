@@ -865,6 +865,7 @@ def compute_scores(hi,ai,h2h_d,xgt,inj_d,sk,wth,ca,odd,
 
         # Forme récente insuffisante = signal peu fiable
         fav_win_rate = hi["win_rate"] if ihs else ai["win_rate"]
+        opp_win_rate = ai["win_rate"] if ihs else hi["win_rate"]
         weak_form = fav_win_rate < 50
 
         # Écart trop faible = match piège
@@ -897,6 +898,14 @@ def compute_scores(hi,ai,h2h_d,xgt,inj_d,sk,wth,ca,odd,
             # Bonus forme récente de la favorite
             if fav_win_rate >= 70: bv += 5
             elif fav_win_rate >= 60: bv += 2
+
+            # Malus forme de l'OUTSIDER : une équipe en forme peut tenir tête
+            # au favori, même si son rang FIFA reste modéré (ex : sélection
+            # sortant d'une bonne CAN). On ne juge plus seulement la favorite,
+            # mais aussi la dynamique récente de l'adversaire.
+            if   opp_win_rate >= 65: bv -= 12
+            elif opp_win_rate >= 55: bv -= 7
+            elif opp_win_rate >= 45: bv -= 3
 
             # Bonus round CdM
             bv += stake_adj(hid, aid, {}, wr)
