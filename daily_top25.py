@@ -434,10 +434,10 @@ def save_daily_ticket(selected):
     """
     today_str = date.today().isoformat()
 
-    # Ticket = uniquement des matchs NEUFS, imminents (aujourd'hui + demain).
+    # Ticket = uniquement des matchs NEUFS, imminents (aujourd'hui -> +3 jours).
     # 1) Dates autorisées
     _today = date.today()
-    allowed_dates = {_today.isoformat(), (_today + timedelta(days=1)).isoformat()}
+    allowed_dates = {(_today + timedelta(days=i)).isoformat() for i in range(4)}
     # 2) Fixtures déjà figés dans les tickets des 7 derniers jours -> à exclure
     used_fixtures = set()
     try:
