@@ -237,6 +237,21 @@ def is_allowed_league(league_name, is_national, tier, country=""):
     return True
 
 
+def is_women_match(pred):
+    """Détecte un match féminin via les noms d'équipes.
+    Beaucoup de ligues féminines ont un nom de ligue neutre (Toppserien,
+    Damallsvenskan...), donc on regarde les équipes (suffixe ' W', 'Kvinner'...)."""
+    def femme(name):
+        n = (name or "").strip()
+        nl = n.lower()
+        if n.endswith(" W") or n.endswith(" (W)"):
+            return True
+        marks = ["women", "kvinner", "femenin", "féminin", "feminin",
+                 "frauen", "ladies", "(w)", " w "]
+        return any(mk in nl for mk in marks)
+    return femme(pred.get("home_team_name")) or femme(pred.get("away_team_name"))
+
+
 def select_top25(predictions):
     """
     Algorithme de sélection des 25 meilleurs matchs.
@@ -298,6 +313,13 @@ def select_top25(predictions):
         filtered_by_cote.append(pred)
     predictions = filtered_by_cote
     print(f"{len(predictions)} prédictions après filtre cote > 3.00")
+
+    # Filtre féminin (par noms d'équipes : ' W', 'Kvinner', 'Women'...)
+    before_w = len(predictions)
+    predictions = [p for p in predictions if not is_women_match(p)]
+    if before_w - len(predictions) > 0:
+        print(f"{before_w - len(predictions)} matchs féminins exclus")
+    print(f"{len(predictions)} prédictions après filtre féminin")
 
     # Étape 1 : Calculer les scores
     for pred in predictions:
