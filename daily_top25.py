@@ -428,9 +428,8 @@ def save_top25(selected):
 
 
 # --- Paramètres du ticket combiné ---
-TICKET_TARGET_ODDS = 4.0   # cote totale visée
-TICKET_MIN_COTE    = 1.35  # cote minimale par match (exclut les doubles chances trop basses)
-TICKET_MAX_MATCHS  = 5     # nombre de matchs maximum
+TICKET_MIN_COTE  = 1.20  # cote minimale par match (exclut les cotes sans valeur réelle)
+TICKET_NB_MATCHS = 4     # on garde les 4 meilleurs matchs (par confiance) qui ont une cote
 
 
 def _cote_pari(p):
@@ -467,7 +466,7 @@ def save_daily_ticket(selected):
     # 2) Fixtures déjà figés dans les tickets des 7 derniers jours -> à exclure
     used_fixtures = set()
     try:
-        since = (_today - timedelta(days=7)).isoformat()
+        since = (_today - timedelta(days=3)).isoformat()
         rec_tickets = supabase.table("daily_tickets") \
             .select("matches").gte("ticket_date", since).execute()
         for t in (rec_tickets.data or []):
@@ -484,7 +483,6 @@ def save_daily_ticket(selected):
     # NB : toutes les reco victoire/double chance commencent par "VICTOIRE"
     victoires = []
     teams_used = []
-    total_provisoire = 1.0
     for p in selected:
         rec = (p.get("recommendation") or "").upper()
         if "VICTOIRE" not in rec:
@@ -495,7 +493,7 @@ def save_daily_ticket(selected):
         # Match hors fenêtre (aujourd'hui -> +3j) -> on saute
         if (p.get("match_date") or "")[:10] not in allowed_dates:
             continue
-        # Cote du pari -> on écarte les cotes trop basses (peu rentables dans un combiné)
+        # Cote du pari -> on écarte les cotes sans valeur (1.00, favoris écrasants)
         cote = _cote_pari(p)
         if cote is None or cote < TICKET_MIN_COTE:
             continue
@@ -510,9 +508,8 @@ def save_daily_ticket(selected):
             continue
         teams_used.append(team_reco)
         victoires.append((p, cote))
-        total_provisoire *= cote
-        # On s'arrête dès qu'on atteint la cote visée, ou au nombre max de matchs
-        if total_provisoire >= TICKET_TARGET_ODDS or len(victoires) >= TICKET_MAX_MATCHS:
+        # selected est trié par score -> on garde simplement les meilleurs
+        if len(victoires) >= TICKET_NB_MATCHS:
             break
 
     if len(victoires) < 2:
