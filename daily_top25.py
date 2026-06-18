@@ -427,9 +427,35 @@ def save_top25(selected):
             print(f"  [DB ERR] Rang {rank}: {e}")
 
 
+# --- Paramètres du ticket combiné ---
+TICKET_TARGET_ODDS = 4.0   # cote totale visée
+TICKET_MIN_COTE    = 1.35  # cote minimale par match (exclut les doubles chances trop basses)
+TICKET_MAX_MATCHS  = 5     # nombre de matchs maximum
+
+
+def _cote_pari(p):
+    """Cote du pari recommandé (gère victoire sèche et double chance)."""
+    rec = (p.get("recommendation") or "").upper()
+    ph = p.get("pinnacle_home"); pa = p.get("pinnacle_away"); pdr = p.get("pinnacle_draw")
+    if "DOUBLE" in rec:
+        c_team, c_draw = (pa, pdr) if "X2" in rec else (ph, pdr)
+        try:
+            return 1.0 / (1.0/float(c_team) + 1.0/float(c_draw))
+        except (TypeError, ValueError, ZeroDivisionError):
+            return None
+    elif "EXTÉRIEUR" in rec or "EXTERIEUR" in rec:
+        c = pa or ph
+    else:
+        c = ph or pa
+    try:
+        return float(c) if c else None
+    except (TypeError, ValueError):
+        return None
+
+
 def save_daily_ticket(selected):
     """
-    Fige un ticket de 7 matchs VICTOIRE dans daily_tickets.
+    Fige un ticket combiné (cote ~4) dans daily_tickets.
     Le ticket ne change plus une fois créé — il est analysable.
     """
     today_str = date.today().isoformat()
@@ -458,6 +484,7 @@ def save_daily_ticket(selected):
     # NB : toutes les reco victoire/double chance commencent par "VICTOIRE"
     victoires = []
     teams_used = []
+    total_provisoire = 1.0
     for p in selected:
         rec = (p.get("recommendation") or "").upper()
         if "VICTOIRE" not in rec:
@@ -465,8 +492,12 @@ def save_daily_ticket(selected):
         # Match déjà figé dans un ticket récent -> on saute (pas de répétition)
         if p.get("fixture_id") in used_fixtures:
             continue
-        # Match hors fenêtre aujourd'hui/demain -> on saute
+        # Match hors fenêtre (aujourd'hui -> +3j) -> on saute
         if (p.get("match_date") or "")[:10] not in allowed_dates:
+            continue
+        # Cote du pari -> on écarte les cotes trop basses (peu rentables dans un combiné)
+        cote = _cote_pari(p)
+        if cote is None or cote < TICKET_MIN_COTE:
             continue
         # Déterminer l'équipe recommandée (celle sur qui on parie)
         # X2 = nul ou extérieur -> on rattache à l'équipe extérieure
@@ -478,32 +509,20 @@ def save_daily_ticket(selected):
         if team_reco in teams_used:
             continue
         teams_used.append(team_reco)
-        victoires.append(p)
-        if len(victoires) >= 7:
+        victoires.append((p, cote))
+        total_provisoire *= cote
+        # On s'arrête dès qu'on atteint la cote visée, ou au nombre max de matchs
+        if total_provisoire >= TICKET_TARGET_ODDS or len(victoires) >= TICKET_MAX_MATCHS:
             break
 
     if len(victoires) < 2:
-        print(f"[TICKET] Pas assez de matchs VICTOIRE ({len(victoires)}) — ticket non créé")
+        print(f"[TICKET] Pas assez de matchs ({len(victoires)}) — ticket non créé")
         return
 
     # Construire la cote totale + le snapshot figé des matchs
     total_odds = 1.0
     matches = []
-    for p in victoires:
-        rec = (p.get("recommendation") or "").upper()
-        ph = p.get("pinnacle_home"); pa = p.get("pinnacle_away"); pdr = p.get("pinnacle_draw")
-        if "DOUBLE" in rec:
-            # Cote double chance = 1 / (1/cote_equipe + 1/cote_nul)
-            c_team, c_draw = (pa, pdr) if "X2" in rec else (ph, pdr)
-            try:
-                cote = 1.0 / (1.0/float(c_team) + 1.0/float(c_draw))
-            except (TypeError, ValueError, ZeroDivisionError):
-                cote = None
-        elif "EXTÉRIEUR" in rec or "EXTERIEUR" in rec:
-            cote = pa or ph
-        else:
-            cote = ph or pa
-        cote = float(cote) if cote else 1.0
+    for p, cote in victoires:
         total_odds *= cote
         matches.append({
             "fixture_id":     p["fixture_id"],
