@@ -216,6 +216,9 @@ EXCLUDED_LEAGUE_KW = [
     "primera d", "ligi kuu", "tanzania",
     # Afrique/Asie ligues mineures
     "ligi kuu", "tanzania", "ethiopia",
+    # Jeunes, amicaux, tournois (alignement avec le filtre du fetch Top 25)
+    "friendlies", "tercera", "tournoi", "maurice revello", "toulon",
+    "u20", "u21", "u23",
 ]
 
 def is_allowed_league(league_name, is_national, tier, country=""):
@@ -430,12 +433,20 @@ def save_top25(selected):
 # --- Paramètres du ticket combiné ---
 TICKET_MIN_COTE  = 1.20  # cote minimale par match (exclut les cotes sans valeur réelle)
 TICKET_NB_MATCHS = 4     # on garde les 4 meilleurs matchs (par confiance) qui ont une cote
+TICKET_MIN_CONF  = 72    # plancher de confiance (inclut les Under, qui vivent sous le Top 25)
+TICKET_MAX_CONF  = 92    # plafond (exclut les favoris écrasants à cote sans valeur)
 
 
 def _cote_pari(p):
-    """Cote du pari recommandé (gère victoire sèche et double chance)."""
+    """Cote du pari recommandé (victoire sèche, double chance, Under 2.5)."""
     rec = (p.get("recommendation") or "").upper()
     ph = p.get("pinnacle_home"); pa = p.get("pinnacle_away"); pdr = p.get("pinnacle_draw")
+    if "UNDER" in rec:
+        c = p.get("pinnacle_under25")
+        try:
+            return float(c) if c else None
+        except (TypeError, ValueError):
+            return None
     if "DOUBLE" in rec:
         c_team, c_draw = (pa, pdr) if "X2" in rec else (ph, pdr)
         try:
@@ -452,18 +463,35 @@ def _cote_pari(p):
         return None
 
 
-def save_daily_ticket(selected):
+def save_daily_ticket(selected=None):
     """
-    Fige un ticket combiné (cote ~4) dans daily_tickets.
+    Fige un ticket combiné des paris RENTABLES (Victoire domicile + Under 2.5).
+    Source dédiée : prédictions du jour à confiance 72-92% (indépendant du Top 25).
     Le ticket ne change plus une fois créé — il est analysable.
     """
     today_str = date.today().isoformat()
-
-    # Ticket = uniquement des matchs NEUFS, imminents (aujourd'hui -> +3 jours).
-    # 1) Dates autorisées
     _today = date.today()
+    # Fenêtre : aujourd'hui -> +3 jours
     allowed_dates = {(_today + timedelta(days=i)).isoformat() for i in range(4)}
-    # 2) Fixtures déjà figés dans les tickets des 7 derniers jours -> à exclure
+
+    # 1) Candidats du ticket : confiance 72-92%, non joués, dans la fenêtre
+    try:
+        last_day = (_today + timedelta(days=3)).isoformat() + "T23:59:59"
+        res = supabase.table("predictions").select("*") \
+            .gte("match_date", _today.isoformat()) \
+            .lte("match_date", last_day) \
+            .gte("rec_confidence", TICKET_MIN_CONF) \
+            .lte("rec_confidence", TICKET_MAX_CONF) \
+            .is_("prediction_correct", "null") \
+            .order("rec_confidence", desc=True) \
+            .execute()
+        candidats = res.data or []
+        print(f"[TICKET] {len(candidats)} candidats (confiance {TICKET_MIN_CONF}-{TICKET_MAX_CONF}%)")
+    except Exception as e:
+        print(f"[TICKET] Erreur fetch candidats : {e}")
+        return
+
+    # 2) Fixtures déjà figés dans les tickets des 3 derniers jours -> à exclure
     used_fixtures = set()
     try:
         since = (_today - timedelta(days=3)).isoformat()
@@ -478,37 +506,35 @@ def save_daily_ticket(selected):
     except Exception as e:
         print(f"[TICKET] Lecture tickets récents impossible : {e}")
 
-    # Garder VICTOIRE sèche ET DOUBLE CHANCE (pas BTTS), triés par score
-    # ET une seule fois chaque équipe recommandée (répartir le risque)
-    # NB : toutes les reco victoire/double chance commencent par "VICTOIRE"
+    # 3) Ne garder que les types RENTABLES : Victoire domicile + Under 2.5
+    #    (doubles chances et victoires extérieures sont perdantes -> exclues)
     victoires = []
     teams_used = []
-    for p in selected:
+    for p in candidats:
         rec = (p.get("recommendation") or "").upper()
-        if "VICTOIRE" not in rec:
+        if "DOMICILE" not in rec and "UNDER" not in rec:
             continue
-        # Match déjà figé dans un ticket récent -> on saute (pas de répétition)
+        # Ligue autorisée (même filtre que le Top 25)
+        if not is_allowed_league(p.get("league_name", ""), p.get("is_national", False),
+                                 p.get("league_tier", 3), p.get("league_country", "")):
+            continue
+        # Match déjà figé récemment -> on saute (pas de répétition)
         if p.get("fixture_id") in used_fixtures:
             continue
-        # Match hors fenêtre (aujourd'hui -> +3j) -> on saute
+        # Hors fenêtre (aujourd'hui -> +3j) -> on saute
         if (p.get("match_date") or "")[:10] not in allowed_dates:
             continue
-        # Cote du pari -> on écarte les cotes sans valeur (1.00, favoris écrasants)
+        # Cote du pari -> on écarte les cotes sans valeur
         cote = _cote_pari(p)
         if cote is None or cote < TICKET_MIN_COTE:
             continue
-        # Déterminer l'équipe recommandée (celle sur qui on parie)
-        # X2 = nul ou extérieur -> on rattache à l'équipe extérieure
-        if "X2" in rec or "EXTÉRIEUR" in rec or "EXTERIEUR" in rec:
-            team_reco = p.get("away_team_name")
-        else:
-            team_reco = p.get("home_team_name")
-        # Si cette équipe est déjà dans le ticket, on saute (évite 3× Espagne)
+        # Une seule fois chaque équipe (répartir le risque)
+        team_reco = p.get("home_team_name")
         if team_reco in teams_used:
             continue
         teams_used.append(team_reco)
         victoires.append((p, cote))
-        # selected est trié par score -> on garde simplement les meilleurs
+        # candidats triés par confiance -> on garde les meilleurs
         if len(victoires) >= TICKET_NB_MATCHS:
             break
 
