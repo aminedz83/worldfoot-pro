@@ -794,7 +794,16 @@ def odds_data(fid):
 
         "adj":0,"signal":"Neutre","movement":{},
     }
-        # Cotes Under 2.5 désactivées — marché supprimé
+    for item in get_odds(fid, 5):
+        for bk in item.get("bookmakers",[]):
+            for bet in bk.get("bets",[]):
+                if bet.get("id")==5:
+                    for v in bet.get("values",[]):
+                        if v.get("value")=="Under 2.5":
+                            o = float(v.get("odd") or 0)
+                            if   bk.get("id")==8:  res["pinnacle_under25"]=o
+                            elif bk.get("id")==4:  res["bet365_under25"]=o
+                            elif bk.get("id")==36: res["xbet_under25"]=o
     for item in get_odds(fid, 1):
         for bk in item.get("bookmakers",[]):
             if bk.get("id") == 8:
@@ -805,7 +814,23 @@ def odds_data(fid):
                             if   vl=="Home": res["pinnacle_home"]=o
                             elif vl=="Away": res["pinnacle_away"]=o
                             elif vl=="Draw": res["pinnacle_draw"]=o
-    # Mouvement Under supprimé
+    try:
+        prev = supabase.table("odds_history")\
+            .select("pinnacle_under25")\
+            .eq("fixture_id",fid)\
+            .order("recorded_at").limit(1).execute()
+        po = prev.data[0]["pinnacle_under25"] if prev.data else None
+    except Exception:
+        po = None
+
+    if po and res["pinnacle_under25"]:
+        ch = (res["pinnacle_under25"]-po)/po*100
+        res["movement"]["pinnacle"] = {
+            "open":po,"current":res["pinnacle_under25"],"change":round(ch,1)
+        }
+        if   ch<=-8: res["adj"]=9;  res["signal"]="Sharp money Under"
+        elif ch<=-4: res["adj"]=5;  res["signal"]="Mouvement Under"
+        elif ch>= 8: res["adj"]=-8; res["signal"]="Mouvement contraire"
 
     try:
         supabase.table("odds_history").upsert({
@@ -826,8 +851,22 @@ def odds_data(fid):
 def compute_scores(hi,ai,h2h_d,xgt,inj_d,sk,wth,ca,odd,
                    stds,hid,aid,tier,is_nat,wr=""):
 
-    # Under 2.5 désactivé — score mis à 0
-    us = 0.0
+    # Under 2.5
+    if   xgt>=3.0: bu=15
+    elif xgt>=2.5: bu=32
+    elif xgt>=2.0: bu=55
+    elif xgt>=1.5: bu=72
+    else:          bu=85
+
+    ds  = (hi["def_index"]+ai["def_index"])/2
+    hw  = 0.28 if h2h_d["count"]>=5 else 0.15
+    us  = (bu*0.37 + h2h_d["under25"]*hw +
+           hi["clean_sheet_pct"]*0.18 + 50*(0.45-hw))
+    us += (ds-5)*2.8 + inj_d["adj_under"] + sk
+    us += wth.get("adj_under",0) + ca + odd["adj"]
+    if tier==3:  us+=2
+    if is_nat:   us+=1
+    us = round(min(max(us,0),96),1)
 
     # BTTS
     oc=(hi["off_index"]+ai["off_index"])/2
@@ -933,8 +972,8 @@ def compute_scores(hi,ai,h2h_d,xgt,inj_d,sk,wth,ca,odd,
                 vs=round(min(bv+7,88),1)
 
     cands=[]
-    # Under 2.5 supprimé — taux réussite 60.2% trop faible
-    # Marchés actifs : BTTS et Victoire uniquement
+    # Under 2.5 exclu pour CdM et compétitions nationales (BTTS et Victoire plus pertinents)
+    if us>=MIN_CONF and not is_nat: cands.append(("UNDER 2.5", us))
     if bs>=MIN_CONF:               cands.append(("BTTS",        bs))
     if vs and vs>=MIN_CONF and sl: cands.append((f"VICTOIRE {sl}", vs))
     if not cands: return None
@@ -1092,7 +1131,7 @@ def process(fix, li):
     else: coords=COUNTRY_COORDS.get(country,(48.856,2.352))
 
     wth  = get_weather(coords, md)
-    ca   = 0  # corner_adj lié à Under 2.5 — désactivé
+    ca   = corner_adj(hi,ai) if not is_nat else 0
     odd  = odds_data(fid)
 
     hi_adj = hi
