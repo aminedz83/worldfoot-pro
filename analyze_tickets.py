@@ -20,7 +20,7 @@ SUPA_URL = os.environ["PREDICTIONS_SUPA_URL"].strip()
 SUPA_KEY = os.environ["PREDICTIONS_SUPA_KEY"].strip()
 supabase = create_client(SUPA_URL, SUPA_KEY)
 
-FORMATS = [3, 4, 5, 6, 7]
+FORMATS = [2, 3, 4]
 
 
 def get_finished_tickets():
@@ -47,7 +47,7 @@ def simulate(tickets):
         matches = t.get("matches") or []
         # Garder seulement les matchs avec un résultat connu
         played = [m for m in matches if m.get("prediction_correct") is not None]
-        if len(played) < 3:
+        if len(played) < 2:
             continue
 
         # Trier par confiance décroissante (les meilleurs d'abord)
