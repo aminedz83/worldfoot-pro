@@ -17187,7 +17187,7 @@ function Top25Tab() {
         React.createElement("div", { style:{ marginBottom:18 } },
           React.createElement("div", { style:{ fontSize:13, fontWeight:800, color:"var(--c-ink)", marginBottom:8 } }, "🎯 Quel type de pari gagne ?"),
           (function() {
-            var rows = (statsData.market || []).filter(function(r) { return r.period === "30j" && r.market !== "UNDER 2.5"; });
+            var rows = (statsData.market || []).filter(function(r) { return r.period === "30j"; });
             if (rows.length === 0) {
               return React.createElement("div", { style:{ fontSize:12, color:"var(--c-ink-3)", fontStyle:"italic", padding:"10px 0" } }, "Pas encore de données.");
             }
@@ -17226,7 +17226,7 @@ function Top25Tab() {
         React.createElement("div", { style:{ fontSize:13, fontWeight:700, color:"var(--c-ink)", marginBottom:12 } }, "Performance du moteur"),
 
         ["7j","30j","90j"].map(function(period) {
-          var rows = (statsData.market || []).filter(function(r) { return r.period === period && r.market !== "UNDER 2.5"; });
+          var rows = (statsData.market || []).filter(function(r) { return r.period === period; });
           if (!rows || rows.length === 0) return null;
           return React.createElement("div", { key:period, style:{ marginBottom:14 } },
             React.createElement("div", { style:{ fontSize:11, fontWeight:700, color:"var(--c-ink-3)", marginBottom:6, textTransform:"uppercase", letterSpacing:1 } }, "📅 " + period),
@@ -17382,6 +17382,7 @@ function Top25Tab() {
           var marketRows = histResults.filter(function(r) {
             var rec = (r.recommendation||"").toUpperCase();
             if (histMarket==="BTTS") return rec.indexOf("BTTS") >= 0;
+            if (histMarket==="UNDER") return rec.indexOf("UNDER") >= 0;
             return rec.indexOf("VICTOIRE") >= 0;
           });
           var total = marketRows.length;
@@ -17426,7 +17427,7 @@ function Top25Tab() {
 
       // Toggle marché VICTOIRE / BTTS
       React.createElement("div", { style:{display:"flex",gap:6,marginBottom:10} },
-        [{id:"VICTOIRE",label:"🏆 Victoire"},{id:"BTTS",label:"⚽ BTTS"}].map(function(m) {
+        [{id:"VICTOIRE",label:"🏆 Victoire"},{id:"UNDER",label:"⬇️ Under 2.5"},{id:"BTTS",label:"⚽ BTTS"}].map(function(m) {
           return React.createElement("button", {
             key:m.id, onClick:function(){setHistMarket(m.id);},
             style:{
@@ -17463,6 +17464,7 @@ function Top25Tab() {
         histResults.filter(function(r) {
           var rec = (r.recommendation||"").toUpperCase();
           if (histMarket==="BTTS") { if (rec.indexOf("BTTS") < 0) return false; }
+          else if (histMarket==="UNDER") { if (rec.indexOf("UNDER") < 0) return false; }
           else { if (rec.indexOf("VICTOIRE") < 0) return false; }
           if (histFilter==="WON") return r.prediction_correct === true;
           if (histFilter==="LOST") return r.prediction_correct === false;
@@ -18113,7 +18115,7 @@ function Top25Tab() {
         React.createElement("div", {
           style: { display:"grid", gridTemplateColumns:"1fr 1fr", gap:6 }
         },
-          marketStats.filter(function(ms) { return ms.market.indexOf("UNDER") < 0; }).map(function(ms, i) {
+          marketStats.map(function(ms, i) {
             var market = ms.market;
             var rate   = ms.rate;
             var total  = ms.total;
