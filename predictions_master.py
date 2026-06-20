@@ -790,6 +790,7 @@ def corner_adj(hi, ai):
 def odds_data(fid):
     res = {
         "pinnacle_under25":None,"bet365_under25":None,"xbet_under25":None,
+        "pinnacle_btts":None,"bet365_btts":None,"xbet_btts":None,
         "pinnacle_home":None,"pinnacle_away":None,"pinnacle_draw":None,
 
         "adj":0,"signal":"Neutre","movement":{},
@@ -814,6 +815,16 @@ def odds_data(fid):
                             if   vl=="Home": res["pinnacle_home"]=o
                             elif vl=="Away": res["pinnacle_away"]=o
                             elif vl=="Draw": res["pinnacle_draw"]=o
+    for item in get_odds(fid, 8):
+        for bk in item.get("bookmakers",[]):
+            for bet in bk.get("bets",[]):
+                if bet.get("id")==8:
+                    for v in bet.get("values",[]):
+                        if v.get("value")=="Yes":
+                            o = float(v.get("odd") or 0)
+                            if   bk.get("id")==8:  res["pinnacle_btts"]=o
+                            elif bk.get("id")==4:  res["bet365_btts"]=o
+                            elif bk.get("id")==36: res["xbet_btts"]=o
     try:
         prev = supabase.table("odds_history")\
             .select("pinnacle_under25")\
@@ -1205,6 +1216,9 @@ def process(fix, li):
         "pinnacle_under25":odd["pinnacle_under25"],
         "bet365_under25":odd["bet365_under25"],
         "xbet_under25":odd["xbet_under25"],
+        "pinnacle_btts":odd["pinnacle_btts"],
+        "bet365_btts":odd["bet365_btts"],
+        "xbet_btts":odd["xbet_btts"],
         "pinnacle_home":odd["pinnacle_home"],
         "pinnacle_away":odd["pinnacle_away"],
         "pinnacle_draw":odd["pinnacle_draw"],
