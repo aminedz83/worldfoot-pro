@@ -16280,11 +16280,12 @@ function Top25Tab() {
     if (viewMode !== "history") return;
     setHistLoading(true);
     var since = new Date(Date.now() - histDays * 86400000).toISOString();
+    var histLimit = histDays >= 9999 ? 5000 : 100;
     fetch(
       SB_BASE2 + "predictions?prediction_correct=not.is.null" +
       "&match_date=gte." + since +
       "&order=match_date.desc&select=id,home_team_name,away_team_name,league_name,league_country," +
-      "match_date,recommendation,rec_confidence,prediction_correct,xg_total,home_team_id,away_team_id&limit=100",
+      "match_date,recommendation,rec_confidence,prediction_correct,xg_total,home_team_id,away_team_id&limit=" + histLimit,
       { headers: SB_H2 }
     )
     .then(function(r) { return r.json(); })
@@ -17416,7 +17417,7 @@ function Top25Tab() {
 
       // Filtres période
       React.createElement("div", { style:{display:"flex",gap:6,marginBottom:8} },
-        [7,14,30,60].map(function(d) {
+        [7,14,30,60,99999].map(function(d) {
           return React.createElement("button", {
             key:d, onClick:function(){setHistDays(d);},
             style:{
@@ -17425,7 +17426,7 @@ function Top25Tab() {
               background:histDays===d?"rgba(5,150,105,0.08)":"var(--c-base)",
               color:histDays===d?"var(--c-jade)":"var(--c-ink-3)", cursor:"pointer"
             }
-          }, d+"j");
+          }, d>=9999?"Tout":d+"j");
         })
       ),
 
