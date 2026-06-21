@@ -311,6 +311,101 @@ def compute_league_stats():
     print(f"  {saved} ligues sauvegardées dans league_performance")
 
 
+def _market_and_odds(p):
+    """Retourne (marché_large, cote_du_pari) pour une prédiction.
+    Marchés : VICTOIRE (domicile/extérieur/double chance), UNDER 2.5, BTTS."""
+    rec = (p.get("recommendation") or "").upper()
+    ph  = p.get("pinnacle_home")  or 0
+    pa  = p.get("pinnacle_away")  or 0
+    pdr = p.get("pinnacle_draw")  or 0
+    if "UNDER" in rec:
+        return "UNDER 2.5", (p.get("pinnacle_under25") or 0)
+    if "BTTS" in rec:
+        return "BTTS", (p.get("pinnacle_btts") or 0)
+    # Sinon : VICTOIRE (simple ou double chance)
+    if "DOUBLE" in rec:
+        c_team, c_draw = (pa, pdr) if "X2" in rec else (ph, pdr)
+        dc = 1.0 / (1.0/c_team + 1.0/c_draw) if (c_team > 1 and c_draw > 1) else 0
+        return "VICTOIRE", round(dc, 2)
+    if "EXTÉRIEUR" in rec or "EXTERIEUR" in rec:
+        return "VICTOIRE", pa
+    return "VICTOIRE", ph  # DOMICILE par défaut
+
+
+def compute_league_market_stats():
+    """
+    Calcule, par (ligue × marché), le taux ET le ROI (taux × cote) sur 30 jours.
+    Source : uniquement les prédictions vérifiées (prediction_correct rempli).
+    Stocke dès 3 matchs ; le seuil de fiabilité (10+) est géré à l'affichage.
+    ROI calculé seulement sur les paris ayant une cote valide.
+    Sauvegarde dans league_market_performance.
+    """
+    from_date = (datetime.utcnow() - timedelta(days=30)).isoformat()
+    try:
+        r = supabase.table("predictions")\
+            .select("prediction_correct, league_name, league_country, recommendation, "
+                    "pinnacle_home, pinnacle_away, pinnacle_draw, pinnacle_under25, pinnacle_btts")\
+            .not_.is_("prediction_correct", "null")\
+            .gte("match_date", from_date)\
+            .execute()
+        data = r.data or []
+    except Exception as e:
+        print(f"  [ERR] league x market stats : {e}")
+        return
+
+    # Grouper par (ligue, marché)
+    groups = {}
+    for p in data:
+        league = p.get("league_name") or "Inconnue"
+        market, odds = _market_and_odds(p)
+        key = (league, market)
+        if key not in groups:
+            groups[key] = {"preds": [], "country": ""}
+        groups[key]["preds"].append((p, odds))
+        if not groups[key]["country"] and p.get("league_country"):
+            groups[key]["country"] = p.get("league_country")
+
+    now   = datetime.utcnow().isoformat()
+    saved = 0
+
+    for (league, market), g in groups.items():
+        preds = g["preds"]
+        total = len(preds)
+        if total < 3:
+            continue  # Pas assez de données pour stocker
+        correct = sum(1 for (p, o) in preds if p["prediction_correct"] is True)
+        rate    = round(correct / total * 100, 1)
+
+        # ROI uniquement sur les paris ayant une cote valide
+        coted = [(p, o) for (p, o) in preds if o and o > 1]
+        if coted:
+            profits  = sum(((o - 1) if p["prediction_correct"] is True else -1)
+                           for (p, o) in coted)
+            roi      = round(profits / len(coted) * 100, 1)
+            avg_odds = round(sum(o for (p, o) in coted) / len(coted), 2)
+        else:
+            roi, avg_odds = None, None
+
+        try:
+            supabase.table("league_market_performance").upsert({
+                "league_name":    league,
+                "league_country": g["country"],
+                "market":         market,
+                "total":          total,
+                "correct":        correct,
+                "rate":           rate,
+                "avg_odds":       avg_odds,
+                "roi":            roi,
+                "period":         "30j",
+                "updated_at":     now,
+            }, on_conflict="league_name,market,period").execute()
+            saved += 1
+        except Exception as e:
+            print(f"  [DB] league_market_performance {league}/{market} : {e}")
+
+    print(f"  {saved} combinaisons ligue×marché sauvegardées dans league_market_performance")
+
+
 def main():
     print(
         f"\n=== Market Stats — "
@@ -329,6 +424,10 @@ def main():
     # Récolte stats par ligue — pour analyse dans 30 jours
     print("\n=== Stats par ligue ===")
     compute_league_stats()
+
+    # Récolte stats par ligue × marché — avec ROI, pour l'outil de tri
+    print("\n=== Stats par ligue × marché ===")
+    compute_league_market_stats()
 
 
 if __name__ == "__main__":
