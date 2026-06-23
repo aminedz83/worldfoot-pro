@@ -16117,6 +16117,18 @@ function Top25Tab() {
   var _useStateTicketTab = useState("ticket");
   var ticketTab = _useStateTicketTab[0]; var setTicketTab = _useStateTicketTab[1];
 
+  var _useStatePalierD = useState(null);
+  var palierData = _useStatePalierD[0]; var setPalierData = _useStatePalierD[1];
+  var _useStatePalierS = useState(parseFloat(localStorage.getItem("wf_palier_stake") || "10"));
+  var palierStake = _useStatePalierS[0]; var setPalierStakeRaw = _useStatePalierS[1];
+  var _useStatePalierStart = useState(localStorage.getItem("wf_palier_start") || new Date().toISOString().slice(0,10));
+  var palierStart = _useStatePalierStart[0]; var setPalierStartRaw = _useStatePalierStart[1];
+  function palierReset(newStake) {
+    var today = new Date().toISOString().slice(0,10);
+    try { localStorage.setItem("wf_palier_start", today); localStorage.setItem("wf_palier_stake", String(newStake)); } catch (e) {}
+    setPalierStartRaw(today); setPalierStakeRaw(newStake); setPalierData(null);
+  }
+
   var _useStateTicketHist = useState(null);
   var ticketHist = _useStateTicketHist[0]; var setTicketHist = _useStateTicketHist[1];
   var _useStateTicketOpen = React.useState(null); var ticketOpen = _useStateTicketOpen[0]; var setTicketOpen = _useStateTicketOpen[1];
@@ -16295,6 +16307,21 @@ function Top25Tab() {
     })
     .catch(function() { setHistLoading(false); });
   }, [viewMode, histDays]);
+
+  // Charger les données du palier (mode Ticket > Palier)
+  useEffect(function() {
+    if (viewMode !== "ticket" || ticketTab !== "palier") return;
+    fetch(
+      SB_BASE2 + "predictions?match_date=gte." + palierStart +
+      "&order=match_date.asc&select=match_date,rec_confidence,recommendation,prediction_correct," +
+      "home_team_name,away_team_name,league_name,league_country,pinnacle_home,pinnacle_away," +
+      "pinnacle_draw,pinnacle_under25,pinnacle_btts&limit=3000",
+      { headers: SB_H2 }
+    )
+    .then(function(r){ return r.json(); })
+    .then(function(d){ if (Array.isArray(d)) setPalierData(d); })
+    .catch(function(){});
+  }, [viewMode, ticketTab, palierStart]);
 
   // Auto-refresh toutes les 30 minutes
   useEffect(function() {
@@ -17614,7 +17641,7 @@ function Top25Tab() {
 
       // Toggle Ticket du jour / Statistiques
       React.createElement("div", { style:{ display:"flex", gap:6, marginBottom:12 } },
-        [{id:"ticket",label:"🎟️ Jour"},{id:"stats",label:"📊 Stats"},{id:"history",label:"📜 Passés"}].map(function(tb) {
+        [{id:"ticket",label:"🎟️ Jour"},{id:"stats",label:"📊 Stats"},{id:"history",label:"📜 Passés"},{id:"palier",label:"📈 Palier"}].map(function(tb) {
           return React.createElement("button", {
             key:tb.id, onClick:function(){ setTicketTab(tb.id); },
             style:{
@@ -17626,6 +17653,114 @@ function Top25Tab() {
           }, tb.label);
         })
       ),
+
+      // ─── SOUS-VUE PALIER ───
+      ticketTab === "palier" ? (function() {
+        function paliCote(p) {
+          var rec = (p.recommendation || "").toUpperCase();
+          var ph = p.pinnacle_home || 0, pa = p.pinnacle_away || 0, pdr = p.pinnacle_draw || 0;
+          if (rec.indexOf("UNDER") >= 0) return p.pinnacle_under25 || 0;
+          if (rec.indexOf("BTTS") >= 0) return p.pinnacle_btts || 0;
+          if (rec.indexOf("DOUBLE") >= 0) {
+            var ct = rec.indexOf("X2") >= 0 ? pa : ph;
+            return (ct > 1 && pdr > 1) ? Math.round(100/(1/ct + 1/pdr))/100 : 0;
+          }
+          if (rec.indexOf("EXTÉRIEUR") >= 0 || rec.indexOf("EXTERIEUR") >= 0) return pa;
+          return ph;
+        }
+        var header = React.createElement("div", null,
+          React.createElement("div", { style:{ fontSize:13, fontWeight:700, color:"var(--c-ink)", marginBottom:4 } }, "📈 Palier — laisse courir tes gains"),
+          React.createElement("div", { style:{ fontSize:11, color:"var(--c-ink-3)", marginBottom:10, fontStyle:"italic" } },
+            "Argent virtuel · chaque jour la prédiction la plus sûre · on accumule tant que ça gagne, on repart à la perte"),
+          React.createElement("div", { style:{ display:"flex", gap:6, marginBottom:6, alignItems:"center" } },
+            React.createElement("span", { style:{ fontSize:11, color:"var(--c-ink-3)" } }, "Mise :"),
+            [10,50,100].map(function(s) {
+              return React.createElement("button", {
+                key:s, onClick:function(){ palierReset(s); },
+                style:{ padding:"4px 10px", borderRadius:8, fontSize:11, fontWeight:700, cursor:"pointer",
+                  border: palierStake===s ? "1.5px solid var(--c-jade)" : "1px solid var(--c-border)",
+                  background: palierStake===s ? "rgba(5,150,105,0.08)" : "var(--c-base)",
+                  color: palierStake===s ? "var(--c-jade)" : "var(--c-ink-3)" }
+              }, s);
+            })
+          ),
+          React.createElement("div", { style:{ fontSize:10, color:"var(--c-ink-3)", marginBottom:12 } },
+            "Démarré le " + palierStart + " · changer la mise relance une nouvelle série")
+        );
+        if (!palierData) {
+          return React.createElement("div", null, header,
+            React.createElement("div", { style:{ textAlign:"center", padding:"20px 0", color:"var(--c-ink-3)", fontSize:12 } }, "Chargement..."));
+        }
+        var byDay = {};
+        palierData.forEach(function(p) {
+          var day = (p.match_date || "").slice(0,10);
+          if (!day) return;
+          var cote = paliCote(p);
+          if (!cote || cote <= 1) return;
+          if (!byDay[day] || p.rec_confidence > byDay[day]._conf) {
+            byDay[day] = { day:day, _conf:p.rec_confidence, cote:cote, rec:p.recommendation,
+              correct:p.prediction_correct, home:p.home_team_name, away:p.away_team_name, country:p.league_country };
+          }
+        });
+        var days = Object.keys(byDay).sort();
+        var paliers = [];
+        var cur = { capital: palierStake, wins: 0, ongoing: null, lost: null };
+        days.forEach(function(day) {
+          var b = byDay[day];
+          if (b.correct === null || b.correct === undefined) { cur.ongoing = b; return; }
+          if (b.correct === true) { cur.capital = cur.capital * b.cote; cur.wins += 1; }
+          else { cur.lost = b; paliers.push(cur); cur = { capital: palierStake, wins: 0, ongoing: null, lost: null }; }
+        });
+        var ongoingCard = React.createElement("div", {
+          style:{ background:"linear-gradient(135deg, rgba(5,150,105,0.10), rgba(243,156,18,0.06))",
+            borderRadius:12, border:"1px solid var(--c-jade)", padding:"14px", marginBottom:14 }
+        },
+          React.createElement("div", { style:{ fontSize:10, fontWeight:700, color:"var(--c-ink-3)", textTransform:"uppercase", letterSpacing:"0.08em", marginBottom:6 } }, "Palier en cours"),
+          React.createElement("div", { style:{ display:"flex", alignItems:"baseline", gap:8, marginBottom:4 } },
+            React.createElement("span", { style:{ fontSize:28, fontWeight:800, color:"var(--c-jade)" } }, (Math.round(cur.capital*100)/100)),
+            React.createElement("span", { style:{ fontSize:12, color:"var(--c-ink-3)" } }, "(départ " + palierStake + ")")
+          ),
+          React.createElement("div", { style:{ fontSize:12, color:"var(--c-ink-2)", marginBottom: cur.ongoing ? 10 : 0 } },
+            cur.wins + " victoire" + (cur.wins>1?"s":"") + " d'affilée" +
+            (cur.wins>0 ? " · ×" + (Math.round(cur.capital/palierStake*100)/100) : "")),
+          cur.ongoing ? React.createElement("div", {
+            style:{ borderTop:"1px solid var(--c-border)", paddingTop:10, marginTop:4 }
+          },
+            React.createElement("div", { style:{ fontSize:10, color:"var(--c-ink-3)", marginBottom:3 } }, "🎯 Pari du jour (en attente)"),
+            React.createElement("div", { style:{ fontSize:13, fontWeight:600, color:"var(--c-ink)" } },
+              (cur.ongoing.country ? countryFlag(cur.ongoing.country)+" " : "") + cur.ongoing.home + " vs " + cur.ongoing.away),
+            React.createElement("div", { style:{ fontSize:11, color:"var(--c-ink-3)" } },
+              cur.ongoing.rec + " · cote " + cur.ongoing.cote + " · conf " + cur.ongoing._conf + "%")
+          ) : React.createElement("div", { style:{ fontSize:11, color:"var(--c-ink-3)" } }, "Pas de pari en attente — la prochaine prédiction démarrera la suite")
+        );
+        var historyCards = paliers.slice().reverse().map(function(pal, i) {
+          var peak = Math.round(pal.capital*100)/100;
+          return React.createElement("div", {
+            key:i,
+            style:{ display:"flex", alignItems:"center", justifyContent:"space-between",
+              padding:"8px 10px", borderRadius:8, marginBottom:5, border:"1px solid var(--c-border)", opacity:0.85 }
+          },
+            React.createElement("div", null,
+              React.createElement("div", { style:{ fontSize:12, fontWeight:600, color:"var(--c-ink)" } },
+                pal.wins + " victoire" + (pal.wins>1?"s":"") + " puis ❌"),
+              React.createElement("div", { style:{ fontSize:10, color:"var(--c-ink-3)" } },
+                "Cassé sur : " + (pal.lost ? pal.lost.rec : "—"))
+            ),
+            React.createElement("div", { style:{ fontSize:13, fontWeight:700, color: pal.wins>0 ? "var(--c-ink-2)" : "#e74c3c", whiteSpace:"nowrap" } },
+              pal.wins>0 ? ("a atteint " + peak) : "perdu d'emblée")
+          );
+        });
+        return React.createElement("div", null,
+          header,
+          ongoingCard,
+          paliers.length > 0 ? React.createElement("div", null,
+            React.createElement("div", { style:{ fontSize:10, fontWeight:700, color:"var(--c-ink-3)", textTransform:"uppercase", letterSpacing:"0.08em", margin:"4px 0 8px" } },
+              "Séries passées (" + paliers.length + ")"),
+            historyCards
+          ) : (days.length === 0 ? React.createElement("div", { style:{ textAlign:"center", padding:"10px 0", color:"var(--c-ink-3)", fontSize:12 } },
+            "Aucune prédiction depuis le démarrage — reviens quand un match aura été joué") : null)
+        );
+      })() : null,
 
       // ─── SOUS-VUE STATISTIQUES ───
       ticketTab === "stats" ? React.createElement("div", null,
