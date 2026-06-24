@@ -16081,6 +16081,8 @@ function Top25Tab() {
   var _useStateVM = useState("today");
   var viewMode = _useStateVM[0]; var setViewMode = _useStateVM[1];
   var _useStateSD = React.useState(null);  var statsData    = _useStateSD[0]; var setStatsData    = _useStateSD[1];
+  var _useStateCalib = React.useState(null); var calibData = _useStateCalib[0]; var setCalibData = _useStateCalib[1];
+  var _useStateCalibM = React.useState("TOUS"); var calibMarket = _useStateCalibM[0]; var setCalibMarket = _useStateCalibM[1];
   var _useStateSL = React.useState(false); var statsLoading = _useStateSL[0]; var setStatsLoading = _useStateSL[1];
   var _useStateStatsTab = React.useState("stats"); var statsTab = _useStateStatsTab[0]; var setStatsTab = _useStateStatsTab[1];
 
@@ -16213,6 +16215,16 @@ function Top25Tab() {
     })
     .catch(function() { setStatsLoading(false); });
   }, [viewMode]);
+
+  // Charger les prédictions brutes pour la calibration (sous-vue Analyse, à la demande)
+  React.useEffect(function() {
+    if (viewMode !== "stats" || statsTab !== "analyse") return;
+    if (calibData) return;
+    fetch(SB_BASE2 + "predictions?prediction_correct=not.is.null&select=rec_confidence,prediction_correct,recommendation&order=match_date.desc&limit=5000", { headers: SB_H2 })
+      .then(function(r) { return r.json(); })
+      .then(function(d) { if (Array.isArray(d)) setCalibData(d); })
+      .catch(function() {});
+  }, [viewMode, statsTab]);
 
   // Charger le ticket figé du jour depuis daily_tickets
   useEffect(function() {
@@ -17144,6 +17156,88 @@ function Top25Tab() {
           React.createElement("div", { style:{ fontSize:14, fontWeight:800, color:"var(--c-ink)", marginBottom:4 } }, "🔬 Qu'est-ce qui marche vraiment ?"),
           React.createElement("div", { style:{ fontSize:11, color:"var(--c-ink-2)", lineHeight:1.5 } },
             "Analyse de tes résultats réels. Vert = fiable et gagnant · Orange = moyen · Rouge = à éviter. Une donnée devient fiable à partir de 15-20 matchs.")
+        ),
+
+        // ── SECTION CALIBRATION ──
+        React.createElement("div", { style:{ marginBottom:18 } },
+          React.createElement("div", { style:{ fontSize:13, fontWeight:800, color:"var(--c-ink)", marginBottom:4 } }, "🎯 Calibration — la confiance dit-elle vrai ?"),
+          React.createElement("div", { style:{ fontSize:10, color:"var(--c-ink-3)", marginBottom:8, fontStyle:"italic" } },
+            "Par tranche : ce que le moteur annonce vs ton vrai taux. Idéal = écart proche de 0. Fiable à partir de 15 paris."),
+          React.createElement("div", { style:{ display:"flex", flexWrap:"wrap", gap:"4px 12px", fontSize:10, fontWeight:600, marginBottom:10 } },
+            React.createElement("span", { style:{ color:"var(--c-jade)" } }, "● bien calibré"),
+            React.createElement("span", { style:{ color:"#e74c3c" } }, "● trop optimiste = surestimé"),
+            React.createElement("span", { style:{ color:"#2980b9" } }, "● trop prudent = sous-estimé"),
+            React.createElement("span", { style:{ color:"var(--c-ink-3)" } }, "● en cours = moins de 15 paris")
+          ),
+          React.createElement("div", { style:{ display:"flex", gap:6, marginBottom:10, flexWrap:"wrap" } },
+            ["TOUS","UNDER","BTTS","VICTOIRE"].map(function(mk) {
+              var lbl = mk === "TOUS" ? "Tous" : mk === "UNDER" ? "⬇️ Under" : mk === "BTTS" ? "⚽ BTTS" : "🏆 Victoire";
+              return React.createElement("button", {
+                key:mk, onClick:function(){ setCalibMarket(mk); },
+                style:{ padding:"4px 10px", borderRadius:8, fontSize:11, fontWeight:700, cursor:"pointer",
+                  border: calibMarket===mk ? "1.5px solid var(--c-jade)" : "1px solid var(--c-border)",
+                  background: calibMarket===mk ? "rgba(5,150,105,0.08)" : "var(--c-base)",
+                  color: calibMarket===mk ? "var(--c-jade)" : "var(--c-ink-3)" }
+              }, lbl);
+            })
+          ),
+          !calibData ? React.createElement("div", { style:{ fontSize:11, color:"var(--c-ink-3)", padding:"8px 0" } }, "Chargement…") :
+          (function() {
+            var buckets = [
+              { min:72, max:75, label:"72–75%" },
+              { min:75, max:80, label:"75–80%" },
+              { min:80, max:85, label:"80–85%" },
+              { min:85, max:90, label:"85–90%" },
+              { min:90, max:101, label:"90%+" }
+            ];
+            buckets.forEach(function(b){ b.total=0; b.correct=0; b.confSum=0; });
+            var filtered = calibData.filter(function(p) {
+              if (calibMarket === "TOUS") return true;
+              var r = (p.recommendation || "").toUpperCase();
+              if (calibMarket === "UNDER") return r.indexOf("UNDER") >= 0;
+              if (calibMarket === "BTTS") return r.indexOf("BTTS") >= 0;
+              if (calibMarket === "VICTOIRE") return r.indexOf("VICTOIRE") >= 0 || r.indexOf("DOUBLE") >= 0;
+              return true;
+            });
+            filtered.forEach(function(p) {
+              var c = p.rec_confidence;
+              if (c == null) return;
+              for (var i=0;i<buckets.length;i++){
+                if (c >= buckets[i].min && c < buckets[i].max){
+                  buckets[i].total += 1;
+                  if (p.prediction_correct === true) buckets[i].correct += 1;
+                  buckets[i].confSum += c;
+                  break;
+                }
+              }
+            });
+            var rows = buckets.filter(function(b){ return b.total > 0; }).map(function(b) {
+              var rate = Math.round(b.correct/b.total*1000)/10;
+              var avgConf = Math.round(b.confSum/b.total*10)/10;
+              var gap = Math.round((rate - avgConf)*10)/10;
+              var reliable = b.total >= 15;
+              var col, verdict;
+              if (!reliable) { col = "var(--c-ink-3)"; verdict = "en cours"; }
+              else if (Math.abs(gap) <= 5) { col = "var(--c-jade)"; verdict = "bien calibré"; }
+              else if (gap < 0) { col = "#e74c3c"; verdict = "trop optimiste"; }
+              else { col = "#2980b9"; verdict = "trop prudent"; }
+              return React.createElement("div", {
+                key:b.label,
+                style:{ display:"flex", alignItems:"center", justifyContent:"space-between", padding:"8px 10px", borderRadius:8, marginBottom:5, border:"1px solid var(--c-border)", opacity: reliable ? 1 : 0.55 }
+              },
+                React.createElement("div", null,
+                  React.createElement("div", { style:{ fontSize:12, fontWeight:700, color:"var(--c-ink)" } }, b.label + " · " + b.total + " paris"),
+                  React.createElement("div", { style:{ fontSize:11, color:"var(--c-ink-2)" } }, "annoncé " + avgConf + "% → réel " + rate + "%")
+                ),
+                React.createElement("div", { style:{ textAlign:"right", whiteSpace:"nowrap" } },
+                  React.createElement("div", { style:{ fontSize:14, fontWeight:800, color:col } }, (gap > 0 ? "+" : "") + gap),
+                  React.createElement("div", { style:{ fontSize:9, color:col, fontWeight:600 } }, verdict)
+                )
+              );
+            });
+            if (rows.length === 0) return React.createElement("div", { style:{ fontSize:11, color:"var(--c-ink-3)" } }, "Pas encore de prédictions vérifiées.");
+            return React.createElement("div", null, rows);
+          })()
         ),
 
         // ── SECTION 1 : LIGUES ──
