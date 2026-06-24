@@ -16220,7 +16220,7 @@ function Top25Tab() {
   React.useEffect(function() {
     if (viewMode !== "stats" || statsTab !== "analyse") return;
     if (calibData) return;
-    fetch(SB_BASE2 + "predictions?prediction_correct=not.is.null&select=rec_confidence,prediction_correct,recommendation&order=match_date.desc&limit=5000", { headers: SB_H2 })
+    fetch(SB_BASE2 + "predictions?prediction_correct=not.is.null&select=rec_confidence,prediction_correct,recommendation,pinnacle_home,pinnacle_away,pinnacle_draw,pinnacle_under25,pinnacle_btts&order=match_date.desc&limit=5000", { headers: SB_H2 })
       .then(function(r) { return r.json(); })
       .then(function(d) { if (Array.isArray(d)) setCalibData(d); })
       .catch(function() {});
@@ -17236,6 +17236,54 @@ function Top25Tab() {
               );
             });
             if (rows.length === 0) return React.createElement("div", { style:{ fontSize:11, color:"var(--c-ink-3)" } }, "Pas encore de prédictions vérifiées.");
+            return React.createElement("div", null, rows);
+          })()
+        ),
+
+        // ── SECTION ROI PAR MARCHÉ ──
+        React.createElement("div", { style:{ marginBottom:18 } },
+          React.createElement("div", { style:{ fontSize:13, fontWeight:800, color:"var(--c-ink)", marginBottom:4 } }, "💰 ROI réel par marché"),
+          React.createElement("div", { style:{ fontSize:10, color:"var(--c-ink-3)", marginBottom:10, fontStyle:"italic" } },
+            "Le vrai juge : taux réel × cote. Positif = rentable sur la durée. Calculé sur les paris cotés (30+ pour être fiable)."),
+          !calibData ? React.createElement("div", { style:{ fontSize:11, color:"var(--c-ink-3)" } }, "Chargement…") :
+          (function() {
+            function marketOf(rec){ var r=(rec||"").toUpperCase(); if(r.indexOf("UNDER")>=0)return"UNDER 2.5"; if(r.indexOf("BTTS")>=0)return"BTTS"; if(r.indexOf("VICTOIRE")>=0||r.indexOf("DOUBLE")>=0)return"VICTOIRE"; return null; }
+            function coteOf(p){ var r=(p.recommendation||"").toUpperCase(); var ph=p.pinnacle_home||0,pa=p.pinnacle_away||0,pdr=p.pinnacle_draw||0; if(r.indexOf("UNDER")>=0)return p.pinnacle_under25||0; if(r.indexOf("BTTS")>=0)return p.pinnacle_btts||0; if(r.indexOf("DOUBLE")>=0){var ct=r.indexOf("X2")>=0?pa:ph; return(ct>1&&pdr>1)?Math.round(100/(1/ct+1/pdr))/100:0;} if(r.indexOf("EXTÉRIEUR")>=0||r.indexOf("EXTERIEUR")>=0)return pa; return ph; }
+            var order = ["VICTOIRE","UNDER 2.5","BTTS"];
+            var labels = { "VICTOIRE":"🏆 Victoire", "UNDER 2.5":"⬇️ Under 2.5", "BTTS":"⚽ BTTS" };
+            var mk = {};
+            order.forEach(function(m){ mk[m]={n:0,w:0,coted:0,profit:0,coteSum:0}; });
+            calibData.forEach(function(p) {
+              var m = marketOf(p.recommendation); if(!m||!mk[m]) return;
+              mk[m].n += 1; if(p.prediction_correct===true) mk[m].w += 1;
+              var cote = coteOf(p);
+              if(cote>1){ mk[m].coted+=1; mk[m].coteSum+=cote; mk[m].profit += (p.prediction_correct===true)?(cote-1):-1; }
+            });
+            var rows = order.filter(function(m){ return mk[m].n>0; }).map(function(m) {
+              var s = mk[m];
+              var rate = Math.round(s.w/s.n*1000)/10;
+              var roi = s.coted>0 ? Math.round(s.profit/s.coted*1000)/10 : null;
+              var avgCote = s.coted>0 ? Math.round(s.coteSum/s.coted*100)/100 : null;
+              var reliable = s.coted >= 30;
+              var col, verdict;
+              if (roi==null || !reliable) { col="var(--c-ink-3)"; verdict = s.coted+" paris cotés · en cours"; }
+              else if (roi >= 5) { col="var(--c-jade)"; verdict="rentable"; }
+              else if (roi >= 0) { col="#e67e22"; verdict="marginal"; }
+              else { col="#e74c3c"; verdict="perdant"; }
+              return React.createElement("div", {
+                key:m,
+                style:{ display:"flex", alignItems:"center", justifyContent:"space-between", padding:"10px 12px", borderRadius:10, marginBottom:6, border:"1px solid var(--c-border)", opacity: reliable?1:0.6 }
+              },
+                React.createElement("div", null,
+                  React.createElement("div", { style:{ fontSize:13, fontWeight:700, color:"var(--c-ink)" } }, labels[m]),
+                  React.createElement("div", { style:{ fontSize:11, color:"var(--c-ink-2)" } }, s.w+"/"+s.n+" · "+rate+"% réussite" + (avgCote?" · cote moy "+avgCote:""))
+                ),
+                React.createElement("div", { style:{ textAlign:"right", whiteSpace:"nowrap" } },
+                  React.createElement("div", { style:{ fontSize:16, fontWeight:800, color:col } }, roi==null?"—":((roi>0?"+":"")+roi+"%")),
+                  React.createElement("div", { style:{ fontSize:9, color:col, fontWeight:600 } }, verdict)
+                )
+              );
+            });
             return React.createElement("div", null, rows);
           })()
         ),
