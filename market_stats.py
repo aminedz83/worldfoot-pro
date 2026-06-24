@@ -406,6 +406,162 @@ def compute_league_market_stats():
     print(f"  {saved} combinaisons ligue×marché sauvegardées dans league_market_performance")
 
 
+def compute_calibration_stats():
+    """
+    Calibration par marché (+ GLOBAL) et par tranche de confiance.
+    Compare la confiance annoncée au taux réel (gap). Lecture par le moteur
+    pour l'auto-détection future. Sauvegarde dans calibration_stats.
+    """
+    CONF_BUCKETS = [(72, 75, "72-75"), (75, 80, "75-80"), (80, 85, "80-85"),
+                    (85, 90, "85-90"), (90, 101, "90+")]
+
+    def bucket_of(c):
+        for (lo, hi, lbl) in CONF_BUCKETS:
+            if lo <= c < hi:
+                return (lo, hi, lbl)
+        return None
+
+    try:
+        r = supabase.table("predictions")\
+            .select("prediction_correct, rec_confidence, recommendation")\
+            .not_.is_("prediction_correct", "null")\
+            .not_.is_("rec_confidence", "null")\
+            .order("match_date", desc=True)\
+            .limit(5000)\
+            .execute()
+        data = r.data or []
+    except Exception as e:
+        print(f"  [ERR] calibration stats : {e}")
+        return
+
+    groups = {}  # (market, bucket) -> dict
+    for p in data:
+        c = p.get("rec_confidence")
+        if c is None:
+            continue
+        b = bucket_of(c)
+        if not b:
+            continue
+        market, _odds = _market_and_odds(p)
+        for mk in (market, "GLOBAL"):
+            key = (mk, b[2])
+            if key not in groups:
+                groups[key] = {"total": 0, "correct": 0, "conf_sum": 0.0,
+                               "bmin": b[0], "bmax": b[1]}
+            groups[key]["total"] += 1
+            groups[key]["conf_sum"] += c
+            if p["prediction_correct"] is True:
+                groups[key]["correct"] += 1
+
+    now = datetime.utcnow().isoformat()
+    saved = 0
+    for (market, bucket), g in groups.items():
+        total = g["total"]
+        if total < 1:
+            continue
+        actual_rate = round(g["correct"] / total * 100, 1)
+        avg_conf = round(g["conf_sum"] / total, 1)
+        gap = round(actual_rate - avg_conf, 1)
+        try:
+            supabase.table("calibration_stats").upsert({
+                "market":         market,
+                "bucket":         bucket,
+                "bucket_min":     g["bmin"],
+                "bucket_max":     g["bmax"],
+                "total":          total,
+                "correct":        g["correct"],
+                "actual_rate":    actual_rate,
+                "avg_confidence": avg_conf,
+                "gap":            gap,
+                "updated_at":     now,
+            }, on_conflict="market,bucket").execute()
+            saved += 1
+        except Exception as e:
+            print(f"  [DB] calibration_stats {market}/{bucket} : {e}")
+
+    print(f"  {saved} tranches de calibration sauvegardees dans calibration_stats")
+
+
+def compute_cote_roi_stats():
+    """
+    ROI par marché (+ GLOBAL) et par tranche de cote. Lecture par le moteur
+    pour l'auto-détection future. Sauvegarde dans cote_roi_stats.
+    """
+    COTE_BUCKETS = [(1.0, 1.3, "1.0-1.3"), (1.3, 1.5, "1.3-1.5"),
+                    (1.5, 1.8, "1.5-1.8"), (1.8, 2.2, "1.8-2.2"),
+                    (2.2, 99.0, "2.2+")]
+
+    def bucket_of(c):
+        for (lo, hi, lbl) in COTE_BUCKETS:
+            if lo <= c < hi:
+                return (lo, hi, lbl)
+        return None
+
+    try:
+        r = supabase.table("predictions")\
+            .select("prediction_correct, recommendation, "
+                    "pinnacle_home, pinnacle_away, pinnacle_draw, "
+                    "pinnacle_under25, pinnacle_btts")\
+            .not_.is_("prediction_correct", "null")\
+            .order("match_date", desc=True)\
+            .limit(5000)\
+            .execute()
+        data = r.data or []
+    except Exception as e:
+        print(f"  [ERR] cote roi stats : {e}")
+        return
+
+    groups = {}  # (market, cote_bucket) -> dict
+    for p in data:
+        market, odds = _market_and_odds(p)
+        if not odds or odds <= 1:
+            continue
+        b = bucket_of(odds)
+        if not b:
+            continue
+        won = p["prediction_correct"] is True
+        for mk in (market, "GLOBAL"):
+            key = (mk, b[2])
+            if key not in groups:
+                groups[key] = {"total": 0, "correct": 0, "profit": 0.0,
+                               "cote_sum": 0.0, "bmin": b[0], "bmax": b[1]}
+            groups[key]["total"] += 1
+            groups[key]["cote_sum"] += odds
+            if won:
+                groups[key]["correct"] += 1
+                groups[key]["profit"] += (odds - 1)
+            else:
+                groups[key]["profit"] -= 1
+
+    now = datetime.utcnow().isoformat()
+    saved = 0
+    for (market, cote_bucket), g in groups.items():
+        total = g["total"]
+        if total < 1:
+            continue
+        rate = round(g["correct"] / total * 100, 1)
+        roi = round(g["profit"] / total * 100, 1)
+        avg_cote = round(g["cote_sum"] / total, 2)
+        try:
+            supabase.table("cote_roi_stats").upsert({
+                "market":      market,
+                "cote_bucket": cote_bucket,
+                "cote_min":    g["bmin"],
+                "cote_max":    g["bmax"],
+                "total":       total,
+                "correct":     g["correct"],
+                "rate":        rate,
+                "roi":         roi,
+                "avg_cote":    avg_cote,
+                "updated_at":  now,
+            }, on_conflict="market,cote_bucket").execute()
+            saved += 1
+        except Exception as e:
+            print(f"  [DB] cote_roi_stats {market}/{cote_bucket} : {e}")
+
+    print(f"  {saved} tranches de cote sauvegardees dans cote_roi_stats")
+
+
 def main():
     print(
         f"\n=== Market Stats — "
@@ -428,6 +584,14 @@ def main():
     # Récolte stats par ligue × marché — avec ROI, pour l'outil de tri
     print("\n=== Stats par ligue × marché ===")
     compute_league_market_stats()
+
+    # Calibration (confiance annoncée vs réelle) — pour auto-détection future
+    print("\n=== Calibration ===")
+    compute_calibration_stats()
+
+    # ROI par tranche de cote — pour auto-détection future
+    print("\n=== ROI par tranche de cote ===")
+    compute_cote_roi_stats()
 
 
 if __name__ == "__main__":
