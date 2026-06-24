@@ -73,7 +73,7 @@ jobs:
           MODE="${{ github.event.inputs.mode || 'all' }}"
           HOUR=$(date -u +%H)
           MINUTE=$(date -u +%M)
-          if [ "$MODE" = "top25" ] || ([ "$MODE" = "all" ] && { { [ "$HOUR" = "01" ] && [ "$MINUTE" -ge "30" ]; } || [ "$HOUR" = "02" ]; }); then
+          if [ "$MODE" = "top25" ] || [ "$MODE" = "engine" ] || ([ "$MODE" = "all" ] && { { [ "$HOUR" = "01" ] && [ "$MINUTE" -ge "30" ]; } || [ "$HOUR" = "02" ]; }); then
             python daily_top25.py
           else
             echo "Skip top25 (mode=$MODE, time=${HOUR}:${MINUTE})"
