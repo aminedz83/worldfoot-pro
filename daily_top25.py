@@ -562,20 +562,26 @@ def save_daily_ticket(selected=None):
         })
 
     try:
-        # Un seul ticket par jour — on remplace si déjà existant aujourd'hui
-        supabase.table("daily_tickets").delete().eq("ticket_date", today_str).execute()
-        supabase.table("daily_tickets").insert({
-            "ticket_date":   today_str,
-            "matches":       matches,
-            "total_odds":    round(total_odds, 2),
-            "num_matches":   len(matches),
-            "status":        "pending",
-            "won_count":     0,
-            "lost_count":    0,
-            "pending_count": len(matches),
-            "created_at":    datetime.utcnow().isoformat(),
-        }).execute()
-        print(f"[TICKET] Ticket figé du {today_str} : {len(matches)} matchs · cote {round(total_odds,2)}")
+        # Ticket VRAIMENT figé : généré une seule fois par jour, jamais réécrit ensuite.
+        # Les tentatives engine suivantes le conservent tel quel.
+        existing = supabase.table("daily_tickets").select("ticket_date").eq("ticket_date", today_str).execute()
+        if existing.data:
+            print(f"[TICKET] Déjà figé pour {today_str} — conservé tel quel (pas de régénération)")
+        elif not matches:
+            print(f"[TICKET] Aucun match qualifiant pour {today_str} — ticket non créé (réessai au prochain run)")
+        else:
+            supabase.table("daily_tickets").insert({
+                "ticket_date":   today_str,
+                "matches":       matches,
+                "total_odds":    round(total_odds, 2),
+                "num_matches":   len(matches),
+                "status":        "pending",
+                "won_count":     0,
+                "lost_count":    0,
+                "pending_count": len(matches),
+                "created_at":    datetime.utcnow().isoformat(),
+            }).execute()
+            print(f"[TICKET] Ticket figé du {today_str} : {len(matches)} matchs · cote {round(total_odds,2)}")
     except Exception as e:
         print(f"  [TICKET ERR] {e}")
 
