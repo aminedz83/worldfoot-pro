@@ -16084,6 +16084,7 @@ function Top25Tab() {
   var _useStateCalib = React.useState(null); var calibData = _useStateCalib[0]; var setCalibData = _useStateCalib[1];
   var _useStateCalibM = React.useState("TOUS"); var calibMarket = _useStateCalibM[0]; var setCalibMarket = _useStateCalibM[1];
   var _useStateCoteM = React.useState("VICTOIRE"); var coteMarket = _useStateCoteM[0]; var setCoteMarket = _useStateCoteM[1];
+  var _useStateSrvStats = React.useState(null); var serverStats = _useStateSrvStats[0]; var setServerStats = _useStateSrvStats[1];
   var _useStateSL = React.useState(false); var statsLoading = _useStateSL[0]; var setStatsLoading = _useStateSL[1];
   var _useStateStatsTab = React.useState("stats"); var statsTab = _useStateStatsTab[0]; var setStatsTab = _useStateStatsTab[1];
 
@@ -16225,6 +16226,21 @@ function Top25Tab() {
       .then(function(r) { return r.json(); })
       .then(function(d) { if (Array.isArray(d)) setCalibData(d); })
       .catch(function() {});
+  }, [viewMode, statsTab]);
+
+  // Charger les stats SERVEUR (tables calibration_stats + cote_roi_stats) — confirmation visuelle
+  React.useEffect(function() {
+    if (viewMode !== "stats" || statsTab !== "analyse") return;
+    if (serverStats) return;
+    Promise.all([
+      fetch(SB_BASE2 + "calibration_stats?select=*", { headers: SB_H2 }).then(function(r) { return r.json(); }).catch(function() { return []; }),
+      fetch(SB_BASE2 + "cote_roi_stats?select=*", { headers: SB_H2 }).then(function(r) { return r.json(); }).catch(function() { return []; })
+    ]).then(function(res) {
+      setServerStats({
+        calib: Array.isArray(res[0]) ? res[0] : [],
+        cote:  Array.isArray(res[1]) ? res[1] : []
+      });
+    }).catch(function() { setServerStats({ calib: [], cote: [] }); });
   }, [viewMode, statsTab]);
 
   // Charger le ticket figé du jour depuis daily_tickets
@@ -17158,6 +17174,45 @@ function Top25Tab() {
           React.createElement("div", { style:{ fontSize:11, color:"var(--c-ink-2)", lineHeight:1.5 } },
             "Analyse de tes résultats réels. Vert = fiable et gagnant · Orange = moyen · Rouge = à éviter. Une donnée devient fiable à partir de 15-20 matchs.")
         ),
+
+        // ── PANNEAU CONFIRMATION SERVEUR ──
+        (function() {
+          var sc = serverStats ? serverStats.calib : null;
+          var sk = serverStats ? serverStats.cote : null;
+          function lastMaj(rows) {
+            if (!rows || !rows.length) return "—";
+            var m = "";
+            for (var i = 0; i < rows.length; i++) {
+              var u = rows[i].updated_at || "";
+              if (u > m) m = u;
+            }
+            return m ? (m.slice(0,10) + " " + m.slice(11,16)) : "—";
+          }
+          function card(title, table, rows) {
+            var filled = rows && rows.length > 0;
+            return React.createElement("div", { style:{ flex:1, background:"var(--c-base)", borderRadius:10, border:"1px solid var(--c-border)", padding:"10px 12px" } },
+              React.createElement("div", { style:{ fontSize:11, fontWeight:800, color:"var(--c-ink)", marginBottom:3 } }, title),
+              React.createElement("div", { style:{ fontSize:9.5, color:"var(--c-ink-3)", marginBottom:6, fontFamily:"monospace" } }, table),
+              React.createElement("div", {
+                style:{ display:"inline-block", fontSize:11, fontWeight:700, padding:"3px 8px", borderRadius:6,
+                  background: filled ? "rgba(22,160,133,0.12)" : "rgba(243,156,18,0.12)",
+                  color: filled ? "#16a085" : "#f39c12" }
+              }, filled ? ("✅ " + rows.length + " lignes") : "⏳ Vide"),
+              React.createElement("div", { style:{ fontSize:9.5, color:"var(--c-ink-3)", marginTop:6 } },
+                filled ? ("Dernière maj : " + lastMaj(rows)) : "Sera rempli au prochain run all")
+            );
+          }
+          return React.createElement("div", { style:{ background:"rgba(52,152,219,0.05)", borderRadius:12, border:"1px solid rgba(52,152,219,0.2)", padding:"12px 14px", marginBottom:14 } },
+            React.createElement("div", { style:{ fontSize:13, fontWeight:800, color:"var(--c-ink)", marginBottom:4 } }, "🔌 Données serveur — ce que le moteur voit"),
+            React.createElement("div", { style:{ fontSize:10, color:"var(--c-ink-2)", marginBottom:10, lineHeight:1.5 } },
+              "Lu directement des tables serveur (pas du navigateur). Si rempli ✅, le moteur voit ses données et pourra les exploiter pour l'auto-détection."),
+            !serverStats ? React.createElement("div", { style:{ fontSize:11, color:"var(--c-ink-3)" } }, "Chargement…") :
+            React.createElement("div", { style:{ display:"flex", gap:10 } },
+              card("Calibration", "calibration_stats", sc),
+              card("ROI par cote", "cote_roi_stats", sk)
+            )
+          );
+        })(),
 
         // ── SECTION CALIBRATION ──
         React.createElement("div", { style:{ marginBottom:18 } },
