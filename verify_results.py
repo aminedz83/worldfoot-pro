@@ -130,11 +130,11 @@ def update_daily_tickets():
     Ne change JAMAIS les matchs du ticket — met juste à jour won/lost/pending et le statut.
     """
     try:
-        # Récupérer les tickets pas encore finalisés
+        # Tickets ayant encore des matchs en attente — on continue à synchroniser
+        # même un ticket déjà perdu, tant que ses matchs ne sont pas tous résolus.
         r = supabase.table("daily_tickets") \
             .select("*") \
-            .neq("status", "won") \
-            .neq("status", "lost") \
+            .gt("pending_count", 0) \
             .execute()
         tickets = r.data or []
     except Exception as e:
