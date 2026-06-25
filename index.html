@@ -17949,16 +17949,20 @@ function Top25Tab() {
             React.createElement("span", { style:{ fontSize:11, color:"var(--c-ink-3)" } }, "Mise :"),
             [10,50,100].map(function(s) {
               return React.createElement("button", {
-                key:s, onClick:function(){ palierReset(s); },
+                key:s, onClick:function(){ if (s !== palierStake) palierReset(s); },
                 style:{ padding:"4px 10px", borderRadius:8, fontSize:11, fontWeight:700, cursor:"pointer",
                   border: palierStake===s ? "1.5px solid var(--c-jade)" : "1px solid var(--c-border)",
                   background: palierStake===s ? "rgba(5,150,105,0.08)" : "var(--c-base)",
                   color: palierStake===s ? "var(--c-jade)" : "var(--c-ink-3)" }
               }, s);
-            })
+            }),
+            React.createElement("button", {
+              onClick: function(){ if (window.confirm("Relancer une nouvelle série à " + palierStake + " ? Le capital actuel sera remis à la mise de départ.")) palierReset(palierStake); },
+              style:{ marginLeft:"auto", padding:"4px 10px", borderRadius:8, fontSize:11, fontWeight:700, cursor:"pointer", border:"1px solid var(--c-border)", background:"var(--c-base)", color:"var(--c-ink-3)" }
+            }, "↻ Nouvelle série")
           ),
           React.createElement("div", { style:{ fontSize:10, color:"var(--c-ink-3)", marginBottom:12 } },
-            "Démarré le " + palierStart.slice(0,10) + " · changer la mise relance une nouvelle série")
+            "Démarré le " + palierStart.slice(0,10) + " · ↻ pour relancer une série")
         );
         if (!palierData) {
           return React.createElement("div", null, header,
