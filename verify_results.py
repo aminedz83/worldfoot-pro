@@ -64,15 +64,18 @@ def get_unverified_predictions():
 def get_fixture_result(fixture_id):
     data = api("fixtures", {"id": fixture_id})
     if not data:
+        print(f"    [SKIP] fixture {fixture_id} absent de l'API (ligue non couverte ?)")
         return None
     fix    = data[0]
     status = fix.get("fixture", {}).get("status", {}).get("short", "")
     if status not in ("FT", "AET", "PEN"):
+        print(f"    [SKIP] status API = '{status}' (pas encore terminé)")
         return None
     goals = fix.get("goals", {})
     gh    = goals.get("home")
     ga    = goals.get("away")
     if gh is None or ga is None:
+        print(f"    [SKIP] terminé ({status}) mais score absent de l'API")
         return None
     return {
         "home_goals":  gh,
@@ -251,7 +254,6 @@ def main():
         print(f"  → {pred['home_team_name']} vs {pred['away_team_name']} ({pred['league_name']})")
         result = get_fixture_result(fixture_id)
         if not result:
-            print(f"    [SKIP] Match pas encore terminé ou données indisponibles")
             skipped += 1
             continue
         is_correct = check_prediction(rec, result)
