@@ -18002,15 +18002,15 @@ function Top25Tab() {
         });
         var days = Object.keys(byDay).sort();
         var paliers = [];
-        var cur = { capital: palierStake, wins: 0, ongoing: null, lost: null };
+        var cur = { capital: palierStake, wins: 0, ongoing: null, lost: null, history: [] };
         var nowTs = Date.now();
         days.forEach(function(day) {
           var b = byDay[day];
           // Garde-fou : un match dont le coup d'envoi est dans le futur n'a pas de résultat valide → en attente
           var future = b.mdate && new Date(b.mdate).getTime() > nowTs;
           if (future || b.correct === null || b.correct === undefined) { if (!cur.ongoing) cur.ongoing = b; return; }
-          if (b.correct === true) { cur.capital = cur.capital * b.cote; cur.wins += 1; }
-          else { cur.lost = b; paliers.push(cur); cur = { capital: palierStake, wins: 0, ongoing: null, lost: null }; }
+          if (b.correct === true) { cur.history.push(b); cur.capital = cur.capital * b.cote; cur.wins += 1; }
+          else { cur.lost = b; paliers.push(cur); cur = { capital: palierStake, wins: 0, ongoing: null, lost: null, history: [] }; }
         });
         var ongoingCard = React.createElement("div", {
           style:{ background:"linear-gradient(135deg, rgba(5,150,105,0.10), rgba(243,156,18,0.06))",
@@ -18024,6 +18024,14 @@ function Top25Tab() {
           React.createElement("div", { style:{ fontSize:12, color:"var(--c-ink-2)", marginBottom: cur.ongoing ? 10 : 0 } },
             cur.wins + " victoire" + (cur.wins>1?"s":"") + " d'affilée" +
             (cur.wins>0 ? " · ×" + (Math.round(cur.capital/palierStake*100)/100) : "")),
+          cur.history.length ? React.createElement("div", { style:{ marginTop:8, borderTop:"1px solid var(--c-border)", paddingTop:8, marginBottom: cur.ongoing ? 6 : 0 } },
+            React.createElement("div", { style:{ fontSize:10, color:"var(--c-ink-3)", marginBottom:4, fontWeight:700 } }, "✅ Matchs gagnés de la série :"),
+            cur.history.map(function(h, hi) {
+              return React.createElement("div", { key:hi, style:{ fontSize:11, color:"var(--c-ink-2)", marginBottom:2 } },
+                (h.mdate ? h.mdate.slice(8,10) + "/" + h.mdate.slice(5,7) + " · " : "") +
+                (h.country ? countryFlag(h.country) + " " : "") + h.home + " vs " + h.away + " · ×" + h.cote);
+            })
+          ) : null,
           cur.ongoing ? React.createElement("div", {
             style:{ borderTop:"1px solid var(--c-border)", paddingTop:10, marginTop:4 }
           },
