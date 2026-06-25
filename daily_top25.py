@@ -56,18 +56,18 @@ ODDS_SIGNAL_BONUS = {
     "Mouvement contraire": -15,
 }
 
-# Bonus par marché
+# Bonus par marché — recalibré sur les résultats réels (calibration mesurée)
 MARKET_BONUS = {
-    "UNDER 2.5": 3,   # Plus fiable statistiquement
-    "BTTS":      1,
-    "VICTOIRE":  0,   # Seuil plus strict
+    "UNDER 2.5": -6,   # surévalué : ~55% réel pour ~78% affiché (à réviser avec les données)
+    "BTTS":       0,   # échantillon encore trop faible pour trancher
+    "VICTOIRE":   4,   # marché le mieux calibré (~76% réel = affiché)
 }
 
-# Poids équilibre — on veut une bonne répartition
+# Poids équilibre — priorité au marché le plus fiable (Victoire)
 TARGET_DISTRIBUTION = {
-    "UNDER 2.5": 10,  # ~10 Under sur 25
-    "BTTS":       8,  # ~8 BTTS sur 25
-    "VICTOIRE":   7,  # ~7 Victoires sur 25
+    "UNDER 2.5":  6,  # réduit : marché le moins fiable
+    "BTTS":       7,
+    "VICTOIRE":  12,  # majorité : marché le mieux calibré
 }
 
 
@@ -147,7 +147,6 @@ def compute_selection_score(pred):
     odds_sig   = pred.get("odds_signal", "Neutre")
     rec        = pred.get("recommendation", "")
     risk       = pred.get("risk_level", "Moyen")
-    tier       = pred.get("league_tier", 1)
     xgt        = pred.get("xg_total", 2.5) or 2.5
     h2h_count  = pred.get("h2h_count", 0) or 0
 
@@ -172,15 +171,14 @@ def compute_selection_score(pred):
     elif h2h_count >= 4:
         score += 1
 
-    # Bonus xG très clair pour Under
+    # Bonus xG bas pour Under — signal réel mais secondaire (réduit)
     if "UNDER" in rec and xgt <= 1.8:
-        score += 5
-    elif "UNDER" in rec and xgt <= 2.0:
-        score += 3
-
-    # Bonus L2/L3 pour Under (signaux plus nets)
-    if "UNDER" in rec and tier >= 2:
         score += 2
+    elif "UNDER" in rec and xgt <= 2.0:
+        score += 1
+
+    # (retiré : le bonus L2/L3 Under reposait sur une hypothèse non vérifiée —
+    #  les divisions mineures sont au contraire les moins fiables/vérifiables)
 
     # Malus si peu de données
     home_matches = pred.get("home_off_index") is not None
@@ -486,6 +484,9 @@ def save_daily_ticket(selected=None):
             .order("rec_confidence", desc=True) \
             .execute()
         candidats = res.data or []
+        # Trier par score de sélection réel (favorise les marchés calibrés)
+        # plutôt que par la confiance brute, qui surévalue les Under.
+        candidats.sort(key=compute_selection_score, reverse=True)
         print(f"[TICKET] {len(candidats)} candidats (confiance {TICKET_MIN_CONF}-{TICKET_MAX_CONF}%)")
     except Exception as e:
         print(f"[TICKET] Erreur fetch candidats : {e}")
