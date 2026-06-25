@@ -39,17 +39,20 @@ def api(endpoint, params={}):
 
 def get_unverified_predictions():
     """
-    Fenêtre : 3 jours en arrière jusqu'à maintenant (inclus aujourd'hui).
+    Fenêtre : 30 jours en arrière jusqu'à maintenant (inclus aujourd'hui).
+    Large pour qu'aucun match vérifiable ne soit abandonné (petites ligues lentes,
+    matchs reportés puis rejoués) ; borné pour ne pas réinterroger sans fin les
+    matchs annulés qui n'auront jamais de résultat.
     """
-    now_iso        = datetime.utcnow().isoformat()
-    three_days_ago = (datetime.utcnow() - timedelta(days=3)).date().isoformat()
+    now_iso      = datetime.utcnow().isoformat()
+    window_start = (datetime.utcnow() - timedelta(days=30)).date().isoformat()
     try:
         result = supabase.table("predictions")\
             .select("id, fixture_id, recommendation, "
                     "rec_confidence, league_name, "
                     "home_team_name, away_team_name, match_date")\
             .is_("prediction_correct", "null")\
-            .gte("match_date", three_days_ago)\
+            .gte("match_date", window_start)\
             .lte("match_date", now_iso)\
             .execute()
         return result.data or []
