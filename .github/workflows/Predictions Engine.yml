@@ -25,6 +25,15 @@ on:
           - odds
           - analyze
 
+# ── ANTI-RACE ─────────────────────────────────────────────────────────────────
+# Un seul run du workflow à la fois. Empêche deux crons rapprochés (00h30/01h00)
+# de tourner en parallèle et de se marcher dessus sur daily_top25 (delete+insert).
+# cancel-in-progress: false = on ne tue jamais un run en cours, on le laisse finir
+# (le suivant attend son tour, puis la garde anti-doublon le fait passer en SKIP).
+concurrency:
+  group: predictions-engine
+  cancel-in-progress: false
+
 jobs:
 
   predictions-engine:
@@ -72,11 +81,18 @@ jobs:
         run: |
           MODE="${{ github.event.inputs.mode || 'all' }}"
           HOUR=$(date -u +%H)
-          MINUTE=$(date -u +%M)
-          if [ "$MODE" = "top25" ] || [ "$MODE" = "engine" ] || ([ "$MODE" = "all" ] && { { [ "$HOUR" = "01" ] && [ "$MINUTE" -ge "30" ]; } || [ "$HOUR" = "02" ]; }); then
+          # 10# force la base 10 : sans ça, "08" et "09" plantent l'arithmétique
+          # bash (interprétés comme octal invalide). Bug classique et silencieux.
+          H=$((10#$HOUR))
+          # `needs: predictions-engine` garantit DÉJÀ que le moteur a fini avant
+          # ce job. Plus de fenêtre 01h30-02h fragile qui sautait dès que le moteur
+          # finissait vite (tout l'été) : on couvre 00h-02h, ce qui attrape le
+          # moteur quelle que soit sa durée (timeout 90 min depuis 00h30 -> fini
+          # au plus tard à 02h). La garde anti-doublon du script évite tout doublon.
+          if [ "$MODE" = "top25" ] || [ "$MODE" = "engine" ] || { [ "$MODE" = "all" ] && [ "$H" -le 2 ]; }; then
             python daily_top25.py
           else
-            echo "Skip top25 (mode=$MODE, time=${HOUR}:${MINUTE})"
+            echo "Skip top25 (mode=$MODE, hour=$HOUR)"
           fi
 
   verify-results:
