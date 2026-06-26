@@ -637,8 +637,42 @@ def print_top25(selected):
     print(f"{'═'*65}\n")
 
 
+def already_done_today():
+    """
+    Garde anti-doublon : True seulement si la sélection ET le ticket du jour
+    existent DÉJÀ tous les deux. Permet aux multiples déclenchements quotidiens
+    (crons GitHub 00h30/01h/01h30/02h + cron-job.org) de se relancer sans
+    risque : le 1er run fait tout, les suivants s'arrêtent net.
+
+    Si la sélection existe mais que le ticket manque (1er run sans match
+    qualifiant), renvoie False -> on relance pour réessayer le ticket
+    (save_daily_ticket a sa propre garde, il ne crée rien en double).
+    """
+    today_str = date.today().isoformat()
+    try:
+        sel = supabase.table("daily_top25") \
+            .select("id").eq("selection_date", today_str).limit(1).execute()
+        tkt = supabase.table("daily_tickets") \
+            .select("ticket_date").eq("ticket_date", today_str).limit(1).execute()
+        return bool(sel.data) and bool(tkt.data)
+    except Exception as e:
+        # En cas de doute (lecture échouée), on NE bloque PAS : mieux vaut
+        # relancer que rater une journée. L'idempotence aval gère le reste.
+        print(f"[GARDE] Vérification anti-doublon impossible ({e}) — on continue.")
+        return False
+
+
 def main():
     print(f"\n=== Daily Top 25 — {datetime.utcnow().strftime('%Y-%m-%d %H:%M')} UTC ===\n")
+
+    # ── GARDE ANTI-DOUBLON ───────────────────────────────────────────────
+    # Si la sélection ET le ticket du jour sont déjà figés, on s'arrête.
+    # Rend le job sûr quel que soit le nombre de déclenchements (zéro churn,
+    # zéro race sur daily_top25, ticket jamais réécrit).
+    if already_done_today():
+        print(f"[SKIP] Sélection ET ticket déjà figés pour {date.today().isoformat()} "
+              f"— rien à refaire.")
+        return
 
     # Récupérer les prédictions du jour
     predictions = get_today_predictions()
