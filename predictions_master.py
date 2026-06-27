@@ -460,7 +460,7 @@ def discover_leagues():
             {"league_id":71,  "name":"Serie A Brazil",    "country":"Brazil",      "season":2026,"tier":1,"is_national":False,"priority_score":83},
             {"league_id":253, "name":"MLS",               "country":"USA",         "season":2026,"tier":1,"is_national":False,"priority_score":80},
             {"league_id":128, "name":"Liga Profesional",  "country":"Argentina",   "season":2026,"tier":1,"is_national":False,"priority_score":82},
-            {"league_id":292, "name":"Liga MX",           "country":"Mexico",      "season":2026,"tier":1,"is_national":False,"priority_score":78},
+            {"league_id":262, "name":"Liga MX",           "country":"Mexico",      "season":2026,"tier":1,"is_national":False,"priority_score":78},
             {"league_id":307, "name":"Saudi Pro League",  "country":"Saudi Arabia","season":2025,"tier":1,"is_national":False,"priority_score":54},
             {"league_id":98,  "name":"J1 League",         "country":"Japan",       "season":2026,"tier":1,"is_national":False,"priority_score":53},
             {"league_id":292, "name":"K League 1",        "country":"South Korea", "season":2026,"tier":1,"is_national":False,"priority_score":52},
