@@ -18040,35 +18040,9 @@ function Top25Tab() {
           if (rec.indexOf("EXTÉRIEUR") >= 0 || rec.indexOf("EXTERIEUR") >= 0) return pa;
           return ph;
         }
-        var header = React.createElement("div", null,
-          React.createElement("div", { style:{ fontSize:13, fontWeight:700, color:"var(--c-ink)", marginBottom:4 } }, "📈 Palier — laisse courir tes gains"),
-          React.createElement("div", { style:{ fontSize:11, color:"var(--c-ink-3)", marginBottom:10, fontStyle:"italic" } },
-            "Argent virtuel · chaque jour la prédiction la plus sûre · on accumule tant que ça gagne, on repart à la perte"),
-          React.createElement("div", { style:{ display:"flex", gap:6, marginBottom:6, alignItems:"center" } },
-            React.createElement("span", { style:{ fontSize:11, color:"var(--c-ink-3)" } }, "Mise :"),
-            [10,50,100].map(function(s) {
-              return React.createElement("button", {
-                key:s, onClick:function(){ if (palierStart && s !== palierStake) palierReset(s); },
-                style:{ padding:"4px 10px", borderRadius:8, fontSize:11, fontWeight:700, cursor:"pointer",
-                  border: palierStake===s ? "1.5px solid var(--c-jade)" : "1px solid var(--c-border)",
-                  background: palierStake===s ? "rgba(5,150,105,0.08)" : "var(--c-base)",
-                  color: palierStake===s ? "var(--c-jade)" : "var(--c-ink-3)" }
-              }, s);
-            }),
-            React.createElement("button", {
-              onClick: function(){ if (palierStart && window.confirm("Relancer une nouvelle série à " + palierStake + " ? Le capital actuel sera remis à la mise de départ.")) palierReset(palierStake); },
-              style:{ marginLeft:"auto", padding:"4px 10px", borderRadius:8, fontSize:11, fontWeight:700, cursor:"pointer", border:"1px solid var(--c-border)", background:"var(--c-base)", color:"var(--c-ink-3)" }
-            }, "↻ Nouvelle série")
-          ),
-          React.createElement("div", { style:{ fontSize:10, color:"var(--c-ink-3)", marginBottom:12 } },
-            "Démarré le " + (palierStart ? palierStart.slice(0,10) : "…") + " · ↻ pour relancer une série")
-        );
-        if (!palierData) {
-          return React.createElement("div", null, header,
-            React.createElement("div", { style:{ textAlign:"center", padding:"20px 0", color:"var(--c-ink-3)", fontSize:12 } }, "Chargement..."));
-        }
+        // ── Pari du jour = la prédiction à plus haute confiance de chaque jour ──
         var byDay = {};
-        palierData.forEach(function(p) {
+        if (palierData) palierData.forEach(function(p) {
           var day = (p.match_date || "").slice(0,10);
           if (!day) return;
           var cote = paliCote(p);
@@ -18079,17 +18053,59 @@ function Top25Tab() {
           }
         });
         var days = Object.keys(byDay).sort();
-        var paliers = [];
-        var cur = { capital: palierStake, wins: 0, ongoing: null, lost: null, history: [] };
+
+        // ── Accumulation « let-it-ride » avec mise VERROUILLÉE ──
+        // Gagné : le capital roule (capital × cote du pari du jour).
+        // Perdu : retour à la mise verrouillée, la série repart.
+        // anyPlayed : dès qu'un match a un résultat, la mise se verrouille
+        // (les boutons 10/50/100 sont désactivés ; « ↻ Nouvelle série » pour changer).
+        var cur = { capital: palierStake, wins: 0, ongoing: null, history: [] };
+        var anyPlayed = false;
         var nowTs = Date.now();
         days.forEach(function(day) {
           var b = byDay[day];
-          // Garde-fou : un match dont le coup d'envoi est dans le futur n'a pas de résultat valide → en attente
           var future = b.mdate && new Date(b.mdate).getTime() > nowTs;
           if (future || b.correct === null || b.correct === undefined) { if (!cur.ongoing) cur.ongoing = b; return; }
+          anyPlayed = true;
           if (b.correct === true) { cur.history.push(b); cur.capital = cur.capital * b.cote; cur.wins += 1; }
-          else { cur.lost = b; paliers.push(cur); cur = { capital: palierStake, wins: 0, ongoing: null, lost: null, history: [] }; }
+          else { cur = { capital: palierStake, wins: 0, ongoing: null, history: [] }; }
         });
+        var locked = anyPlayed;
+
+        // ── En-tête (mise verrouillée si un match a déjà été joué) ──
+        var header = React.createElement("div", null,
+          React.createElement("div", { style:{ fontSize:13, fontWeight:700, color:"var(--c-ink)", marginBottom:4 } }, "📈 Palier — laisse courir tes gains"),
+          React.createElement("div", { style:{ fontSize:11, color:"var(--c-ink-3)", marginBottom:10, fontStyle:"italic" } },
+            "Argent virtuel · chaque jour la prédiction la plus sûre · le capital roule sur chaque victoire, repart à la mise sur une défaite · mise verrouillée une fois la série lancée"),
+          React.createElement("div", { style:{ display:"flex", gap:6, marginBottom:6, alignItems:"center" } },
+            React.createElement("span", { style:{ fontSize:11, color:"var(--c-ink-3)" } }, locked ? "Mise verrouillée :" : "Mise :"),
+            [10,50,100].map(function(s) {
+              var dim = locked && s !== palierStake;
+              return React.createElement("button", {
+                key:s,
+                onClick:function(){ if (!locked && palierStart && s !== palierStake) palierReset(s); },
+                disabled: dim,
+                style:{ padding:"4px 10px", borderRadius:8, fontSize:11, fontWeight:700,
+                  cursor: dim ? "not-allowed" : "pointer", opacity: dim ? 0.4 : 1,
+                  border: palierStake===s ? "1.5px solid var(--c-jade)" : "1px solid var(--c-border)",
+                  background: palierStake===s ? "rgba(5,150,105,0.08)" : "var(--c-base)",
+                  color: palierStake===s ? "var(--c-jade)" : "var(--c-ink-3)" }
+              }, (palierStake===s && locked) ? (s + " 🔒") : s);
+            }),
+            React.createElement("button", {
+              onClick: function(){ if (palierStart && window.confirm("Relancer une nouvelle série à " + palierStake + " ? Le capital sera remis à la mise de départ et tu pourras rechoisir la mise.")) palierReset(palierStake); },
+              style:{ marginLeft:"auto", padding:"4px 10px", borderRadius:8, fontSize:11, fontWeight:700, cursor:"pointer", border:"1px solid var(--c-border)", background:"var(--c-base)", color:"var(--c-ink-3)" }
+            }, "↻ Nouvelle série")
+          ),
+          React.createElement("div", { style:{ fontSize:10, color:"var(--c-ink-3)", marginBottom:12 } },
+            "Démarré le " + (palierStart ? palierStart.slice(0,10) : "…") + (locked ? " · mise figée à " + palierStake + " · ↻ pour changer" : " · choisis ta mise avant le 1er match"))
+        );
+
+        if (!palierData) {
+          return React.createElement("div", null, header,
+            React.createElement("div", { style:{ textAlign:"center", padding:"20px 0", color:"var(--c-ink-3)", fontSize:12 } }, "Chargement..."));
+        }
+
         var ongoingCard = React.createElement("div", {
           style:{ background:"linear-gradient(135deg, rgba(5,150,105,0.10), rgba(243,156,18,0.06))",
             borderRadius:12, border:"1px solid var(--c-jade)", padding:"14px", marginBottom:14 }
@@ -18122,32 +18138,12 @@ function Top25Tab() {
               "✅ Si gagné → " + (Math.round(cur.capital * cur.ongoing.cote * 100)/100) + " (+" + (Math.round((cur.capital * cur.ongoing.cote - cur.capital) * 100)/100) + ")")
           ) : React.createElement("div", { style:{ fontSize:11, color:"var(--c-ink-3)" } }, "Pas de pari en attente — la prochaine prédiction démarrera la suite")
         );
-        var historyCards = paliers.slice().reverse().map(function(pal, i) {
-          var peak = Math.round(pal.capital*100)/100;
-          return React.createElement("div", {
-            key:i,
-            style:{ display:"flex", alignItems:"center", justifyContent:"space-between",
-              padding:"8px 10px", borderRadius:8, marginBottom:5, border:"1px solid var(--c-border)", opacity:0.85 }
-          },
-            React.createElement("div", null,
-              React.createElement("div", { style:{ fontSize:12, fontWeight:600, color:"var(--c-ink)" } },
-                pal.wins + " victoire" + (pal.wins>1?"s":"") + " puis ❌"),
-              React.createElement("div", { style:{ fontSize:10, color:"var(--c-ink-3)" } },
-                "Cassé sur : " + (pal.lost ? pal.lost.rec : "—"))
-            ),
-            React.createElement("div", { style:{ fontSize:13, fontWeight:700, color: pal.wins>0 ? "var(--c-ink-2)" : "#e74c3c", whiteSpace:"nowrap" } },
-              pal.wins>0 ? ("a atteint " + peak) : "perdu d'emblée")
-          );
-        });
+
         return React.createElement("div", null,
           header,
           ongoingCard,
-          paliers.length > 0 ? React.createElement("div", null,
-            React.createElement("div", { style:{ fontSize:10, fontWeight:700, color:"var(--c-ink-3)", textTransform:"uppercase", letterSpacing:"0.08em", margin:"4px 0 8px" } },
-              "Séries passées (" + paliers.length + ")"),
-            historyCards
-          ) : (days.length === 0 ? React.createElement("div", { style:{ textAlign:"center", padding:"10px 0", color:"var(--c-ink-3)", fontSize:12 } },
-            "Aucune prédiction depuis le démarrage — reviens quand un match aura été joué") : null)
+          days.length === 0 ? React.createElement("div", { style:{ textAlign:"center", padding:"10px 0", color:"var(--c-ink-3)", fontSize:12 } },
+            "Aucune prédiction depuis le démarrage — reviens quand un match aura été joué") : null
         );
       })() : null,
 
