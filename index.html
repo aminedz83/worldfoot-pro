@@ -17549,6 +17549,84 @@ function Top25Tab() {
       // ─── SOUS-VUE PERFORMANCE ───
       React.createElement("div", null,
 
+    // === Ligues par marché (ROI) — outil de tri ===
+    React.createElement("div", {
+      style: {
+        background: "var(--c-base)", borderRadius: 10,
+        border: "1px solid var(--c-border)",
+        margin: "10px 14px", padding: "10px 12px"
+      }
+    },
+      React.createElement("div", {
+        style: { fontSize:10, fontWeight:700, color:"var(--c-ink-3)",
+          textTransform:"uppercase", letterSpacing:"0.08em", marginBottom:2 }
+      }, "🏆 Ligues par marché — classées par ROI"),
+      React.createElement("div", {
+        style: { fontSize:10, color:"var(--c-ink-3)", marginBottom:8, fontStyle:"italic" }
+      }, "Fiable dès 10 matchs · ROI = taux × cote (rentabilité réelle)"),
+      React.createElement("div", {
+        style: { display:"flex", gap:6, marginBottom:10 }
+      },
+        [{id:"VICTOIRE",label:"🏆 Victoire"},{id:"UNDER 2.5",label:"⬇️ Under"},{id:"BTTS",label:"⚽ BTTS"}].map(function(m) {
+          return React.createElement("button", {
+            key: m.id,
+            onClick: function() { setLmMarket(m.id); },
+            style: {
+              flex:1, padding:"6px 4px", borderRadius:8, fontSize:11, fontWeight:600,
+              border: lmMarket===m.id ? "1.5px solid #f39c12" : "1px solid var(--c-border)",
+              background: lmMarket===m.id ? "rgba(243,156,18,0.08)" : "var(--c-base)",
+              color: lmMarket===m.id ? "#f39c12" : "var(--c-ink-3)", cursor:"pointer"
+            }
+          }, m.label);
+        })
+      ),
+      (function() {
+        var rows = ((statsData && statsData.leagueMarkets) || []).filter(function(r) {
+          return r.market === lmMarket;
+        }).slice().sort(function(a, b) {
+          var ra = (a.roi === null || a.roi === undefined) ? -9999 : a.roi;
+          var rb = (b.roi === null || b.roi === undefined) ? -9999 : b.roi;
+          return rb - ra;
+        });
+        if (rows.length === 0) {
+          return React.createElement("div", {
+            style: { textAlign:"center", padding:"18px 0", color:"var(--c-ink-3)", fontSize:12 }
+          }, "Pas encore de données pour ce marché — accumulation en cours");
+        }
+        return React.createElement("div", null,
+          rows.map(function(r, i) {
+            var reliable = (r.total || 0) >= 10;
+            var roiVal = (r.roi === null || r.roi === undefined) ? null : r.roi;
+            var roiColor = roiVal === null ? "var(--c-ink-3)" : (roiVal > 0 ? "#27ae60" : "#e74c3c");
+            var roiText = roiVal === null ? "—" : ((roiVal > 0 ? "+" : "") + roiVal + "%");
+            return React.createElement("div", {
+              key: r.league_name + "_" + i,
+              style: {
+                display:"flex", alignItems:"center", justifyContent:"space-between",
+                padding:"7px 8px", borderRadius:8, marginBottom:4,
+                border:"1px solid var(--c-border)", opacity: reliable ? 1 : 0.5
+              }
+            },
+              React.createElement("div", { style:{ display:"flex", flexDirection:"column", minWidth:0, flex:1 } },
+                React.createElement("div", {
+                  style:{ fontSize:12, fontWeight:600, color:"var(--c-ink-1)",
+                    whiteSpace:"nowrap", overflow:"hidden", textOverflow:"ellipsis" }
+                }, (r.league_country ? countryFlag(r.league_country) + " " : "") + r.league_name),
+                React.createElement("div", { style:{ fontSize:10, color:"var(--c-ink-3)" } },
+                  (r.rate != null ? r.rate + "% · " : "") + (r.total || 0) + " matchs"
+                  + (r.avg_odds ? " · cote " + r.avg_odds : "")
+                  + (reliable ? "" : " · en cours"))
+              ),
+              React.createElement("div", {
+                style:{ fontSize:14, fontWeight:700, color:roiColor, marginLeft:8, whiteSpace:"nowrap" }
+              }, roiText)
+            );
+          })
+        );
+      })()
+    ),
+
+
         React.createElement("div", { style:{ fontSize:13, fontWeight:700, color:"var(--c-ink)", marginBottom:12 } }, "Performance du moteur"),
 
         ["7j","30j","90j"].map(function(period) {
@@ -18549,83 +18627,6 @@ function Top25Tab() {
       ),
 
     ), // fin sticky pills
-
-    // === Ligues par marché (ROI) — outil de tri ===
-    React.createElement("div", {
-      style: {
-        background: "var(--c-base)", borderRadius: 10,
-        border: "1px solid var(--c-border)",
-        margin: "10px 14px", padding: "10px 12px"
-      }
-    },
-      React.createElement("div", {
-        style: { fontSize:10, fontWeight:700, color:"var(--c-ink-3)",
-          textTransform:"uppercase", letterSpacing:"0.08em", marginBottom:2 }
-      }, "🏆 Ligues par marché — classées par ROI"),
-      React.createElement("div", {
-        style: { fontSize:10, color:"var(--c-ink-3)", marginBottom:8, fontStyle:"italic" }
-      }, "Fiable dès 10 matchs · ROI = taux × cote (rentabilité réelle)"),
-      React.createElement("div", {
-        style: { display:"flex", gap:6, marginBottom:10 }
-      },
-        [{id:"VICTOIRE",label:"🏆 Victoire"},{id:"UNDER 2.5",label:"⬇️ Under"},{id:"BTTS",label:"⚽ BTTS"}].map(function(m) {
-          return React.createElement("button", {
-            key: m.id,
-            onClick: function() { setLmMarket(m.id); },
-            style: {
-              flex:1, padding:"6px 4px", borderRadius:8, fontSize:11, fontWeight:600,
-              border: lmMarket===m.id ? "1.5px solid #f39c12" : "1px solid var(--c-border)",
-              background: lmMarket===m.id ? "rgba(243,156,18,0.08)" : "var(--c-base)",
-              color: lmMarket===m.id ? "#f39c12" : "var(--c-ink-3)", cursor:"pointer"
-            }
-          }, m.label);
-        })
-      ),
-      (function() {
-        var rows = ((statsData && statsData.leagueMarkets) || []).filter(function(r) {
-          return r.market === lmMarket;
-        }).slice().sort(function(a, b) {
-          var ra = (a.roi === null || a.roi === undefined) ? -9999 : a.roi;
-          var rb = (b.roi === null || b.roi === undefined) ? -9999 : b.roi;
-          return rb - ra;
-        });
-        if (rows.length === 0) {
-          return React.createElement("div", {
-            style: { textAlign:"center", padding:"18px 0", color:"var(--c-ink-3)", fontSize:12 }
-          }, "Pas encore de données pour ce marché — accumulation en cours");
-        }
-        return React.createElement("div", null,
-          rows.map(function(r, i) {
-            var reliable = (r.total || 0) >= 10;
-            var roiVal = (r.roi === null || r.roi === undefined) ? null : r.roi;
-            var roiColor = roiVal === null ? "var(--c-ink-3)" : (roiVal > 0 ? "#27ae60" : "#e74c3c");
-            var roiText = roiVal === null ? "—" : ((roiVal > 0 ? "+" : "") + roiVal + "%");
-            return React.createElement("div", {
-              key: r.league_name + "_" + i,
-              style: {
-                display:"flex", alignItems:"center", justifyContent:"space-between",
-                padding:"7px 8px", borderRadius:8, marginBottom:4,
-                border:"1px solid var(--c-border)", opacity: reliable ? 1 : 0.5
-              }
-            },
-              React.createElement("div", { style:{ display:"flex", flexDirection:"column", minWidth:0, flex:1 } },
-                React.createElement("div", {
-                  style:{ fontSize:12, fontWeight:600, color:"var(--c-ink-1)",
-                    whiteSpace:"nowrap", overflow:"hidden", textOverflow:"ellipsis" }
-                }, (r.league_country ? countryFlag(r.league_country) + " " : "") + r.league_name),
-                React.createElement("div", { style:{ fontSize:10, color:"var(--c-ink-3)" } },
-                  (r.rate != null ? r.rate + "% · " : "") + (r.total || 0) + " matchs"
-                  + (r.avg_odds ? " · cote " + r.avg_odds : "")
-                  + (reliable ? "" : " · en cours"))
-              ),
-              React.createElement("div", {
-                style:{ fontSize:14, fontWeight:700, color:roiColor, marginLeft:8, whiteSpace:"nowrap" }
-              }, roiText)
-            );
-          })
-        );
-      })()
-    ),
 
     // Performance 30j — défile au scroll
     marketStats && marketStats.length > 0 ? React.createElement("div", {
