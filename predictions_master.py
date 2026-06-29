@@ -437,35 +437,23 @@ def discover_leagues():
     raw = api("leagues", {"current": "true"}) or []
     print(f"  [AUTO-DISCOVER] {len(raw)} ligues brutes reçues de l'API")
 
-    # Fallback si API retourne vide
+    # Fallback si l'API renvoie vide : relire la DERNIÈRE découverte réussie
+    # depuis Supabase (active_leagues), SANS contrainte de fraîcheur. Ce sont
+    # des IDs réels déjà validés par l'API lors d'un run précédent — jamais
+    # devinés. Élimine le risque d'ID périmé ou de collision (ex. l'ancien
+    # bug 292 Liga MX / K League). Aucune liste codée en dur.
     if not raw:
-        print("  [FALLBACK] API vide — utilisation liste de 20 ligues connues")
-        return [
-            {"league_id":39,  "name":"Premier League",   "country":"England",     "season":2025,"tier":1,"is_national":False,"priority_score":100},
-            {"league_id":140, "name":"La Liga",           "country":"Spain",       "season":2025,"tier":1,"is_national":False,"priority_score":97},
-            {"league_id":135, "name":"Serie A",           "country":"Italy",       "season":2025,"tier":1,"is_national":False,"priority_score":96},
-            {"league_id":78,  "name":"Bundesliga",        "country":"Germany",     "season":2025,"tier":1,"is_national":False,"priority_score":98},
-            {"league_id":61,  "name":"Ligue 1",           "country":"France",      "season":2025,"tier":1,"is_national":False,"priority_score":95},
-            {"league_id":2,   "name":"Champions League",  "country":"Europe",      "season":2025,"tier":1,"is_national":False,"priority_score":99},
-            {"league_id":3,   "name":"Europa League",     "country":"Europe",      "season":2025,"tier":1,"is_national":False,"priority_score":92},
-            {"league_id":88,  "name":"Eredivisie",        "country":"Netherlands", "season":2025,"tier":1,"is_national":False,"priority_score":90},
-            {"league_id":94,  "name":"Primeira Liga",     "country":"Portugal",    "season":2025,"tier":1,"is_national":False,"priority_score":88},
-            {"league_id":144, "name":"Pro League",        "country":"Belgium",     "season":2025,"tier":1,"is_national":False,"priority_score":87},
-            {"league_id":203, "name":"Super Lig",         "country":"Turkey",      "season":2025,"tier":1,"is_national":False,"priority_score":85},
-            {"league_id":40,  "name":"Championship",      "country":"England",     "season":2025,"tier":2,"is_national":False,"priority_score":82},
-            {"league_id":79,  "name":"2. Bundesliga",     "country":"Germany",     "season":2025,"tier":2,"is_national":False,"priority_score":80},
-            {"league_id":62,  "name":"Ligue 2",           "country":"France",      "season":2025,"tier":2,"is_national":False,"priority_score":78},
-            {"league_id":136, "name":"Serie B",           "country":"Italy",       "season":2025,"tier":2,"is_national":False,"priority_score":76},
-            {"league_id":141, "name":"Segunda Division",  "country":"Spain",       "season":2025,"tier":2,"is_national":False,"priority_score":75},
-            {"league_id":71,  "name":"Serie A Brazil",    "country":"Brazil",      "season":2026,"tier":1,"is_national":False,"priority_score":83},
-            {"league_id":253, "name":"MLS",               "country":"USA",         "season":2026,"tier":1,"is_national":False,"priority_score":80},
-            {"league_id":128, "name":"Liga Profesional",  "country":"Argentina",   "season":2026,"tier":1,"is_national":False,"priority_score":82},
-            {"league_id":262, "name":"Liga MX",           "country":"Mexico",      "season":2026,"tier":1,"is_national":False,"priority_score":78},
-            {"league_id":307, "name":"Saudi Pro League",  "country":"Saudi Arabia","season":2025,"tier":1,"is_national":False,"priority_score":54},
-            {"league_id":98,  "name":"J1 League",         "country":"Japan",       "season":2026,"tier":1,"is_national":False,"priority_score":53},
-            {"league_id":292, "name":"K League 1",        "country":"South Korea", "season":2026,"tier":1,"is_national":False,"priority_score":52},
-            {"league_id":1,   "name":"World Cup 2026",    "country":"World",       "season":2026,"tier":1,"is_national":True, "priority_score":99},
-        ]
+        print("  [FALLBACK] API vide — relecture de la dernière découverte Supabase")
+        try:
+            c2 = supabase.table("active_leagues").select("*")\
+                .order("updated_at", desc=True).execute()
+            if c2.data:
+                print(f"  [FALLBACK] {len(c2.data)} ligues récupérées depuis active_leagues (IDs réels)")
+                return sorted(c2.data, key=lambda x: x.get("priority_score", 0), reverse=True)
+        except Exception as e:
+            print(f"  [FALLBACK] Lecture active_leagues échouée : {e}")
+        print("  [FALLBACK] Aucune découverte en cache — run ignoré (aucun ID deviné)")
+        return []
 
     today = datetime.utcnow().date()
     end   = today + timedelta(days=DAYS_AHEAD)
