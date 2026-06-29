@@ -867,6 +867,25 @@ def compute_scores(hi,ai,h2h_d,xgt,inj_d,sk,wth,ca,odd,
     if is_nat:   us+=1
     us = round(min(max(us,0),96),1)
 
+    # ── GARDE-FOU RÉALITÉ (Under 2.5) ───────────────────────────────────
+    # Les BUTS RÉELLEMENT marqués priment sur l'estimation xG, qui peut
+    # s'effondrer à tort (def_index surévalué sur des équipes mal notées en
+    # défense) et gonfler l'Under sur des équipes qui marquent beaucoup.
+    # On plafonne la confiance SOUS le seuil de sélection quand l'historique
+    # direct OU les moyennes de buts réelles contredisent l'Under.
+    # N'augmente jamais le score — ne fait que le réduire. Ex. Vikingur-Runavik :
+    # H2H ~40% Under -> plafonné à 68 < MIN_CONF -> Under non retenu.
+    real_total = hi.get("goals_for_avg", 0) + ai.get("goals_for_avg", 0)
+    under_cap = 96.0
+    # 1) Confrontations directes : ces équipes passent souvent l'Over
+    if h2h_d["count"] >= 4:
+        if   h2h_d["under25"] < 30: under_cap = min(under_cap, MIN_CONF - 14)
+        elif h2h_d["under25"] < 45: under_cap = min(under_cap, MIN_CONF - 4)
+    # 2) Moyennes de buts réelles élevées (hors influence trompeuse du def_index)
+    if   real_total >= 3.2: under_cap = min(under_cap, MIN_CONF - 14)
+    elif real_total >= 2.8: under_cap = min(under_cap, MIN_CONF - 4)
+    us = round(min(us, under_cap), 1)
+
     # BTTS
     oc=(hi["off_index"]+ai["off_index"])/2
     dc=(hi["def_index"]+ai["def_index"])/2
