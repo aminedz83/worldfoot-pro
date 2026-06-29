@@ -884,6 +884,15 @@ def compute_scores(hi,ai,h2h_d,xgt,inj_d,sk,wth,ca,odd,
     # 2) Moyennes de buts réelles élevées (hors influence trompeuse du def_index)
     if   real_total >= 3.2: under_cap = min(under_cap, MIN_CONF - 14)
     elif real_total >= 2.8: under_cap = min(under_cap, MIN_CONF - 4)
+    # 3) Forme récente : total de buts moyen dans les 10 derniers matchs de
+    #    chaque équipe (marqués + encaissés). Capte les équipes impliquées dans
+    #    des matchs à beaucoup de buts, même celles qui marquent peu mais
+    #    encaissent beaucoup — signal que les moyennes d'attaque seules ratent.
+    home_recent = hi.get("goals_for_avg", 0) + hi.get("goals_against_avg", 0)
+    away_recent = ai.get("goals_for_avg", 0) + ai.get("goals_against_avg", 0)
+    recent_total = (home_recent + away_recent) / 2
+    if   recent_total >= 3.4: under_cap = min(under_cap, MIN_CONF - 14)
+    elif recent_total >= 3.0: under_cap = min(under_cap, MIN_CONF - 4)
     us = round(min(us, under_cap), 1)
 
     # BTTS
