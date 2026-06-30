@@ -904,6 +904,27 @@ def compute_scores(hi,ai,h2h_d,xgt,inj_d,sk,wth,ca,odd,
     if hi["off_index"]<5.5 or ai["off_index"]<5.5: bs-=4
     bs=round(min(max(bs,0),96),1)
 
+    # ── GARDE-FOU RÉALITÉ (BTTS) ────────────────────────────────────────
+    # BTTS = les DEUX équipes marquent. Échoue dès qu'une seule est blanchie.
+    # La formule BTTS n'utilise JAMAIS clean_sheet_pct : on rattrape ça ici.
+    # On plafonne SOUS le seuil quand la réalité dit qu'une équipe se fait
+    # souvent blanchir (adversaire qui garde sa cage / panne offensive).
+    # Ne fait que réduire la confiance, jamais l'augmenter.
+    btts_cap = 96.0
+    # 1) Confrontations directes : peu de BTTS entre ces équipes
+    if h2h_d["count"] >= 4:
+        if   h2h_d["btts"] < 25: btts_cap = min(btts_cap, MIN_CONF - 14)
+        elif h2h_d["btts"] < 40: btts_cap = min(btts_cap, MIN_CONF - 4)
+    # 2) Clean sheets fréquents : une équipe blanchit souvent l'adversaire
+    max_cs = max(hi.get("clean_sheet_pct", 0), ai.get("clean_sheet_pct", 0))
+    if   max_cs >= 55: btts_cap = min(btts_cap, MIN_CONF - 14)
+    elif max_cs >= 45: btts_cap = min(btts_cap, MIN_CONF - 4)
+    # 3) Panne offensive : une équipe marque rarement (se fait blanchir)
+    min_gf = min(hi.get("goals_for_avg", 99), ai.get("goals_for_avg", 99))
+    if   min_gf <= 0.6: btts_cap = min(btts_cap, MIN_CONF - 14)
+    elif min_gf <= 0.9: btts_cap = min(btts_cap, MIN_CONF - 4)
+    bs = round(min(bs, btts_cap), 1)
+
     # Éviter contradiction Under ↔ BTTS
     if abs(us-bs)<8:
         mx=max(us,bs)
