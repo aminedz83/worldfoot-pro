@@ -18031,14 +18031,24 @@ function Top25Tab() {
         function paliCote(p) {
           var rec = (p.recommendation || "").toUpperCase();
           var ph = p.pinnacle_home || 0, pa = p.pinnacle_away || 0, pdr = p.pinnacle_draw || 0;
-          if (rec.indexOf("UNDER") >= 0) return p.pinnacle_under25 || 0;
-          if (rec.indexOf("BTTS") >= 0) return p.pinnacle_btts || 0;
-          if (rec.indexOf("DOUBLE") >= 0) {
+          var c = 0;
+          if (rec.indexOf("UNDER") >= 0) c = p.pinnacle_under25 || 0;
+          else if (rec.indexOf("BTTS") >= 0) c = p.pinnacle_btts || 0;
+          else if (rec.indexOf("DOUBLE") >= 0) {
             var ct = rec.indexOf("X2") >= 0 ? pa : ph;
-            return (ct > 1 && pdr > 1) ? Math.round(100/(1/ct + 1/pdr))/100 : 0;
+            c = (ct > 1 && pdr > 1) ? Math.round(100/(1/ct + 1/pdr))/100 : 0;
           }
-          if (rec.indexOf("EXTÉRIEUR") >= 0 || rec.indexOf("EXTERIEUR") >= 0) return pa;
-          return ph;
+          else if (rec.indexOf("EXTÉRIEUR") >= 0 || rec.indexOf("EXTERIEUR") >= 0) c = pa;
+          else c = ph;
+          // Fallback : petites ligues sans cote Pinnacle (Cameroun, Islande,
+          // Tanzanie…). On NE jette PLUS le match — on estime une cote depuis
+          // la confiance (favori -> cote basse), avec ~6% de marge bookmaker.
+          if (!c || c <= 1) {
+            var conf = p.rec_confidence || 75;
+            c = Math.round((0.94 / (conf/100)) * 100) / 100;
+            if (c <= 1.01) c = 1.05;
+          }
+          return c;
         }
         // ── Pari du jour = la prédiction à plus haute confiance de chaque jour ──
         var byDay = {};
