@@ -16130,18 +16130,24 @@ function Top25Tab() {
   // Charger l'état du palier depuis Supabase (incassable, partagé entre appareils)
   useEffect(function() {
     if (viewMode !== "ticket" || ticketTab !== "palier") return;
-    if (palierStart) return;
+    // Relire palier_state À CHAQUE ouverture de l'onglet Palier (plus de garde
+    // "if (palierStart) return"), pour capter une date/mise modifiée en base
+    // (ex. UPDATE SQL) sans dépendre d'un rechargement complet de la page.
     fetch(SB_BASE2 + "palier_state?id=eq.1&select=stake,start_date", { headers: SB_H2 })
       .then(function(r){ return r.json(); })
       .then(function(d){
         if (Array.isArray(d) && d.length) {
-          setPalierStakeRaw(parseFloat(d[0].stake) || 10);
-          setPalierStartRaw((d[0].start_date || "").slice(0,10) || new Date().toISOString().slice(0,10));
-        } else {
+          var dbStake = parseFloat(d[0].stake) || 10;
+          var dbStart = (d[0].start_date || "").slice(0,10) || new Date().toISOString().slice(0,10);
+          // N'actualiser que si la base diffère de ce qui est en mémoire
+          // (évite un re-render inutile à chaque passage sur l'onglet).
+          setPalierStakeRaw(function(prev){ return prev !== dbStake ? dbStake : prev; });
+          setPalierStartRaw(function(prev){ return prev !== dbStart ? dbStart : prev; });
+        } else if (!palierStart) {
           setPalierStartRaw(new Date().toISOString().slice(0,10));
         }
       })
-      .catch(function(){ setPalierStartRaw(new Date().toISOString().slice(0,10)); });
+      .catch(function(){ if (!palierStart) setPalierStartRaw(new Date().toISOString().slice(0,10)); });
   }, [viewMode, ticketTab]);
   function palierReset(newStake) {
     var today = new Date().toISOString().slice(0,10);
