@@ -9934,8 +9934,55 @@ function MatchDetail({state,onClose,onTeam}){
       )
     );
 
+    // ── TÀT : derniers matchs A / B + confrontations (style liste) ──
+    var tatRow = function(m, key, n, idx) {
+      var res = m.result;
+      var bg = (res==="G"||res==="W") ? JADE : (res==="P"||res==="L") ? RED : GOLD;
+      return React.createElement("div",{key:key,
+        style:{display:"flex",alignItems:"center",padding:"7px 0",
+               borderBottom:idx<n-1?"1px solid "+BORDER:"none"}},
+        React.createElement("div",{style:{display:"flex",alignItems:"center",gap:4,flex:1,minWidth:0}},
+          m.home_logo&&React.createElement("img",{src:m.home_logo,style:{width:18,height:18,objectFit:"contain",flexShrink:0},onError:function(e){e.target.style.display="none";}}),
+          React.createElement("span",{style:{fontSize:11,color:INK,overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap",marginLeft:4}},m.home||"")
+        ),
+        React.createElement("div",{style:{fontSize:12,fontWeight:700,color:"#fff",background:bg,padding:"3px 10px",borderRadius:6,margin:"0 8px",flexShrink:0}},m.score||""),
+        React.createElement("div",{style:{display:"flex",alignItems:"center",gap:4,flex:1,minWidth:0,justifyContent:"flex-end"}},
+          React.createElement("span",{style:{fontSize:11,color:INK,overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap",marginRight:4,textAlign:"right"}},m.away||""),
+          m.away_logo&&React.createElement("img",{src:m.away_logo,style:{width:18,height:18,objectFit:"contain",flexShrink:0},onError:function(e){e.target.style.display="none";}})
+        )
+      );
+    };
+    var tatBlock = function(title, logo, list) {
+      var arr = list||[];
+      var shown = arr.slice(0,3);
+      var rest = arr.slice(3);
+      return React.createElement("div",{style:{marginBottom:14}},
+        React.createElement("div",{style:{display:"flex",alignItems:"center",gap:6,marginBottom:4}},
+          logo&&React.createElement("img",{src:logo,style:{width:18,height:18,objectFit:"contain"},onError:function(e){e.target.style.display="none";}}),
+          React.createElement("span",{style:{fontSize:12,fontWeight:800,color:INK}},title)
+        ),
+        arr.length===0
+          ? React.createElement("div",{style:{fontSize:11,color:INK3,padding:"6px 0"}},"Aucun match disponible")
+          : React.createElement("div",null,
+              shown.map(function(m,i){ return tatRow(m,"s"+i,shown.length,i); }),
+              rest.length>0 && React.createElement("details",{style:{marginTop:2}},
+                React.createElement("summary",{style:{fontSize:11,fontWeight:700,color:BLUE,cursor:"pointer",padding:"7px 0",listStyle:"none",outline:"none"}},"▾ Montrer plus ("+rest.length+")"),
+                rest.map(function(m,i){ return tatRow(m,"r"+i,rest.length,i); })
+              )
+            )
+      );
+    };
+    var tatSection = Section("📋 TÀT — derniers matchs & confrontations",
+      React.createElement("div",null,
+        tatBlock("Derniers matchs : "+homeName, homeLogo, rf.home),
+        tatBlock("Derniers matchs : "+awayName, awayLogo, rf.away),
+        tatBlock("Confrontations", null, (h2d.matches||[]))
+      )
+    );
+
     return React.createElement("div",{style:{padding:"10px 12px 24px",background:BG,minHeight:"100%"}},
       statsSection,
+      tatSection,
       formSection,
       h2hSection,
       offSection,
