@@ -1226,6 +1226,32 @@ def process(fix, li):
 
 
     now = datetime.utcnow().isoformat()
+
+    # ── VALUE : (probabilité annoncée × cote réelle) − 1 ────────────────
+    # Positif  -> le pari bat la cote (rentable à long terme SI la confiance
+    #             est calibrée). Négatif -> perdant à long terme même s'il
+    #             gagne souvent (cote trop basse pour la probabilité).
+    # Cote = Pinnacle correspondant au marché recommandé. Pas de cote
+    # (petites ligues) -> value NULL, jamais estimée.
+    _rec_v = (res["recommendation"] or "").upper()
+    _cote_v = None
+    if "UNDER" in _rec_v:
+        _cote_v = odd["pinnacle_under25"]
+    elif "BTTS" in _rec_v:
+        _cote_v = odd["pinnacle_btts"]
+    elif "DOUBLE" in _rec_v:
+        _ph, _pa, _pd = odd["pinnacle_home"], odd["pinnacle_away"], odd["pinnacle_draw"]
+        _ct = _pa if "X2" in _rec_v else _ph
+        if _ct and _pd and _ct > 1 and _pd > 1:
+            _cote_v = round(1 / (1/_ct + 1/_pd), 2)
+    elif "EXTÉRIEUR" in _rec_v or "EXTERIEUR" in _rec_v:
+        _cote_v = odd["pinnacle_away"]
+    elif "DOMICILE" in _rec_v:
+        _cote_v = odd["pinnacle_home"]
+    value_pct = None
+    if _cote_v and _cote_v > 1:
+        value_pct = round((res["rec_confidence"] / 100.0 * _cote_v - 1) * 100, 1)
+
     row = {
         "id":make_id(fid,lid),"fixture_id":fid,
         "league_id":lid,"league_name":li["name"],"league_country":country,
@@ -1250,6 +1276,7 @@ def process(fix, li):
         "weather_wind":wth.get("wind",0),
         "weather_temp":wth.get("temp_max",0),
         "odds_signal":odd["signal"],
+        "value_pct":value_pct,
         "pinnacle_under25":odd["pinnacle_under25"],
         "bet365_under25":odd["bet365_under25"],
         "xbet_under25":odd["xbet_under25"],
