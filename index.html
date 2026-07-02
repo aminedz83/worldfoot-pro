@@ -9934,55 +9934,8 @@ function MatchDetail({state,onClose,onTeam}){
       )
     );
 
-    // ── TÀT : derniers matchs A / B + confrontations (style liste) ──
-    var tatRow = function(m, key, n, idx) {
-      var res = m.result;
-      var bg = (res==="G"||res==="W") ? JADE : (res==="P"||res==="L") ? RED : GOLD;
-      return React.createElement("div",{key:key,
-        style:{display:"flex",alignItems:"center",padding:"7px 0",
-               borderBottom:idx<n-1?"1px solid "+BORDER:"none"}},
-        React.createElement("div",{style:{display:"flex",alignItems:"center",gap:4,flex:1,minWidth:0}},
-          m.home_logo&&React.createElement("img",{src:m.home_logo,style:{width:18,height:18,objectFit:"contain",flexShrink:0},onError:function(e){e.target.style.display="none";}}),
-          React.createElement("span",{style:{fontSize:11,color:INK,overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap",marginLeft:4}},m.home||"")
-        ),
-        React.createElement("div",{style:{fontSize:12,fontWeight:700,color:"#fff",background:bg,padding:"3px 10px",borderRadius:6,margin:"0 8px",flexShrink:0}},m.score||""),
-        React.createElement("div",{style:{display:"flex",alignItems:"center",gap:4,flex:1,minWidth:0,justifyContent:"flex-end"}},
-          React.createElement("span",{style:{fontSize:11,color:INK,overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap",marginRight:4,textAlign:"right"}},m.away||""),
-          m.away_logo&&React.createElement("img",{src:m.away_logo,style:{width:18,height:18,objectFit:"contain",flexShrink:0},onError:function(e){e.target.style.display="none";}})
-        )
-      );
-    };
-    var tatBlock = function(title, logo, list) {
-      var arr = list||[];
-      var shown = arr.slice(0,3);
-      var rest = arr.slice(3);
-      return React.createElement("div",{style:{marginBottom:14}},
-        React.createElement("div",{style:{display:"flex",alignItems:"center",gap:6,marginBottom:4}},
-          logo&&React.createElement("img",{src:logo,style:{width:18,height:18,objectFit:"contain"},onError:function(e){e.target.style.display="none";}}),
-          React.createElement("span",{style:{fontSize:12,fontWeight:800,color:INK}},title)
-        ),
-        arr.length===0
-          ? React.createElement("div",{style:{fontSize:11,color:INK3,padding:"6px 0"}},"Aucun match disponible")
-          : React.createElement("div",null,
-              shown.map(function(m,i){ return tatRow(m,"s"+i,shown.length,i); }),
-              rest.length>0 && React.createElement("details",{style:{marginTop:2}},
-                React.createElement("summary",{style:{fontSize:11,fontWeight:700,color:BLUE,cursor:"pointer",padding:"7px 0",listStyle:"none",outline:"none"}},"▾ Montrer plus ("+rest.length+")"),
-                rest.map(function(m,i){ return tatRow(m,"r"+i,rest.length,i); })
-              )
-            )
-      );
-    };
-    var tatSection = Section("📋 TÀT — derniers matchs & confrontations",
-      React.createElement("div",null,
-        tatBlock("Derniers matchs : "+homeName, homeLogo, rf.home),
-        tatBlock("Derniers matchs : "+awayName, awayLogo, rf.away),
-        tatBlock("Confrontations", null, (h2d.matches||[]))
-      )
-    );
-
     return React.createElement("div",{style:{padding:"10px 12px 24px",background:BG,minHeight:"100%"}},
       statsSection,
-      tatSection,
       formSection,
       h2hSection,
       offSection,
@@ -16470,6 +16423,7 @@ function Top25Tab() {
         "&select=id,context_text,under25_score,btts_score,victory_score," +
         "home_off_index,home_def_index,away_off_index,away_def_index," +
         "h2h_count,h2h_under25_rate,h2h_btts_rate,weather_desc,injuries_detail," +
+        "recent_form,h2h," +
         "home_team_id,away_team_id,league_id,prediction_correct,actual_home_goals,actual_away_goals",
         { headers: SB_H2 }
       )
@@ -16744,6 +16698,49 @@ function Top25Tab() {
     var isLow   = pred.risk_level === "Faible";
     var isExp   = !!expanded[pred.id];
     var ctx     = pred.predictions && pred.predictions[0];
+    // ── TÀT (derniers matchs A / B + confrontations) dans la carte ──
+    var tatRow = function(m, key, n, idx) {
+      var res = m.result;
+      var bg = (res==="G"||res==="W") ? "#2ecc71" : (res==="P"||res==="L") ? "#e74c3c" : "#f39c12";
+      return React.createElement("div",{key:key,
+        style:{display:"flex",alignItems:"center",padding:"6px 0",
+               borderBottom:idx<n-1?"1px solid var(--c-border)":"none"}},
+        React.createElement("div",{style:{display:"flex",alignItems:"center",gap:4,flex:1,minWidth:0}},
+          m.home_logo&&React.createElement("img",{src:m.home_logo,style:{width:16,height:16,objectFit:"contain",flexShrink:0},onError:function(e){e.target.style.display="none";}}),
+          React.createElement("span",{style:{fontSize:10,color:"var(--c-ink)",overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap",marginLeft:4}},m.home||"")
+        ),
+        React.createElement("div",{style:{fontSize:11,fontWeight:700,color:"#fff",background:bg,padding:"2px 8px",borderRadius:5,margin:"0 6px",flexShrink:0}},m.score||""),
+        React.createElement("div",{style:{display:"flex",alignItems:"center",gap:4,flex:1,minWidth:0,justifyContent:"flex-end"}},
+          React.createElement("span",{style:{fontSize:10,color:"var(--c-ink)",overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap",marginRight:4,textAlign:"right"}},m.away||""),
+          m.away_logo&&React.createElement("img",{src:m.away_logo,style:{width:16,height:16,objectFit:"contain",flexShrink:0},onError:function(e){e.target.style.display="none";}})
+        )
+      );
+    };
+    var tatBlock = function(title, list) {
+      var arr = list||[];
+      var shown = arr.slice(0,3);
+      var rest = arr.slice(3);
+      return React.createElement("div",{style:{marginBottom:10}},
+        React.createElement("div",{style:{fontSize:11,fontWeight:800,color:"var(--c-ink-2)",marginBottom:3}},title),
+        arr.length===0
+          ? React.createElement("div",{style:{fontSize:10,color:"var(--c-ink-3)",padding:"4px 0"}},"Aucun match disponible")
+          : React.createElement("div",null,
+              shown.map(function(m,i){ return tatRow(m,"s"+i,shown.length,i); }),
+              rest.length>0 && React.createElement("details",{style:{marginTop:2}},
+                React.createElement("summary",{style:{fontSize:10,fontWeight:700,color:"var(--c-jade)",cursor:"pointer",padding:"5px 0",listStyle:"none",outline:"none"}},"▾ Montrer plus ("+rest.length+")"),
+                rest.map(function(m,i){ return tatRow(m,"r"+i,rest.length,i); })
+              )
+            )
+      );
+    };
+    var tatRF  = (ctx && ctx.recent_form && ctx.recent_form.competition) ? ctx.recent_form.competition : {home:[],away:[]};
+    var tatH2H = (ctx && ctx.h2h && ctx.h2h.matches) ? ctx.h2h.matches : [];
+    var tatContent = React.createElement("div",{style:{marginTop:8,paddingTop:8,borderTop:"1px solid var(--c-border)"}},
+      React.createElement("div",{style:{fontSize:10,fontWeight:800,color:"var(--c-ink-3)",textTransform:"uppercase",letterSpacing:"0.06em",marginBottom:6}},"📋 TÀT — derniers matchs & confrontations"),
+      tatBlock("Derniers matchs : "+(pred.home_team_name||"Domicile"), tatRF.home),
+      tatBlock("Derniers matchs : "+(pred.away_team_name||"Extérieur"), tatRF.away),
+      tatBlock("Confrontations", tatH2H)
+    );
     var showUnd = pred.recommendation && pred.recommendation.toUpperCase().indexOf("UNDER") >= 0;
     var showVic = pred.recommendation && (
       pred.recommendation.toUpperCase().indexOf("VICTOIRE") >= 0 ||
@@ -17123,6 +17120,7 @@ function Top25Tab() {
             }, "BTTS : " + ctx.h2h_btts_rate + "%") : null
           ) : null,
 
+          tatContent
 
         ) : null,
 
