@@ -16423,6 +16423,7 @@ function Top25Tab() {
         "&select=id,context_text,under25_score,btts_score,victory_score," +
         "home_off_index,home_def_index,away_off_index,away_def_index," +
         "h2h_count,h2h_under25_rate,h2h_btts_rate,weather_desc,injuries_detail," +
+        "league_country,value_pct," +
         "home_team_id,away_team_id,league_id,prediction_correct,actual_home_goals,actual_away_goals",
         { headers: SB_H2 }
       )
@@ -16812,7 +16813,7 @@ function Top25Tab() {
             React.createElement("span", {
               style: { fontSize:10, fontWeight:600, color:"var(--c-ink-3)",
                 textTransform:"uppercase", letterSpacing:"0.06em" }
-            }, leagueLabel(pred.league_country, pred.league_name))
+            }, leagueLabel(pred.league_country || (ctx && ctx.league_country), pred.league_name))
           ),
           React.createElement("div", {
             style: { display:"flex", flexDirection:"column", alignItems:"flex-end", gap:1 }
@@ -16920,7 +16921,17 @@ function Top25Tab() {
           React.createElement("div", {
             style: { display:"flex", justifyContent:"space-between", marginBottom:5 }
           },
-            React.createElement("span", { style:{ fontSize:11, color:"var(--c-ink-3)" } }, "Confiance"),
+            React.createElement("div", { style:{ display:"flex", alignItems:"center", gap:6 } },
+              React.createElement("span", { style:{ fontSize:11, color:"var(--c-ink-3)" } }, "Confiance"),
+              (ctx && typeof ctx.value_pct === "number") ? React.createElement("span", {
+                style: {
+                  fontSize:9, fontWeight:700, padding:"2px 6px", borderRadius:4,
+                  fontFamily:"'JetBrains Mono',monospace",
+                  background: ctx.value_pct >= 5 ? "rgba(46,204,113,0.12)" : ctx.value_pct >= 0 ? "rgba(243,156,18,0.10)" : "rgba(231,76,60,0.10)",
+                  color: ctx.value_pct >= 5 ? "#2ecc71" : ctx.value_pct >= 0 ? "#f39c12" : "#e74c3c"
+                }
+              }, "💎 Value " + (ctx.value_pct > 0 ? "+" : "") + ctx.value_pct + "%") : null
+            ),
             React.createElement("span", {
               style: {
                 fontFamily:"'JetBrains Mono',monospace",
