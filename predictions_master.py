@@ -628,6 +628,7 @@ def compute_index(team_id, name, league_id, season, is_nat):
                 .get("total",{}).get("total",0) or 0) / p
 
     rgf=[]; rga=[]; btts=cs=win=0
+    draw=0
     csm=csc=0
 
     for f in lasts:
@@ -641,6 +642,7 @@ def compute_index(team_id, name, league_id, season, is_nat):
         if gf>0 and ga>0: btts+=1
         if ga==0:         cs+=1
         if gf>ga:         win+=1
+        if gf==ga:        draw+=1
         # Corners via les stats embarquées dans la fixture (0 req supplémentaire)
         if not is_nat:
             for st in f.get("statistics", []):
@@ -677,6 +679,7 @@ def compute_index(team_id, name, league_id, season, is_nat):
         "btts_rate":         round(btts/n*100, 1),
         "clean_sheet_pct":   round(cs/n*100, 1),
         "win_rate":          round(win/n*100, 1),
+        "draw_rate":         round(draw/n*100, 1),
         "avg_corners":       round(csm/csc, 1) if csc else 5.0,
         "matches_analyzed":  len(rgf),
         "fifa_rank":         fr,
@@ -994,6 +997,19 @@ def compute_scores(hi,ai,h2h_d,xgt,inj_d,sk,wth,ca,odd,
             elif opp_win_rate >= 55: bv -= 7
             elif opp_win_rate >= 45: bv -= 3
 
+            # Malus ADVERSAIRE ACCROCHEUR : une équipe qui ne gagne pas mais
+            # ne PERD pas (nuls fréquents, défense dure à percer) menace la
+            # victoire sèche sans apparaître dans opp_win_rate — un mur de
+            # nuls a un win_rate bas. Le malus fait glisser le score vers la
+            # zone DOUBLE CHANCE (70-75) au lieu de la victoire sèche.
+            # Ne fait que réduire, jamais augmenter.
+            opp_i = ai if ihs else hi
+            opp_draw_rate = opp_i.get("draw_rate", 0)
+            opp_ga = opp_i.get("goals_against_avg", 99)
+            if   opp_draw_rate >= 50: bv -= 10
+            elif opp_draw_rate >= 35: bv -= 6
+            if opp_draw_rate >= 25 and opp_ga <= 1.0: bv -= 4
+
             # Bonus round CdM
             bv += stake_adj(hid, aid, {}, wr)
 
@@ -1012,6 +1028,14 @@ def compute_scores(hi,ai,h2h_d,xgt,inj_d,sk,wth,ca,odd,
                 wp=stds.get(aid if ihs else hid,{}).get("points",0)
                 mg=6 if tier>=2 else 8
                 if sp-wp<mg: bv-=5
+            # Malus ADVERSAIRE ACCROCHEUR (clubs) : mur de nuls / défense
+            # dure à percer -> victoire sèche risquée, glisser vers DC.
+            opp_i = ai if ihs else hi
+            odr = opp_i.get("draw_rate", 0)
+            oga = opp_i.get("goals_against_avg", 99)
+            if   odr >= 50: bv -= 8
+            elif odr >= 35: bv -= 5
+            if odr >= 25 and oga <= 1.0: bv -= 3
             sl="DOMICILE" if ihs else "EXTÉRIEUR"
             mv=78 if sl=="EXTÉRIEUR" else 75
             if   bv>=mv: vs=round(min(bv,91),1)
