@@ -158,6 +158,8 @@ WHITELIST = {
     397: "Girabola (Angola)",                  # D1 seule
     567: "Ligi kuu Bara (Tanzania)",           # D1 seule
     400: "Super League (Zambia)",              # D1 seule
+    363: "Premier League (Ethiopia)",          # D1 — verifier taux_verif (couverture API incertaine)
+    401: "Premier Soccer League (Zimbabwe)",   # D1 — verifier taux_verif (couverture API incertaine)
 
     # ─────────────── OCEANIE ───────────────
     188: "A-League (Australia)",
