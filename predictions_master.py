@@ -631,6 +631,7 @@ def compute_index(team_id, name, league_id, season, is_nat):
 
     rgf=[]; rga=[]; btts=cs=win=0
     draw=0
+    strong_faced=0; strong_held=0
     csm=csc=0
 
     for f in lasts:
@@ -645,6 +646,15 @@ def compute_index(team_id, name, league_id, season, is_nat):
         if ga==0:         cs+=1
         if gf>ga:         win+=1
         if gf==ga:        draw+=1
+        # Résistance contre l'ÉLITE (nations uniquement, 0 requête API) :
+        # l'adversaire de ce match était-il une grande nation (top 30 FIFA),
+        # et a-t-on tenu (nul ou victoire) ? Distingue le vrai mur (tient
+        # contre les grands) de l'accrocheur de façade (nuls contre petits).
+        if is_nat and FIFA:
+            opp_name = (teams.get("away",{}) if ih else teams.get("home",{})).get("name","")
+            if FIFA.get(opp_name, 99) <= 30:
+                strong_faced += 1
+                if gf >= ga: strong_held += 1
         # Corners via les stats embarquées dans la fixture (0 req supplémentaire)
         if not is_nat:
             for st in f.get("statistics", []):
@@ -682,6 +692,8 @@ def compute_index(team_id, name, league_id, season, is_nat):
         "clean_sheet_pct":   round(cs/n*100, 1),
         "win_rate":          round(win/n*100, 1),
         "draw_rate":         round(draw/n*100, 1),
+        "strong_faced":      strong_faced,
+        "strong_held_pct":   round(strong_held/strong_faced*100, 1) if strong_faced else 0,
         "avg_corners":       round(csm/csc, 1) if csc else 5.0,
         "matches_analyzed":  len(rgf),
         "fifa_rank":         fr,
@@ -1004,13 +1016,25 @@ def compute_scores(hi,ai,h2h_d,xgt,inj_d,sk,wth,ca,odd,
             # victoire sèche sans apparaître dans opp_win_rate — un mur de
             # nuls a un win_rate bas. Le malus fait glisser le score vers la
             # zone DOUBLE CHANCE (70-75) au lieu de la victoire sèche.
+            # MODULATION ÉLITE : si l'adversaire a TENU (nul/victoire) contre
+            # des grandes nations (top 30 FIFA) récemment, c'est un mur prouvé
+            # -> malus renforcé. S'il n'accroche que des faibles, sa
+            # résistance ne prouve rien face à un cador -> malus réduit.
             # Ne fait que réduire, jamais augmenter.
             opp_i = ai if ihs else hi
             opp_draw_rate = opp_i.get("draw_rate", 0)
             opp_ga = opp_i.get("goals_against_avg", 99)
-            if   opp_draw_rate >= 50: bv -= 10
-            elif opp_draw_rate >= 35: bv -= 6
-            if opp_draw_rate >= 25 and opp_ga <= 1.0: bv -= 4
+            acc_malus = 0
+            if   opp_draw_rate >= 50: acc_malus = 10
+            elif opp_draw_rate >= 35: acc_malus = 6
+            if opp_draw_rate >= 25 and opp_ga <= 1.0: acc_malus += 4
+            sf  = opp_i.get("strong_faced", 0)
+            shp = opp_i.get("strong_held_pct", 0)
+            if sf >= 2 and shp >= 50:
+                acc_malus += 5          # mur PROUVÉ contre l'élite (profil Cap-Vert)
+            elif sf >= 2 and shp < 25 and acc_malus > 0:
+                acc_malus = acc_malus // 2   # accrocheur de façade (craque contre les grands)
+            bv -= acc_malus
 
             # Bonus round CdM
             bv += stake_adj(hid, aid, {}, wr)
