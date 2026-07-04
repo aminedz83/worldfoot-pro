@@ -630,7 +630,7 @@ def compute_index(team_id, name, league_id, season, is_nat):
                 .get("total",{}).get("total",0) or 0) / p
 
     rgf=[]; rga=[]; btts=cs=win=0
-    draw=0
+    draw=0; sc2=0
     strong_faced=0; strong_held=0
     csm=csc=0
 
@@ -646,6 +646,7 @@ def compute_index(team_id, name, league_id, season, is_nat):
         if ga==0:         cs+=1
         if gf>ga:         win+=1
         if gf==ga:        draw+=1
+        if gf>=2:         sc2+=1
         # Résistance contre l'ÉLITE (nations uniquement, 0 requête API) :
         # l'adversaire de ce match était-il une grande nation (top 30 FIFA),
         # et a-t-on tenu (nul ou victoire) ? Distingue le vrai mur (tient
@@ -692,6 +693,7 @@ def compute_index(team_id, name, league_id, season, is_nat):
         "clean_sheet_pct":   round(cs/n*100, 1),
         "win_rate":          round(win/n*100, 1),
         "draw_rate":         round(draw/n*100, 1),
+        "scored2plus_pct":   round(sc2/n*100, 1),
         "strong_faced":      strong_faced,
         "strong_held_pct":   round(strong_held/strong_faced*100, 1) if strong_faced else 0,
         "avg_corners":       round(csm/csc, 1) if csc else 5.0,
@@ -910,6 +912,17 @@ def compute_scores(hi,ai,h2h_d,xgt,inj_d,sk,wth,ca,odd,
     recent_total = (home_recent + away_recent) / 2
     if   recent_total >= 3.4: under_cap = min(under_cap, MIN_CONF - 14)
     elif recent_total >= 3.0: under_cap = min(under_cap, MIN_CONF - 4)
+    # 4) Menace d'attaque ISOLÉE : une seule équipe qui marque 2+ buts dans
+    #    la plupart de ses matchs peut battre l'Under À ELLE SEULE, même si
+    #    l'adversaire est ultra-fermé. Les signaux 2 et 3 (somme/moyenne)
+    #    laissent le profil fermé de l'adversaire CAMOUFLER ce danger
+    #    (ex. Ind. del Valle ~67% de matchs à 2+ buts vs Manta fermé ->
+    #    moyenne diluée, Under retenu, perdu). On mesure la RÉGULARITÉ
+    #    (% de matchs à 2+ buts marqués), plus robuste qu'une moyenne
+    #    gonflable par un carton isolé.
+    max_sc2 = max(hi.get("scored2plus_pct", 0), ai.get("scored2plus_pct", 0))
+    if   max_sc2 >= 60: under_cap = min(under_cap, MIN_CONF - 14)
+    elif max_sc2 >= 45: under_cap = min(under_cap, MIN_CONF - 4)
     us = round(min(us, under_cap), 1)
 
     # BTTS
