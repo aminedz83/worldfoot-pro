@@ -16103,9 +16103,6 @@ function Top25Tab() {
   var _useStateHistMarket = useState("VICTOIRE");
   var histMarket = _useStateHistMarket[0]; var setHistMarket = _useStateHistMarket[1];
 
-  var _useStateHistValue = useState(false);
-  var histValue = _useStateHistValue[0]; var setHistValue = _useStateHistValue[1];
-
   var _useStateTicket = useState([]);
   var ticketData = _useStateTicket[0]; var setTicketData = _useStateTicket[1];
 
@@ -17804,8 +17801,8 @@ function Top25Tab() {
       },
         (function() {
           var marketRows = histResults.filter(function(r) {
-            if (histValue && typeof r.value_pct !== "number") return false;
             var rec = (r.recommendation||"").toUpperCase();
+            if (histMarket==="VALUE") return typeof r.value_pct === "number";
             if (histMarket==="BTTS") return rec.indexOf("BTTS") >= 0;
             if (histMarket==="UNDER") return rec.indexOf("UNDER") >= 0;
             return rec.indexOf("VICTOIRE") >= 0;
@@ -17852,14 +17849,14 @@ function Top25Tab() {
 
       // Toggle marché VICTOIRE / BTTS
       React.createElement("div", { style:{display:"flex",gap:6,marginBottom:10} },
-        [{id:"VICTOIRE",label:"🏆 Victoire"},{id:"UNDER",label:"⬇️ Under 2.5"},{id:"BTTS",label:"⚽ BTTS"}].map(function(m) {
+        [{id:"VICTOIRE",label:"🏆 Victoire"},{id:"UNDER",label:"⬇️ Under 2.5"},{id:"BTTS",label:"⚽ BTTS"},{id:"VALUE",label:"💎 Value"}].map(function(m) {
           return React.createElement("button", {
             key:m.id, onClick:function(){setHistMarket(m.id);},
             style:{
-              flex:1, padding:"7px 12px", borderRadius:10, fontSize:12, fontWeight:700,
-              border:histMarket===m.id?"1.5px solid #f39c12":"1px solid var(--c-border)",
-              background:histMarket===m.id?"rgba(243,156,18,0.08)":"var(--c-base)",
-              color:histMarket===m.id?"#f39c12":"var(--c-ink-3)", cursor:"pointer"
+              flex:1, padding:"7px 8px", borderRadius:10, fontSize:11, fontWeight:700,
+              border:histMarket===m.id?(m.id==="VALUE"?"1.5px solid #9b59b6":"1.5px solid #f39c12"):"1px solid var(--c-border)",
+              background:histMarket===m.id?(m.id==="VALUE"?"rgba(155,89,182,0.10)":"rgba(243,156,18,0.08)"):"var(--c-base)",
+              color:histMarket===m.id?(m.id==="VALUE"?"#9b59b6":"#f39c12"):"var(--c-ink-3)", cursor:"pointer"
             }
           }, m.label);
         })
@@ -17877,18 +17874,7 @@ function Top25Tab() {
               color:histFilter===f.id?"var(--c-jade)":"var(--c-ink-3)", cursor:"pointer"
             }
           }, f.label);
-        }).concat([
-          React.createElement("button", {
-            key:"VALUE", onClick:function(){setHistValue(!histValue);},
-            style:{
-              padding:"5px 12px", borderRadius:20, fontSize:11, fontWeight:700,
-              marginLeft:"auto",
-              border:histValue?"1.5px solid #9b59b6":"1px solid var(--c-border)",
-              background:histValue?"rgba(155,89,182,0.10)":"var(--c-base)",
-              color:histValue?"#9b59b6":"var(--c-ink-3)", cursor:"pointer"
-            }
-          }, "💎 Value")
-        ])
+        })
       ),
 
       // Liste résultats
@@ -17898,9 +17884,9 @@ function Top25Tab() {
 
       React.createElement("div", null,
         histResults.filter(function(r) {
-          if (histValue && typeof r.value_pct !== "number") return false;
           var rec = (r.recommendation||"").toUpperCase();
-          if (histMarket==="BTTS") { if (rec.indexOf("BTTS") < 0) return false; }
+          if (histMarket==="VALUE") { if (typeof r.value_pct !== "number") return false; }
+          else if (histMarket==="BTTS") { if (rec.indexOf("BTTS") < 0) return false; }
           else if (histMarket==="UNDER") { if (rec.indexOf("UNDER") < 0) return false; }
           else { if (rec.indexOf("VICTOIRE") < 0) return false; }
           if (histFilter==="WON") return r.prediction_correct === true;
