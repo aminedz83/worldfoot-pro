@@ -968,6 +968,18 @@ def compute_scores(hi,ai,h2h_d,xgt,inj_d,sk,wth,ca,odd,
     swr=hi["win_rate"] if ihs else ai["win_rate"]
     vs=None; sl=None
 
+    # ── GARDE-FOU PROFIL CONTRADICTOIRE ─────────────────────────────────
+    # Le "favori" est désigné par la meilleure ATTAQUE (ihs). Si l'ADVERSAIRE
+    # possède la meilleure DÉFENSE, les deux écarts pointent dans des sens
+    # OPPOSÉS — or la formule 50+og*4+dg*3 les additionne comme deux preuves
+    # de supériorité du favori : la défense de l'adversaire GONFLE alors la
+    # confiance du pari contre lui. Ex. Santani-Caballero : X2 78% perdu,
+    # Santani avait le meilleur H2H ET la meilleure défense. Un profil
+    # attaque-vs-défense = match équilibré par nature -> aucun pari victoire.
+    fav_def = hi["def_index"] if ihs else ai["def_index"]
+    opp_def = ai["def_index"] if ihs else hi["def_index"]
+    profile_ok = fav_def >= opp_def
+
     # Seuils adaptés pour équipes nationales CdM
     if is_nat:
         hr = hi.get("fifa_rank", 50) or 50
@@ -995,8 +1007,9 @@ def compute_scores(hi,ai,h2h_d,xgt,inj_d,sk,wth,ca,odd,
         opp_fifa = ar if ihs else hr
         fifa_contradiction = fav_fifa > opp_fifa + 15
 
-        # Abandonner si match piège détecté
-        if both_strong or weak_form or weak_signal or fifa_contradiction:
+        # Abandonner si match piège détecté (dont profil contradictoire :
+        # meilleure attaque d'un côté, meilleure défense de l'autre)
+        if both_strong or weak_form or weak_signal or fifa_contradiction or not profile_ok:
             pass  # vs et sl restent None → pas de prédiction
         else:
             # Signal validé — calculer le score
@@ -1059,7 +1072,7 @@ def compute_scores(hi,ai,h2h_d,xgt,inj_d,sk,wth,ca,odd,
                 sl = f"DOUBLE CHANCE {'1X' if ihs else 'X2'}"
                 vs = round(min(bv+7, 88), 1)
     else:
-        if og>=2.5 and dg>=1.5 and swr>=55:
+        if og>=2.5 and dg>=1.5 and swr>=55 and profile_ok:
             bv=50+og*4+dg*3
             if ihs: bv+={3:6,2:4,1:2,0:3}.get(tier,2)
             if stds and not is_nat:
