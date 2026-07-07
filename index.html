@@ -16081,6 +16081,7 @@ function Top25Tab() {
   var _useStateVM = useState("today");
   var viewMode = _useStateVM[0]; var setViewMode = _useStateVM[1];
   var _useStateSD = React.useState(null);  var statsData    = _useStateSD[0]; var setStatsData    = _useStateSD[1];
+  var _useStateGD = React.useState(null);  var guardsData   = _useStateGD[0]; var setGuardsData   = _useStateGD[1];
   var _useStateCalib = React.useState(null); var calibData = _useStateCalib[0]; var setCalibData = _useStateCalib[1];
   var _useStateCalibM = React.useState("TOUS"); var calibMarket = _useStateCalibM[0]; var setCalibMarket = _useStateCalibM[1];
   var _useStateCoteM = React.useState("VICTOIRE"); var coteMarket = _useStateCoteM[0]; var setCoteMarket = _useStateCoteM[1];
@@ -16242,6 +16243,38 @@ function Top25Tab() {
       setStatsLoading(false);
     })
     .catch(function() { setStatsLoading(false); });
+  }, [viewMode]);
+
+  // Effet des nouveaux signaux : volume/jour et taux AVANT vs APRÈS le 3 juil.
+  // (date d'activation des garde-fous). Agrégé côté client depuis predictions.
+  React.useEffect(function() {
+    if (viewMode !== "stats") return;
+    if (guardsData) return;
+    var CUTOFF = new Date("2026-07-03T00:00:00Z").getTime();
+    var START  = CUTOFF - 14 * 86400000; // fenêtre "avant" : 14 jours
+    fetch(SB_BASE2 + "predictions?select=recommendation,prediction_correct,scraped_at&scraped_at=gte." +
+          new Date(START).toISOString().slice(0,19) + "&limit=5000", { headers: SB_H2 })
+      .then(function(r){ return r.json(); })
+      .then(function(rows) {
+        if (!Array.isArray(rows)) { setGuardsData({error:true}); return; }
+        var mk = { "UNDER":{b:0,a:0,aw:0,av:0}, "BTTS":{b:0,a:0,aw:0,av:0}, "VICTOIRE":{b:0,a:0,aw:0,av:0} };
+        rows.forEach(function(p) {
+          var rec = (p.recommendation||"").toUpperCase();
+          var key = rec.indexOf("UNDER")>=0 ? "UNDER" : rec.indexOf("BTTS")>=0 ? "BTTS" : "VICTOIRE";
+          var t = new Date(p.scraped_at).getTime();
+          if (t < CUTOFF) { mk[key].b++; }
+          else {
+            mk[key].a++;
+            if (p.prediction_correct !== null && p.prediction_correct !== undefined) {
+              mk[key].av++;
+              if (p.prediction_correct) mk[key].aw++;
+            }
+          }
+        });
+        var daysAfter = Math.max(1, (Date.now() - CUTOFF) / 86400000);
+        setGuardsData({ mk: mk, daysBefore: 14, daysAfter: daysAfter });
+      })
+      .catch(function() { setGuardsData({error:true}); });
   }, [viewMode]);
 
   // Charger les prédictions brutes pour la calibration (sous-vue Analyse, à la demande)
@@ -17639,6 +17672,62 @@ function Top25Tab() {
               }, roiText)
             );
           })
+        );
+      })()
+    ),
+
+    // === Effet des nouveaux signaux (avant/après 3 juil.) ===
+    React.createElement("div", {
+      style: {
+        background: "var(--c-base)", borderRadius: 10,
+        border: "1px solid var(--c-border)",
+        margin: "10px 14px", padding: "10px 12px"
+      }
+    },
+      React.createElement("div", {
+        style: { fontSize:10, fontWeight:700, color:"var(--c-ink-3)",
+          textTransform:"uppercase", letterSpacing:"0.08em", marginBottom:2 }
+      }, "🛡️ Effet des nouveaux signaux"),
+      React.createElement("div", {
+        style: { fontSize:10, color:"var(--c-ink-3)", marginBottom:8, fontStyle:"italic" }
+      }, "Garde-fous actifs depuis le 3 juil. · volume de prédictions/jour avant vs après · taux sur matchs vérifiés après"),
+      (function() {
+        if (!guardsData) return React.createElement("div", { style:{ textAlign:"center", padding:"12px 0", color:"var(--c-ink-3)", fontSize:11 } }, "Chargement…");
+        if (guardsData.error) return React.createElement("div", { style:{ textAlign:"center", padding:"12px 0", color:"var(--c-ink-3)", fontSize:11 } }, "Données indisponibles");
+        var labels = { "VICTOIRE":"🏆 Victoire", "UNDER":"⬇️ Under 2.5", "BTTS":"⚽ BTTS" };
+        return React.createElement("div", null,
+          ["VICTOIRE","UNDER","BTTS"].map(function(k) {
+            var d = guardsData.mk[k];
+            var perB = d.b / guardsData.daysBefore;
+            var perA = d.a / guardsData.daysAfter;
+            var delta = perB > 0 ? Math.round((perA - perB) / perB * 100) : null;
+            var deltaTxt = delta === null ? "" : (delta > 0 ? "+" : "") + delta + "%";
+            var deltaCol = delta === null ? "var(--c-ink-3)" : (delta < -10 ? "#f39c12" : "var(--c-ink-3)");
+            var taux = d.av > 0 ? Math.round(d.aw / d.av * 100) : null;
+            var tauxCol = taux === null ? "var(--c-ink-3)" : (taux >= 70 ? "#27ae60" : taux >= 55 ? "#f39c12" : "#e74c3c");
+            return React.createElement("div", {
+              key: k,
+              style: { display:"flex", alignItems:"center", justifyContent:"space-between",
+                padding:"8px 8px", borderRadius:8, marginBottom:4, border:"1px solid var(--c-border)" }
+            },
+              React.createElement("div", { style:{ minWidth:0, flex:1 } },
+                React.createElement("div", { style:{ fontSize:12, fontWeight:600, color:"var(--c-ink-1)" } }, labels[k]),
+                React.createElement("div", { style:{ fontSize:10, color:"var(--c-ink-3)" } },
+                  perB.toFixed(1) + "/j avant → " + perA.toFixed(1) + "/j après" +
+                  (deltaTxt ? " (" + deltaTxt + ")" : "") +
+                  " · " + d.a + " préd. après")
+              ),
+              React.createElement("div", { style:{ textAlign:"right", marginLeft:8, whiteSpace:"nowrap" } },
+                React.createElement("div", { style:{ fontSize:14, fontWeight:700, color:tauxCol } },
+                  taux === null ? "—" : taux + "%"),
+                React.createElement("div", { style:{ fontSize:9, color:"var(--c-ink-3)" } },
+                  d.av > 0 ? d.av + " vérifiés" : "en attente")
+              )
+            );
+          }),
+          React.createElement("div", {
+            style:{ fontSize:9, color:"var(--c-ink-3)", marginTop:6, textAlign:"center", fontStyle:"italic" }
+          }, "Volume en baisse = les garde-fous filtrent · le taux dira s'ils filtrent juste")
         );
       })()
     ),
