@@ -74,6 +74,19 @@ def get_fixture_result(fixture_id):
     goals = fix.get("goals", {})
     gh    = goals.get("home")
     ga    = goals.get("away")
+    # ── PROLONGATION / PENALTIES : score à 90 MINUTES obligatoire ──────
+    # Tous les paris (1X2, Double chance, Under 2.5, BTTS) se règlent sur
+    # le temps réglementaire. Or le champ "goals" de l'API inclut la
+    # prolongation pour les matchs AET/PEN -> il faussait TOUS les marchés :
+    # une VICTOIRE gagnée en prolongation était créditée à tort (le vrai
+    # pari 1X2 est perdu sur le nul à 90'), une DOUBLE CHANCE réellement
+    # gagnée (nul à 90') était marquée perdue, et un but de prolongation
+    # faussait Under/BTTS. On lit donc score.fulltime pour ces statuts.
+    if status in ("AET", "PEN"):
+        ft = fix.get("score", {}).get("fulltime", {}) or {}
+        if ft.get("home") is not None and ft.get("away") is not None:
+            gh = ft.get("home")
+            ga = ft.get("away")
     if gh is None or ga is None:
         print(f"    [SKIP] terminé ({status}) mais score absent de l'API")
         return None
