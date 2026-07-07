@@ -430,17 +430,23 @@ def save_top25(selected):
 
 # --- Paramètres du ticket combiné ---
 TICKET_MIN_COTE  = 1.20  # cote minimale par match (exclut les cotes sans valeur réelle)
-TICKET_NB_MATCHS = 4     # on garde les 4 meilleurs matchs (par confiance) qui ont une cote
+TICKET_NB_MATCHS = 3     # 1 VICTOIRE + 1 UNDER 2.5 + 1 BTTS, pris dans la Sélection du jour
 TICKET_MIN_CONF  = 72    # plancher de confiance (inclut les Under, qui vivent sous le Top 25)
 TICKET_MAX_CONF  = 92    # plafond (exclut les favoris écrasants à cote sans valeur)
 
 
 def _cote_pari(p):
-    """Cote du pari recommandé (victoire sèche, double chance, Under 2.5)."""
+    """Cote du pari recommandé (victoire sèche, double chance, Under 2.5, BTTS)."""
     rec = (p.get("recommendation") or "").upper()
     ph = p.get("pinnacle_home"); pa = p.get("pinnacle_away"); pdr = p.get("pinnacle_draw")
     if "UNDER" in rec:
         c = p.get("pinnacle_under25")
+        try:
+            return float(c) if c else None
+        except (TypeError, ValueError):
+            return None
+    if "BTTS" in rec:
+        c = p.get("pinnacle_btts")
         try:
             return float(c) if c else None
         except (TypeError, ValueError):
@@ -507,15 +513,22 @@ def save_daily_ticket(selected=None):
     except Exception as e:
         print(f"[TICKET] Lecture tickets récents impossible : {e}")
 
-    # 3) Ne garder que les types RENTABLES : Victoire domicile + Under 2.5
-    #    (doubles chances et victoires extérieures sont perdantes -> exclues)
-    victoires = []
+    # 3) UN match par marché — pris dans la SÉLECTION DU JOUR (Top 25).
+    #    Format : 1 VICTOIRE + 1 UNDER 2.5 + 1 BTTS, le meilleur de chaque
+    #    marché dans l'ordre de la sélection (déjà triée par score).
+    #    Fallback sur les candidats DB uniquement si la sélection est vide.
+    pool = selected if selected else candidats
+    picks = {"VICTOIRE": None, "UNDER": None, "BTTS": None}
     teams_used = []
-    for p in candidats:
+    for p in pool:
         rec = (p.get("recommendation") or "").upper()
-        if "DOMICILE" not in rec and "UNDER" not in rec:
+        if   "UNDER" in rec:    key = "UNDER"
+        elif "BTTS"  in rec:    key = "BTTS"
+        elif "VICTOIRE" in rec: key = "VICTOIRE"
+        else: continue
+        if picks[key] is not None:
             continue
-        # Ligue autorisée (même filtre que le Top 25)
+        # Ligue autorisée (utile surtout pour le fallback DB)
         if not is_allowed_league(p.get("league_name", ""), p.get("is_national", False),
                                  p.get("league_tier", 3), p.get("league_country", "")):
             continue
@@ -525,7 +538,7 @@ def save_daily_ticket(selected=None):
         # Hors fenêtre (aujourd'hui -> +3j) -> on saute
         if (p.get("match_date") or "")[:10] not in allowed_dates:
             continue
-        # Cote du pari -> on écarte les cotes sans valeur
+        # Cote du pari -> on écarte les cotes absentes ou sans valeur
         cote = _cote_pari(p)
         if cote is None or cote < TICKET_MIN_COTE:
             continue
@@ -534,10 +547,13 @@ def save_daily_ticket(selected=None):
         if team_reco in teams_used:
             continue
         teams_used.append(team_reco)
-        victoires.append((p, cote))
-        # candidats triés par confiance -> on garde les meilleurs
-        if len(victoires) >= TICKET_NB_MATCHS:
+        picks[key] = (p, cote)
+        if picks["VICTOIRE"] and picks["UNDER"] and picks["BTTS"]:
             break
+    victoires = [v for v in (picks["VICTOIRE"], picks["UNDER"], picks["BTTS"]) if v]
+    manquants = [k for k in ("VICTOIRE", "UNDER", "BTTS") if picks[k] is None]
+    if manquants:
+        print(f"[TICKET] Marché(s) sans match qualifiant dans la sélection : {', '.join(manquants)}")
 
     if len(victoires) < 2:
         print(f"[TICKET] Pas assez de matchs ({len(victoires)}) — ticket non créé")
@@ -637,42 +653,8 @@ def print_top25(selected):
     print(f"{'═'*65}\n")
 
 
-def already_done_today():
-    """
-    Garde anti-doublon : True seulement si la sélection ET le ticket du jour
-    existent DÉJÀ tous les deux. Permet aux multiples déclenchements quotidiens
-    (crons GitHub 00h30/01h/01h30/02h + cron-job.org) de se relancer sans
-    risque : le 1er run fait tout, les suivants s'arrêtent net.
-
-    Si la sélection existe mais que le ticket manque (1er run sans match
-    qualifiant), renvoie False -> on relance pour réessayer le ticket
-    (save_daily_ticket a sa propre garde, il ne crée rien en double).
-    """
-    today_str = date.today().isoformat()
-    try:
-        sel = supabase.table("daily_top25") \
-            .select("id").eq("selection_date", today_str).limit(1).execute()
-        tkt = supabase.table("daily_tickets") \
-            .select("ticket_date").eq("ticket_date", today_str).limit(1).execute()
-        return bool(sel.data) and bool(tkt.data)
-    except Exception as e:
-        # En cas de doute (lecture échouée), on NE bloque PAS : mieux vaut
-        # relancer que rater une journée. L'idempotence aval gère le reste.
-        print(f"[GARDE] Vérification anti-doublon impossible ({e}) — on continue.")
-        return False
-
-
 def main():
     print(f"\n=== Daily Top 25 — {datetime.utcnow().strftime('%Y-%m-%d %H:%M')} UTC ===\n")
-
-    # ── GARDE ANTI-DOUBLON ───────────────────────────────────────────────
-    # Si la sélection ET le ticket du jour sont déjà figés, on s'arrête.
-    # Rend le job sûr quel que soit le nombre de déclenchements (zéro churn,
-    # zéro race sur daily_top25, ticket jamais réécrit).
-    if already_done_today():
-        print(f"[SKIP] Sélection ET ticket déjà figés pour {date.today().isoformat()} "
-              f"— rien à refaire.")
-        return
 
     # Récupérer les prédictions du jour
     predictions = get_today_predictions()
