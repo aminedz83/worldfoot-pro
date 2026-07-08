@@ -16128,22 +16128,26 @@ function Top25Tab() {
   var palierStake = _useStatePalierS[0]; var setPalierStakeRaw = _useStatePalierS[1];
   var _useStatePalierStart = useState(null);   // date "YYYY-MM-DD" depuis Supabase (null = pas encore chargé)
   var palierStart = _useStatePalierStart[0]; var setPalierStartRaw = _useStatePalierStart[1];
+  var _useStatePalierOv = useState(null);      // fixture_id d'un match IMPOSÉ pour le palier (null = choix auto)
+  var palierOverride = _useStatePalierOv[0]; var setPalierOvRaw = _useStatePalierOv[1];
   // Charger l'état du palier depuis Supabase (incassable, partagé entre appareils)
   useEffect(function() {
     if (viewMode !== "ticket" || ticketTab !== "palier") return;
     // Relire palier_state À CHAQUE ouverture de l'onglet Palier (plus de garde
     // "if (palierStart) return"), pour capter une date/mise modifiée en base
     // (ex. UPDATE SQL) sans dépendre d'un rechargement complet de la page.
-    fetch(SB_BASE2 + "palier_state?id=eq.1&select=stake,start_date", { headers: SB_H2 })
+    fetch(SB_BASE2 + "palier_state?id=eq.1&select=stake,start_date,override_fixture_id", { headers: SB_H2 })
       .then(function(r){ return r.json(); })
       .then(function(d){
         if (Array.isArray(d) && d.length) {
           var dbStake = parseFloat(d[0].stake) || 10;
           var dbStart = (d[0].start_date || "").slice(0,10) || new Date().toISOString().slice(0,10);
+          var dbOv    = d[0].override_fixture_id || null;
           // N'actualiser que si la base diffère de ce qui est en mémoire
           // (évite un re-render inutile à chaque passage sur l'onglet).
           setPalierStakeRaw(function(prev){ return prev !== dbStake ? dbStake : prev; });
           setPalierStartRaw(function(prev){ return prev !== dbStart ? dbStart : prev; });
+          setPalierOvRaw(function(prev){ return prev !== dbOv ? dbOv : prev; });
         } else if (!palierStart) {
           setPalierStartRaw(new Date().toISOString().slice(0,10));
         }
@@ -16402,7 +16406,7 @@ function Top25Tab() {
     if (!palierStart) return;
     fetch(
       SB_BASE2 + "predictions?match_date=gte." + palierStart +
-      "&order=match_date.asc&select=match_date,rec_confidence,recommendation,prediction_correct," +
+      "&order=match_date.asc&select=fixture_id,match_date,rec_confidence,recommendation,prediction_correct," +
       "home_team_name,away_team_name,league_name,league_country,pinnacle_home,pinnacle_away," +
       "pinnacle_draw,pinnacle_under25,pinnacle_btts&limit=3000",
       { headers: SB_H2 }
@@ -18165,8 +18169,12 @@ function Top25Tab() {
           if (!day) return;
           var cote = paliCote(p);
           if (!cote || cote <= 1) return;
-          if (!byDay[day] || p.rec_confidence > byDay[day]._conf) {
-            byDay[day] = { day:day, mdate:p.match_date, _conf:p.rec_confidence, cote:cote, rec:p.recommendation,
+          // Match IMPOSÉ (palier_state.override_fixture_id) : il devient le
+          // pari de SON jour, quelle que soit sa confiance. Les autres jours
+          // gardent le choix automatique (plus haute confiance).
+          var isOv = palierOverride && p.fixture_id === palierOverride;
+          if (!byDay[day] || isOv || (!byDay[day]._ov && p.rec_confidence > byDay[day]._conf)) {
+            byDay[day] = { day:day, mdate:p.match_date, _conf:p.rec_confidence, _ov:isOv, cote:cote, rec:p.recommendation,
               correct:p.prediction_correct, home:p.home_team_name, away:p.away_team_name, country:p.league_country };
           }
         });
