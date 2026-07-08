@@ -886,44 +886,6 @@ def compute_scores(hi,ai,h2h_d,xgt,inj_d,sk,wth,ca,odd,
     if is_nat:   us+=1
     us = round(min(max(us,0),96),1)
 
-    # ── GARDE-FOU RÉALITÉ (Under 2.5) ───────────────────────────────────
-    # Les BUTS RÉELLEMENT marqués priment sur l'estimation xG, qui peut
-    # s'effondrer à tort (def_index surévalué sur des équipes mal notées en
-    # défense) et gonfler l'Under sur des équipes qui marquent beaucoup.
-    # On plafonne la confiance SOUS le seuil de sélection quand l'historique
-    # direct OU les moyennes de buts réelles contredisent l'Under.
-    # N'augmente jamais le score — ne fait que le réduire. Ex. Vikingur-Runavik :
-    # H2H ~40% Under -> plafonné à 68 < MIN_CONF -> Under non retenu.
-    real_total = hi.get("goals_for_avg", 0) + ai.get("goals_for_avg", 0)
-    under_cap = 96.0
-    # 1) Confrontations directes : ces équipes passent souvent l'Over
-    if h2h_d["count"] >= 4:
-        if   h2h_d["under25"] < 30: under_cap = min(under_cap, MIN_CONF - 14)
-        elif h2h_d["under25"] < 45: under_cap = min(under_cap, MIN_CONF - 4)
-    # 2) Moyennes de buts réelles élevées (hors influence trompeuse du def_index)
-    if   real_total >= 3.2: under_cap = min(under_cap, MIN_CONF - 14)
-    elif real_total >= 2.8: under_cap = min(under_cap, MIN_CONF - 4)
-    # 3) Forme récente : total de buts moyen dans les 10 derniers matchs de
-    #    chaque équipe (marqués + encaissés). Capte les équipes impliquées dans
-    #    des matchs à beaucoup de buts, même celles qui marquent peu mais
-    #    encaissent beaucoup — signal que les moyennes d'attaque seules ratent.
-    home_recent = hi.get("goals_for_avg", 0) + hi.get("goals_against_avg", 0)
-    away_recent = ai.get("goals_for_avg", 0) + ai.get("goals_against_avg", 0)
-    recent_total = (home_recent + away_recent) / 2
-    if   recent_total >= 3.4: under_cap = min(under_cap, MIN_CONF - 14)
-    elif recent_total >= 3.0: under_cap = min(under_cap, MIN_CONF - 4)
-    # 4) Menace d'attaque ISOLÉE : une seule équipe qui marque 2+ buts dans
-    #    la plupart de ses matchs peut battre l'Under À ELLE SEULE, même si
-    #    l'adversaire est ultra-fermé. Les signaux 2 et 3 (somme/moyenne)
-    #    laissent le profil fermé de l'adversaire CAMOUFLER ce danger
-    #    (ex. Ind. del Valle ~67% de matchs à 2+ buts vs Manta fermé ->
-    #    moyenne diluée, Under retenu, perdu). On mesure la RÉGULARITÉ
-    #    (% de matchs à 2+ buts marqués), plus robuste qu'une moyenne
-    #    gonflable par un carton isolé.
-    max_sc2 = max(hi.get("scored2plus_pct", 0), ai.get("scored2plus_pct", 0))
-    if   max_sc2 >= 60: under_cap = min(under_cap, MIN_CONF - 14)
-    elif max_sc2 >= 45: under_cap = min(under_cap, MIN_CONF - 4)
-    us = round(min(us, under_cap), 1)
 
     # BTTS
     oc=(hi["off_index"]+ai["off_index"])/2
@@ -934,26 +896,6 @@ def compute_scores(hi,ai,h2h_d,xgt,inj_d,sk,wth,ca,odd,
     if hi["off_index"]<5.5 or ai["off_index"]<5.5: bs-=4
     bs=round(min(max(bs,0),96),1)
 
-    # ── GARDE-FOU RÉALITÉ (BTTS) ────────────────────────────────────────
-    # BTTS = les DEUX équipes marquent. Échoue dès qu'une seule est blanchie.
-    # La formule BTTS n'utilise JAMAIS clean_sheet_pct : on rattrape ça ici.
-    # On plafonne SOUS le seuil quand la réalité dit qu'une équipe se fait
-    # souvent blanchir (adversaire qui garde sa cage / panne offensive).
-    # Ne fait que réduire la confiance, jamais l'augmenter.
-    btts_cap = 96.0
-    # 1) Confrontations directes : peu de BTTS entre ces équipes
-    if h2h_d["count"] >= 4:
-        if   h2h_d["btts"] < 25: btts_cap = min(btts_cap, MIN_CONF - 14)
-        elif h2h_d["btts"] < 40: btts_cap = min(btts_cap, MIN_CONF - 4)
-    # 2) Clean sheets fréquents : une équipe blanchit souvent l'adversaire
-    max_cs = max(hi.get("clean_sheet_pct", 0), ai.get("clean_sheet_pct", 0))
-    if   max_cs >= 55: btts_cap = min(btts_cap, MIN_CONF - 14)
-    elif max_cs >= 45: btts_cap = min(btts_cap, MIN_CONF - 4)
-    # 3) Panne offensive : une équipe marque rarement (se fait blanchir)
-    min_gf = min(hi.get("goals_for_avg", 99), ai.get("goals_for_avg", 99))
-    if   min_gf <= 0.6: btts_cap = min(btts_cap, MIN_CONF - 14)
-    elif min_gf <= 0.9: btts_cap = min(btts_cap, MIN_CONF - 4)
-    bs = round(min(bs, btts_cap), 1)
 
     # Éviter contradiction Under ↔ BTTS
     if abs(us-bs)<8:
@@ -968,17 +910,6 @@ def compute_scores(hi,ai,h2h_d,xgt,inj_d,sk,wth,ca,odd,
     swr=hi["win_rate"] if ihs else ai["win_rate"]
     vs=None; sl=None
 
-    # ── GARDE-FOU PROFIL CONTRADICTOIRE ─────────────────────────────────
-    # Le "favori" est désigné par la meilleure ATTAQUE (ihs). Si l'ADVERSAIRE
-    # possède la meilleure DÉFENSE, les deux écarts pointent dans des sens
-    # OPPOSÉS — or la formule 50+og*4+dg*3 les additionne comme deux preuves
-    # de supériorité du favori : la défense de l'adversaire GONFLE alors la
-    # confiance du pari contre lui. Ex. Santani-Caballero : X2 78% perdu,
-    # Santani avait le meilleur H2H ET la meilleure défense. Un profil
-    # attaque-vs-défense = match équilibré par nature -> aucun pari victoire.
-    fav_def = hi["def_index"] if ihs else ai["def_index"]
-    opp_def = ai["def_index"] if ihs else hi["def_index"]
-    profile_ok = fav_def >= opp_def
 
     # Seuils adaptés pour équipes nationales CdM
     if is_nat:
@@ -1007,9 +938,8 @@ def compute_scores(hi,ai,h2h_d,xgt,inj_d,sk,wth,ca,odd,
         opp_fifa = ar if ihs else hr
         fifa_contradiction = fav_fifa > opp_fifa + 15
 
-        # Abandonner si match piège détecté (dont profil contradictoire :
-        # meilleure attaque d'un côté, meilleure défense de l'autre)
-        if both_strong or weak_form or weak_signal or fifa_contradiction or not profile_ok:
+        # Abandonner si match piège détecté
+        if both_strong or weak_form or weak_signal or fifa_contradiction:
             pass  # vs et sl restent None → pas de prédiction
         else:
             # Signal validé — calculer le score
@@ -1037,30 +967,6 @@ def compute_scores(hi,ai,h2h_d,xgt,inj_d,sk,wth,ca,odd,
             elif opp_win_rate >= 55: bv -= 7
             elif opp_win_rate >= 45: bv -= 3
 
-            # Malus ADVERSAIRE ACCROCHEUR : une équipe qui ne gagne pas mais
-            # ne PERD pas (nuls fréquents, défense dure à percer) menace la
-            # victoire sèche sans apparaître dans opp_win_rate — un mur de
-            # nuls a un win_rate bas. Le malus fait glisser le score vers la
-            # zone DOUBLE CHANCE (70-75) au lieu de la victoire sèche.
-            # MODULATION ÉLITE : si l'adversaire a TENU (nul/victoire) contre
-            # des grandes nations (top 30 FIFA) récemment, c'est un mur prouvé
-            # -> malus renforcé. S'il n'accroche que des faibles, sa
-            # résistance ne prouve rien face à un cador -> malus réduit.
-            # Ne fait que réduire, jamais augmenter.
-            opp_i = ai if ihs else hi
-            opp_draw_rate = opp_i.get("draw_rate", 0)
-            opp_ga = opp_i.get("goals_against_avg", 99)
-            acc_malus = 0
-            if   opp_draw_rate >= 50: acc_malus = 10
-            elif opp_draw_rate >= 35: acc_malus = 6
-            if opp_draw_rate >= 25 and opp_ga <= 1.0: acc_malus += 4
-            sf  = opp_i.get("strong_faced", 0)
-            shp = opp_i.get("strong_held_pct", 0)
-            if sf >= 2 and shp >= 50:
-                acc_malus += 5          # mur PROUVÉ contre l'élite (profil Cap-Vert)
-            elif sf >= 2 and shp < 25 and acc_malus > 0:
-                acc_malus = acc_malus // 2   # accrocheur de façade (craque contre les grands)
-            bv -= acc_malus
 
             # Bonus round CdM
             bv += stake_adj(hid, aid, {}, wr)
@@ -1072,7 +978,7 @@ def compute_scores(hi,ai,h2h_d,xgt,inj_d,sk,wth,ca,odd,
                 sl = f"DOUBLE CHANCE {'1X' if ihs else 'X2'}"
                 vs = round(min(bv+7, 88), 1)
     else:
-        if og>=2.5 and dg>=1.5 and swr>=55 and profile_ok:
+        if og>=2.5 and dg>=1.5 and swr>=55:
             bv=50+og*4+dg*3
             if ihs: bv+={3:6,2:4,1:2,0:3}.get(tier,2)
             if stds and not is_nat:
@@ -1080,14 +986,6 @@ def compute_scores(hi,ai,h2h_d,xgt,inj_d,sk,wth,ca,odd,
                 wp=stds.get(aid if ihs else hid,{}).get("points",0)
                 mg=6 if tier>=2 else 8
                 if sp-wp<mg: bv-=5
-            # Malus ADVERSAIRE ACCROCHEUR (clubs) : mur de nuls / défense
-            # dure à percer -> victoire sèche risquée, glisser vers DC.
-            opp_i = ai if ihs else hi
-            odr = opp_i.get("draw_rate", 0)
-            oga = opp_i.get("goals_against_avg", 99)
-            if   odr >= 50: bv -= 8
-            elif odr >= 35: bv -= 5
-            if odr >= 25 and oga <= 1.0: bv -= 3
             sl="DOMICILE" if ihs else "EXTÉRIEUR"
             mv=78 if sl=="EXTÉRIEUR" else 75
             if   bv>=mv: vs=round(min(bv,91),1)
