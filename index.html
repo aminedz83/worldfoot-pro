@@ -16084,6 +16084,7 @@ function Top25Tab() {
   var _useStateGD = React.useState(null);  var guardsData   = _useStateGD[0]; var setGuardsData   = _useStateGD[1];
   var _useStateED = React.useState(null);  var edgeData     = _useStateED[0]; var setEdgeData     = _useStateED[1];
   var _useStateHD = React.useState(null);  var healthData   = _useStateHD[0]; var setHealthData   = _useStateHD[1];
+  var _useStateRM = React.useState(null);  var runMatches   = _useStateRM[0]; var setRunMatches   = _useStateRM[1];
   var _useStateCalib = React.useState(null); var calibData = _useStateCalib[0]; var setCalibData = _useStateCalib[1];
   var _useStateCalibM = React.useState("TOUS"); var calibMarket = _useStateCalibM[0]; var setCalibMarket = _useStateCalibM[1];
   var _useStateCoteM = React.useState("VICTOIRE"); var coteMarket = _useStateCoteM[0]; var setCoteMarket = _useStateCoteM[1];
@@ -16287,6 +16288,25 @@ function Top25Tab() {
         });
       })
       .catch(function() { setHealthData({error:true}); });
+  }, [viewMode]);
+
+  // 🔄 Matchs recalculés au dernier run (tout ce qui porte le scraped_at
+  // de la dernière vague d'écriture).
+  React.useEffect(function() {
+    if (viewMode !== "stats") return;
+    if (runMatches) return;
+    fetch(SB_BASE2 + "predictions?select=scraped_at&order=scraped_at.desc&limit=1", { headers: SB_H2 })
+      .then(function(r){ return r.json(); })
+      .then(function(lastRows) {
+        if (!Array.isArray(lastRows) || !lastRows.length) { setRunMatches({rows:[]}); return null; }
+        var last = new Date(lastRows[0].scraped_at).getTime();
+        var isoBatch = new Date(last - 3*3600000).toISOString().slice(0,19);
+        return fetch(SB_BASE2 + "predictions?select=home_team_name,away_team_name,recommendation,rec_confidence,match_date,league_country" +
+                     "&scraped_at=gte." + isoBatch + "&order=rec_confidence.desc&limit=120", { headers: SB_H2 })
+          .then(function(r){ return r.json(); })
+          .then(function(rows) { setRunMatches({ rows: Array.isArray(rows) ? rows : [] }); });
+      })
+      .catch(function() { setRunMatches({error:true}); });
   }, [viewMode]);
 
   React.useEffect(function() {
@@ -17803,6 +17823,53 @@ function Top25Tab() {
           React.createElement("div", {
             style:{ fontSize:9, color:"var(--c-ink-3)", marginTop:6, textAlign:"center", fontStyle:"italic" }
           }, "Prochain run = estimation (dernier départ + 24 h, ±quelques min) · début = 1ère prédiction écrite · reportés/annulés restent \u00ab non vérifiés \u00bb, c'est normal")
+        );
+      })()
+    ),
+
+    // === 🔄 Matchs recalculés au dernier run ===
+    React.createElement("div", {
+      style: {
+        background: "var(--c-base)", borderRadius: 10,
+        border: "1px solid var(--c-border)",
+        margin: "10px 14px", padding: "10px 12px"
+      }
+    },
+      React.createElement("div", {
+        style: { fontSize:10, fontWeight:700, color:"var(--c-ink-3)",
+          textTransform:"uppercase", letterSpacing:"0.08em", marginBottom:2 }
+      }, "🔄 Matchs recalculés au dernier run"),
+      React.createElement("div", {
+        style: { fontSize:10, color:"var(--c-ink-3)", marginBottom:6, fontStyle:"italic" }
+      }, "Classés par confiance — le n°1 à venir est le pari automatique du palier"),
+      (function() {
+        if (!runMatches) return React.createElement("div", { style:{ textAlign:"center", padding:"10px 0", color:"var(--c-ink-3)", fontSize:11 } }, "Chargement…");
+        if (runMatches.error) return React.createElement("div", { style:{ textAlign:"center", padding:"10px 0", color:"var(--c-ink-3)", fontSize:11 } }, "Données indisponibles");
+        var rows = runMatches.rows || [];
+        if (!rows.length) return React.createElement("div", { style:{ textAlign:"center", padding:"10px 0", color:"var(--c-ink-3)", fontSize:11 } }, "Aucun match dans le dernier run");
+        var shown = rows.slice(0, 5);
+        var rest  = rows.slice(5);
+        var line = function(p, key) {
+          var mk = (p.recommendation||"").toUpperCase();
+          var mkIcon = mk.indexOf("UNDER")>=0 ? "⬇️" : mk.indexOf("BTTS")>=0 ? "⚽" : "🏆";
+          return React.createElement("div", { key:key,
+            style:{ display:"flex", alignItems:"center", justifyContent:"space-between", padding:"6px 2px",
+              borderBottom:"1px solid var(--c-border)" } },
+            React.createElement("span", { style:{ fontSize:11, color:"var(--c-ink-1)", overflow:"hidden", textOverflow:"ellipsis", whiteSpace:"nowrap", flex:1, minWidth:0 } },
+              (countryFlag(p.league_country) ? countryFlag(p.league_country) + " " : "") + mkIcon + " " + p.home_team_name + " vs " + p.away_team_name),
+            React.createElement("span", { style:{ fontSize:11, fontWeight:700, fontFamily:"'JetBrains Mono',monospace", color:"var(--c-ink-2)", marginLeft:8, flexShrink:0 } },
+              (p.rec_confidence || 0) + "%")
+          );
+        };
+        return React.createElement("div", null,
+          React.createElement("div", { style:{ fontSize:11, fontWeight:700, color:"var(--c-ink-2)", marginBottom:4 } },
+            rows.length + " match" + (rows.length>1?"s":"") + " recalculé" + (rows.length>1?"s":"")),
+          shown.map(function(p,i){ return line(p, "s"+i); }),
+          rest.length > 0 && React.createElement("details", { style:{ marginTop:2 } },
+            React.createElement("summary", { style:{ fontSize:10, fontWeight:700, color:"var(--c-jade)", cursor:"pointer", padding:"6px 0", listStyle:"none", outline:"none" } },
+              "▾ Voir les " + rest.length + " autres"),
+            rest.map(function(p,i){ return line(p, "r"+i); })
+          )
         );
       })()
     ),
