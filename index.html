@@ -16301,10 +16301,14 @@ function Top25Tab() {
         if (!Array.isArray(lastRows) || !lastRows.length) { setRunMatches({rows:[]}); return null; }
         var last = new Date(lastRows[0].scraped_at).getTime();
         var isoBatch = new Date(last - 3*3600000).toISOString().slice(0,19);
-        return fetch(SB_BASE2 + "predictions?select=home_team_name,away_team_name,recommendation,rec_confidence,match_date,league_country,scraped_at" +
-                     "&scraped_at=gte." + isoBatch + "&order=rec_confidence.desc&limit=120", { headers: SB_H2 })
-          .then(function(r){ return r.json(); })
-          .then(function(rows) { setRunMatches({ rows: Array.isArray(rows) ? rows : [] }); });
+        return Promise.all([
+          fetch(SB_BASE2 + "predictions?select=fixture_id,home_team_name,away_team_name,recommendation,rec_confidence,match_date,league_country,scraped_at" +
+                "&scraped_at=gte." + isoBatch + "&order=rec_confidence.desc&limit=120", { headers: SB_H2 }).then(function(r){ return r.json(); }),
+          fetch(SB_BASE2 + "palier_state?id=eq.1&select=override_fixture_id", { headers: SB_H2 }).then(function(r){ return r.json(); })
+        ]).then(function(res) {
+          var ov = (Array.isArray(res[1]) && res[1].length) ? (res[1][0].override_fixture_id || null) : null;
+          setRunMatches({ rows: Array.isArray(res[0]) ? res[0] : [], ov: ov });
+        });
       })
       .catch(function() { setRunMatches({error:true}); });
   }, [viewMode]);
@@ -17847,21 +17851,46 @@ function Top25Tab() {
         if (runMatches.error) return React.createElement("div", { style:{ textAlign:"center", padding:"10px 0", color:"var(--c-ink-3)", fontSize:11 } }, "Données indisponibles");
         var rows = runMatches.rows || [];
         if (!rows.length) return React.createElement("div", { style:{ textAlign:"center", padding:"10px 0", color:"var(--c-ink-3)", fontSize:11 } }, "Aucun match dans le dernier run");
+        // Identifier le pari ACTUEL du palier : parmi les matchs à venir,
+        // le 1er jour à venir -> plus haute confiance ; le match imposé
+        // (override) est prioritaire s'il est encore à venir.
+        var nowTs2 = Date.now();
+        var pending = rows.filter(function(p){ return p.match_date && new Date(p.match_date).getTime() > nowTs2; });
+        var palierFid = null;
+        if (pending.length) {
+          var ovRow = runMatches.ov ? pending.filter(function(p){ return p.fixture_id === runMatches.ov; })[0] : null;
+          if (ovRow) { palierFid = ovRow.fixture_id; }
+          else {
+            var minDay = pending.map(function(p){ return (p.match_date||"").slice(0,10); }).sort()[0];
+            var best = null;
+            pending.forEach(function(p){
+              if ((p.match_date||"").slice(0,10) !== minDay) return;
+              if (!best || (p.rec_confidence||0) > (best.rec_confidence||0)) best = p;
+            });
+            if (best) palierFid = best.fixture_id;
+          }
+        }
         var shown = rows.slice(0, 5);
         var rest  = rows.slice(5);
         var line = function(p, key) {
           var mk = (p.recommendation||"").toUpperCase();
           var mkIcon = mk.indexOf("UNDER")>=0 ? "⬇️" : mk.indexOf("BTTS")>=0 ? "⚽" : "🏆";
           var anTime = p.scraped_at ? new Date(p.scraped_at).toLocaleTimeString("fr-CA", { hour:"2-digit", minute:"2-digit" }) : "";
+          var isPalier = palierFid && p.fixture_id === palierFid;
           return React.createElement("div", { key:key,
             style:{ display:"flex", alignItems:"center", justifyContent:"space-between", padding:"6px 2px",
-              borderBottom:"1px solid var(--c-border)" } },
+              borderBottom:"1px solid var(--c-border)",
+              background: isPalier ? "rgba(5,150,105,0.06)" : "transparent", borderRadius: isPalier ? 6 : 0 } },
             React.createElement("span", { style:{ fontSize:11, color:"var(--c-ink-1)", overflow:"hidden", textOverflow:"ellipsis", whiteSpace:"nowrap", flex:1, minWidth:0 } },
               (countryFlag(p.league_country) ? countryFlag(p.league_country) + " " : "") + mkIcon + " " + p.home_team_name + " vs " + p.away_team_name),
-            React.createElement("div", { style:{ textAlign:"right", marginLeft:8, flexShrink:0 } },
-              React.createElement("div", { style:{ fontSize:11, fontWeight:700, fontFamily:"'JetBrains Mono',monospace", color:"var(--c-ink-2)" } },
-                (p.rec_confidence || 0) + "%"),
-              anTime && React.createElement("div", { style:{ fontSize:9, color:"var(--c-ink-3)" } }, "🔄 " + anTime)
+            React.createElement("div", { style:{ textAlign:"right", marginLeft:8, flexShrink:0, display:"flex", alignItems:"center", gap:6 } },
+              isPalier && React.createElement("span", { style:{ fontSize:9, fontWeight:700, padding:"2px 6px", borderRadius:4,
+                background:"rgba(5,150,105,0.12)", color:"var(--c-jade)" } }, "📈 Palier"),
+              React.createElement("div", null,
+                React.createElement("div", { style:{ fontSize:11, fontWeight:700, fontFamily:"'JetBrains Mono',monospace", color:"var(--c-ink-2)" } },
+                  (p.rec_confidence || 0) + "%"),
+                anTime && React.createElement("div", { style:{ fontSize:9, color:"var(--c-ink-3)" } }, "🔄 " + anTime)
+              )
             )
           );
         };
