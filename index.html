@@ -17770,10 +17770,25 @@ function Top25Tab() {
           { icon: runOk ? "✅" : "⚠️", label: "Début du dernier run", val: fmt(healthData.runStart), col: runCol },
           { icon: runOk ? "✅" : "⚠️", label: "Fin du run · durée",
             val: fmt(healthData.runEnd) + (healthData.durMin ? " · " + healthData.durMin + " min" : ""), col: runCol },
-          { icon: "🕐", label: "Il y a", val: h === null ? "—" : (h < 1 ? Math.round(h*60) + " min" : h.toFixed(1) + " h"), col: runCol },
+          { icon: "🕐", label: "Il y a", val: h === null ? "—" : (h < 1 ? Math.round(h*60) + " min" : h.toFixed(1) + " h"), col: runCol }
+        ];
+        // Prochain run : ESTIMATION = dernier départ + 24h (l'horaire exact vit
+        // dans cron-job.org, invisible d'ici ; l'estimation s'auto-corrige
+        // chaque jour sur l'heure réellement observée).
+        if (healthData.runStart) {
+          var nextTs = healthData.runStart + 86400000;
+          var late = Date.now() > nextTs + 45*60000; // 45 min de tolérance
+          rows.push({
+            icon: late ? "⚠️" : "⏳",
+            label: late ? "Prochain run — EN RETARD" : "Prochain run · en attente",
+            val: "~" + fmt(nextTs) + (late ? "" : ""),
+            col: late ? "#f39c12" : "var(--c-ink-2)"
+          });
+        }
+        rows.push(
           { icon: healthData.preds24 > 0 ? "✅" : "⚠️", label: "Prédictions (24 h)", val: String(healthData.preds24), col: pCol },
           { icon: healthData.pendingVerif <= 2 ? "✅" : "⏳", label: "Matchs joués non vérifiés (7 j)", val: String(healthData.pendingVerif), col: vCol }
-        ];
+        );
         return React.createElement("div", null,
           rows.map(function(r, i) {
             return React.createElement("div", {
@@ -17787,7 +17802,7 @@ function Top25Tab() {
           }),
           React.createElement("div", {
             style:{ fontSize:9, color:"var(--c-ink-3)", marginTop:6, textAlign:"center", fontStyle:"italic" }
-          }, "Début = 1ère prédiction écrite (~2 min après le déclencheur de 20h35) · reportés/annulés restent \u00ab non vérifiés \u00bb, c'est normal")
+          }, "Prochain run = estimation (dernier départ + 24 h, ±quelques min) · début = 1ère prédiction écrite · reportés/annulés restent \u00ab non vérifiés \u00bb, c'est normal")
         );
       })()
     ),
