@@ -16082,6 +16082,7 @@ function Top25Tab() {
   var viewMode = _useStateVM[0]; var setViewMode = _useStateVM[1];
   var _useStateSD = React.useState(null);  var statsData    = _useStateSD[0]; var setStatsData    = _useStateSD[1];
   var _useStateGD = React.useState(null);  var guardsData   = _useStateGD[0]; var setGuardsData   = _useStateGD[1];
+  var _useStateED = React.useState(null);  var edgeData     = _useStateED[0]; var setEdgeData     = _useStateED[1];
   var _useStateCalib = React.useState(null); var calibData = _useStateCalib[0]; var setCalibData = _useStateCalib[1];
   var _useStateCalibM = React.useState("TOUS"); var calibMarket = _useStateCalibM[0]; var setCalibMarket = _useStateCalibM[1];
   var _useStateCoteM = React.useState("VICTOIRE"); var coteMarket = _useStateCoteM[0]; var setCoteMarket = _useStateCoteM[1];
@@ -16251,6 +16252,31 @@ function Top25Tab() {
 
   // Effet des nouveaux signaux : volume/jour et taux AVANT vs APRÈS le 3 juil.
   // (date d'activation des garde-fous). Agrégé côté client depuis predictions.
+  React.useEffect(function() {
+    if (viewMode !== "stats") return;
+    if (edgeData) return;
+    // 💰 Créneau Under 1.8+ : le seul segment au ROI positif mesuré.
+    // Under recommandé par le moteur MAIS coté 1.80+ par Pinnacle (le
+    // marché doute) -> suivi automatique paris/taux/ROI aux cotes réelles.
+    fetch(SB_BASE2 + "predictions?select=prediction_correct,pinnacle_under25" +
+          "&recommendation=ilike.*UNDER*&pinnacle_under25=gte.1.8" +
+          "&prediction_correct=not.is.null&limit=2000", { headers: SB_H2 })
+      .then(function(r){ return r.json(); })
+      .then(function(rows) {
+        if (!Array.isArray(rows)) { setEdgeData({error:true}); return; }
+        var n = rows.length, w = 0, profit = 0;
+        rows.forEach(function(p) {
+          if (p.prediction_correct) { w++; profit += (parseFloat(p.pinnacle_under25) || 1) - 1; }
+          else { profit -= 1; }
+        });
+        setEdgeData({ n:n, w:w,
+          taux: n ? Math.round(1000.0*w/n)/10 : 0,
+          profit: Math.round(profit*100)/100,
+          roi: n ? Math.round(1000.0*profit/n)/10 : 0 });
+      })
+      .catch(function() { setEdgeData({error:true}); });
+  }, [viewMode]);
+
   React.useEffect(function() {
     if (viewMode !== "stats") return;
     if (guardsData) return;
@@ -17732,6 +17758,41 @@ function Top25Tab() {
           React.createElement("div", {
             style:{ fontSize:9, color:"var(--c-ink-3)", marginTop:6, textAlign:"center", fontStyle:"italic" }
           }, "Volume en baisse = les garde-fous filtrent · le taux dira s'ils filtrent juste")
+        );
+      })()
+    ),
+
+    // === 💰 Créneau Under 1.8+ (le seul segment à ROI positif mesuré) ===
+    React.createElement("div", {
+      style: {
+        background: "var(--c-base)", borderRadius: 10,
+        border: "1px solid var(--c-border)",
+        margin: "10px 14px", padding: "10px 12px"
+      }
+    },
+      React.createElement("div", {
+        style: { fontSize:10, fontWeight:700, color:"var(--c-ink-3)",
+          textTransform:"uppercase", letterSpacing:"0.08em", marginBottom:2 }
+      }, "💰 Créneau Under 1.8+"),
+      React.createElement("div", {
+        style: { fontSize:10, color:"var(--c-ink-3)", marginBottom:8, fontStyle:"italic" }
+      }, "Under recommandés par le moteur ET cotés 1.80+ par Pinnacle · ROI aux cotes réelles (1 unité/pari) · à confirmer sur 100+ paris"),
+      (function() {
+        if (!edgeData) return React.createElement("div", { style:{ textAlign:"center", padding:"12px 0", color:"var(--c-ink-3)", fontSize:11 } }, "Chargement…");
+        if (edgeData.error) return React.createElement("div", { style:{ textAlign:"center", padding:"12px 0", color:"var(--c-ink-3)", fontSize:11 } }, "Données indisponibles");
+        var roiCol = edgeData.roi > 5 ? "#27ae60" : edgeData.roi >= 0 ? "#f39c12" : "#e74c3c";
+        return React.createElement("div", { style:{ display:"flex", justifyContent:"space-between", alignItems:"center" } },
+          [
+            { label:"Paris",  val: String(edgeData.n),                                     col:"var(--c-ink-1)" },
+            { label:"Taux",   val: edgeData.taux + "%",                                    col:"var(--c-ink-1)" },
+            { label:"Profit", val: (edgeData.profit>0?"+":"") + edgeData.profit + " u",    col: roiCol },
+            { label:"ROI",    val: (edgeData.roi>0?"+":"") + edgeData.roi + "%",           col: roiCol }
+          ].map(function(c) {
+            return React.createElement("div", { key:c.label, style:{ textAlign:"center", flex:1 } },
+              React.createElement("div", { style:{ fontSize:16, fontWeight:700, fontFamily:"'JetBrains Mono',monospace", color:c.col } }, c.val),
+              React.createElement("div", { style:{ fontSize:9, color:"var(--c-ink-3)", marginTop:2 } }, c.label)
+            );
+          })
         );
       })()
     ),
