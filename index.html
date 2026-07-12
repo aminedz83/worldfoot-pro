@@ -16301,14 +16301,46 @@ function Top25Tab() {
         if (!Array.isArray(lastRows) || !lastRows.length) { setRunMatches({rows:[]}); return null; }
         var last = new Date(lastRows[0].scraped_at).getTime();
         var isoBatch = new Date(last - 3*3600000).toISOString().slice(0,19);
-        return Promise.all([
-          fetch(SB_BASE2 + "predictions?select=fixture_id,home_team_name,away_team_name,recommendation,rec_confidence,match_date,league_country,scraped_at" +
-                "&scraped_at=gte." + isoBatch + "&order=rec_confidence.desc&limit=120", { headers: SB_H2 }).then(function(r){ return r.json(); }),
-          fetch(SB_BASE2 + "palier_state?id=eq.1&select=override_fixture_id", { headers: SB_H2 }).then(function(r){ return r.json(); })
-        ]).then(function(res) {
-          var ov = (Array.isArray(res[1]) && res[1].length) ? (res[1][0].override_fixture_id || null) : null;
-          setRunMatches({ rows: Array.isArray(res[0]) ? res[0] : [], ov: ov });
-        });
+        return fetch(SB_BASE2 + "palier_state?id=eq.1&select=start_date,override_fixture_id", { headers: SB_H2 })
+          .then(function(r){ return r.json(); })
+          .then(function(st) {
+            var ov = (Array.isArray(st) && st.length) ? (st[0].override_fixture_id || null) : null;
+            var pstart = (Array.isArray(st) && st.length && st[0].start_date) ? String(st[0].start_date).slice(0,10) : new Date().toISOString().slice(0,10);
+            return Promise.all([
+              fetch(SB_BASE2 + "predictions?select=fixture_id,home_team_name,away_team_name,recommendation,rec_confidence,match_date,league_country,scraped_at" +
+                    "&scraped_at=gte." + isoBatch + "&order=rec_confidence.desc&limit=120", { headers: SB_H2 }).then(function(r){ return r.json(); }),
+              // MÊMES données que le palier : tout depuis start_date, pour
+              // reproduire EXACTEMENT son "Prochain pari" (1er jour dont le
+              // pari est futur ou sans résultat), et non une approximation.
+              fetch(SB_BASE2 + "predictions?select=fixture_id,home_team_name,away_team_name,match_date,rec_confidence,prediction_correct" +
+                    "&match_date=gte." + pstart + "&order=match_date.asc&limit=3000", { headers: SB_H2 }).then(function(r){ return r.json(); })
+            ]).then(function(res) {
+              var rows = Array.isArray(res[0]) ? res[0] : [];
+              var all  = Array.isArray(res[1]) ? res[1] : [];
+              // byDay : gagnant du jour = plus haute confiance, override prioritaire
+              var byDay = {};
+              all.forEach(function(p) {
+                var day = (p.match_date || "").slice(0,10);
+                if (!day) return;
+                var isOv = ov && p.fixture_id === ov;
+                if (!byDay[day] || isOv || (!byDay[day]._ov && (p.rec_confidence||0) > (byDay[day]._conf||0))) {
+                  byDay[day] = { _conf: p.rec_confidence, _ov: isOv, fid: p.fixture_id,
+                    home: p.home_team_name, away: p.away_team_name,
+                    mdate: p.match_date, correct: p.prediction_correct };
+                }
+              });
+              // Prochain pari = 1er jour dont le pari est futur OU sans résultat
+              var nowTs = Date.now();
+              var pick = null;
+              Object.keys(byDay).sort().forEach(function(day) {
+                if (pick) return;
+                var b = byDay[day];
+                var future = b.mdate && new Date(b.mdate).getTime() > nowTs;
+                if (future || b.correct === null || b.correct === undefined) pick = b;
+              });
+              setRunMatches({ rows: rows, pick: pick });
+            });
+          });
       })
       .catch(function() { setRunMatches({error:true}); });
   }, [viewMode]);
@@ -17851,25 +17883,9 @@ function Top25Tab() {
         if (runMatches.error) return React.createElement("div", { style:{ textAlign:"center", padding:"10px 0", color:"var(--c-ink-3)", fontSize:11 } }, "Données indisponibles");
         var rows = runMatches.rows || [];
         if (!rows.length) return React.createElement("div", { style:{ textAlign:"center", padding:"10px 0", color:"var(--c-ink-3)", fontSize:11 } }, "Aucun match dans le dernier run");
-        // Identifier le pari ACTUEL du palier : parmi les matchs à venir,
-        // le 1er jour à venir -> plus haute confiance ; le match imposé
-        // (override) est prioritaire s'il est encore à venir.
-        var nowTs2 = Date.now();
-        var pending = rows.filter(function(p){ return p.match_date && new Date(p.match_date).getTime() > nowTs2; });
-        var palierFid = null;
-        if (pending.length) {
-          var ovRow = runMatches.ov ? pending.filter(function(p){ return p.fixture_id === runMatches.ov; })[0] : null;
-          if (ovRow) { palierFid = ovRow.fixture_id; }
-          else {
-            var minDay = pending.map(function(p){ return (p.match_date||"").slice(0,10); }).sort()[0];
-            var best = null;
-            pending.forEach(function(p){
-              if ((p.match_date||"").slice(0,10) !== minDay) return;
-              if (!best || (p.rec_confidence||0) > (best.rec_confidence||0)) best = p;
-            });
-            if (best) palierFid = best.fixture_id;
-          }
-        }
+        var pick = runMatches.pick || null;
+        var palierFid = pick ? pick.fid : null;
+        var pickInRows = palierFid && rows.some(function(p){ return p.fixture_id === palierFid; });
         var shown = rows.slice(0, 5);
         var rest  = rows.slice(5);
         var line = function(p, key) {
@@ -17895,6 +17911,10 @@ function Top25Tab() {
           );
         };
         return React.createElement("div", null,
+          pick && !pickInRows && React.createElement("div", {
+            style:{ fontSize:10, fontWeight:700, color:"var(--c-jade)", background:"rgba(5,150,105,0.08)",
+              padding:"6px 8px", borderRadius:6, marginBottom:6 }
+          }, "📈 Pari actuel du palier : " + pick.home + " vs " + pick.away + " · ⏳ en attente (joué, pas encore vérifié — analysé à un run précédent)"),
           React.createElement("div", { style:{ fontSize:11, fontWeight:700, color:"var(--c-ink-2)", marginBottom:4 } },
             rows.length + " match" + (rows.length>1?"s":"") + " recalculé" + (rows.length>1?"s":"")),
           shown.map(function(p,i){ return line(p, "s"+i); }),
