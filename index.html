@@ -16083,6 +16083,7 @@ function Top25Tab() {
   var _useStateSD = React.useState(null);  var statsData    = _useStateSD[0]; var setStatsData    = _useStateSD[1];
   var _useStateGD = React.useState(null);  var guardsData   = _useStateGD[0]; var setGuardsData   = _useStateGD[1];
   var _useStateED = React.useState(null);  var edgeData     = _useStateED[0]; var setEdgeData     = _useStateED[1];
+  var _useStateHD = React.useState(null);  var healthData   = _useStateHD[0]; var setHealthData   = _useStateHD[1];
   var _useStateCalib = React.useState(null); var calibData = _useStateCalib[0]; var setCalibData = _useStateCalib[1];
   var _useStateCalibM = React.useState("TOUS"); var calibMarket = _useStateCalibM[0]; var setCalibMarket = _useStateCalibM[1];
   var _useStateCoteM = React.useState("VICTOIRE"); var coteMarket = _useStateCoteM[0]; var setCoteMarket = _useStateCoteM[1];
@@ -16252,6 +16253,42 @@ function Top25Tab() {
 
   // Effet des nouveaux signaux : volume/jour et taux AVANT vs APRÈS le 3 juil.
   // (date d'activation des garde-fous). Agrégé côté client depuis predictions.
+  // 🩺 Santé du système : début/fin du dernier run, volume 24h, vérifs en retard.
+  React.useEffect(function() {
+    if (viewMode !== "stats") return;
+    if (healthData) return;
+    var now = Date.now();
+    var iso24 = new Date(now - 24*3600000).toISOString().slice(0,19);
+    var iso3h = new Date(now - 3*3600000).toISOString().slice(0,19);
+    var iso7d = new Date(now - 7*86400000).toISOString().slice(0,19);
+    fetch(SB_BASE2 + "predictions?select=scraped_at&order=scraped_at.desc&limit=1", { headers: SB_H2 })
+      .then(function(r){ return r.json(); })
+      .then(function(lastRows) {
+        var last = (Array.isArray(lastRows) && lastRows.length) ? new Date(lastRows[0].scraped_at).getTime() : null;
+        // Début du run = première prédiction écrite dans la même fenêtre (3h avant la fin)
+        var isoBatch = last ? new Date(last - 3*3600000).toISOString().slice(0,19) : null;
+        return Promise.all([
+          Promise.resolve(last),
+          last ? fetch(SB_BASE2 + "predictions?select=scraped_at&scraped_at=gte." + isoBatch + "&order=scraped_at.asc&limit=1", { headers: SB_H2 }).then(function(r){ return r.json(); }) : Promise.resolve([]),
+          fetch(SB_BASE2 + "predictions?select=scraped_at&scraped_at=gte." + iso24 + "&limit=1000", { headers: SB_H2 }).then(function(r){ return r.json(); }),
+          fetch(SB_BASE2 + "predictions?select=fixture_id&match_date=lt." + iso3h + "&match_date=gte." + iso7d + "&prediction_correct=is.null&limit=500", { headers: SB_H2 }).then(function(r){ return r.json(); })
+        ]);
+      })
+      .then(function(res) {
+        var last = res[0];
+        var first = (Array.isArray(res[1]) && res[1].length) ? new Date(res[1][0].scraped_at).getTime() : null;
+        setHealthData({
+          runStart: first,
+          runEnd: last,
+          durMin: (first && last) ? Math.max(1, Math.round((last - first) / 60000)) : null,
+          hoursAgo: last ? Math.round((Date.now() - last) / 3600000 * 10) / 10 : null,
+          preds24: Array.isArray(res[2]) ? res[2].length : 0,
+          pendingVerif: Array.isArray(res[3]) ? res[3].length : 0
+        });
+      })
+      .catch(function() { setHealthData({error:true}); });
+  }, [viewMode]);
+
   React.useEffect(function() {
     if (viewMode !== "stats") return;
     if (edgeData) return;
@@ -17702,6 +17739,55 @@ function Top25Tab() {
               }, roiText)
             );
           })
+        );
+      })()
+    ),
+
+    // === 🩺 Santé du système (runs + fraîcheur des données) ===
+    React.createElement("div", {
+      style: {
+        background: "var(--c-base)", borderRadius: 10,
+        border: "1px solid var(--c-border)",
+        margin: "10px 14px", padding: "10px 12px"
+      }
+    },
+      React.createElement("div", {
+        style: { fontSize:10, fontWeight:700, color:"var(--c-ink-3)",
+          textTransform:"uppercase", letterSpacing:"0.08em", marginBottom:8 }
+      }, "🩺 Santé du système"),
+      (function() {
+        if (!healthData) return React.createElement("div", { style:{ textAlign:"center", padding:"12px 0", color:"var(--c-ink-3)", fontSize:11 } }, "Chargement…");
+        if (healthData.error) return React.createElement("div", { style:{ textAlign:"center", padding:"12px 0", color:"var(--c-ink-3)", fontSize:11 } }, "Données indisponibles");
+        var h = healthData.hoursAgo;
+        var runCol = (h === null || h > 30) ? "#e74c3c" : h > 26 ? "#f39c12" : "#27ae60";
+        var fmt = function(ts) {
+          return ts ? new Date(ts).toLocaleString("fr-CA", { weekday:"short", hour:"2-digit", minute:"2-digit" }) : "—";
+        };
+        var runOk  = h !== null && h <= 26;
+        var pCol = healthData.preds24 > 0 ? "#27ae60" : "#e74c3c";
+        var vCol = healthData.pendingVerif <= 2 ? "#27ae60" : healthData.pendingVerif <= 10 ? "#f39c12" : "#e74c3c";
+        var rows = [
+          { icon: runOk ? "✅" : "⚠️", label: "Début du dernier run", val: fmt(healthData.runStart), col: runCol },
+          { icon: runOk ? "✅" : "⚠️", label: "Fin du run · durée",
+            val: fmt(healthData.runEnd) + (healthData.durMin ? " · " + healthData.durMin + " min" : ""), col: runCol },
+          { icon: "🕐", label: "Il y a", val: h === null ? "—" : (h < 1 ? Math.round(h*60) + " min" : h.toFixed(1) + " h"), col: runCol },
+          { icon: healthData.preds24 > 0 ? "✅" : "⚠️", label: "Prédictions (24 h)", val: String(healthData.preds24), col: pCol },
+          { icon: healthData.pendingVerif <= 2 ? "✅" : "⏳", label: "Matchs joués non vérifiés (7 j)", val: String(healthData.pendingVerif), col: vCol }
+        ];
+        return React.createElement("div", null,
+          rows.map(function(r, i) {
+            return React.createElement("div", {
+              key: i,
+              style: { display:"flex", alignItems:"center", justifyContent:"space-between",
+                padding:"7px 4px", borderBottom: i < rows.length-1 ? "1px solid var(--c-border)" : "none" }
+            },
+              React.createElement("span", { style:{ fontSize:11, color:"var(--c-ink-2)" } }, r.icon + " " + r.label),
+              React.createElement("span", { style:{ fontSize:12, fontWeight:700, fontFamily:"'JetBrains Mono',monospace", color:r.col } }, r.val)
+            );
+          }),
+          React.createElement("div", {
+            style:{ fontSize:9, color:"var(--c-ink-3)", marginTop:6, textAlign:"center", fontStyle:"italic" }
+          }, "Début = 1ère prédiction écrite (~2 min après le déclencheur de 20h35) · reportés/annulés restent \u00ab non vérifiés \u00bb, c'est normal")
         );
       })()
     ),
