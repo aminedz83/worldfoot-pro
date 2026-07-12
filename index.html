@@ -16301,7 +16301,7 @@ function Top25Tab() {
         if (!Array.isArray(lastRows) || !lastRows.length) { setRunMatches({rows:[]}); return null; }
         var last = new Date(lastRows[0].scraped_at).getTime();
         var isoBatch = new Date(last - 3*3600000).toISOString().slice(0,19);
-        return fetch(SB_BASE2 + "predictions?select=home_team_name,away_team_name,recommendation,rec_confidence,match_date,league_country" +
+        return fetch(SB_BASE2 + "predictions?select=home_team_name,away_team_name,recommendation,rec_confidence,match_date,league_country,scraped_at" +
                      "&scraped_at=gte." + isoBatch + "&order=rec_confidence.desc&limit=120", { headers: SB_H2 })
           .then(function(r){ return r.json(); })
           .then(function(rows) { setRunMatches({ rows: Array.isArray(rows) ? rows : [] }); });
@@ -17852,13 +17852,17 @@ function Top25Tab() {
         var line = function(p, key) {
           var mk = (p.recommendation||"").toUpperCase();
           var mkIcon = mk.indexOf("UNDER")>=0 ? "⬇️" : mk.indexOf("BTTS")>=0 ? "⚽" : "🏆";
+          var anTime = p.scraped_at ? new Date(p.scraped_at).toLocaleTimeString("fr-CA", { hour:"2-digit", minute:"2-digit" }) : "";
           return React.createElement("div", { key:key,
             style:{ display:"flex", alignItems:"center", justifyContent:"space-between", padding:"6px 2px",
               borderBottom:"1px solid var(--c-border)" } },
             React.createElement("span", { style:{ fontSize:11, color:"var(--c-ink-1)", overflow:"hidden", textOverflow:"ellipsis", whiteSpace:"nowrap", flex:1, minWidth:0 } },
               (countryFlag(p.league_country) ? countryFlag(p.league_country) + " " : "") + mkIcon + " " + p.home_team_name + " vs " + p.away_team_name),
-            React.createElement("span", { style:{ fontSize:11, fontWeight:700, fontFamily:"'JetBrains Mono',monospace", color:"var(--c-ink-2)", marginLeft:8, flexShrink:0 } },
-              (p.rec_confidence || 0) + "%")
+            React.createElement("div", { style:{ textAlign:"right", marginLeft:8, flexShrink:0 } },
+              React.createElement("div", { style:{ fontSize:11, fontWeight:700, fontFamily:"'JetBrains Mono',monospace", color:"var(--c-ink-2)" } },
+                (p.rec_confidence || 0) + "%"),
+              anTime && React.createElement("div", { style:{ fontSize:9, color:"var(--c-ink-3)" } }, "🔄 " + anTime)
+            )
           );
         };
         return React.createElement("div", null,
