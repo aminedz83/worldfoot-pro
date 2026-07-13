@@ -17634,13 +17634,33 @@ function Top25Tab() {
                   var fiable = total >= 15;
                   var color = !fiable ? "var(--c-ink-3)" : rate >= 75 ? "#27ae60" : rate >= 60 ? "#f39c12" : "#e74c3c";
                   var verdict = !fiable ? "" : rate >= 75 ? "✅" : rate >= 60 ? "⚠️" : "❌";
+                  // Spécialités par marché (depuis league_market_performance,
+                  // déjà chargé) : marchés avec 5+ matchs, du meilleur au moins bon.
+                  var mks = ((statsData.leagueMarkets) || []).filter(function(r) {
+                    return r.league_name === lg.league_name && (r.total || 0) >= 5;
+                  }).slice().sort(function(a, b) { return (b.rate || 0) - (a.rate || 0); });
+                  var mkIcon = function(m) {
+                    m = (m || "").toUpperCase();
+                    return m.indexOf("UNDER") >= 0 ? "⬇️" : m.indexOf("BTTS") >= 0 ? "⚽" : "🏆";
+                  };
                   return React.createElement("div", {
                     key: lg.league_name,
                     style:{ display:"flex", alignItems:"center", gap:8, padding:"10px 12px", background:"var(--c-card)", borderRadius:10, border:"1px solid var(--c-border)" }
                   },
                     React.createElement("div", { style:{ flex:1, minWidth:0 } },
                       React.createElement("div", { style:{ fontSize:12, fontWeight:700, color:"var(--c-ink)", whiteSpace:"nowrap", overflow:"hidden", textOverflow:"ellipsis" } }, leagueLabel(lg.league_country, lg.league_name)),
-                      React.createElement("div", { style:{ fontSize:10, color:"var(--c-ink-3)" } }, total + " matchs" + (fiable ? "" : " · pas encore assez"))
+                      React.createElement("div", { style:{ fontSize:10, color:"var(--c-ink-3)" } }, total + " matchs" + (fiable ? "" : " · pas encore assez")),
+                      mks.length > 0 && React.createElement("div", { style:{ display:"flex", gap:8, flexWrap:"wrap", marginTop:3 } },
+                        mks.map(function(m, mi) {
+                          var best = mi === 0 && mks.length > 1;
+                          return React.createElement("span", { key: m.market,
+                            style:{ fontSize:9, fontWeight: best ? 800 : 600,
+                              color: best ? "var(--c-jade)" : "var(--c-ink-3)",
+                              background: best ? "rgba(5,150,105,0.08)" : "transparent",
+                              padding: best ? "1px 6px" : "1px 0", borderRadius:4 }
+                          }, mkIcon(m.market) + " " + (m.rate != null ? m.rate + "%" : "—") + " (" + (m.total || 0) + ")");
+                        })
+                      )
                     ),
                     fiable
                       ? React.createElement("div", { style:{ display:"flex", alignItems:"center", gap:6 } },
