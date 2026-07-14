@@ -17805,6 +17805,22 @@ function Top25Tab() {
         var section = function(mk, label, icon) {
           var list = byMarket[mk] || [];
           if (!list.length) return null;
+          // Drapeau par nom de ligue (la table hints ne stocke pas le pays)
+          var flagFor = function(name) {
+            var F = {
+              "Azadegan League":"🇮🇷","Persian Gulf Pro League":"🇮🇷","Ligue 1 Tunisie":"🇹🇳",
+              "Primera Nacional":"🇦🇷","Premier Soccer League":"🇿🇦","Ligue 1 Algérie":"🇩🇿",
+              "Premier League Egypt":"🇪🇬","Superliga Albania":"🇦🇱","NPFL":"🇳🇬","Primera B":"🇦🇷",
+              "J1 League":"🇯🇵","Botola Pro":"🇲🇦","Super League 1":"🇬🇷","Liga I":"🇷🇴",
+              "First League":"🇧🇬","Premyer Liqa":"🇦🇿","Premier League Kazakhstan":"🇰🇿",
+              "Eredivisie":"🇳🇱","Bundesliga":"🇩🇪","Eliteserien":"🇳🇴","Allsvenskan":"🇸🇪",
+              "Super League China":"🇨🇳","Jupiler Pro League":"🇧🇪","MLS":"🇺🇸","Serie A Brazil":"🇧🇷",
+              "Super League Switzerland":"🇨🇭","Bundesliga Austria":"🇦🇹","Primeira Liga":"🇵🇹",
+              "Superliga Denmark":"🇩🇰","Premier Division Ireland":"🇮🇪","Championship":"🏴󠁧󠁢󠁥󠁮󠁧󠁿",
+              "League One":"🏴󠁧󠁢󠁥󠁮󠁧󠁿","Segunda Division":"🇪🇸","Eerste Divisie":"🇳🇱","1. Division":"🇳🇴"
+            };
+            return F[name] || "🏳️";
+          };
           return React.createElement("div", { key:mk, style:{ marginBottom:10 } },
             React.createElement("div", { style:{ fontSize:11, fontWeight:700, color:"var(--c-ink-2)", marginBottom:4 } }, icon + " " + label),
             list.map(function(r, i) {
@@ -17819,7 +17835,7 @@ function Top25Tab() {
                 style:{ display:"flex", alignItems:"center", justifyContent:"space-between", padding:"5px 2px",
                   borderBottom: i < list.length-1 ? "1px solid var(--c-border)" : "none" } },
                 React.createElement("div", { style:{ minWidth:0, flex:1 } },
-                  React.createElement("div", { style:{ fontSize:11, color:"var(--c-ink-1)", overflow:"hidden", textOverflow:"ellipsis", whiteSpace:"nowrap" } }, r.league),
+                  React.createElement("div", { style:{ fontSize:11, color:"var(--c-ink-1)", overflow:"hidden", textOverflow:"ellipsis", whiteSpace:"nowrap" } }, flagFor(r.league) + " " + r.league),
                   React.createElement("div", { style:{ fontSize:10, color:"#f39c12", letterSpacing:1 } }, stars)
                 ),
                 React.createElement("span", { style:{ fontSize:11, fontWeight:700, fontFamily:"'JetBrains Mono',monospace", color:vcol, marginLeft:8, flexShrink:0 } }, verdict)
