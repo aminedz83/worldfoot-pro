@@ -18475,6 +18475,15 @@ function Top25Tab() {
           // pari de SON jour, quelle que soit sa confiance. Les autres jours
           // gardent le choix automatique (plus haute confiance).
           var isOv = palierOverride && p.fixture_id === palierOverride;
+          // ── Éviter les COUPES à élimination / aller-retour ──────────────
+          // Le moteur ignore le score de la manche aller et l'enjeu de
+          // qualification -> confiance faussée (ex. Saburtalo-Flora, Champions
+          // League). On saute UNIQUEMENT les compétitions de CLUBS continentales
+          // (jouées en aller-retour). On GARDE la Coupe du Monde, l'Euro, la
+          // Copa America... (matchs SECS) et tous les championnats.
+          var lg = (p.league_name || "").toLowerCase();
+          var isCup = /champions league|europa league|conference league|libertadores|sudamericana|concacaf champions|caf champions|caf confederation|afc champions/.test(lg);
+          if (isCup && !isOv) return;
           if (!byDay[day] || isOv || (!byDay[day]._ov && p.rec_confidence > byDay[day]._conf)) {
             byDay[day] = { day:day, mdate:p.match_date, _conf:p.rec_confidence, _ov:isOv, cote:cote, rec:p.recommendation,
               correct:p.prediction_correct, home:p.home_team_name, away:p.away_team_name, country:p.league_country };
