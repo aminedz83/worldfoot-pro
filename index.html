@@ -16084,6 +16084,7 @@ function Top25Tab() {
   var _useStateGD = React.useState(null);  var guardsData   = _useStateGD[0]; var setGuardsData   = _useStateGD[1];
   var _useStateED = React.useState(null);  var edgeData     = _useStateED[0]; var setEdgeData     = _useStateED[1];
   var _useStateHD = React.useState(null);  var healthData   = _useStateHD[0]; var setHealthData   = _useStateHD[1];
+  var _useStateHints = React.useState(null); var hintsData   = _useStateHints[0]; var setHintsData = _useStateHints[1];
   var _useStateRM = React.useState(null);  var runMatches   = _useStateRM[0]; var setRunMatches   = _useStateRM[1];
   var _useStateCalib = React.useState(null); var calibData = _useStateCalib[0]; var setCalibData = _useStateCalib[1];
   var _useStateCalibM = React.useState("TOUS"); var calibMarket = _useStateCalibM[0]; var setCalibMarket = _useStateCalibM[1];
@@ -16254,7 +16255,39 @@ function Top25Tab() {
 
   // Effet des nouveaux signaux : volume/jour et taux AVANT vs APRÈS le 3 juil.
   // (date d'activation des garde-fous). Agrégé côté client depuis predictions.
-  // 🩺 Santé du système : début/fin du dernier run, volume 24h, vérifs en retard.
+  // 📋 Mon analyse des ligues (league_hints) croisée avec la performance
+  // réelle du moteur. Ton analyse vs ce que la machine mesure.
+  React.useEffect(function() {
+    if (viewMode !== "stats") return;
+    if (hintsData) return;
+    Promise.all([
+      fetch(SB_BASE2 + "league_hints?select=league_name,market,stars,rank_pos,stability&order=market.asc,rank_pos.asc", { headers: SB_H2 }).then(function(r){ return r.json(); }),
+      fetch(SB_BASE2 + "predictions?select=league_name,recommendation,prediction_correct&prediction_correct=not.is.null&limit=5000", { headers: SB_H2 }).then(function(r){ return r.json(); })
+    ]).then(function(res) {
+      var hints = Array.isArray(res[0]) ? res[0] : [];
+      var preds = Array.isArray(res[1]) ? res[1] : [];
+      if (!hints.length) { setHintsData({empty:true}); return; }
+      // Perf réelle par (ligue, marché)
+      var perf = {};
+      preds.forEach(function(p) {
+        var rec = (p.recommendation||"").toUpperCase();
+        var mk = rec.indexOf("UNDER")>=0 ? "UNDER" : rec.indexOf("BTTS")>=0 ? "BTTS" : "VICTOIRE";
+        var key = (p.league_name||"") + "|" + mk;
+        if (!perf[key]) perf[key] = { n:0, w:0 };
+        perf[key].n++;
+        if (p.prediction_correct) perf[key].w++;
+      });
+      var rows = hints.map(function(h) {
+        var pr = perf[(h.league_name||"") + "|" + h.market];
+        return {
+          league: h.league_name, market: h.market, stars: h.stars, stability: h.stability,
+          n: pr ? pr.n : 0,
+          taux: (pr && pr.n) ? Math.round(1000.0*pr.w/pr.n)/10 : null
+        };
+      });
+      setHintsData({ rows: rows });
+    }).catch(function() { setHintsData({error:true}); });
+  }, [viewMode]);
   React.useEffect(function() {
     if (viewMode !== "stats") return;
     if (healthData) return;
@@ -17746,6 +17779,63 @@ function Top25Tab() {
 
       // ─── SOUS-VUE PERFORMANCE ───
       React.createElement("div", null,
+
+    // === 📋 Mon analyse des ligues (hints) vs performance réelle ===
+    React.createElement("div", {
+      style: {
+        background: "var(--c-base)", borderRadius: 10,
+        border: "1px solid var(--c-border)",
+        margin: "10px 14px", padding: "10px 12px"
+      }
+    },
+      React.createElement("div", {
+        style: { fontSize:10, fontWeight:700, color:"var(--c-ink-3)",
+          textTransform:"uppercase", letterSpacing:"0.08em", marginBottom:2 }
+      }, "📋 Mon analyse des ligues vs moteur"),
+      React.createElement("div", {
+        style: { fontSize:10, color:"var(--c-ink-3)", marginBottom:8, fontStyle:"italic" }
+      }, "Mon classement (⭐) face au taux RÉEL du moteur · ✅ = le moteur confirme · ⚠️ = le moteur ne génère rien (ex. BTTS à corriger)"),
+      (function() {
+        if (!hintsData) return React.createElement("div", { style:{ textAlign:"center", padding:"12px 0", color:"var(--c-ink-3)", fontSize:11 } }, "Chargement…");
+        if (hintsData.error) return React.createElement("div", { style:{ textAlign:"center", padding:"12px 0", color:"var(--c-ink-3)", fontSize:11 } }, "Données indisponibles");
+        if (hintsData.empty) return React.createElement("div", { style:{ textAlign:"center", padding:"12px 0", color:"var(--c-ink-3)", fontSize:11 } }, "Table league_hints vide — lance le SQL d'abord");
+        var rows = hintsData.rows || [];
+        var byMarket = { "UNDER": [], "BTTS": [] };
+        rows.forEach(function(r){ if (byMarket[r.market]) byMarket[r.market].push(r); });
+        var section = function(mk, label, icon) {
+          var list = byMarket[mk] || [];
+          if (!list.length) return null;
+          return React.createElement("div", { key:mk, style:{ marginBottom:10 } },
+            React.createElement("div", { style:{ fontSize:11, fontWeight:700, color:"var(--c-ink-2)", marginBottom:4 } }, icon + " " + label),
+            list.map(function(r, i) {
+              var stars = "";
+              for (var s=0; s<5; s++) stars += (s < r.stars ? "★" : "☆");
+              var verdict, vcol;
+              if (r.n === 0) { verdict = "⚠️ 0 prédit"; vcol = "#e74c3c"; }
+              else if (r.n < 8) { verdict = r.taux + "% (" + r.n + ")"; vcol = "var(--c-ink-3)"; }
+              else if (r.taux >= 60) { verdict = "✅ " + r.taux + "% (" + r.n + ")"; vcol = "#27ae60"; }
+              else { verdict = r.taux + "% (" + r.n + ")"; vcol = "#f39c12"; }
+              return React.createElement("div", { key:i,
+                style:{ display:"flex", alignItems:"center", justifyContent:"space-between", padding:"5px 2px",
+                  borderBottom: i < list.length-1 ? "1px solid var(--c-border)" : "none" } },
+                React.createElement("div", { style:{ minWidth:0, flex:1 } },
+                  React.createElement("div", { style:{ fontSize:11, color:"var(--c-ink-1)", overflow:"hidden", textOverflow:"ellipsis", whiteSpace:"nowrap" } }, r.league),
+                  React.createElement("div", { style:{ fontSize:10, color:"#f39c12", letterSpacing:1 } }, stars)
+                ),
+                React.createElement("span", { style:{ fontSize:11, fontWeight:700, fontFamily:"'JetBrains Mono',monospace", color:vcol, marginLeft:8, flexShrink:0 } }, verdict)
+              );
+            })
+          );
+        };
+        return React.createElement("div", null,
+          section("UNDER", "Ligues Under", "⬇️"),
+          section("BTTS", "Ligues BTTS", "⚽"),
+          React.createElement("div", {
+            style:{ fontSize:9, color:"var(--c-ink-3)", marginTop:2, textAlign:"center", fontStyle:"italic" }
+          }, "« 0 prédit » = le moteur n'a fait aucune prédiction dans cette ligue/marché · taux fiable dès 8 paris")
+        );
+      })()
+    ),
 
     // === Ligues par marché (ROI) — outil de tri ===
     React.createElement("div", {
