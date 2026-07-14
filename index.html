@@ -16312,7 +16312,7 @@ function Top25Tab() {
               // MÊMES données que le palier : tout depuis start_date, pour
               // reproduire EXACTEMENT son "Prochain pari" (1er jour dont le
               // pari est futur ou sans résultat), et non une approximation.
-              fetch(SB_BASE2 + "predictions?select=fixture_id,home_team_name,away_team_name,match_date,rec_confidence,prediction_correct" +
+              fetch(SB_BASE2 + "predictions?select=fixture_id,home_team_name,away_team_name,match_date,rec_confidence,prediction_correct,league_name" +
                     "&match_date=gte." + pstart + "&order=match_date.asc&limit=3000", { headers: SB_H2 }).then(function(r){ return r.json(); })
             ]).then(function(res) {
               var rows = Array.isArray(res[0]) ? res[0] : [];
@@ -16323,6 +16323,11 @@ function Top25Tab() {
                 var day = (p.match_date || "").slice(0,10);
                 if (!day) return;
                 var isOv = ov && p.fixture_id === ov;
+                // Même filtre que le palier : sauter les coupes continentales
+                // aller-retour (sauf si le match est imposé).
+                var lg = (p.league_name || "").toLowerCase();
+                var isCup = /champions league|europa league|conference league|libertadores|sudamericana|concacaf champions|caf champions|caf confederation|afc champions/.test(lg);
+                if (isCup && !isOv) return;
                 if (!byDay[day] || isOv || (!byDay[day]._ov && (p.rec_confidence||0) > (byDay[day]._conf||0))) {
                   byDay[day] = { _conf: p.rec_confidence, _ov: isOv, fid: p.fixture_id,
                     home: p.home_team_name, away: p.away_team_name,
