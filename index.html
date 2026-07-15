@@ -16262,27 +16262,38 @@ function Top25Tab() {
     if (hintsData) return;
     Promise.all([
       fetch(SB_BASE2 + "league_hints?select=league_name,market,stars,rank_pos,stability&order=market.asc,rank_pos.asc", { headers: SB_H2 }).then(function(r){ return r.json(); }),
-      fetch(SB_BASE2 + "predictions?select=league_name,recommendation,prediction_correct&prediction_correct=not.is.null&limit=5000", { headers: SB_H2 }).then(function(r){ return r.json(); })
+      fetch(SB_BASE2 + "predictions?select=league_name,recommendation,prediction_correct,pinnacle_under25,pinnacle_btts,pinnacle_home,pinnacle_away&prediction_correct=not.is.null&limit=5000", { headers: SB_H2 }).then(function(r){ return r.json(); })
     ]).then(function(res) {
       var hints = Array.isArray(res[0]) ? res[0] : [];
       var preds = Array.isArray(res[1]) ? res[1] : [];
       if (!hints.length) { setHintsData({empty:true}); return; }
-      // Perf réelle par (ligue, marché)
+      // Perf réelle + profit aux cotes réelles par (ligue, marché)
       var perf = {};
       preds.forEach(function(p) {
         var rec = (p.recommendation||"").toUpperCase();
         var mk = rec.indexOf("UNDER")>=0 ? "UNDER" : rec.indexOf("BTTS")>=0 ? "BTTS" : "VICTOIRE";
         var key = (p.league_name||"") + "|" + mk;
-        if (!perf[key]) perf[key] = { n:0, w:0 };
+        if (!perf[key]) perf[key] = { n:0, w:0, profit:0, coted:0 };
         perf[key].n++;
         if (p.prediction_correct) perf[key].w++;
+        // Cote du marché recommandé pour le ROI
+        var cote = mk==="UNDER" ? p.pinnacle_under25
+                 : mk==="BTTS"  ? p.pinnacle_btts
+                 : (rec.indexOf("EXT")>=0 || rec.indexOf("AWAY")>=0) ? p.pinnacle_away : p.pinnacle_home;
+        cote = parseFloat(cote);
+        if (cote && cote > 1) {
+          perf[key].coted++;
+          perf[key].profit += p.prediction_correct ? (cote - 1) : -1;
+        }
       });
       var rows = hints.map(function(h) {
         var pr = perf[(h.league_name||"") + "|" + h.market];
         return {
           league: h.league_name, market: h.market, stars: h.stars, stability: h.stability,
           n: pr ? pr.n : 0,
-          taux: (pr && pr.n) ? Math.round(1000.0*pr.w/pr.n)/10 : null
+          taux: (pr && pr.n) ? Math.round(1000.0*pr.w/pr.n)/10 : null,
+          coted: pr ? pr.coted : 0,
+          roi: (pr && pr.coted) ? Math.round(1000.0*pr.profit/pr.coted)/10 : null
         };
       });
       setHintsData({ rows: rows });
@@ -17826,19 +17837,27 @@ function Top25Tab() {
             list.map(function(r, i) {
               var stars = "";
               for (var s=0; s<5; s++) stars += (s < r.stars ? "★" : "☆");
-              var verdict, vcol;
-              if (r.n === 0) { verdict = "⚠️ 0 prédit"; vcol = "#e74c3c"; }
-              else if (r.n < 8) { verdict = r.taux + "% (" + r.n + ")"; vcol = "var(--c-ink-3)"; }
-              else if (r.taux >= 60) { verdict = "✅ " + r.taux + "% (" + r.n + ")"; vcol = "#27ae60"; }
-              else { verdict = r.taux + "% (" + r.n + ")"; vcol = "#f39c12"; }
+              var tauxTxt, tauxCol;
+              if (r.n === 0) { tauxTxt = "⚠️ 0 prédit"; tauxCol = "#e74c3c"; }
+              else if (r.n < 8) { tauxTxt = r.taux + "% · " + r.n + " matchs"; tauxCol = "var(--c-ink-3)"; }
+              else if (r.taux >= 60) { tauxTxt = "✅ " + r.taux + "% · " + r.n + " matchs"; tauxCol = "#27ae60"; }
+              else { tauxTxt = r.taux + "% · " + r.n + " matchs"; tauxCol = "#f39c12"; }
+              var roiTxt = null, roiCol = "var(--c-ink-3)";
+              if (r.roi !== null) {
+                roiTxt = "ROI " + (r.roi > 0 ? "+" : "") + r.roi + "% (" + r.coted + " cotés)";
+                roiCol = r.roi > 3 ? "#27ae60" : r.roi >= 0 ? "#f39c12" : "#e74c3c";
+              }
               return React.createElement("div", { key:i,
-                style:{ display:"flex", alignItems:"center", justifyContent:"space-between", padding:"5px 2px",
+                style:{ display:"flex", alignItems:"center", justifyContent:"space-between", padding:"6px 2px",
                   borderBottom: i < list.length-1 ? "1px solid var(--c-border)" : "none" } },
                 React.createElement("div", { style:{ minWidth:0, flex:1 } },
                   React.createElement("div", { style:{ fontSize:11, color:"var(--c-ink-1)", overflow:"hidden", textOverflow:"ellipsis", whiteSpace:"nowrap" } }, flagFor(r.league) + " " + r.league),
                   React.createElement("div", { style:{ fontSize:10, color:"#f39c12", letterSpacing:1 } }, stars)
                 ),
-                React.createElement("span", { style:{ fontSize:11, fontWeight:700, fontFamily:"'JetBrains Mono',monospace", color:vcol, marginLeft:8, flexShrink:0 } }, verdict)
+                React.createElement("div", { style:{ textAlign:"right", marginLeft:8, flexShrink:0 } },
+                  React.createElement("div", { style:{ fontSize:11, fontWeight:700, fontFamily:"'JetBrains Mono',monospace", color:tauxCol } }, tauxTxt),
+                  roiTxt && React.createElement("div", { style:{ fontSize:10, fontWeight:700, fontFamily:"'JetBrains Mono',monospace", color:roiCol } }, roiTxt)
+                )
               );
             })
           );
@@ -17848,7 +17867,7 @@ function Top25Tab() {
           section("BTTS", "Ligues BTTS", "⚽"),
           React.createElement("div", {
             style:{ fontSize:9, color:"var(--c-ink-3)", marginTop:2, textAlign:"center", fontStyle:"italic" }
-          }, "« 0 prédit » = le moteur n'a fait aucune prédiction dans cette ligue/marché · taux fiable dès 8 paris")
+          }, "« 0 prédit » = aucune prédiction du moteur · taux fiable dès 8 matchs · ROI = profit réel aux cotes Pinnacle (le taux ne suffit pas : 70% à cote 1.2 = perte)")
         );
       })()
     ),
