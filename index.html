@@ -16261,22 +16261,21 @@ function Top25Tab() {
     if (viewMode !== "stats") return;
     if (hintsData) return;
     Promise.all([
-      fetch(SB_BASE2 + "league_hints?select=league_name,market,stars,rank_pos,stability&order=market.asc,rank_pos.asc", { headers: SB_H2 }).then(function(r){ return r.json(); }),
-      fetch(SB_BASE2 + "predictions?select=league_name,recommendation,prediction_correct,pinnacle_under25,pinnacle_btts,pinnacle_home,pinnacle_away&prediction_correct=not.is.null&limit=5000", { headers: SB_H2 }).then(function(r){ return r.json(); })
+      fetch(SB_BASE2 + "league_hints?select=league_id,league_name,market,stars,rank_pos,stability&order=market.asc,rank_pos.asc", { headers: SB_H2 }).then(function(r){ return r.json(); }),
+      fetch(SB_BASE2 + "predictions?select=league_id,recommendation,prediction_correct,pinnacle_under25,pinnacle_btts,pinnacle_home,pinnacle_away&prediction_correct=not.is.null&limit=5000", { headers: SB_H2 }).then(function(r){ return r.json(); })
     ]).then(function(res) {
       var hints = Array.isArray(res[0]) ? res[0] : [];
       var preds = Array.isArray(res[1]) ? res[1] : [];
       if (!hints.length) { setHintsData({empty:true}); return; }
-      // Perf réelle + profit aux cotes réelles par (ligue, marché)
+      // Perf réelle + profit par (league_id, marché) — liaison par ID (fiable)
       var perf = {};
       preds.forEach(function(p) {
         var rec = (p.recommendation||"").toUpperCase();
         var mk = rec.indexOf("UNDER")>=0 ? "UNDER" : rec.indexOf("BTTS")>=0 ? "BTTS" : "VICTOIRE";
-        var key = (p.league_name||"") + "|" + mk;
+        var key = p.league_id + "|" + mk;
         if (!perf[key]) perf[key] = { n:0, w:0, profit:0, coted:0 };
         perf[key].n++;
         if (p.prediction_correct) perf[key].w++;
-        // Cote du marché recommandé pour le ROI
         var cote = mk==="UNDER" ? p.pinnacle_under25
                  : mk==="BTTS"  ? p.pinnacle_btts
                  : (rec.indexOf("EXT")>=0 || rec.indexOf("AWAY")>=0) ? p.pinnacle_away : p.pinnacle_home;
@@ -16287,7 +16286,7 @@ function Top25Tab() {
         }
       });
       var rows = hints.map(function(h) {
-        var pr = perf[(h.league_name||"") + "|" + h.market];
+        var pr = perf[h.league_id + "|" + h.market];
         return {
           league: h.league_name, market: h.market, stars: h.stars, stability: h.stability,
           n: pr ? pr.n : 0,
@@ -17816,23 +17815,20 @@ function Top25Tab() {
         var section = function(mk, label, icon) {
           var list = byMarket[mk] || [];
           if (!list.length) return null;
-          // Drapeau par nom de ligue (la table hints ne stocke pas le pays)
+          // Drapeau déduit du pays entre parenthèses du nom API
           var flagFor = function(name) {
+            var m = (name||"").match(/\(([^)]+)\)/);
+            var country = m ? m[1] : "";
             var F = {
-              "Azadegan League":"🇮🇷","Persian Gulf Pro League":"🇮🇷","Ligue 1 Tunisie":"🇹🇳",
-              "Primera Nacional":"🇦🇷","Premier Soccer League":"🇿🇦","Ligue 1 Algérie":"🇩🇿",
-              "Premier League Egypt":"🇪🇬","Superliga Albania":"🇦🇱","NPFL":"🇳🇬","Primera B":"🇦🇷",
-              "J1 League":"🇯🇵","Botola Pro":"🇲🇦","Super League 1":"🇬🇷","Liga I":"🇷🇴",
-              "First League":"🇧🇬","Premyer Liqa":"🇦🇿","Premier League Kazakhstan":"🇰🇿",
-              "Premier League Kenya":"🇰🇪","Premier League Uganda":"🇺🇬","Primera B Metropolitana":"🇦🇷",
-              "Primera B Colombia":"🇨🇴","Liga Pro Serie B":"🇪🇨","Liga Pro":"🇪🇨",
-              "Eredivisie":"🇳🇱","Bundesliga":"🇩🇪","Eliteserien":"🇳🇴","Allsvenskan":"🇸🇪",
-              "Super League China":"🇨🇳","Jupiler Pro League":"🇧🇪","MLS":"🇺🇸","Serie A Brazil":"🇧🇷",
-              "Super League Switzerland":"🇨🇭","Bundesliga Austria":"🇦🇹","Primeira Liga":"🇵🇹",
-              "Superliga Denmark":"🇩🇰","Premier Division Ireland":"🇮🇪","Championship":"🏴󠁧󠁢󠁥󠁮󠁧󠁿",
-              "League One":"🏴󠁧󠁢󠁥󠁮󠁧󠁿","Segunda Division":"🇪🇸","Eerste Divisie":"🇳🇱","1. Division":"🇳🇴"
+              "Iran":"🇮🇷","Tunisia":"🇹🇳","Argentina":"🇦🇷","South Africa":"🇿🇦","Algeria":"🇩🇿",
+              "Egypt":"🇪🇬","Albania":"🇦🇱","Nigeria":"🇳🇬","Colombia":"🇨🇴","Ecuador":"🇪🇨",
+              "Japan":"🇯🇵","Morocco":"🇲🇦","Greece":"🇬🇷","Romania":"🇷🇴","Bulgaria":"🇧🇬",
+              "Azerbaijan":"🇦🇿","Kazakhstan":"🇰🇿","Netherlands":"🇳🇱","Germany":"🇩🇪","Norway":"🇳🇴",
+              "Sweden":"🇸🇪","China":"🇨🇳","Belgium":"🇧🇪","USA":"🇺🇸","Brazil":"🇧🇷",
+              "Switzerland":"🇨🇭","Austria":"🇦🇹","Portugal":"🇵🇹","Denmark":"🇩🇰","Ireland":"🇮🇪",
+              "England":"🏴󠁧󠁢󠁥󠁮󠁧󠁿","Spain":"🇪🇸"
             };
-            return F[name] || "🏳️";
+            return F[country] || "🏳️";
           };
           return React.createElement("div", { key:mk, style:{ marginBottom:10 } },
             React.createElement("div", { style:{ fontSize:11, fontWeight:700, color:"var(--c-ink-2)", marginBottom:4 } }, icon + " " + label),
