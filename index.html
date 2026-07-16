@@ -17127,16 +17127,26 @@ function Top25Tab() {
           React.createElement("div", {
             style: { display:"flex", justifyContent:"space-between", marginBottom:5 }
           },
-            React.createElement("div", { style:{ display:"flex", alignItems:"center", gap:6 } },
+            React.createElement("div", { style:{ display:"flex", alignItems:"center", gap:6, flexWrap:"wrap" } },
               React.createElement("span", { style:{ fontSize:11, color:"var(--c-ink-3)" } }, "Confiance"),
-              (ctx && typeof ctx.value_pct === "number") ? React.createElement("span", {
-                style: {
-                  fontSize:9, fontWeight:700, padding:"2px 6px", borderRadius:4,
-                  fontFamily:"'JetBrains Mono',monospace",
-                  background: ctx.value_pct >= 5 ? "rgba(46,204,113,0.12)" : ctx.value_pct >= 0 ? "rgba(243,156,18,0.10)" : "rgba(231,76,60,0.10)",
-                  color: ctx.value_pct >= 5 ? "#2ecc71" : ctx.value_pct >= 0 ? "#f39c12" : "#e74c3c"
-                }
-              }, "💎 Value " + (ctx.value_pct > 0 ? "+" : "") + ctx.value_pct + "%") : null
+              (ctx && typeof ctx.value_pct === "number") ? (function() {
+                var v = ctx.value_pct;
+                // Zones fondées sur le ROI réel mesuré :
+                // 5-15% = sweet spot rentable (+2.6%), 15%+ = surconfiance (piège),
+                // 0-5% et négatif = pas d'edge.
+                var isSweet = v >= 5 && v < 15;
+                var bg = isSweet ? "rgba(46,204,113,0.15)" : v >= 15 ? "rgba(155,89,182,0.12)" : v >= 0 ? "rgba(243,156,18,0.10)" : "rgba(231,76,60,0.10)";
+                var col = isSweet ? "#27ae60" : v >= 15 ? "#9b59b6" : v >= 0 ? "#f39c12" : "#e74c3c";
+                var tag = isSweet ? " ✓ modérée" : v >= 15 ? " ⚠︎ forte" : "";
+                return React.createElement("span", {
+                  style: {
+                    fontSize:9, fontWeight:700, padding:"2px 6px", borderRadius:4,
+                    fontFamily:"'JetBrains Mono',monospace",
+                    border: isSweet ? "1px solid #27ae60" : "none",
+                    background: bg, color: col
+                  }
+                }, "💎 " + (v > 0 ? "+" : "") + v + "%" + tag);
+              })() : null
             ),
             React.createElement("span", {
               style: {
