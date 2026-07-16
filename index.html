@@ -17133,19 +17133,27 @@ function Top25Tab() {
                 var v = ctx.value_pct;
                 // Zones fondées sur le ROI réel mesuré :
                 // 5-15% = sweet spot rentable (+2.6%), 15%+ = surconfiance (piège),
-                // 0-5% et négatif = pas d'edge.
+                // 0-5% = pas d'edge, négatif = marché contre toi.
                 var isSweet = v >= 5 && v < 15;
                 var bg = isSweet ? "rgba(46,204,113,0.15)" : v >= 15 ? "rgba(155,89,182,0.12)" : v >= 0 ? "rgba(243,156,18,0.10)" : "rgba(231,76,60,0.10)";
                 var col = isSweet ? "#27ae60" : v >= 15 ? "#9b59b6" : v >= 0 ? "#f39c12" : "#e74c3c";
                 var tag = isSweet ? " ✓ modérée" : v >= 15 ? " ⚠︎ forte" : "";
+                var desc = isSweet
+                  ? "💎 VALUE MODÉRÉE (5-15%)\n\nC'est le \"sweet spot\" : sur tes données, cette tranche est la seule rentable (+2.6% de ROI). Le moteur a un léger avantage réel sur le marché. C'est le meilleur signal pour parier."
+                  : v >= 15
+                  ? "⚠︎ VALUE FORTE (15%+)\n\nAttention piège : sur tes données, cette tranche PERD de l'argent (-10.4% de ROI) malgré le gros chiffre. Une value énorme = surconfiance du moteur, pas une aubaine. À éviter jusqu'à la calibration."
+                  : v >= 0
+                  ? "💎 VALUE FAIBLE (0-5%)\n\nLe moteur est presque d'accord avec le marché : pas de vrai avantage. ROI mesuré négatif (-15%). Peu d'intérêt pour parier."
+                  : "🔴 VALUE NÉGATIVE\n\nLe marché est plus optimiste que ton moteur sur ce pari : la cote paie MOINS que le risque estimé. Tu gagnes peut-être souvent, mais tu perds de l'argent (ROI -13.9%). À éviter — c'est un favori mal payé.";
                 return React.createElement("span", {
+                  onClick: function(e){ e.stopPropagation(); if (typeof window !== "undefined" && window.alert) window.alert(desc); },
                   style: {
-                    fontSize:9, fontWeight:700, padding:"2px 6px", borderRadius:4,
+                    fontSize:9, fontWeight:700, padding:"2px 6px", borderRadius:4, cursor:"pointer",
                     fontFamily:"'JetBrains Mono',monospace",
                     border: isSweet ? "1px solid #27ae60" : "none",
                     background: bg, color: col
                   }
-                }, "💎 " + (v > 0 ? "+" : "") + v + "%" + tag);
+                }, "💎 " + (v > 0 ? "+" : "") + v + "%" + tag + " ⓘ");
               })() : null
             ),
             React.createElement("span", {
