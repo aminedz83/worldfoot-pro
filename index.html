@@ -16600,7 +16600,7 @@ function Top25Tab() {
       SB_BASE2 + "predictions?match_date=gte." + palierStart +
       "&order=match_date.asc&select=fixture_id,match_date,rec_confidence,recommendation,prediction_correct," +
       "home_team_name,away_team_name,league_name,league_country,pinnacle_home,pinnacle_away," +
-      "pinnacle_draw,pinnacle_under25,pinnacle_btts&limit=3000",
+      "pinnacle_draw,pinnacle_under25,pinnacle_btts,match_status&limit=3000",
       { headers: SB_H2 }
     )
     .then(function(r){ return r.json(); })
@@ -18724,6 +18724,11 @@ function Top25Tab() {
         if (palierData) palierData.forEach(function(p) {
           var day = (p.match_date || "").slice(0,10);
           if (!day) return;
+          // ── Match NON joué (reporté/annulé/forfait) : on le saute ───────
+          // match_status renseigné par verify_results.py (PST/CANC/ABD...).
+          // Le palier passe automatiquement au match suivant.
+          var deadSt = p.match_status && ["PST","CANC","ABD","AWD","WO","SUSP","INT","TBD"].indexOf(p.match_status) >= 0;
+          if (deadSt) return;
           var cote = paliCote(p);
           if (!cote || cote <= 1) return;
           // Match IMPOSÉ (palier_state.override_fixture_id) : il devient le
