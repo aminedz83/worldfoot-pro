@@ -867,7 +867,7 @@ def odds_data(fid):
 # ══════════════════════════════════════════════════════════════════════════════
 
 def compute_scores(hi,ai,h2h_d,xgt,inj_d,sk,wth,ca,odd,
-                   stds,hid,aid,tier,is_nat,wr=""):
+                   stds,hid,aid,tier,is_nat,wr="",lid=None):
 
     # Under 2.5
     if   xgt>=3.0: bu=15
@@ -994,9 +994,16 @@ def compute_scores(hi,ai,h2h_d,xgt,inj_d,sk,wth,ca,odd,
                 vs=round(min(bv+7,88),1)
 
     cands=[]
+    # ── TEST Chine (league_id 169) : seuil BTTS abaissé 72 -> 68 ──────────
+    # La Super League China est une ligue à fort taux BTTS (~80% réel) mais
+    # ses matchs flottent juste sous le seuil (ex. 70-71) -> le moteur n'en
+    # génère presque aucun. On teste un seuil abaissé POUR CETTE LIGUE SEULE.
+    # Cotes présentes (pinnacle_btts ~1.35) donc ROI mesurable.
+    # Réversible : supprimer ces 2 lignes pour revenir au seuil normal.
+    seuil_btts = 68 if lid == 169 else MIN_CONF
     # Under 2.5 exclu pour CdM et compétitions nationales (BTTS et Victoire plus pertinents)
     if us>=MIN_CONF and not is_nat: cands.append(("UNDER 2.5", us))
-    if bs>=MIN_CONF:               cands.append(("BTTS",        bs))
+    if bs>=seuil_btts:             cands.append(("BTTS",        bs))
     if vs and vs>=MIN_CONF and sl: cands.append((f"VICTOIRE {sl}", vs))
     if not cands: return None
 
@@ -1160,7 +1167,7 @@ def process(fix, li):
     ai_adj = ai
 
     res  = compute_scores(hi_adj,ai_adj,h2h_d,xgt,inj_d,sk,wth,ca,odd,
-                          stds,home["id"],away["id"],tier,is_nat,wr)
+                          stds,home["id"],away["id"],tier,is_nat,wr,lid)
     if not res:
         print(f"      [SKIP] Signal insuffisant")
         return False
