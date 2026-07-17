@@ -16355,7 +16355,7 @@ function Top25Tab() {
               // MÊMES données que le palier : tout depuis start_date, pour
               // reproduire EXACTEMENT son "Prochain pari" (1er jour dont le
               // pari est futur ou sans résultat), et non une approximation.
-              fetch(SB_BASE2 + "predictions?select=fixture_id,home_team_name,away_team_name,match_date,rec_confidence,prediction_correct,league_name" +
+              fetch(SB_BASE2 + "predictions?select=fixture_id,home_team_name,away_team_name,match_date,rec_confidence,prediction_correct,league_name,match_status" +
                     "&match_date=gte." + pstart + "&order=match_date.asc&limit=3000", { headers: SB_H2 }).then(function(r){ return r.json(); })
             ]).then(function(res) {
               var rows = Array.isArray(res[0]) ? res[0] : [];
@@ -16366,6 +16366,8 @@ function Top25Tab() {
                 var day = (p.match_date || "").slice(0,10);
                 if (!day) return;
                 var isOv = ov && p.fixture_id === ov;
+                // Sauter les matchs reportés/annulés/forfait (comme le palier)
+                if (p.match_status && ["PST","CANC","ABD","AWD","WO","SUSP","INT","TBD"].indexOf(p.match_status) >= 0) return;
                 // Même filtre que le palier : sauter les coupes continentales
                 // aller-retour (sauf si le match est imposé).
                 var lg = (p.league_name || "").toLowerCase();
