@@ -18428,6 +18428,28 @@ function Top25Tab() {
       }, "Chargement...") :
 
       React.createElement("div", null,
+        (function(){
+          // Stats RÉELLES des 4 zones value, calculées en direct depuis les
+          // paris vérifiés à cote (value_pct présent). Alimente les messages.
+          var Z = { forte:{n:0,w:0,roi:0,prof:0}, mod:{n:0,w:0,roi:0,prof:0},
+                    faible:{n:0,w:0,roi:0,prof:0}, neg:{n:0,w:0,roi:0,prof:0} };
+          histResults.forEach(function(x){
+            if (typeof x.value_pct !== "number" || x.prediction_correct === null || x.prediction_correct === undefined) return;
+            var v = x.value_pct;
+            var z = v >= 15 ? "forte" : v >= 5 ? "mod" : v >= 0 ? "faible" : "neg";
+            Z[z].n++;
+            if (x.prediction_correct) Z[z].w++;
+            // profit approx : (100+value)/conf - 1 si gagné, -1 sinon
+            var g = (100 + v) / (x.rec_confidence || 100) - 1;
+            Z[z].prof += x.prediction_correct ? g : -1;
+          });
+          ["forte","mod","faible","neg"].forEach(function(k){
+            Z[k].roi = Z[k].n ? Math.round(1000.0*Z[k].prof/Z[k].n)/10 : null;
+            Z[k].taux = Z[k].n ? Math.round(1000.0*Z[k].w/Z[k].n)/10 : null;
+          });
+          window.__valueZones = Z;   // accessible dans le onClick de chaque badge
+          return null;
+        })(),
         histResults.filter(function(r) {
           var rec = (r.recommendation||"").toUpperCase();
           if (histMarket==="VALUE") { if (typeof r.value_pct !== "number") return false; }
@@ -18488,16 +18510,28 @@ function Top25Tab() {
                 var bg = isSweet ? "rgba(46,204,113,0.15)" : v >= 15 ? "rgba(155,89,182,0.12)" : v >= 0 ? "rgba(243,156,18,0.10)" : "rgba(231,76,60,0.10)";
                 var col = isSweet ? "#27ae60" : v >= 15 ? "#9b59b6" : v >= 0 ? "#f39c12" : "#e74c3c";
                 var tag = isSweet ? "✓ modérée" : v >= 15 ? "⚠︎ forte" : v >= 0 ? "faible" : "négative";
-                var desc = isSweet
-                  ? "💎 VALUE MODÉRÉE (5-15%)\n\nLe \"sweet spot\" : la seule tranche rentable sur tes données (+2.6% ROI). Le moteur a un léger avantage réel sur le marché. Le meilleur profil de pari."
-                  : v >= 15
-                  ? "⚠︎ VALUE FORTE (15%+)\n\nPiège : cette tranche perd de l'argent (-10.4% ROI) malgré le gros chiffre. Une value énorme = surconfiance du moteur, pas une aubaine."
-                  : v >= 0
-                  ? "💎 VALUE FAIBLE (0-5%)\n\nLe moteur suit le marché : pas de vrai avantage. ROI -15%."
-                  : "🔴 VALUE NÉGATIVE\n\nLe marché paie moins que le risque estimé. Tu gagnes peut-être souvent mais tu perds de l'argent (-13.9% ROI). Favori mal payé.";
+                var zoneKey = v >= 15 ? "forte" : v >= 5 ? "mod" : v >= 0 ? "faible" : "neg";
+                var zoneLbl = v >= 15 ? "forte (15%+)" : v >= 5 ? "modérée (5-15%)" : v >= 0 ? "faible (0-5%)" : "négative";
+                var resTxt = r.prediction_correct ? "GAGNÉ ✓" : "PERDU ✕";
                 return React.createElement("div", { style:{ marginBottom:8 } },
                   React.createElement("span", {
-                    onClick: function(e){ e.stopPropagation(); if (window.alert) window.alert(desc); },
+                    onClick: function(e){
+                      e.stopPropagation();
+                      var Z = (window.__valueZones && window.__valueZones[zoneKey]) || null;
+                      var msg = "💎 CE PARI\n\nValue : " + (v>0?"+":"") + v + "%  ·  " + resTxt + "\nZone : " + zoneLbl + "\n\n";
+                      if (Z && Z.n > 0) {
+                        msg += "📊 TA ZONE " + zoneLbl.toUpperCase() + " (données réelles)\n"
+                             + "• " + Z.n + " paris vérifiés\n"
+                             + "• Taux : " + Z.taux + "%\n"
+                             + "• ROI : " + (Z.roi>0?"+":"") + Z.roi + "%\n\n";
+                        msg += Z.roi >= 3 ? "→ Zone RENTABLE chez toi. Bon profil."
+                             : Z.roi >= 0 ? "→ Zone à l'équilibre. Prudence."
+                             : "→ Zone PERDANTE chez toi (" + Z.roi + "%). À éviter.";
+                      } else {
+                        msg += "(Pas encore assez de paris vérifiés dans cette zone pour un ROI fiable.)";
+                      }
+                      if (window.alert) window.alert(msg);
+                    },
                     style:{
                       fontSize:9, fontWeight:700, padding:"2px 7px", borderRadius:4, cursor:"pointer",
                       fontFamily:"'JetBrains Mono',monospace",
