@@ -23,6 +23,13 @@ HEADERS  = {"x-apisports-key": API_KEY}
 
 supabase = create_client(SUPA_URL, SUPA_KEY)
 
+# Statuts API "match NON joue" : reporte / annule / abandonne / forfait /
+# suspendu / interrompu / date indeterminee. Ces matchs n'auront jamais de
+# resultat exploitable -> on les MARQUE (match_status) pour que le palier,
+# le ticket et la selection les sautent automatiquement, au lieu de les
+# laisser "en attente" pour toujours.
+DEAD_STATUSES = {"PST", "CANC", "ABD", "AWD", "WO", "SUSP", "INT", "TBD"}
+
 
 def api(endpoint, params={}):
     try:
@@ -38,12 +45,6 @@ def api(endpoint, params={}):
 
 
 def get_unverified_predictions():
-    """
-    Fenêtre : 30 jours en arrière jusqu'à maintenant (inclus aujourd'hui).
-    Large pour qu'aucun match vérifiable ne soit abandonné (petites ligues lentes,
-    matchs reportés puis rejoués) ; borné pour ne pas réinterroger sans fin les
-    matchs annulés qui n'auront jamais de résultat.
-    """
     now_iso      = datetime.utcnow().isoformat()
     window_start = (datetime.utcnow() - timedelta(days=30)).date().isoformat()
     try:
@@ -68,27 +69,26 @@ def get_fixture_result(fixture_id):
         return None
     fix    = data[0]
     status = fix.get("fixture", {}).get("status", {}).get("short", "")
+
+    # Match NON joue (reporte/annule/forfait/abandonne...) : marqueur special
+    # -> main() ecrira match_status et sortira le match du "en attente".
+    if status in DEAD_STATUSES:
+        print(f"    [MORT] status API = '{status}' (match non joue) -> marque a sauter")
+        return {"dead_status": status}
+
     if status not in ("FT", "AET", "PEN"):
-        print(f"    [SKIP] status API = '{status}' (pas encore terminé)")
+        print(f"    [SKIP] status API = '{status}' (pas encore termine)")
         return None
     goals = fix.get("goals", {})
     gh    = goals.get("home")
     ga    = goals.get("away")
-    # ── PROLONGATION / PENALTIES : score à 90 MINUTES obligatoire ──────
-    # Tous les paris (1X2, Double chance, Under 2.5, BTTS) se règlent sur
-    # le temps réglementaire. Or le champ "goals" de l'API inclut la
-    # prolongation pour les matchs AET/PEN -> il faussait TOUS les marchés :
-    # une VICTOIRE gagnée en prolongation était créditée à tort (le vrai
-    # pari 1X2 est perdu sur le nul à 90'), une DOUBLE CHANCE réellement
-    # gagnée (nul à 90') était marquée perdue, et un but de prolongation
-    # faussait Under/BTTS. On lit donc score.fulltime pour ces statuts.
     if status in ("AET", "PEN"):
         ft = fix.get("score", {}).get("fulltime", {}) or {}
         if ft.get("home") is not None and ft.get("away") is not None:
             gh = ft.get("home")
             ga = ft.get("away")
     if gh is None or ga is None:
-        print(f"    [SKIP] terminé ({status}) mais score absent de l'API")
+        print(f"    [SKIP] termine ({status}) mais score absent de l'API")
         return None
     return {
         "home_goals":  gh,
@@ -114,6 +114,23 @@ def check_prediction(recommendation, result):
     return None
 
 
+def mark_dead_match(pred_id, fixture_id, dead_status):
+    """Marque un match non joue : prediction_correct reste NULL, mais
+    match_status renseigne -> palier/ticket/selection le sautent."""
+    try:
+        supabase.table("predictions").update({
+            "match_status": dead_status,
+        }).eq("id", pred_id).execute()
+    except Exception as e:
+        print(f"    [DB ERR mark_dead] {e}")
+    try:
+        supabase.table("daily_top25").update({
+            "match_status": dead_status,
+        }).eq("fixture_id", fixture_id).execute()
+    except Exception:
+        pass
+
+
 def update_prediction(pred_id, result, is_correct):
     try:
         supabase.table("predictions").update({
@@ -121,6 +138,7 @@ def update_prediction(pred_id, result, is_correct):
             "actual_away_goals":  result["away_goals"],
             "actual_total_goals": result["total_goals"],
             "prediction_correct": is_correct,
+            "match_status":       "FT",
         }).eq("id", pred_id).execute()
         return True
     except Exception as e:
@@ -138,28 +156,20 @@ def update_top25(fixture_id, is_correct):
 
 
 def update_daily_tickets():
-    """
-    Met à jour le statut des tickets figés (daily_tickets) selon les résultats.
-    Ne change JAMAIS les matchs du ticket — met juste à jour won/lost/pending et le statut.
-    """
     try:
-        # Tickets ayant encore des matchs en attente — on continue à synchroniser
-        # même un ticket déjà perdu, tant que ses matchs ne sont pas tous résolus.
         r = supabase.table("daily_tickets") \
             .select("*") \
             .gt("pending_count", 0) \
             .execute()
         tickets = r.data or []
     except Exception as e:
-        print(f"  [TICKET] Lecture échouée : {e}")
+        print(f"  [TICKET] Lecture echouee : {e}")
         return
 
     for ticket in tickets:
         matches = ticket.get("matches") or []
         if not matches:
             continue
-
-        # Récupérer les résultats actuels de chaque match du ticket
         changed = False
         won = lost = pending = 0
         for m in matches:
@@ -173,23 +183,18 @@ def update_daily_tickets():
                 pc = (pr.data[0]["prediction_correct"] if pr.data else None)
             except Exception:
                 pc = m.get("prediction_correct")
-
             if m.get("prediction_correct") != pc:
                 m["prediction_correct"] = pc
                 changed = True
-
             if pc is True:    won += 1
             elif pc is False: lost += 1
             else:             pending += 1
-
-        # Déterminer le statut global
         if lost > 0:
-            status = "lost"          # un seul perdu = ticket perdu
+            status = "lost"
         elif pending == 0:
-            status = "won"           # tous joués et aucun perdu = gagné
+            status = "won"
         else:
-            status = "pending"       # encore des matchs à jouer
-
+            status = "pending"
         try:
             supabase.table("daily_tickets").update({
                 "matches":       matches,
@@ -199,7 +204,7 @@ def update_daily_tickets():
                 "status":        status,
             }).eq("id", ticket["id"]).execute()
             if changed or status != ticket.get("status"):
-                print(f"  [TICKET {ticket['ticket_date']}] {won}✅ {lost}❌ {pending}⏳ → {status}")
+                print(f"  [TICKET {ticket['ticket_date']}] {won} {lost} {pending} -> {status}")
         except Exception as e:
             print(f"  [TICKET update err] {e}")
 
@@ -223,51 +228,44 @@ def compute_daily_stats(verified):
         by_market[market]["total"] += 1
         if v["correct"]:
             by_market[market]["correct"] += 1
-
-    print(f"\n{'═'*55}")
+    print(f"\n{'='*55}")
     print(f"  BILAN — {datetime.utcnow().strftime('%Y-%m-%d %H:%M')} UTC")
-    print(f"{'═'*55}")
-    print(f"  Total vérifié : {total}")
-    print(f"  Correct       : {correct} ✅")
-    print(f"  Incorrect     : {wrong} ❌")
-    print(f"  Taux réussite : {rate}%")
-    print(f"{'─'*55}")
-    print(f"  Par marché :")
+    print(f"{'='*55}")
+    print(f"  Total verifie : {total}")
+    print(f"  Correct       : {correct}")
+    print(f"  Incorrect     : {wrong}")
+    print(f"  Taux reussite : {rate}%")
+    print(f"{'-'*55}")
     for market, stats in sorted(by_market.items()):
-        t = stats["total"]
-        c = stats["correct"]
-        r = round(c / t * 100, 1) if t else 0
-        print(f"    {market:<15} {c}/{t} = {r}%")
-    print(f"{'═'*55}\n")
-    print("  Détail :")
-    for v in sorted(verified, key=lambda x: x["correct"] is False):
-        icon = "✅" if v["correct"] else "❌"
-        print(
-            f"  {icon} {v['home']} vs {v['away']}\n"
-            f"     {v['recommendation']} · "
-            f"Résultat : {v['home_goals']}-{v['away_goals']} · "
-            f"Conf {v['rec_confidence']}%\n"
-        )
+        t = stats["total"]; c = stats["correct"]
+        rr = round(c / t * 100, 1) if t else 0
+        print(f"    {market:<15} {c}/{t} = {rr}%")
+    print(f"{'='*55}\n")
 
 
 def main():
     print(f"\n=== Verify Results — {datetime.utcnow().strftime('%Y-%m-%d %H:%M')} UTC ===\n")
     predictions = get_unverified_predictions()
-    print(f"{len(predictions)} prédiction(s) à vérifier\n")
+    print(f"{len(predictions)} prediction(s) a verifier\n")
     if not predictions:
-        print("Aucune prédiction à vérifier.")
+        print("Aucune prediction a verifier.")
         return
 
     verified = []
     skipped  = 0
+    dead     = 0
 
     for pred in predictions:
         fixture_id = pred["fixture_id"]
         rec        = pred["recommendation"]
-        print(f"  → {pred['home_team_name']} vs {pred['away_team_name']} ({pred['league_name']})")
+        print(f"  -> {pred['home_team_name']} vs {pred['away_team_name']} ({pred['league_name']})")
         result = get_fixture_result(fixture_id)
         if not result:
             skipped += 1
+            continue
+        if result.get("dead_status"):
+            mark_dead_match(pred["id"], fixture_id, result["dead_status"])
+            dead += 1
             continue
         is_correct = check_prediction(rec, result)
         if is_correct is None:
@@ -276,8 +274,8 @@ def main():
             continue
         update_prediction(pred["id"], result, is_correct)
         update_top25(fixture_id, is_correct)
-        icon = "✅" if is_correct else "❌"
-        print(f"    {icon} {rec} · Score réel : {result['home_goals']}-{result['away_goals']} · {'CORRECT' if is_correct else 'INCORRECT'}")
+        icon = "OK" if is_correct else "X"
+        print(f"    [{icon}] {rec} · Score : {result['home_goals']}-{result['away_goals']}")
         verified.append({
             "home":           pred["home_team_name"],
             "away":           pred["away_team_name"],
@@ -289,12 +287,9 @@ def main():
         })
 
     compute_daily_stats(verified)
-
-    # Mettre à jour le statut des tickets figés
-    print("\n=== Mise à jour tickets figés ===")
+    print("\n=== Mise a jour tickets figes ===")
     update_daily_tickets()
-
-    print(f"=== Terminé : {len(verified)} vérifiés · {skipped} ignorés ===\n")
+    print(f"=== Termine : {len(verified)} verifies · {dead} non-joues marques · {skipped} ignores ===\n")
 
 
 if __name__ == "__main__":
