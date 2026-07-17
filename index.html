@@ -16567,6 +16567,31 @@ function Top25Tab() {
     .catch(function() { setHistLoading(false); });
   }, [viewMode, histDays]);
 
+  // Stats des 4 zones value (pour les info-bulles 💎), calculées en direct
+  // et stockées sur window pour être lues par les badges partout (sélection + historique).
+  React.useEffect(function() {
+    fetch(SB_BASE2 + "predictions?select=value_pct,rec_confidence,prediction_correct&value_pct=not.is.null&prediction_correct=not.is.null&limit=5000", { headers: SB_H2 })
+      .then(function(r){ return r.json(); })
+      .then(function(rows){
+        if (!Array.isArray(rows)) return;
+        var Z = { forte:{n:0,w:0,prof:0}, mod:{n:0,w:0,prof:0}, faible:{n:0,w:0,prof:0}, neg:{n:0,w:0,prof:0} };
+        rows.forEach(function(x){
+          var v = x.value_pct;
+          var z = v >= 15 ? "forte" : v >= 5 ? "mod" : v >= 0 ? "faible" : "neg";
+          Z[z].n++;
+          if (x.prediction_correct) Z[z].w++;
+          var g = (100 + v) / (x.rec_confidence || 100) - 1;
+          Z[z].prof += x.prediction_correct ? g : -1;
+        });
+        ["forte","mod","faible","neg"].forEach(function(k){
+          Z[k].roi = Z[k].n ? Math.round(1000.0*Z[k].prof/Z[k].n)/10 : null;
+          Z[k].taux = Z[k].n ? Math.round(1000.0*Z[k].w/Z[k].n)/10 : null;
+        });
+        if (typeof window !== "undefined") window.__valueZones = Z;
+      })
+      .catch(function(){});
+  }, []);
+
   // Charger les données du palier (mode Ticket > Palier)
   useEffect(function() {
     if (viewMode !== "ticket" || ticketTab !== "palier") return;
@@ -17138,15 +17163,34 @@ function Top25Tab() {
                 var bg = isSweet ? "rgba(46,204,113,0.15)" : v >= 15 ? "rgba(155,89,182,0.12)" : v >= 0 ? "rgba(243,156,18,0.10)" : "rgba(231,76,60,0.10)";
                 var col = isSweet ? "#27ae60" : v >= 15 ? "#9b59b6" : v >= 0 ? "#f39c12" : "#e74c3c";
                 var tag = isSweet ? " ✓ modérée" : v >= 15 ? " ⚠︎ forte" : "";
-                var desc = isSweet
-                  ? "💎 VALUE MODÉRÉE (5-15%)\n\nC'est le \"sweet spot\" : sur tes données, cette tranche est la seule rentable (+2.6% de ROI). Le moteur a un léger avantage réel sur le marché. C'est le meilleur signal pour parier."
-                  : v >= 15
-                  ? "⚠︎ VALUE FORTE (15%+)\n\nAttention piège : sur tes données, cette tranche PERD de l'argent (-10.4% de ROI) malgré le gros chiffre. Une value énorme = surconfiance du moteur, pas une aubaine. À éviter jusqu'à la calibration."
-                  : v >= 0
-                  ? "💎 VALUE FAIBLE (0-5%)\n\nLe moteur est presque d'accord avec le marché : pas de vrai avantage. ROI mesuré négatif (-15%). Peu d'intérêt pour parier."
-                  : "🔴 VALUE NÉGATIVE\n\nLe marché est plus optimiste que ton moteur sur ce pari : la cote paie MOINS que le risque estimé. Tu gagnes peut-être souvent, mais tu perds de l'argent (ROI -13.9%). À éviter — c'est un favori mal payé.";
+                var zoneKey = v >= 15 ? "forte" : v >= 5 ? "mod" : v >= 0 ? "faible" : "neg";
+                var zoneLbl = v >= 15 ? "forte (15%+)" : v >= 5 ? "modérée (5-15%)" : v >= 0 ? "faible (0-5%)" : "négative";
+                var onClickBadge = function(e){
+                  e.stopPropagation();
+                  var Z = (typeof window !== "undefined" && window.__valueZones && window.__valueZones[zoneKey]) || null;
+                  var msg = "💎 CE PARI\n\nValue : " + (v>0?"+":"") + v + "%\nZone : " + zoneLbl + "\n\n";
+                  if (Z && Z.n > 0) {
+                    msg += "📊 TA ZONE " + zoneLbl.toUpperCase() + " (données réelles)\n"
+                         + "• " + Z.n + " paris vérifiés\n"
+                         + "• Taux : " + Z.taux + "%\n"
+                         + "• ROI : " + (Z.roi>0?"+":"") + Z.roi + "%\n\n"
+                         + (Z.roi >= 3 ? "→ Zone RENTABLE chez toi. Bon profil pour parier."
+                            : Z.roi >= 0 ? "→ Zone à l'équilibre. Prudence."
+                            : "→ Zone PERDANTE chez toi (" + Z.roi + "%). À éviter — même si le chiffre paraît gros.");
+                  } else {
+                    // Pas de stats chargées (Historique jamais ouvert) : explication de zone
+                    msg += isSweet
+                      ? "Le \"sweet spot\" : sur tes données récentes, c'est la zone la plus rentable. Le moteur a un léger avantage réel sur le marché.\n\n(Ouvre l'Historique pour voir le ROI exact à jour.)"
+                      : v >= 15
+                      ? "Piège fréquent : une value énorme = souvent surconfiance du moteur, pas une aubaine. Cette zone perd de l'argent sur la durée.\n\n(Ouvre l'Historique pour voir le ROI exact à jour.)"
+                      : v >= 0
+                      ? "Le moteur suit le marché : pas de vrai avantage sur ce pari.\n\n(Ouvre l'Historique pour le ROI exact.)"
+                      : "Value négative : la cote paie moins que le risque estimé. Favori souvent mal payé.\n\n(Ouvre l'Historique pour le ROI exact.)";
+                  }
+                  if (typeof window !== "undefined" && window.alert) window.alert(msg);
+                };
                 return React.createElement("span", {
-                  onClick: function(e){ e.stopPropagation(); if (typeof window !== "undefined" && window.alert) window.alert(desc); },
+                  onClick: onClickBadge,
                   style: {
                     fontSize:9, fontWeight:700, padding:"2px 6px", borderRadius:4, cursor:"pointer",
                     fontFamily:"'JetBrains Mono',monospace",
