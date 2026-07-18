@@ -18963,15 +18963,19 @@ function Top25Tab() {
                           },
                             React.createElement("div", { style:{ display:"flex", justifyContent:"space-between", alignItems:"center", marginBottom:2 } },
                               React.createElement("span", { style:{ fontSize:11, fontWeight:700, color:"var(--c-ink)", flex:1, marginRight:6 } },
-                                icon + " " + (m.home_team_name || "?") + " vs " + (m.away_team_name || "?")),
+                                icon + " " + (m.league_country && typeof countryFlag === "function" ? countryFlag(m.league_country) + " " : "") + (m.home_team_name || "?") + " vs " + (m.away_team_name || "?")),
                               React.createElement("span", { style:{ fontSize:11, fontWeight:700, color:"var(--c-ink)" } }, "cote " + (m.cote || "—"))
                             ),
                             React.createElement("div", { style:{ display:"flex", justifyContent:"space-between", alignItems:"center" } },
                               React.createElement("span", { style:{ fontSize:9, color:"var(--c-ink-3)" } },
-                                (m.league_name || "") + " · " + (m.recommendation || "")),
+                                (m.league_name || "").replace(/\s*\([^)]*\)\s*$/, "") +
+                                (m.league_country ? " · " + (typeof countryFR === "function" ? countryFR(m.league_country) : m.league_country) : "") +
+                                " · " + (m.recommendation || "")),
                               React.createElement("span", { style:{ fontSize:9, color:"var(--c-ink-3)" } },
                                 (m.rec_confidence ? m.rec_confidence + "%" : ""))
-                            )
+                            ),
+                            m.match_date ? React.createElement("div", { style:{ fontSize:9, color:"var(--c-ink-3)", marginTop:2 } },
+                              "🕐 " + new Date(m.match_date).toLocaleDateString("fr-CA",{day:"2-digit",month:"2-digit"}) + " · " + new Date(m.match_date).toLocaleTimeString("fr-CA",{hour:"2-digit",minute:"2-digit"})) : null
                           );
                         })
                   ) : null
@@ -19256,7 +19260,10 @@ function Top25Tab() {
                     React.createElement("span", { style:{ color:"var(--c-ink-3)", fontWeight:400, margin:"0 4px" } }, "vs"),
                     pred.away_team_name
                   ),
-                  React.createElement("div", { style:{ fontSize:10, color:"var(--c-ink-3)", marginTop:2, textAlign:"center" } }, pred.league_name)
+                  React.createElement("div", { style:{ fontSize:10, color:"var(--c-ink-3)", marginTop:2, textAlign:"center" } },
+                    (pred.league_country && typeof countryFlag === "function" ? countryFlag(pred.league_country) + " " : "") +
+                    (pred.league_name || "").replace(/\s*\([^)]*\)\s*$/, "") +
+                    (pred.league_country ? " · " + (typeof countryFR === "function" ? countryFR(pred.league_country) : pred.league_country) : ""))
                 ),
                 React.createElement("div", {
                   style:{
