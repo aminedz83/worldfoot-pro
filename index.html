@@ -18109,11 +18109,13 @@ function Top25Tab() {
           var mkIcon = mk.indexOf("UNDER")>=0 ? "⬇️" : mk.indexOf("BTTS")>=0 ? "⚽" : "🏆";
           var anTime = p.scraped_at ? new Date(p.scraped_at).toLocaleTimeString("fr-CA", { hour:"2-digit", minute:"2-digit" }) : "";
           var isPalier = palierFid && p.fixture_id === palierFid;
-          // Ligue + date/heure du match (sous-ligne)
+          // Ligue + pays + date/heure du match (sous-ligne)
           var lgName = (p.league_name || "").replace(/\s*\([^)]*\)\s*$/, "");
+          var ctry = p.league_country ? (typeof countryFR === "function" ? countryFR(p.league_country) : p.league_country) : "";
+          var lgFull = ctry ? (lgName + " · " + ctry) : lgName;
           var mDt = p.match_date ? new Date(p.match_date) : null;
           var mWhen = mDt ? mDt.toLocaleDateString("fr-CA", { day:"2-digit", month:"2-digit" }) + " · " + mDt.toLocaleTimeString("fr-CA", { hour:"2-digit", minute:"2-digit" }) : "";
-          var subline = [lgName, mWhen].filter(Boolean).join("  ·  ");
+          var subline = [lgFull, mWhen].filter(Boolean).join("  ·  ");
           return React.createElement("div", { key:key,
             style:{ display:"flex", alignItems:"center", justifyContent:"space-between", padding:"7px 2px",
               borderBottom:"1px solid var(--c-border)",
