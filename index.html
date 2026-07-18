@@ -18758,7 +18758,7 @@ function Top25Tab() {
           if (isCup && !isOv) return;
           if (!byDay[day] || isOv || (!byDay[day]._ov && p.rec_confidence > byDay[day]._conf)) {
             byDay[day] = { day:day, mdate:p.match_date, _conf:p.rec_confidence, _ov:isOv, cote:cote, rec:p.recommendation,
-              correct:p.prediction_correct, home:p.home_team_name, away:p.away_team_name, country:p.league_country };
+              correct:p.prediction_correct, home:p.home_team_name, away:p.away_team_name, country:p.league_country, league:p.league_name };
           }
         });
         var days = Object.keys(byDay).sort();
@@ -18841,7 +18841,15 @@ function Top25Tab() {
             React.createElement("div", { style:{ fontSize:10, color:"var(--c-ink-3)", marginBottom:3 } }, "🎯 Prochain pari" + (cur.ongoing.mdate ? " · " + cur.ongoing.mdate.slice(8,10) + "/" + cur.ongoing.mdate.slice(5,7) : "") + " (en attente)"),
             React.createElement("div", { style:{ fontSize:13, fontWeight:600, color:"var(--c-ink)" } },
               (cur.ongoing.country ? countryFlag(cur.ongoing.country)+" " : "") + cur.ongoing.home + " vs " + cur.ongoing.away),
-            React.createElement("div", { style:{ fontSize:11, color:"var(--c-ink-3)" } },
+            (function(){
+              var lgN = (cur.ongoing.league || "").replace(/\s*\([^)]*\)\s*$/, "");
+              var ctry = cur.ongoing.country ? (typeof countryFR === "function" ? countryFR(cur.ongoing.country) : cur.ongoing.country) : "";
+              var mDt = cur.ongoing.mdate ? new Date(cur.ongoing.mdate) : null;
+              var mWhen = mDt ? mDt.toLocaleDateString("fr-CA",{day:"2-digit",month:"2-digit"}) + " · " + mDt.toLocaleTimeString("fr-CA",{hour:"2-digit",minute:"2-digit"}) : "";
+              var sub = [lgN, ctry, mWhen].filter(Boolean).join("  ·  ");
+              return sub ? React.createElement("div", { style:{ fontSize:10, color:"var(--c-ink-3)", marginTop:2 } }, sub) : null;
+            })(),
+            React.createElement("div", { style:{ fontSize:11, color:"var(--c-ink-3)", marginTop:2 } },
               cur.ongoing.rec + " · cote " + cur.ongoing.cote + " · conf " + cur.ongoing._conf + "%"),
             React.createElement("div", { style:{ fontSize:13, fontWeight:700, color:"var(--c-jade)", marginTop:6 } },
               "✅ Si gagné → " + (Math.round(cur.capital * cur.ongoing.cote * 100)/100) + " (+" + (Math.round((cur.capital * cur.ongoing.cote - cur.capital) * 100)/100) + ")")
